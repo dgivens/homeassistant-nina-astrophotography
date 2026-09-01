@@ -16,8 +16,37 @@ class NinaApiError(Exception):
     """Raised when N.I.N.A. answers, but not with what was asked for."""
 
 
+class NinaEndpointError(NinaApiError):
+    """Raised when this NINA build does not serve the requested path.
+
+    Distinct from a refused command: a refusal means the equipment said no and
+    is worth retrying, a wrong path never will be.
+    """
+
+
 class NinaConnectionError(Exception):
     """Raised when a connection to N.I.N.A. cannot be established."""
+
+
+# Statuses that mean the path itself is not served. Everything else, 5xx
+# included, is treated as transient: a handler that threw or a server still
+# starting up will answer normally later, and failing the config entry for
+# one of those is far worse than retrying a path that never returns.
+_PATH_NOT_SERVED = (404, 405, 501)
+
+
+def _http_error(method: str, path: str, status: int, body: str = "") -> NinaApiError:
+    """Build the error for a non-200 reply.
+
+    The body is an EmbedIO HTML error page, so it is collapsed and truncated
+    rather than dumped into the log.
+    """
+    summary = " ".join(body.split())[:120]
+    detail = f": {summary}" if summary else ""
+    message = f"{method} {path} -> {status}{detail}"
+    if status in _PATH_NOT_SERVED:
+        return NinaEndpointError(message)
+    return NinaApiError(message)
 
 
 def _raise_for_envelope(path: str, payload) -> None:
@@ -56,8 +85,7 @@ class NinaApiClient:
                 url, params=params, timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
                 if resp.status != 200:
-                    text = await resp.text()
-                    raise NinaApiError(f"GET {path} -> {resp.status}: {text}")
+                    raise _http_error("GET", path, resp.status, await resp.text())
                 payload = await resp.json(content_type=None)
         except asyncio.TimeoutError as exc:
             raise NinaConnectionError(f"Timeout reaching N.I.N.A. at {url}") from exc
@@ -82,8 +110,7 @@ class NinaApiClient:
                         return {}
                     _raise_for_envelope(path, payload)
                     return payload
-                text = await resp.text()
-                raise NinaApiError(f"POST {path} -> {resp.status}: {text}")
+                raise _http_error("POST", path, resp.status, await resp.text())
         except asyncio.TimeoutError as exc:
             raise NinaConnectionError(f"Timeout reaching N.I.N.A. at {url}") from exc
         except aiohttp.ClientError as exc:
@@ -314,7 +341,7 @@ class NinaApiClient:
             ) as resp:
                 if resp.status == 200:
                     return await resp.read()
-                raise NinaApiError(f"GET /image -> {resp.status}")
+                raise _http_error("GET", "/image", resp.status)
         except asyncio.TimeoutError as exc:
             raise NinaConnectionError("Timeout fetching image") from exc
         except aiohttp.ClientError as exc:
@@ -359,6 +386,12 @@ class NinaApiClient:
             if connection_errors:
                 raise NinaConnectionError(
                     f"No N.I.N.A. subsystem responded: {connection_errors[0]}"
+                )
+            if all(isinstance(e, NinaEndpointError) for e in failures.values()):
+                raise NinaEndpointError(
+                    "N.I.N.A. served none of the expected endpoints, so this "
+                    "client is talking to an API it does not understand: "
+                    f"{next(iter(failures.values()))}"
                 )
             raise NinaApiError(
                 "Every N.I.N.A. subsystem returned an error: "

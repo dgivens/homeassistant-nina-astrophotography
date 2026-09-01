@@ -9,11 +9,12 @@ from __future__ import annotations
 import aiohttp
 import pytest
 
-from helpers import FakeSession, failure, ok
+from helpers import FakeResponse, FakeSession, failure, ok
 from nina_astrophotography.api import (
     NinaApiClient,
     NinaApiError,
     NinaConnectionError,
+    NinaEndpointError,
 )
 
 
@@ -76,3 +77,15 @@ async def test_a_single_reachable_subsystem_prevents_raising():
 
     assert result["camera"]["Response"]["Connected"] is True
     assert result["mount"] == {}
+
+
+async def test_nothing_served_is_reported_as_an_endpoint_error():
+    """All-404 means the wrong API, not equipment that is merely unhappy.
+
+    The coordinator retries an unhappy rig forever, which is right; it should
+    not do that for a client asking for paths this build has never served.
+    """
+    session = FakeSession(default=FakeResponse("<html>404</html>", status=404))
+
+    with pytest.raises(NinaEndpointError):
+        await make_client(session).poll_all()
