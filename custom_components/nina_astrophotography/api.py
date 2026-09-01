@@ -13,11 +13,33 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class NinaApiError(Exception):
-    """Raised when the N.I.N.A. API returns an error."""
+    """Raised when N.I.N.A. answers, but not with what was asked for."""
 
 
 class NinaConnectionError(Exception):
     """Raised when a connection to N.I.N.A. cannot be established."""
+
+
+def _raise_for_envelope(path: str, payload) -> None:
+    """Raise if the response envelope reports a failure.
+
+    The API answers HTTP 200 for everything, including refused commands, and
+    carries the real outcome in the body.
+
+    `Success` alone is not enough to key on: some handlers assign it straight
+    from the driver's return value, so it can be false on a call that worked —
+    a successful tracking change answers `Success: false` with an empty Error
+    and a 200 code. Genuine failures are built by CreateErrorTable, which
+    always sets both a message and a 4xx/5xx code.
+    """
+    if not isinstance(payload, dict) or payload.get("Success") is not False:
+        return
+    error = payload.get("Error")
+    status = payload.get("StatusCode")
+    if not error and status in (None, 200):
+        return
+    detail = f" (StatusCode {status})" if status is not None else ""
+    raise NinaApiError(f"{path}: {error or 'unknown error'}{detail}")
 
 
 class NinaApiClient:
@@ -33,14 +55,17 @@ class NinaApiClient:
             async with self._session.get(
                 url, params=params, timeout=aiohttp.ClientTimeout(total=10)
             ) as resp:
-                if resp.status == 200:
-                    return await resp.json(content_type=None)
-                text = await resp.text()
-                raise NinaApiError(f"GET {path} -> {resp.status}: {text}")
+                if resp.status != 200:
+                    text = await resp.text()
+                    raise NinaApiError(f"GET {path} -> {resp.status}: {text}")
+                payload = await resp.json(content_type=None)
         except aiohttp.ClientConnectorError as exc:
             raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}") from exc
         except asyncio.TimeoutError as exc:
             raise NinaConnectionError(f"Timeout reaching N.I.N.A. at {url}") from exc
+
+        _raise_for_envelope(path, payload)
+        return payload
 
     async def _post(self, path, data=None, params=None):
         url = self._base + path
@@ -50,9 +75,11 @@ class NinaApiClient:
             ) as resp:
                 if resp.status in (200, 204):
                     try:
-                        return await resp.json(content_type=None)
+                        payload = await resp.json(content_type=None)
                     except Exception:
                         return {}
+                    _raise_for_envelope(path, payload)
+                    return payload
                 text = await resp.text()
                 raise NinaApiError(f"POST {path} -> {resp.status}: {text}")
         except aiohttp.ClientConnectorError as exc:
