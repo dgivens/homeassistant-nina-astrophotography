@@ -305,8 +305,11 @@ class NinaFrameStatisticsSensor(SensorEntity, RestoreEntity):
         self._store.remove_update_listener(self._on_store_update)
 
     def _on_store_update(self) -> None:
-        """Called by the store on every new frame — schedule a state write."""
-        self.schedule_update_ha_states()
+        """Write the new state.
+
+        Registered in async_added_to_hass, so hass and entity_id are always set.
+        """
+        self.async_write_ha_state()
 
     @property
     def native_value(self) -> Any:
