@@ -59,10 +59,12 @@ class NinaApiClient:
                     text = await resp.text()
                     raise NinaApiError(f"GET {path} -> {resp.status}: {text}")
                 payload = await resp.json(content_type=None)
-        except aiohttp.ClientConnectorError as exc:
-            raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}") from exc
         except asyncio.TimeoutError as exc:
             raise NinaConnectionError(f"Timeout reaching N.I.N.A. at {url}") from exc
+        except aiohttp.ClientError as exc:
+            # ClientError, not ClientConnectorError: a crashed NINA raises
+            # ServerDisconnectedError, a truncated reply ClientPayloadError.
+            raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}: {exc}") from exc
 
         _raise_for_envelope(path, payload)
         return payload
@@ -82,10 +84,10 @@ class NinaApiClient:
                     return payload
                 text = await resp.text()
                 raise NinaApiError(f"POST {path} -> {resp.status}: {text}")
-        except aiohttp.ClientConnectorError as exc:
-            raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}") from exc
         except asyncio.TimeoutError as exc:
             raise NinaConnectionError(f"Timeout reaching N.I.N.A. at {url}") from exc
+        except aiohttp.ClientError as exc:
+            raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}: {exc}") from exc
 
     # Application
     async def get_version(self):
@@ -313,10 +315,10 @@ class NinaApiClient:
                 if resp.status == 200:
                     return await resp.read()
                 raise NinaApiError(f"GET /image -> {resp.status}")
-        except aiohttp.ClientConnectorError as exc:
-            raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}") from exc
         except asyncio.TimeoutError as exc:
-            raise NinaConnectionError(f"Timeout fetching image") from exc
+            raise NinaConnectionError("Timeout fetching image") from exc
+        except aiohttp.ClientError as exc:
+            raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}: {exc}") from exc
 
     # Poll all equipment concurrently
     async def poll_all(self):
@@ -336,11 +338,31 @@ class NinaApiClient:
             "safetymonitor": self.get_safetymonitor(),
         }
         results = {}
+        failures = {}
         responses = await asyncio.gather(*tasks.values(), return_exceptions=True)
         for key, response in zip(tasks.keys(), responses):
             if isinstance(response, Exception):
                 _LOGGER.debug("Poll error for %s: %s", key, response)
+                failures[key] = response
                 results[key] = {}
             else:
                 results[key] = response
+
+        # A rig with no dome must not fail the whole poll. But if nothing
+        # answered, NINA is gone and the coordinator has to know, or every
+        # entity carries on publishing defaults.
+        if len(failures) == len(tasks):
+            connection_errors = [
+                exc for exc in failures.values()
+                if isinstance(exc, NinaConnectionError)
+            ]
+            if connection_errors:
+                raise NinaConnectionError(
+                    f"No N.I.N.A. subsystem responded: {connection_errors[0]}"
+                )
+            raise NinaApiError(
+                "Every N.I.N.A. subsystem returned an error: "
+                f"{next(iter(failures.values()))}"
+            )
+
         return results
