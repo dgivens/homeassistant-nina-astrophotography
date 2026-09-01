@@ -5,7 +5,7 @@ blueprint:
     warms the camera, and optionally closes the dome. Can be triggered at dawn, by
     a time, or by a manual call.
   domain: automation
-  source_url: https://github.com/christian-photo/ninaAPI
+  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
   input:
     trigger_time:
       name: Shutdown Time
@@ -46,6 +46,12 @@ blueprint:
       default: ""
       selector:
         text:
+
+# Inputs must be bound here before templates can reference them.
+variables:
+  close_dome: !input close_dome
+  notify_device: !input notify_device
+  only_if_sequence_stopped: !input only_if_sequence_stopped
 
 trigger:
   - platform: time

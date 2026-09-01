@@ -4,7 +4,7 @@ blueprint:
     Sends a notification a configurable number of minutes before a meridian flip
     is due, so you can monitor or prepare. Also fires an event when the flip completes.
   domain: automation
-  source_url: https://github.com/christian-photo/ninaAPI
+  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
   input:
     warning_minutes:
       name: Warning Before Flip (minutes)
@@ -21,6 +21,10 @@ blueprint:
       description: Mobile device to send the warning to.
       selector:
         text:
+
+# Inputs must be bound here before templates can reference them.
+variables:
+  notify_device: !input notify_device
 
 trigger:
   - platform: numeric_state
