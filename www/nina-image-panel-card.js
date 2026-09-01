@@ -13,7 +13,7 @@
  * Reads HA sensors for the overlay:
  *   sensor.last_frame_hfr, sensor.last_frame_stars, sensor.last_frame_mean_adu
  *   sensor.last_frame_filter, sensor.last_frame_exposure, sensor.last_frame_guide_rms
- *   sensor.last_frame_target, sensor.frame_session_count, sensor.session_integration_time
+ *   sensor.last_frame_target, sensor.session_frame_count, sensor.session_integration_time
  *   binary_sensor.camera_connected, binary_sensor.camera_exposing
  *   sensor.frame_sparkline_data (for histogram data from extra attributes)
  *
@@ -30,6 +30,15 @@
  */
 
 const VERSION = "1.0.0";
+
+// Entity ids are prefixed with the instance name (device names drive entity
+// ids since 2.0). Default "nina"; override with `prefix:` in the card config
+// when you run more than one N.I.N.A. instance.
+function withPrefix(entityId, prefix) {
+  const dot = entityId.indexOf(".");
+  return entityId.slice(0, dot + 1) + (prefix || "nina") + "_" + entityId.slice(dot + 1);
+}
+
 
 const STYLE = `
   :host {
@@ -241,7 +250,8 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   setConfig(config) {
-    if (!config.host) throw new Error("nina-image-panel-card: 'host' is required");
+        this._prefix = (config && config.prefix) || "nina";
+if (!config.host) throw new Error("nina-image-panel-card: 'host' is required");
     this._config = {
       host: config.host,
       port: config.port ?? 1888,
@@ -289,7 +299,7 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   _s(id, fallback = null) {
-    const e = this._hass?.states?.[id];
+    const e = this._hass?.states?.[withPrefix(id, this._prefix)];
     return e ? e.state : fallback;
   }
   _f(id, fallback = 0) { return parseFloat(this._s(id)) || fallback; }
@@ -646,7 +656,7 @@ class NinaImagePanelCard extends HTMLElement {
     const expBar = this.shadowRoot?.getElementById("exposing-bar");
     if (!badge) return;
 
-    const count   = this._s("sensor.frame_session_count", "0");
+    const count   = this._s("sensor.session_frame_count", "0");
     const intTime = this._f("sensor.session_integration_time");
     const exposing = this._hass?.states?.["binary_sensor.camera_exposing"]?.state === "on";
     const connected = this._hass?.states?.["binary_sensor.camera_connected"]?.state === "on";

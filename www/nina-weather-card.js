@@ -13,6 +13,15 @@
 
 const VERSION = "1.0.0";
 
+// Entity ids are prefixed with the instance name (device names drive entity
+// ids since 2.0). Default "nina"; override with `prefix:` in the card config
+// when you run more than one N.I.N.A. instance.
+function withPrefix(entityId, prefix) {
+  const dot = entityId.indexOf(".");
+  return entityId.slice(0, dot + 1) + (prefix || "nina") + "_" + entityId.slice(dot + 1);
+}
+
+
 const STYLE = `
   :host {
     --bg:      var(--ha-card-background, var(--card-background-color, #1c1c2e));
@@ -154,15 +163,26 @@ class NinaWeatherCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
   }
 
-  setConfig(config) { this._config = config || {}; }
+  setConfig(config) {     this._prefix = (config && config.prefix) || "nina";
+this._config = config || {}; }
 
   set hass(hass) {
     this._hass = hass;
     this._render();
   }
 
+  _deviceModel(entityId) {
+    // hass.devices is populated by recent frontends; degrade quietly if not.
+    try {
+      const ent = this._hass?.entities?.[entityId];
+      return ent && this._hass?.devices?.[ent.device_id]?.model || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   _s(id, fb = null) {
-    const e = this._hass?.states?.[id];
+    const e = this._hass?.states?.[withPrefix(id, this._prefix)];
     return e ? e.state : fb;
   }
   _f(id, fb = null) {
@@ -176,26 +196,29 @@ class NinaWeatherCard extends HTMLElement {
 
     // Safety monitor
     const safetyConnected = this._on("binary_sensor.safety_monitor_connected");
-    // binary_sensor.observatory_safe uses SAFETY device class: "on" = UNSAFE
-    const isUnsafe = this._on("binary_sensor.observatory_safe");
+    // safety_monitor_safe uses the SAFETY device class: "on" = UNSAFE
+    const isUnsafe = this._on("binary_sensor.safety_monitor_safe");
     const isSafe   = safetyConnected && !isUnsafe;
 
     // Weather
     const wxConnected = this._on("binary_sensor.weather_station_connected");
-    const temp    = this._f("sensor.weather_temperature");
-    const humid   = this._f("sensor.weather_humidity");
-    const dewPt   = this._f("sensor.dew_point");
-    const windSpd = this._f("sensor.wind_speed");
-    const windDir = this._f("sensor.wind_direction");
-    const windGst = this._f("sensor.wind_gust");
-    const press   = this._f("sensor.barometric_pressure");
-    const cloud   = this._f("sensor.cloud_cover");
-    const rain    = this._f("sensor.rain_rate");
-    const skyQ    = this._f("sensor.sky_quality");
-    const skyB    = this._f("sensor.sky_brightness");
-    const skyT    = this._f("sensor.sky_temperature");
-    const seeing  = this._f("sensor.atmospheric_seeing");
-    const wxName  = this._s("sensor.weather_station_name", "Weather Station");
+    const temp    = this._f("sensor.weather_station_temperature");
+    const humid   = this._f("sensor.weather_station_humidity");
+    const dewPt   = this._f("sensor.weather_station_dew_point");
+    const windSpd = this._f("sensor.weather_station_wind_speed");
+    const windDir = this._f("sensor.weather_station_wind_direction");
+    const windGst = this._f("sensor.weather_station_wind_gust");
+    const press   = this._f("sensor.weather_station_barometric_pressure");
+    const cloud   = this._f("sensor.weather_station_cloud_cover");
+    const rain    = this._f("sensor.weather_station_rain_rate");
+    const skyQ    = this._f("sensor.weather_station_sky_quality");
+    const skyB    = this._f("sensor.weather_station_sky_brightness");
+    const skyT    = this._f("sensor.weather_station_sky_temperature");
+    const seeing  = this._f("sensor.weather_station_atmospheric_seeing");
+    // The driver name moved to the device registry in 2.0, so read it from the
+    // weather device when the frontend exposes one, else fall back to a label.
+    const wxName  = this._deviceModel("binary_sensor.weather_station_connected")
+                    || "Weather Station";
 
     // Dew threat: temp within 3°C of dew point
     const dewThreat = temp !== null && dewPt !== null && (temp - dewPt) < 3;

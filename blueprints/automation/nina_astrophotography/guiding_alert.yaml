@@ -4,9 +4,40 @@ blueprint:
     Sends a notification and optionally runs an autofocus when guiding error (RMS)
     exceeds a threshold for a sustained period. Useful for catching cloud, wind
     or seeing degradation mid-session.
+
+    Entities are picked rather than hard-coded, so this works with any instance
+    name and with several N.I.N.A. instances configured side by side.
   domain: automation
   source_url: https://github.com/christian-photo/ninaAPI
   input:
+    nina_device:
+      name: N.I.N.A. Instance
+      description: >
+        Any device belonging to the instance to control. Used to target the
+        autofocus service at the right rig.
+      selector:
+        device:
+          filter:
+            - integration: nina_astrophotography
+
+    rms_entity:
+      name: Guider Total RMS Sensor
+      description: Usually sensor.<instance>_guider_rms_total.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: sensor
+
+    guiding_entity:
+      name: Guider Active Sensor
+      description: Usually binary_sensor.<instance>_guider_active.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: binary_sensor
+
     rms_threshold:
       name: RMS Threshold (arcsec)
       description: Alert when total RMS error stays above this value.
@@ -28,9 +59,11 @@ blueprint:
           max: 30
           unit_of_measurement: min
 
-    notify_device:
-      name: Notify Device
-      description: Mobile device to send the alert to.
+    notify_service:
+      name: Notification Service
+      description: >
+        Notification service to call, without the leading "notify.".
+        For example "mobile_app_pixel_8".
       selector:
         text:
 
@@ -43,7 +76,9 @@ blueprint:
 
     cooldown_minutes:
       name: Cooldown Between Alerts (minutes)
-      description: Minimum time between repeated alerts.
+      description: >
+        Minimum time between repeated alerts. The automation holds for this long
+        after alerting, and mode "single" suppresses re-triggering meanwhile.
       default: 15
       selector:
         number:
@@ -51,27 +86,33 @@ blueprint:
           max: 120
           unit_of_measurement: min
 
+# Blueprint inputs are only usable in templates once bound to variables.
+variables:
+  rms_entity: !input rms_entity
+  rms_threshold: !input rms_threshold
+  sustained_minutes: !input sustained_minutes
+  notify_service: !input notify_service
+  run_autofocus: !input run_autofocus
+
 trigger:
   - platform: numeric_state
-    entity_id: sensor.guider_rms_total
+    entity_id: !input rms_entity
     above: !input rms_threshold
     for:
       minutes: !input sustained_minutes
 
 condition:
   - condition: state
-    entity_id: binary_sensor.guider_is_guiding
+    entity_id: !input guiding_entity
     state: "on"
 
 action:
-  - service: "notify.{{ notify_device }}"
+  - service: "notify.{{ notify_service }}"
     data:
       title: "⚠️ Guiding Alert"
       message: >
-        Guide RMS has been {{ states('sensor.guider_rms_total') }}" for
+        Guide RMS has been {{ states(rms_entity) }}" for
         {{ sustained_minutes }} minutes (threshold: {{ rms_threshold }}").
-        RA: {{ states('sensor.guider_rms_ra') }}" |
-        Dec: {{ states('sensor.guider_rms_dec') }}"
 
   - choose:
       - conditions:
@@ -79,6 +120,12 @@ action:
             value_template: "{{ run_autofocus }}"
         sequence:
           - service: nina_astrophotography.focuser_auto_focus
+            target:
+              device_id: !input nina_device
+
+  - alias: "Hold off further alerts for the cooldown period"
+    delay:
+      minutes: !input cooldown_minutes
 
 mode: single
 max_exceeded: silent

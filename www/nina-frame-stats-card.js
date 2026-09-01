@@ -12,6 +12,15 @@
 
 const VERSION = "1.0.0";
 
+// Entity ids are prefixed with the instance name (device names drive entity
+// ids since 2.0). Default "nina"; override with `prefix:` in the card config
+// when you run more than one N.I.N.A. instance.
+function withPrefix(entityId, prefix) {
+  const dot = entityId.indexOf(".");
+  return entityId.slice(0, dot + 1) + (prefix || "nina") + "_" + entityId.slice(dot + 1);
+}
+
+
 const FILTER_COLOURS = [
   "#7b8de8", "#5bcfcf", "#f4a261", "#57cc99",
   "#e76f51", "#a8dadc", "#c77dff", "#ffd166",
@@ -98,7 +107,8 @@ class NinaFrameStatsCard extends HTMLElement {
     this._filters = [];
   }
 
-  setConfig(config) { this._config = config || {}; }
+  setConfig(config) {     this._prefix = (config && config.prefix) || "nina";
+this._config = config || {}; }
 
   set hass(hass) {
     this._hass = hass;
@@ -107,7 +117,7 @@ class NinaFrameStatsCard extends HTMLElement {
   }
 
   _state(id, fallback = null) {
-    const e = this._hass?.states[id];
+    const e = this._hass?.states[withPrefix(id, this._prefix)];
     return e ? e.state : fallback;
   }
 
@@ -128,7 +138,7 @@ class NinaFrameStatsCard extends HTMLElement {
     const h = this._hass;
     if (!h) return;
 
-    const frameCount   = this._state("sensor.frame_session_count", "0");
+    const frameCount   = this._state("sensor.session_frame_count", "0");
     const integration  = this._state("sensor.session_integration_time", "—");
     const lastHfr      = this._state("sensor.last_frame_hfr", "—");
     const rollingHfr   = this._state("sensor.rolling_avg_hfr_10", "—");

@@ -1,112 +1,188 @@
 camera_cool:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Cool Camera
   description: Start cooling the camera sensor to a target temperature.
   fields:
     temperature:
-      name: Target Temperature (°C)
-      description: Target sensor temperature in degrees Celsius (e.g. -10).
+      name: Target Temperature
+      description: Target sensor temperature in degrees Celsius.
       required: true
       example: -10
       selector:
         number:
-          min: -30
+          min: -50
           max: 30
+          step: 0.5
           unit_of_measurement: "°C"
+          mode: box
     minutes:
       name: Ramp Time
-      description: Minutes over which to ramp to the target temperature.
-      default: 10
+      description: >-
+        Minutes over which to ramp to the target temperature. Use -1 for the
+        duration configured in the active N.I.N.A. profile.
+      default: -1
       example: 10
       selector:
         number:
-          min: 1
-          max: 60
+          min: -1
+          max: 120
           unit_of_measurement: min
+          mode: box
+    cancel:
+      name: Cancel
+      description: Cancel a cooling run that is already in progress.
+      default: false
+      selector:
+        boolean:
 
 camera_warm:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Warm Camera
   description: Gradually warm the camera sensor back to ambient temperature.
   fields:
     minutes:
       name: Ramp Time
-      description: Minutes over which to ramp back to ambient.
-      default: 10
+      description: Minutes over which to ramp back to ambient. -1 uses the profile default.
+      default: -1
       example: 10
       selector:
         number:
-          min: 1
-          max: 60
+          min: -1
+          max: 120
           unit_of_measurement: min
+          mode: box
+    cancel:
+      name: Cancel
+      description: Cancel a warming run that is already in progress.
+      default: false
+      selector:
+        boolean:
 
 camera_capture:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Capture Image
-  description: Take a single camera exposure.
+  description: >-
+    Take a single camera exposure. Binning and filter are not parameters of this
+    endpoint — set them first with Set Binning and Change Filter.
   fields:
-    exposure:
+    duration:
       name: Exposure
-      description: Exposure duration in seconds.
-      required: true
+      description: Exposure duration in seconds. Omit to use the plate-solve exposure time.
       example: 120
       selector:
         number:
           min: 0.001
           max: 3600
+          step: 0.001
           unit_of_measurement: s
           mode: box
     gain:
       name: Gain
-      description: Camera gain override (optional).
+      description: Gain override for this exposure. Omit to use the camera default.
       example: 100
       selector:
         number:
           min: 0
           max: 5000
           mode: box
-    filter_index:
-      name: Filter Index
-      description: Zero-based filter wheel index (optional).
-      example: 0
-      selector:
-        number:
-          min: 0
-          max: 20
-    binning:
-      name: Binning
-      description: Camera binning factor.
-      default: 1
-      selector:
-        select:
-          options:
-            - "1"
-            - "2"
-            - "3"
-            - "4"
     save:
       name: Save to Disk
-      description: Whether to save the captured image to disk.
+      description: Save the captured image. Required when capturing rather than previewing.
       default: false
       selector:
         boolean:
+    solve:
+      name: Plate Solve
+      description: Plate solve the captured image.
+      default: false
+      selector:
+        boolean:
+    wait_for_result:
+      name: Wait for Result
+      description: Block until the capture finishes instead of returning immediately.
+      default: false
+      selector:
+        boolean:
+    image_type:
+      name: Image Type
+      description: Frame type recorded for this exposure.
+      example: LIGHT
+      selector:
+        select:
+          options:
+            - LIGHT
+            - DARK
+            - BIAS
+            - FLAT
+            - SNAPSHOT
+    target_name:
+      name: Target Name
+      description: Target name recorded with the frame. Useful for livestacking.
+      example: M42
+      selector:
+        text:
 
 camera_abort_capture:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Abort Capture
   description: Abort the current camera exposure immediately.
 
+camera_set_binning:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Set Binning
+  description: >-
+    Set the camera binning mode. Must be a mode the camera reports, e.g. 1x1 or 2x2.
+  fields:
+    binning:
+      name: Binning Mode
+      description: Binning mode name.
+      required: true
+      example: "2x2"
+      selector:
+        text:
+
+camera_set_dew_heater:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Set Dew Heater
+  description: Turn the camera's dew heater on or off.
+  fields:
+    enabled:
+      name: Enabled
+      required: true
+      selector:
+        boolean:
+
 mount_slew:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Slew Mount
-  description: Slew the telescope mount to J2000 RA/Dec coordinates.
+  description: Slew the telescope mount to the given coordinates.
   fields:
     ra:
       name: Right Ascension
-      description: Target RA in decimal hours (0–24).
+      description: >-
+        Target RA in decimal DEGREES (0–360). Multiply RA in hours by 15.
       required: true
-      example: 5.5755
+      example: 83.822
       selector:
         number:
           min: 0
-          max: 24
+          max: 360
           step: 0.0001
-          unit_of_measurement: h
+          unit_of_measurement: "°"
           mode: box
     dec:
       name: Declination
@@ -120,26 +196,120 @@ mount_slew:
           step: 0.0001
           unit_of_measurement: "°"
           mode: box
+    wait_for_result:
+      name: Wait for Result
+      description: Block until the slew finishes.
+      default: false
+      selector:
+        boolean:
+    center:
+      name: Center
+      description: Plate solve and center on the target after slewing.
+      default: false
+      selector:
+        boolean:
+    rotate:
+      name: Center and Rotate
+      description: Center and rotate to the given rotation angle.
+      default: false
+      selector:
+        boolean:
+    rotation_angle:
+      name: Rotation Angle
+      description: Rotation angle in degrees. Requires Center and Rotate.
+      example: 90
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 0.1
+          unit_of_measurement: "°"
+          mode: box
+
+mount_stop_slew:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Stop Slew
+  description: Stop the mount's current slew.
+
+mount_sync:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Sync Mount
+  description: Sync the mount's reported position to the given coordinates.
+  fields:
+    ra:
+      name: Right Ascension
+      description: RA in decimal degrees (0–360).
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 0.0001
+          unit_of_measurement: "°"
+          mode: box
+    dec:
+      name: Declination
+      description: Dec in decimal degrees (−90 to +90).
+      required: true
+      selector:
+        number:
+          min: -90
+          max: 90
+          step: 0.0001
+          unit_of_measurement: "°"
+          mode: box
 
 mount_park:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Park Mount
   description: Send the telescope mount to its park position.
 
 mount_unpark:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Unpark Mount
   description: Unpark the telescope mount.
 
+mount_meridian_flip:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Meridian Flip
+  description: >-
+    Perform a meridian flip if one is needed. This never forces a flip.
+
 mount_set_tracking:
-  name: Set Tracking
-  description: Enable or disable sidereal tracking.
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Set Tracking Mode
+  description: Set the mount's tracking mode.
   fields:
-    enabled:
-      name: Tracking Enabled
+    mode:
+      name: Tracking Mode
+      description: Tracking rate to use. Choose Stopped to disable tracking.
       required: true
+      example: Sidereal
       selector:
-        boolean:
+        select:
+          options:
+            - Sidereal
+            - Lunar
+            - Solar
+            - King
+            - Stopped
 
 focuser_move:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Move Focuser
   description: Move the focuser to an absolute step position.
   fields:
@@ -156,16 +326,31 @@ focuser_move:
           unit_of_measurement: steps
 
 focuser_auto_focus:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Auto Focus
   description: Trigger an autofocus routine using the configured method.
+  fields:
+    cancel:
+      name: Cancel
+      description: Cancel an autofocus run that is already in progress.
+      default: false
+      selector:
+        boolean:
 
 filterwheel_change_filter:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Change Filter
-  description: Rotate the filter wheel to the specified filter slot.
+  description: Rotate the filter wheel to the filter with the given Id.
   fields:
-    filter_index:
-      name: Filter Index
-      description: Zero-based index of the target filter slot.
+    filter_id:
+      name: Filter Id
+      description: >-
+        The filter's Id as reported by the wheel — see the available_filters
+        attribute on the Current Filter sensor. This is not a list position.
       required: true
       example: 0
       selector:
@@ -174,10 +359,13 @@ filterwheel_change_filter:
           max: 20
 
 guider_start:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Start Guiding
   description: Start the autoguider.
   fields:
-    force_calibration:
+    calibrate:
       name: Force Calibration
       description: Force a new calibration run before guiding begins.
       default: false
@@ -185,41 +373,536 @@ guider_start:
         boolean:
 
 guider_stop:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Stop Guiding
   description: Stop the autoguider.
 
-guider_dither:
-  name: Dither
-  description: Perform a single dither move and wait for settle.
+guider_clear_calibration:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Clear Guider Calibration
+  description: Discard the autoguider's stored calibration.
+
+rotator_move:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Move Rotator
+  description: Move the rotator to a position in degrees.
+  fields:
+    position:
+      name: Position
+      description: Target position in degrees.
+      required: true
+      example: 90
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 0.1
+          unit_of_measurement: "°"
+          mode: box
+    mechanical:
+      name: Mechanical
+      description: Treat the position as a mechanical angle rather than a sky angle.
+      default: false
+      selector:
+        boolean:
 
 dome_open:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Open Dome
   description: Open the dome shutter.
 
 dome_close:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Close Dome
   description: Close the dome shutter.
 
 dome_park:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Park Dome
   description: Park the dome.
 
+dome_slew:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Slew Dome
+  description: Slew the dome to an azimuth.
+  fields:
+    azimuth:
+      name: Azimuth
+      description: Target azimuth in degrees.
+      required: true
+      example: 180
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 1
+          unit_of_measurement: "°"
+          mode: box
+
+dome_set_follow:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Set Dome Follow
+  description: Start or stop the dome following the telescope.
+  fields:
+    enabled:
+      name: Enabled
+      required: true
+      selector:
+        boolean:
+
+switch_set_value:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Set Switch Value
+  description: Set a value on the connected switch device.
+  fields:
+    index:
+      name: Switch Index
+      description: Index of the switch to set.
+      required: true
+      example: 0
+      selector:
+        number:
+          min: 0
+          max: 64
+          mode: box
+    value:
+      name: Value
+      description: Value to set, within the switch's own minimum and maximum.
+      required: true
+      example: 12
+      selector:
+        number:
+          min: -1000000
+          max: 1000000
+          step: 0.01
+          mode: box
+
 sequence_start:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Start Sequence
   description: Start the currently loaded imaging sequence.
+  fields:
+    skip_validation:
+      name: Skip Validation
+      description: Start without running N.I.N.A.'s pre-flight validation.
+      default: false
+      selector:
+        boolean:
 
 sequence_stop:
+  target:
+    device:
+      integration: nina_astrophotography
   name: Stop Sequence
   description: Stop the currently running sequence.
 
-sequence_load:
-  name: Load Sequence
-  description: Load a sequence file from disk (does not start it).
+sequence_skip:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Skip Sequence Items
+  description: Skip ahead in the running sequence.
   fields:
-    path:
-      name: Sequence File Path
-      description: Full Windows path to the .ninasequence file on the N.I.N.A. host.
+    type:
+      name: Skip Type
+      description: >-
+        CurrentItems skips the running instructions, ToImaging jumps to the
+        imaging container, ToEnd jumps to the end of the sequence.
+      default: CurrentItems
+      selector:
+        select:
+          options:
+            - CurrentItems
+            - ToImaging
+            - ToEnd
+
+sequence_reset:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Reset Sequence
+  description: Reset the loaded sequence's progress back to the start.
+
+sequence_load:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Load Sequence
+  description: >-
+    Load a sequence by name from N.I.N.A.'s configured sequence folder. Names
+    come from the sequence/list-available endpoint — this is a name, not a path.
+  fields:
+    sequence_name:
+      name: Sequence Name
+      description: Name of the sequence to load.
       required: true
-      example: "C:\\Users\\Me\\Documents\\nina\\sequences\\M42.ninasequence"
+      example: "M42"
       selector:
         text:
+
+flats_trained_flat:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Take Trained Flats
+  description: Run the flat wizard using the filter's trained flat settings.
+  fields:
+    count:
+      name: Count
+      description: Number of flat frames to take.
+      required: true
+      example: 20
+      selector:
+        number:
+          min: 1
+          max: 200
+          mode: box
+    filter_id:
+      name: Filter Id
+      description: Filter to use. Omit for the current filter.
+      selector:
+        number:
+          min: 0
+          max: 20
+    binning:
+      name: Binning
+      description: Binning mode, e.g. 1x1.
+      example: "1x1"
+      selector:
+        text:
+    gain:
+      name: Gain
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    offset:
+      name: Offset
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    keep_closed:
+      name: Keep Cover Closed
+      description: Leave the flat panel cover closed after the run.
+      default: false
+      selector:
+        boolean:
+
+flats_auto_exposure:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Take Auto-Exposure Flats
+  description: >-
+    Run the flat wizard at a fixed panel brightness, letting N.I.N.A. pick the
+    exposure time that reaches the target histogram mean.
+  fields:
+    count:
+      name: Count
+      required: true
+      example: 20
+      selector:
+        number:
+          min: 1
+          max: 200
+          mode: box
+    brightness:
+      name: Panel Brightness
+      description: Fixed flat panel brightness to hold during the run.
+      required: true
+      example: 120
+      selector:
+        number:
+          min: 0
+          max: 100000
+          mode: box
+    filter_id:
+      name: Filter Id
+      selector:
+        number:
+          min: 0
+          max: 20
+    binning:
+      name: Binning
+      example: "1x1"
+      selector:
+        text:
+    gain:
+      name: Gain
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    offset:
+      name: Offset
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    histogram_mean:
+      name: Histogram Mean
+      description: Target histogram mean, 0–1.
+      example: 0.5
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    mean_tolerance:
+      name: Mean Tolerance
+      example: 0.1
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    min_exposure:
+      name: Minimum Exposure
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 0.001
+          unit_of_measurement: s
+          mode: box
+    max_exposure:
+      name: Maximum Exposure
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 0.001
+          unit_of_measurement: s
+          mode: box
+    keep_closed:
+      name: Keep Cover Closed
+      default: false
+      selector:
+        boolean:
+
+flats_auto_brightness:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Take Auto-Brightness Flats
+  description: >-
+    Run the flat wizard at a fixed exposure time, letting N.I.N.A. pick the flat
+    panel brightness that reaches the target histogram mean.
+  fields:
+    count:
+      name: Count
+      required: true
+      example: 20
+      selector:
+        number:
+          min: 1
+          max: 200
+          mode: box
+    exposure_time:
+      name: Exposure Time
+      description: Fixed exposure time to hold during the run.
+      required: true
+      example: 2
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 0.001
+          unit_of_measurement: s
+          mode: box
+    filter_id:
+      name: Filter Id
+      selector:
+        number:
+          min: 0
+          max: 20
+    binning:
+      name: Binning
+      example: "1x1"
+      selector:
+        text:
+    gain:
+      name: Gain
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    offset:
+      name: Offset
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    histogram_mean:
+      name: Histogram Mean
+      example: 0.5
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    mean_tolerance:
+      name: Mean Tolerance
+      example: 0.1
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    min_brightness:
+      name: Minimum Brightness
+      selector:
+        number:
+          min: 0
+          max: 100000
+          mode: box
+    max_brightness:
+      name: Maximum Brightness
+      selector:
+        number:
+          min: 0
+          max: 100000
+          mode: box
+    keep_closed:
+      name: Keep Cover Closed
+      default: false
+      selector:
+        boolean:
+
+flats_skyflat:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Take Sky Flats
+  description: Run the flat wizard against the twilight sky.
+  fields:
+    count:
+      name: Count
+      required: true
+      example: 20
+      selector:
+        number:
+          min: 1
+          max: 200
+          mode: box
+    filter_id:
+      name: Filter Id
+      selector:
+        number:
+          min: 0
+          max: 20
+    binning:
+      name: Binning
+      example: "1x1"
+      selector:
+        text:
+    gain:
+      name: Gain
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    offset:
+      name: Offset
+      selector:
+        number:
+          min: 0
+          max: 5000
+          mode: box
+    histogram_mean:
+      name: Histogram Mean
+      example: 0.5
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    mean_tolerance:
+      name: Mean Tolerance
+      example: 0.1
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+    min_exposure:
+      name: Minimum Exposure
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 0.001
+          unit_of_measurement: s
+          mode: box
+    max_exposure:
+      name: Maximum Exposure
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 0.001
+          unit_of_measurement: s
+          mode: box
+    dither:
+      name: Dither
+      description: Dither between sky flat frames.
+      default: false
+      selector:
+        boolean:
+
+flats_stop:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Stop Flat Wizard
+  description: Stop the running flat wizard process.
+
+application_switch_tab:
+  target:
+    device:
+      integration: nina_astrophotography
+  name: Switch Tab
+  description: Switch the active tab in the N.I.N.A. user interface.
+  fields:
+    tab:
+      name: Tab
+      required: true
+      example: imaging
+      selector:
+        select:
+          options:
+            - equipment
+            - skyatlas
+            - framing
+            - flatwizard
+            - sequencer
+            - imaging
+            - options

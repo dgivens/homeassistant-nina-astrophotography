@@ -14,6 +14,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import NinaApiClient, NinaConnectionError
 from .const import (
+    CONF_NAME,
+    DEFAULT_NAME,
     CONF_API_VERSION,
     CONF_HOST,
     CONF_POLL_INTERVAL,
@@ -53,7 +55,7 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                version = await _validate_connection(self.hass, user_input)
+                await _validate_connection(self.hass, user_input)
             except NinaConnectionError:
                 errors["base"] = "cannot_connect"
             except Exception:  # noqa: BLE001
@@ -65,12 +67,13 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=f"N.I.N.A. {version} @ {user_input[CONF_HOST]}",
+                    title=user_input.get(CONF_NAME) or DEFAULT_NAME,
                     data=user_input,
                 )
 
         schema = vol.Schema(
             {
+                vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
                 vol.Required(CONF_HOST, default="192.168.1.100"): str,
                 vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
                 vol.Optional(CONF_API_VERSION, default=DEFAULT_API_VERSION): vol.In(["v2"]),

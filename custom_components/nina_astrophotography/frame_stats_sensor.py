@@ -24,15 +24,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN
+from .device import HUB, device_info_for
 from .frame_statistics import NinaFrameStatisticsStore
 
 _LOGGER = logging.getLogger(__name__)
-
-DEVICE_INFO = {
-    "manufacturer": "Nighttime Imaging 'N' Astronomy",
-    "model": "Advanced API v2 — Frame Statistics",
-}
-
 
 @dataclass
 class NinaFrameSensorDescription(SensorEntityDescription):
@@ -269,6 +264,10 @@ class NinaFrameStatisticsSensor(SensorEntity, RestoreEntity):
     an HA restart, before the next IMAGE-SAVE event arrives.
     """
 
+    # HA composes the entity id from device name + entity name, which
+    # keeps two N.I.N.A. instances from colliding.
+    _attr_has_entity_name = True
+
     entity_description: NinaFrameSensorDescription
 
     def __init__(
@@ -280,12 +279,7 @@ class NinaFrameStatisticsSensor(SensorEntity, RestoreEntity):
         self._store = store
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry_id)},
-            "name": "N.I.N.A. Astrophotography",
-            "manufacturer": DEVICE_INFO["manufacturer"],
-            "model": DEVICE_INFO["model"],
-        }
+        self._attr_device_info = device_info_for(entry_id, HUB)
         self._attr_should_poll = False  # push-driven, not polled
         self._attr_available = True
 

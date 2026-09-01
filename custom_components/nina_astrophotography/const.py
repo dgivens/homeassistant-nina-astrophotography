@@ -1,4 +1,11 @@
-"""Constants for the N.I.N.A. Astrophotography integration."""
+"""Constants shared across the N.I.N.A. Astrophotography integration.
+
+Endpoint paths are not here — each one is used by exactly one method of
+NinaApiClient, so they live inline in api.py next to the call that issues them.
+The enumerations below are shared between the API client and the entity
+platforms, and mirror the Advanced API v2 spec (v2.2.15):
+https://christian-photo.github.io/github-page/projects/ninaAPI/v2/doc/api
+"""
 
 DOMAIN = "nina_astrophotography"
 
@@ -7,144 +14,81 @@ CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_API_VERSION = "api_version"
 CONF_POLL_INTERVAL = "poll_interval"
+CONF_NAME = "name"
 
 # Defaults
 DEFAULT_PORT = 1888
 DEFAULT_API_VERSION = "v2"
 DEFAULT_POLL_INTERVAL = 10  # seconds
+# Prefixes every device name, and therefore every entity id. Kept free of dots
+# so it slugifies to "nina" rather than "n_i_n_a"; set per rig when running
+# more than one N.I.N.A. instance.
+DEFAULT_NAME = "NINA"
 
 # Base API path
 API_BASE = "http://{host}:{port}/{version}/api"
+# WebSocket channel; see the AsyncAPI spec at .../v2/doc/websocket
+WS_BASE = "ws://{host}:{port}/{version}/socket"
 
-# ─── Endpoint paths ───────────────────────────────────────────────────────────
+# ─── API enumerations ─────────────────────────────────────────────────────────
 
-# Application
-ENDPOINT_VERSION = "/version"
-ENDPOINT_APP_INFO = "/application"
+# /equipment/mount/tracking takes the index; MountInfo.TrackingMode reports the
+# name. N.I.N.A. spells sidereal "Siderial" in TrackingMode — both are accepted
+# on the way in, and we present the correct spelling to the user.
+TRACKING_MODES = ["Sidereal", "Lunar", "Solar", "King", "Stopped"]
+TRACKING_MODE_TO_INDEX = {
+    "Sidereal": 0,
+    "Siderial": 0,
+    "Lunar": 1,
+    "Solar": 2,
+    "King": 3,
+    "Stopped": 4,
+}
 
-# Camera
-ENDPOINT_CAMERA_INFO = "/equipment/camera"
-ENDPOINT_CAMERA_CONNECT = "/equipment/camera/connect"
-ENDPOINT_CAMERA_DISCONNECT = "/equipment/camera/disconnect"
-ENDPOINT_CAMERA_COOL = "/equipment/camera/cool"
-ENDPOINT_CAMERA_WARM = "/equipment/camera/warm"
-ENDPOINT_CAMERA_CAPTURE = "/equipment/camera/capture"
-ENDPOINT_CAMERA_ABORT = "/equipment/camera/abort"
+# DomeInfo.ShutterStatus
+SHUTTER_OPEN = "ShutterOpen"
+SHUTTER_CLOSED = "ShutterClosed"
 
-# Mount / Telescope
-ENDPOINT_MOUNT_INFO = "/equipment/telescope"
-ENDPOINT_MOUNT_CONNECT = "/equipment/telescope/connect"
-ENDPOINT_MOUNT_DISCONNECT = "/equipment/telescope/disconnect"
-ENDPOINT_MOUNT_SLEW = "/equipment/telescope/slew-to-coordinates-j2000"
-ENDPOINT_MOUNT_PARK = "/equipment/telescope/park"
-ENDPOINT_MOUNT_UNPARK = "/equipment/telescope/unpark"
-ENDPOINT_MOUNT_TRACKING = "/equipment/telescope/tracking"
-ENDPOINT_MOUNT_HOME = "/equipment/telescope/find-home"
+# FlatDeviceInfo.CoverState
+COVER_STATES = [
+    "Unknown",
+    "NeitherOpenNorClosed",
+    "Closed",
+    "Open",
+    "Error",
+    "NotPresent",
+]
 
-# Focuser
-ENDPOINT_FOCUSER_INFO = "/equipment/focuser"
-ENDPOINT_FOCUSER_CONNECT = "/equipment/focuser/connect"
-ENDPOINT_FOCUSER_DISCONNECT = "/equipment/focuser/disconnect"
-ENDPOINT_FOCUSER_MOVE = "/equipment/focuser/move"
-ENDPOINT_FOCUSER_AUTO = "/equipment/focuser/auto-focus"
+# CameraInfo.CameraState values that mean an exposure is under way
+CAMERA_BUSY_STATES = {"Exposing", "Reading", "Download"}
 
-# Filter Wheel
-ENDPOINT_FILTERWHEEL_INFO = "/equipment/filterwheel"
-ENDPOINT_FILTERWHEEL_CONNECT = "/equipment/filterwheel/connect"
-ENDPOINT_FILTERWHEEL_DISCONNECT = "/equipment/filterwheel/disconnect"
-ENDPOINT_FILTERWHEEL_CHANGE = "/equipment/filterwheel/change-filter"
+# /application/switch-tab
+APPLICATION_TABS = [
+    "equipment",
+    "skyatlas",
+    "framing",
+    "flatwizard",
+    "sequencer",
+    "imaging",
+    "options",
+]
 
-# Guider (PHD2)
-ENDPOINT_GUIDER_INFO = "/equipment/guider"
-ENDPOINT_GUIDER_CONNECT = "/equipment/guider/connect"
-ENDPOINT_GUIDER_DISCONNECT = "/equipment/guider/disconnect"
-ENDPOINT_GUIDER_START = "/equipment/guider/start-guiding"
-ENDPOINT_GUIDER_STOP = "/equipment/guider/stop-guiding"
-ENDPOINT_GUIDER_DITHER = "/equipment/guider/dither"
+# /sequence/skip
+SEQUENCE_SKIP_TYPES = ["CurrentItems", "ToEnd", "ToImaging"]
 
-# Rotator
-ENDPOINT_ROTATOR_INFO = "/equipment/rotator"
-ENDPOINT_ROTATOR_CONNECT = "/equipment/rotator/connect"
-ENDPOINT_ROTATOR_DISCONNECT = "/equipment/rotator/disconnect"
-ENDPOINT_ROTATOR_MOVE = "/equipment/rotator/move"
+# /image-history and /equipment/camera/capture
+IMAGE_TYPES = ["LIGHT", "FLAT", "DARK", "BIAS", "SNAPSHOT"]
 
-# Dome
-ENDPOINT_DOME_INFO = "/equipment/dome"
-ENDPOINT_DOME_CONNECT = "/equipment/dome/connect"
-ENDPOINT_DOME_DISCONNECT = "/equipment/dome/disconnect"
-ENDPOINT_DOME_OPEN = "/equipment/dome/open"
-ENDPOINT_DOME_CLOSE = "/equipment/dome/close"
-ENDPOINT_DOME_PARK = "/equipment/dome/park"
-ENDPOINT_DOME_HOME = "/equipment/dome/home"
+# Sequence item/container Status values, upper-cased for comparison
+SEQUENCE_STATUS_RUNNING = "RUNNING"
+SEQUENCE_STATUS_FINISHED = "FINISHED"
+SEQUENCE_STATUS_SKIPPED = "SKIPPED"
+# A container that reached either of these will not run its remaining children,
+# so anything still CREATED beneath one is unreachable rather than pending.
+SEQUENCE_STATUS_SEALED = frozenset({SEQUENCE_STATUS_FINISHED, SEQUENCE_STATUS_SKIPPED})
 
-# Flat Device
-ENDPOINT_FLATDEVICE_INFO = "/equipment/flatdevice"
-ENDPOINT_FLATDEVICE_CONNECT = "/equipment/flatdevice/connect"
-ENDPOINT_FLATDEVICE_TOGGLE = "/equipment/flatdevice/toggle-light"
-ENDPOINT_FLATDEVICE_BRIGHTNESS = "/equipment/flatdevice/set-brightness"
-
-# Sequence
-ENDPOINT_SEQUENCE_START = "/sequence/start"
-ENDPOINT_SEQUENCE_STOP = "/sequence/stop"
-ENDPOINT_SEQUENCE_LOAD = "/sequence/load"
-ENDPOINT_SEQUENCE_STATUS = "/sequence"
-
-# Image
-ENDPOINT_IMAGE_HISTORY = "/image/history"
-ENDPOINT_IMAGE_LATEST = "/image/latest"
-
-# ─── HA Entity IDs ────────────────────────────────────────────────────────────
-
-# Sensors
-SENSOR_CAMERA_TEMP = "camera_temperature"
-SENSOR_CAMERA_TARGET_TEMP = "camera_target_temperature"
-SENSOR_CAMERA_COOLER_POWER = "camera_cooler_power"
-SENSOR_CAMERA_STATUS = "camera_status"
-SENSOR_CAMERA_GAIN = "camera_gain"
-SENSOR_CAMERA_OFFSET = "camera_offset"
-SENSOR_CAMERA_FILTER = "camera_current_filter"
-
-SENSOR_MOUNT_RA = "mount_ra"
-SENSOR_MOUNT_DEC = "mount_dec"
-SENSOR_MOUNT_ALT = "mount_altitude"
-SENSOR_MOUNT_AZ = "mount_azimuth"
-SENSOR_MOUNT_STATUS = "mount_status"
-SENSOR_MOUNT_SIDEREAL_TIME = "mount_sidereal_time"
-SENSOR_MOUNT_TIME_TO_MERIDIAN = "mount_time_to_meridian_flip"
-
-SENSOR_FOCUSER_POSITION = "focuser_position"
-SENSOR_FOCUSER_TEMP = "focuser_temperature"
-SENSOR_FOCUSER_STATUS = "focuser_status"
-
-SENSOR_GUIDER_RMS = "guider_rms_total"
-SENSOR_GUIDER_RMS_RA = "guider_rms_ra"
-SENSOR_GUIDER_RMS_DEC = "guider_rms_dec"
-SENSOR_GUIDER_STATUS = "guider_status"
-
-SENSOR_SEQUENCE_STATUS = "sequence_status"
-SENSOR_SEQUENCE_PROGRESS = "sequence_progress"
-SENSOR_SEQUENCE_TARGET = "sequence_target_name"
-
-SENSOR_IMAGE_COUNT = "image_count"
-SENSOR_IMAGE_LAST_HFR = "image_last_hfr"
-SENSOR_IMAGE_LAST_STARS = "image_last_star_count"
-SENSOR_IMAGE_LAST_MEAN = "image_last_mean_adu"
-
-# Binary sensors
-BSENSOR_CAMERA_CONNECTED = "camera_connected"
-BSENSOR_CAMERA_COOLING = "camera_cooling_enabled"
-BSENSOR_MOUNT_CONNECTED = "mount_connected"
-BSENSOR_MOUNT_PARKED = "mount_parked"
-BSENSOR_MOUNT_TRACKING = "mount_tracking"
-BSENSOR_MOUNT_SLEWING = "mount_slewing"
-BSENSOR_FOCUSER_CONNECTED = "focuser_connected"
-BSENSOR_FOCUSER_MOVING = "focuser_is_moving"
-BSENSOR_FILTERWHEEL_CONNECTED = "filterwheel_connected"
-BSENSOR_GUIDER_CONNECTED = "guider_connected"
-BSENSOR_GUIDER_GUIDING = "guider_is_guiding"
-BSENSOR_DOME_CONNECTED = "dome_connected"
-BSENSOR_DOME_OPEN = "dome_shutter_open"
-BSENSOR_SEQUENCE_RUNNING = "sequence_running"
+# N.I.N.A. suffixes every container's name in the sequence tree.
+SEQUENCE_CONTAINER_SUFFIX = "_Container"
 
 # ─── Services ────────────────────────────────────────────────────────────────
 
@@ -152,19 +96,36 @@ SERVICE_CAMERA_COOL = "camera_cool"
 SERVICE_CAMERA_WARM = "camera_warm"
 SERVICE_CAMERA_CAPTURE = "camera_capture"
 SERVICE_CAMERA_ABORT_CAPTURE = "camera_abort_capture"
+SERVICE_CAMERA_SET_BINNING = "camera_set_binning"
+SERVICE_CAMERA_DEW_HEATER = "camera_set_dew_heater"
 SERVICE_MOUNT_SLEW = "mount_slew"
+SERVICE_MOUNT_STOP_SLEW = "mount_stop_slew"
+SERVICE_MOUNT_SYNC = "mount_sync"
 SERVICE_MOUNT_PARK = "mount_park"
 SERVICE_MOUNT_UNPARK = "mount_unpark"
 SERVICE_MOUNT_TRACKING = "mount_set_tracking"
+SERVICE_MOUNT_FLIP = "mount_meridian_flip"
 SERVICE_FOCUSER_MOVE = "focuser_move"
 SERVICE_FOCUSER_AUTO_FOCUS = "focuser_auto_focus"
 SERVICE_FILTERWHEEL_CHANGE = "filterwheel_change_filter"
 SERVICE_GUIDER_START = "guider_start"
 SERVICE_GUIDER_STOP = "guider_stop"
-SERVICE_GUIDER_DITHER = "guider_dither"
+SERVICE_GUIDER_CLEAR_CALIBRATION = "guider_clear_calibration"
+SERVICE_ROTATOR_MOVE = "rotator_move"
 SERVICE_DOME_OPEN = "dome_open"
 SERVICE_DOME_CLOSE = "dome_close"
 SERVICE_DOME_PARK = "dome_park"
+SERVICE_DOME_SLEW = "dome_slew"
+SERVICE_DOME_SET_FOLLOW = "dome_set_follow"
+SERVICE_SWITCH_SET = "switch_set_value"
 SERVICE_SEQUENCE_START = "sequence_start"
 SERVICE_SEQUENCE_STOP = "sequence_stop"
+SERVICE_SEQUENCE_SKIP = "sequence_skip"
+SERVICE_SEQUENCE_RESET = "sequence_reset"
 SERVICE_SEQUENCE_LOAD = "sequence_load"
+SERVICE_FLATS_TRAINED = "flats_trained_flat"
+SERVICE_FLATS_AUTO_EXPOSURE = "flats_auto_exposure"
+SERVICE_FLATS_AUTO_BRIGHTNESS = "flats_auto_brightness"
+SERVICE_FLATS_SKYFLAT = "flats_skyflat"
+SERVICE_FLATS_STOP = "flats_stop"
+SERVICE_SWITCH_TAB = "application_switch_tab"

@@ -5,17 +5,18 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable
-from typing import Any
 
 import aiohttp
 
-from .const import DOMAIN
+from .const import DEFAULT_API_VERSION, WS_BASE
 
 _LOGGER = logging.getLogger(__name__)
 
-WS_URL = "ws://{host}:{port}/v2/socket"
+# Event names from the AsyncAPI spec at .../v2/doc/websocket. The dispatcher
+# forwards every event it receives, so these sets are documentation of the
+# known surface rather than a filter.
 
-# Events that carry no extra payload beyond the event name
+# Events that carry no payload beyond the event name
 SIMPLE_EVENTS = {
     "API-CAPTURE-FINISHED",
     "AUTOFOCUS-FINISHED",
@@ -76,13 +77,19 @@ SIMPLE_EVENTS = {
 
 # Events that carry rich payloads
 PAYLOAD_EVENTS = {
-    "IMAGE-SAVE",           # full ImageStatistics block
-    "AUTOFOCUS-POINT-ADDED",
-    "FILTERWHEEL-CHANGED",
-    "FLAT-BRIGHTNESS-CHANGED",
-    "SAFETY-CHANGED",
-    "STACK-UPDATED",
-    "STACK-STATUS",
+    "IMAGE-SAVE",                # Response.ImageStatistics
+    "AUTOFOCUS-POINT-ADDED",     # Response.ImageStatistics {Position, HFR}
+    "FILTERWHEEL-CHANGED",       # Response.Previous / Response.New
+    "FLAT-BRIGHTNESS-CHANGED",   # Response.Previous / Response.New
+    "SAFETY-CHANGED",            # Response.IsSafe
+    "STACK-UPDATED",             # Livestack plugin >= 1.0.0.9
+    "STACK-STATUS",              # Livestack plugin >= 1.0.1.7
+    "SEQUENCE-ENTITY-FAILED",    # Response.Entity / Response.Error
+    "ROTATOR-MOVED",             # Response.From / Response.To
+    "ROTATOR-MOVED-MECHANICAL",  # Response.From / Response.To
+    "TS-WAITSTART",              # Target Scheduler: Response.WaitStartTime
+    "TS-NEWTARGETSTART",         # Target Scheduler: target/project/coordinates
+    "TS-TARGETSTART",            # Target Scheduler: target/project/coordinates
 }
 
 # How long (seconds) to wait before reconnecting after a disconnect
@@ -103,8 +110,9 @@ class NinaWebSocketClient:
         port: int,
         session: aiohttp.ClientSession,
         hass_event_bus_fire: Callable[[str, dict], None],
+        api_version: str = DEFAULT_API_VERSION,
     ) -> None:
-        self._url = WS_URL.format(host=host, port=port)
+        self._url = WS_BASE.format(host=host, port=port, version=api_version)
         self._session = session
         self._fire = hass_event_bus_fire
         self._ws: aiohttp.ClientWebSocketResponse | None = None

@@ -2,10 +2,50 @@ blueprint:
   name: "N.I.N.A. – Meridian Flip Warning"
   description: >
     Sends a notification a configurable number of minutes before a meridian flip
-    is due, so you can monitor or prepare. Also fires an event when the flip completes.
+    is due, so you can monitor or prepare. Also notifies when the flip completes.
+
+    Note that N.I.N.A. reports time to meridian flip in HOURS. This blueprint
+    takes the warning window in minutes and converts, so the numbers you enter
+    read naturally.
   domain: automation
   source_url: https://github.com/christian-photo/ninaAPI
   input:
+    flip_entity:
+      name: Time to Meridian Flip Sensor
+      description: Usually sensor.<instance>_mount_time_to_meridian_flip (in hours).
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: sensor
+
+    tracking_entity:
+      name: Mount Tracking Sensor
+      description: Usually binary_sensor.<instance>_mount_tracking.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: binary_sensor
+
+    sequence_entity:
+      name: Sequence Running Sensor
+      description: Usually binary_sensor.<instance>_sequence_running.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: binary_sensor
+
+    target_entity:
+      name: Sequence Target Sensor
+      description: Usually sensor.<instance>_sequence_target.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: sensor
+
     warning_minutes:
       name: Warning Before Flip (minutes)
       description: Notify when this many minutes remain until the meridian flip.
@@ -16,33 +56,45 @@ blueprint:
           max: 60
           unit_of_measurement: min
 
-    notify_device:
-      name: Notify Device
-      description: Mobile device to send the warning to.
+    notify_service:
+      name: Notification Service
+      description: Notification service to call, without the leading "notify.".
       selector:
         text:
 
+# Triggers are evaluated before `variables`, so a template trigger needs its
+# own binding block.
+trigger_variables:
+  flip_entity_t: !input flip_entity
+  warning_minutes_t: !input warning_minutes
+
+variables:
+  flip_entity: !input flip_entity
+  target_entity: !input target_entity
+  notify_service: !input notify_service
+
 trigger:
-  - platform: numeric_state
-    entity_id: sensor.mount_time_to_meridian_flip
-    below: !input warning_minutes
+  # The sensor is in hours; the input is in minutes.
+  - platform: template
+    value_template: >
+      {{ states(flip_entity_t) | float(999) * 60 <= (warning_minutes_t | float(10)) }}
 
 condition:
   - condition: state
-    entity_id: binary_sensor.mount_tracking
+    entity_id: !input tracking_entity
     state: "on"
   - condition: state
-    entity_id: binary_sensor.sequence_running
+    entity_id: !input sequence_entity
     state: "on"
 
 action:
-  - service: "notify.{{ notify_device }}"
+  - service: "notify.{{ notify_service }}"
     data:
       title: "🔄 Meridian Flip Approaching"
       message: >
         Meridian flip in approximately
-        {{ states('sensor.mount_time_to_meridian_flip') | round(1) }} minutes.
-        Current target: {{ states('sensor.sequence_target_name') }}.
+        {{ (states(flip_entity) | float(0) * 60) | round(0) }} minutes.
+        Current target: {{ states(target_entity) }}.
 
   - wait_for_trigger:
       - platform: event
@@ -50,7 +102,7 @@ action:
     timeout: "01:00:00"
     continue_on_timeout: false
 
-  - service: "notify.{{ notify_device }}"
+  - service: "notify.{{ notify_service }}"
     data:
       title: "✅ Meridian Flip Complete"
       message: "N.I.N.A. has completed the meridian flip. Guiding and imaging resuming."

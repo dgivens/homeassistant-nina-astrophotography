@@ -13,6 +13,15 @@
 
 const VERSION = "1.0.0";
 
+// Entity ids are prefixed with the instance name (device names drive entity
+// ids since 2.0). Default "nina"; override with `prefix:` in the card config
+// when you run more than one N.I.N.A. instance.
+function withPrefix(entityId, prefix) {
+  const dot = entityId.indexOf(".");
+  return entityId.slice(0, dot + 1) + (prefix || "nina") + "_" + entityId.slice(dot + 1);
+}
+
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function state(hass, entity_id, fallback = "—") {
@@ -252,7 +261,8 @@ class NinaObservatoryCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = config || {};
+        this._prefix = (config && config.prefix) || "nina";
+this._config = config || {};
   }
 
   set hass(hass) {
@@ -268,46 +278,51 @@ class NinaObservatoryCard extends HTMLElement {
     const h = this._hass;
     if (!h) return;
 
-    const seqRunning  = isOn(h, "binary_sensor.sequence_running");
-    const camConnected = isOn(h, "binary_sensor.camera_connected");
-    const mntConnected = isOn(h, "binary_sensor.mount_connected");
-    const focConnected = isOn(h, "binary_sensor.focuser_connected");
-    const fwConnected  = isOn(h, "binary_sensor.filterwheel_connected");
-    const gdrConnected = isOn(h, "binary_sensor.guider_connected");
-    const domeConnected = isOn(h, "binary_sensor.dome_connected");
+    // Bind the instance prefix once so the helpers below stay entity-id-only.
+    const p = this._prefix;
+    const st = (id, fb) => st(withPrefix(id, p), fb);
+    const on = (id) => on(withPrefix(id, p));
 
-    const guiding      = isOn(h, "binary_sensor.guider_is_guiding");
-    const cooling      = isOn(h, "binary_sensor.camera_cooling_enabled");
-    const parked       = isOn(h, "binary_sensor.mount_parked");
-    const tracking     = isOn(h, "binary_sensor.mount_tracking");
-    const domeOpen     = isOn(h, "binary_sensor.dome_shutter_open");
+    const seqRunning  = on("binary_sensor.sequence_running");
+    const camConnected = on("binary_sensor.camera_connected");
+    const mntConnected = on("binary_sensor.mount_connected");
+    const focConnected = on("binary_sensor.focuser_connected");
+    const fwConnected  = on("binary_sensor.filter_wheel_connected");
+    const gdrConnected = on("binary_sensor.guider_connected");
+    const domeConnected = on("binary_sensor.dome_connected");
 
-    const target       = state(h, "sensor.sequence_target_name", "No target");
-    const progress     = parseFloat(state(h, "sensor.sequence_progress", "0")) || 0;
-    const frameCount   = state(h, "sensor.image_count", "0");
+    const guiding      = on("binary_sensor.guider_active");
+    const cooling      = on("binary_sensor.camera_cooling");
+    const parked       = on("binary_sensor.mount_parked");
+    const tracking     = on("binary_sensor.mount_tracking");
+    const domeOpen     = on("binary_sensor.dome_shutter_open");
+
+    const target       = st("sensor.sequence_target", "No target");
+    const progress     = parseFloat(st("sensor.sequence_progress", "0")) || 0;
+    const frameCount   = st("sensor.session_image_count", "0");
 
     const camTemp      = numState(h, "sensor.camera_temperature");
     const camTargTemp  = numState(h, "sensor.camera_target_temperature");
     const coolerPwr    = numState(h, "sensor.camera_cooler_power", 0);
-    const camGain      = state(h, "sensor.camera_gain");
-    const camFilter    = state(h, "sensor.camera_current_filter");
+    const camGain      = st("sensor.camera_gain");
+    const camFilter    = st("sensor.filter_wheel_current_filter");
 
     const mntRa        = numState(h, "sensor.mount_ra", 4);
     const mntDec       = numState(h, "sensor.mount_dec", 3);
     const mntAlt       = numState(h, "sensor.mount_altitude", 1);
     const mntAz        = numState(h, "sensor.mount_azimuth", 1);
-    const ttf          = parseFloat(state(h, "sensor.mount_time_to_meridian_flip", "999")) || 999;
+    const ttf          = parseFloat(st("sensor.mount_time_to_meridian_flip", "999")) || 999;
 
-    const focPos       = state(h, "sensor.focuser_position");
+    const focPos       = st("sensor.focuser_position");
     const focTemp      = numState(h, "sensor.focuser_temperature");
 
     const rmsTotal     = parseFloat(numState(h, "sensor.guider_rms_total", 2, "0"));
     const rmsRa        = parseFloat(numState(h, "sensor.guider_rms_ra", 2, "0"));
     const rmsDec       = parseFloat(numState(h, "sensor.guider_rms_dec", 2, "0"));
 
-    const hfr          = numState(h, "sensor.image_last_hfr", 2);
-    const stars        = state(h, "sensor.image_last_star_count");
-    const meanAdu      = state(h, "sensor.image_last_mean_adu");
+    const hfr          = numState(h, "sensor.last_image_hfr", 2);
+    const stars        = st("sensor.last_image_star_count");
+    const meanAdu      = st("sensor.last_image_mean_adu");
 
     // RMS bar widths (max = 4 arcsec = 100%)
     const rmsMax = 4;
@@ -459,7 +474,7 @@ class NinaObservatoryCard extends HTMLElement {
                 ? `<button class="nina-btn danger" id="btn-stop-guide">◼ Stop Guiding</button>`
                 : `<button class="nina-btn success" id="btn-start-guide">▶ Start Guiding</button>`
               }
-              <button class="nina-btn" id="btn-dither">↔ Dither</button>
+              <button class="nina-btn" id="btn-clear-cal">⟲ Clear Calibration</button>
             </div>
           </div>
 
@@ -489,7 +504,7 @@ class NinaObservatoryCard extends HTMLElement {
     bind("btn-warm",       () => svc("camera_warm", { minutes: 20 }));
     bind("btn-start-guide",() => svc("guider_start"));
     bind("btn-stop-guide", () => svc("guider_stop"));
-    bind("btn-dither",     () => svc("guider_dither"));
+    bind("btn-clear-cal",  () => svc("guider_clear_calibration"));
   }
 
   getCardSize() { return 8; }

@@ -4,6 +4,249 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [2.0.0] - 2026-09-01
+
+Realigns the integration with the N.I.N.A. Advanced API v2 OpenAPI spec (v2.2.15)
+and the AsyncAPI WebSocket spec. Endpoint paths, query parameters and response
+field names were audited end-to-end against the published specs; several had
+never matched, leaving the affected entities permanently `unknown`.
+
+### Fixed — endpoints that returned 404
+
+| Call | Was | Now |
+|---|---|---|
+| Abort exposure | `/equipment/camera/abort` | `/equipment/camera/abort-exposure` |
+| Mount slew | `/equipment/mount/slew-to-coordinates-j2000` | `/equipment/mount/slew` |
+| Mount find home | `/equipment/mount/find-home` | `/equipment/mount/home` |
+| Start guiding | `/equipment/guider/start-guiding` | `/equipment/guider/start` |
+| Stop guiding | `/equipment/guider/stop-guiding` | `/equipment/guider/stop` |
+| Flat panel light | `/equipment/flatdevice/toggle-light` | `/equipment/flatdevice/set-light` |
+| Sequence state | `/sequence` | `/sequence/state` |
+| Image history | `/image/history` | `/image-history` |
+| Latest image | `/image/latest`, `/image?index=` | `/image/{index}` (index -1 = latest) |
+| Tracking mode select | `/equipment/telescope/tracking` | `/equipment/mount/tracking` |
+| Camera gain / offset setters | `/equipment/camera/set-gain`, `/set-offset` | no such endpoints — entities removed |
+| Guider dither | `/equipment/guider/dither` | no such endpoint — service and button removed |
+
+`const.py` still carried a full set of pre-2.x `/equipment/telescope/...` paths
+that no longer exist; the endpoint table now mirrors the spec.
+
+### Fixed — wrong query parameters
+
+- `mount/tracking` takes `mode` (0 Sidereal … 4 Stopped), not `on`.
+- `guider/start` takes `calibrate`, not `forceCalibration`.
+- `camera/capture` takes `duration`; it has no `binning` or `filter_index`.
+- `camera/set-binning` takes a mode name such as `2x2`, not `x` and `y`.
+- `rotator/reverse` takes `reverseDirection`, not `reverse`.
+- `sequence/load` takes `sequenceName` (a name), not `path`.
+- `sequence/skip` requires `type` (CurrentItems / ToEnd / ToImaging).
+- `image-history` uses `all` / `count` / `index`; `count` is a boolean that
+  switches the response to an integer, not a limit.
+- `flats/auto-exposure` requires `brightness` (fixed brightness, variable
+  exposure). The complementary `flats/auto-brightness` requires `exposureTime`.
+- **Mount slew RA is in degrees, not hours.**
+
+### Fixed — wrong response fields
+
+- Image history star count is `Stars`, not `DetectedStars`.
+- `DomeInfo.ShutterStatus` is a string enum (`ShutterOpen`, `ShutterClosed`, …);
+  it was compared against the integer `0`, so Dome Shutter Open was always off.
+- `FWInfo` exposes `AvailableFilters`, not `Filters`; the filter select showed
+  no options and changed filters by list position instead of by filter `Id`.
+- `MountInfo` reports `TrackingMode` as a name; the select read `TrackingRate`,
+  which is an object.
+- `/sequence/state` returns a tree of containers, not a flat object with
+  `Status` / `TargetName` / `ProgressExposures`. Sequence status, target,
+  progress and the running flag are now derived by walking that tree, and a
+  Sequence Current Instruction sensor was added.
+- Flat panel brightness is scaled between the driver's `MinBrightness` and
+  `MaxBrightness` rather than assuming 0–255.
+- Timestamp sensors now return parsed datetimes, as their device class requires.
+- The image entity passed `hass=None` to `ImageEntity` and called a non-existent
+  `schedule_update_ha_states()`.
+
+### Fixed — blueprints
+
+All five blueprints were rewritten. Besides the entity-id rename they carried
+three defects that predate this release:
+
+- **Inputs were used inside templates without being bound.** Home Assistant
+  requires blueprint inputs to be assigned in a `variables:` (or
+  `trigger_variables:`) block before a template can reference them, so
+  `{{ notify_device }}`, `{{ rms_threshold }}` and similar rendered empty.
+- **Service calls carried no target**, and used signatures this release changed:
+  `mount_set_tracking` took `enabled: true/false` (now `mode: Sidereal/Stopped`)
+  and `sequence_load` took `path` (now `sequence_name`).
+- **`meridian_flip_warning` compared minutes against an hours sensor**, so with
+  the unit corrected it would have fired continuously. It now converts
+  explicitly via a template trigger.
+
+Entities and the target instance are now blueprint inputs with pickers filtered
+to this integration, so the blueprints are independent of instance naming and
+usable once per rig on a multi-instance setup. `weather_abort.yaml` was also
+missing from the README's blueprint table.
+
+### Breaking — every entity id is renamed
+
+Entities now use `has_entity_name`, so their ids derive from their device:
+
+```
+<domain>.<instance>_<device>_<entity>
+```
+
+where *instance* is a name chosen at setup (default `NINA`). Most ids simply
+gain a `nina_` prefix; entities whose old name did not begin with their device
+(weather readings, the selected filter, observatory safety, time to meridian
+flip) now sit under their device's name.
+
+`unique_id` is unchanged, so entity history and per-entity settings survive;
+only the ids move. The bundled cards and blueprints are updated. See the
+upgrade section of the README for the mapping.
+
+### Added — multiple N.I.N.A. instances
+
+Two rigs with identical camera, filter wheel and focuser models can now be
+configured side by side:
+
+- Setup asks for an instance name, which prefixes every device and entity id.
+- Device identifiers are keyed on the config entry, so identical hardware
+  models never merge.
+- The Lovelace cards take a matching `prefix:` option (default `nina`).
+
+### Fixed — services could drive the wrong observatory
+
+`_get_client()` returned whichever config entry loaded first, so with two
+instances configured every one of the 37 services silently targeted instance
+one — `mount_park` could park the wrong mount. Services now take a target
+device: optional with a single instance, required with several, and an error
+rather than a guess when ambiguous.
+
+### Changed — one device per piece of equipment
+
+Every entity previously hung off a single `N.I.N.A. Astrophotography` device.
+There is now a `N.I.N.A.` service device with a child device per equipment type,
+linked by `via_device`. Each carries the `model`, `model_id` and `sw_version`
+reported by its driver, so `device_attr()` resolves per instrument. Driver
+metadata that was published as entity attributes moved here, which is where
+Home Assistant expects it. Entity IDs are unchanged.
+
+`DriverInfo` is deliberately not mapped to `manufacturer`: several ASCOM drivers
+return the template default ("Information about the driver itself. Version: 6.5"),
+and `DisplayName` is just `Name` with " (ASCOM)" appended.
+
+### Changed — attributes replaced by entities
+
+Home Assistant's sensor documentation recommends additional entities over
+`extra_state_attributes`, and provides `entity_category` plus
+`entity_registry_enabled_default` to keep them out of the way. The ~120
+capability and driver attributes added earlier in this release were removed:
+
+- Driver identity moved to the device registry.
+- Capability flags (`CanPark`, `HasShutter`, `SupportsOnOff`, …) now gate
+  whether a control is offered or available, rather than being published.
+- Values that duplicated a `select`'s options or a `number`'s bounds were dropped.
+- Nine genuinely useful diagnostics became entities, disabled by default.
+
+The eleven `*_name` sensors were removed along with them — the device registry
+now carries that information.
+
+### Added — image scale and HFR in arcseconds
+
+Focal length is read from the active profile on every poll, so swapping a focal
+reducer (or switching to a profile that has one) propagates immediately:
+
+- `sensor.image_scale` — 206.265 × pixel size ÷ focal length, at current binning
+- `sensor.last_image_hfr_arcsec` — rig-independent HFR, comparable against seeing
+- `sensor.telescope_focal_length`, `sensor.active_profile`, `select.active_profile`
+
+A pixel-based HFR threshold breaks on any binning, camera or focal-length change;
+an arcsecond one does not.
+
+### Fixed — found by testing against a live rig
+
+Verified against a running N.I.N.A. 3.2 / Advanced API 2.2.15.2 instance:
+
+- **Last-image sensors tracked calibration frames.** N.I.N.A. does not run star
+  detection on flats, darks or bias frames, so every one reports `HFR 0` and
+  `Stars -1`. On the test rig 45 of 89 frames were flats, and a dawn flat run
+  pinned the last-image sensors to those sentinels. They now track light frames,
+  and the sentinels map to unavailable.
+- **Sequence progress could never reach 100%.** Conditional branches that are
+  never taken stay `CREATED` forever; a completed sequence read 75%. Leaves
+  under a container that already finished or was skipped are now excluded, which
+  gives exactly 100% on the completed test sequence.
+- **Sequence target was unusable with plugins.** Under Target Scheduler the
+  container tree only names the scheduler's own container, and Sequencer+
+  conditionals push real targets to an unpredictable depth. The target is now
+  read from the last light frame. Container names also have N.I.N.A.'s
+  `_Container` suffix stripped.
+- **`TimeToMeridianFlip` is in hours**, confirmed by a live mount reporting `24`
+  alongside `"24:00:00"`. It was previously labelled minutes.
+- **`MountInfo.UTCDate` has no timezone offset** despite being UTC, so it was
+  being interpreted as local time — a whole-timezone error.
+- **`/livestack/status` returns `"Stopped"`**, not the lowercase `stopped` the
+  spec documents. Status comparisons are now case-insensitive.
+- **`/flats/status` reports `-1` iterations when idle**, which computed as 100%
+  progress. A run now requires a positive total.
+- **`/image-history` is oldest-first**, confirming the latest frame is the last
+  element; the pre-2.0 code read element `[0]`.
+
+### Added
+
+Coverage for API resources the integration did not expose:
+
+- **Switch device** — a sensor per read-only channel and a number per writable
+  channel, discovered from the connected device, plus a `switch_set_value` service.
+- **Rotator** — position, mechanical position, step size, moving/synced/reversed
+  states, mechanical move and reverse controls.
+- **Dome** — azimuth, shutter status, park/home/slewing/following/synchronized,
+  slew-to-azimuth, follow toggle, stop, home and sync.
+- **Flat panel** — cover state and open/close control, brightness sensor.
+- **Camera** — binning, readout mode, USB limit, battery, dew heater, last
+  download time, exposure end time, at-target-temperature, sub-sample and live
+  view states.
+- **Mount** — tracking mode, side of pier, site latitude/longitude/elevation,
+  pulse guiding, meridian flip, sync, stop slew, set park position.
+- **Focuser** — settling and temperature-compensation states, stop move.
+- **Guider** — peak RA/Dec, pixel scale, calibrating and lost-lock states,
+  clear calibration.
+- **Autofocus history** (`/equipment/focuser/last-af`) — the last run's position,
+  HFR, temperature, filter and timestamp.
+- **Flat Wizard** (`/flats/*`) — state and progress sensors plus trained,
+  auto-exposure, auto-brightness and sky flat services.
+- **Livestack** (`/livestack/*`) — status sensor and start/stop switch.
+- **Application** — N.I.N.A. version, start time, active tab select and a
+  screenshot image entity (disabled by default).
+- Sequence skip and reset.
+
+Device capability and driver fields (`CanPark`, `DriverVersion`, `ExposureMax`,
+`BinningModes`, …) are exposed as attributes on the matching entity rather than
+as separate entities.
+
+### Changed
+
+- WebSocket event tables completed from the AsyncAPI spec: `SEQUENCE-ENTITY-FAILED`,
+  `ROTATOR-MOVED`, `ROTATOR-MOVED-MECHANICAL`, `TS-WAITSTART`, `TS-NEWTARGETSTART`
+  and `TS-TARGETSTART` were missing. The socket URL now honours the configured
+  API version instead of hard-coding `/v2`.
+- State-changing WebSocket events trigger a coordinator refresh instead of
+  waiting for the next poll.
+- Services are registered once per integration rather than once per config entry.
+- Entity IDs referenced in the README, Lovelace cards and blueprints were
+  corrected: Home Assistant derives them from the entity *name*, so several
+  documented IDs (`sensor.image_last_hfr`, `binary_sensor.guider_is_guiding`, …)
+  never existed.
+
+### Breaking
+
+See the upgrade table in the README. In summary: `mount_slew` takes RA in
+degrees; `filterwheel_change_filter` takes `filter_id`; `sequence_load` takes
+`sequence_name`; `mount_set_tracking` takes `mode`; `camera_capture` takes
+`duration` and no longer accepts filter or binning; the `guider_dither` service
+and the camera gain/offset, filter slot and binning number entities are removed.
+
+---
+
 ## [1.4.2] - 2026-03-20
 
 ### Fixed

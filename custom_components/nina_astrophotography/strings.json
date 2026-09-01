@@ -3,8 +3,9 @@
     "step": {
       "user": {
         "title": "Connect to N.I.N.A.",
-        "description": "Enter the details for your N.I.N.A. instance running the Advanced API plugin (port 1888 by default).",
+        "description": "Enter the details for your N.I.N.A. instance running the Advanced API plugin (port 1888 by default). The instance name prefixes every device and entity id, so give each rig a distinct name if you run more than one.",
         "data": {
+          "name": "Instance Name",
           "host": "Host / IP Address",
           "port": "API Port",
           "api_version": "API Version",
@@ -33,85 +34,465 @@
   "services": {
     "camera_cool": {
       "name": "Cool Camera",
-      "description": "Start cooling the camera to a target temperature.",
+      "description": "Start cooling the camera sensor to a target temperature.",
       "fields": {
-        "temperature": { "name": "Target Temperature (°C)", "description": "Target sensor temperature in degrees Celsius." },
-        "minutes": { "name": "Ramp Time (minutes)", "description": "Time over which to ramp to target temperature." }
+        "temperature": {
+          "name": "Target Temperature",
+          "description": "Target sensor temperature in degrees Celsius."
+        },
+        "minutes": {
+          "name": "Ramp Time",
+          "description": "Minutes over which to ramp to the target temperature. Use -1 for the duration configured in the active N.I.N.A. profile."
+        },
+        "cancel": {
+          "name": "Cancel",
+          "description": "Cancel a cooling run that is already in progress."
+        }
       }
     },
     "camera_warm": {
       "name": "Warm Camera",
-      "description": "Gradually warm the camera sensor.",
+      "description": "Gradually warm the camera sensor back to ambient temperature.",
       "fields": {
-        "minutes": { "name": "Ramp Time (minutes)", "description": "Time over which to ramp back to ambient." }
+        "minutes": {
+          "name": "Ramp Time",
+          "description": "Minutes over which to ramp back to ambient. -1 uses the profile default."
+        },
+        "cancel": {
+          "name": "Cancel",
+          "description": "Cancel a warming run that is already in progress."
+        }
       }
     },
     "camera_capture": {
       "name": "Capture Image",
-      "description": "Take a single exposure.",
+      "description": "Take a single camera exposure. Binning and filter are not parameters of this endpoint — set them first with Set Binning and Change Filter.",
       "fields": {
-        "exposure": { "name": "Exposure (seconds)", "description": "Exposure duration in seconds." },
-        "gain": { "name": "Gain", "description": "Camera gain (optional, uses current setting if omitted)." },
-        "filter_index": { "name": "Filter Index", "description": "Zero-based filter wheel index (optional)." },
-        "binning": { "name": "Binning", "description": "Camera binning factor (1, 2, 3, or 4)." },
-        "save": { "name": "Save to Disk", "description": "Whether to save the image to disk." }
+        "duration": {
+          "name": "Exposure",
+          "description": "Exposure duration in seconds. Omit to use the plate-solve exposure time."
+        },
+        "gain": {
+          "name": "Gain",
+          "description": "Gain override for this exposure. Omit to use the camera default."
+        },
+        "save": {
+          "name": "Save to Disk",
+          "description": "Save the captured image. Required when capturing rather than previewing."
+        },
+        "solve": {
+          "name": "Plate Solve",
+          "description": "Plate solve the captured image."
+        },
+        "wait_for_result": {
+          "name": "Wait for Result",
+          "description": "Block until the capture finishes instead of returning immediately."
+        },
+        "image_type": {
+          "name": "Image Type",
+          "description": "Frame type recorded for this exposure."
+        },
+        "target_name": {
+          "name": "Target Name",
+          "description": "Target name recorded with the frame. Useful for livestacking."
+        }
       }
     },
     "camera_abort_capture": {
       "name": "Abort Capture",
-      "description": "Abort the current camera exposure."
+      "description": "Abort the current camera exposure immediately."
+    },
+    "camera_set_binning": {
+      "name": "Set Binning",
+      "description": "Set the camera binning mode. Must be a mode the camera reports, e.g. 1x1 or 2x2.",
+      "fields": {
+        "binning": {
+          "name": "Binning Mode",
+          "description": "Binning mode name."
+        }
+      }
+    },
+    "camera_set_dew_heater": {
+      "name": "Set Dew Heater",
+      "description": "Turn the camera's dew heater on or off.",
+      "fields": {
+        "enabled": {
+          "name": "Enabled"
+        }
+      }
     },
     "mount_slew": {
       "name": "Slew Mount",
-      "description": "Slew the mount to J2000 RA/Dec coordinates.",
+      "description": "Slew the telescope mount to the given coordinates.",
       "fields": {
-        "ra": { "name": "RA (decimal hours)", "description": "Right Ascension in decimal hours (0–24)." },
-        "dec": { "name": "Dec (decimal degrees)", "description": "Declination in decimal degrees (-90 to +90)." }
+        "ra": {
+          "name": "Right Ascension",
+          "description": "Target RA in decimal DEGREES (0–360). Multiply RA in hours by 15."
+        },
+        "dec": {
+          "name": "Declination",
+          "description": "Target Dec in decimal degrees (−90 to +90)."
+        },
+        "wait_for_result": {
+          "name": "Wait for Result",
+          "description": "Block until the slew finishes."
+        },
+        "center": {
+          "name": "Center",
+          "description": "Plate solve and center on the target after slewing."
+        },
+        "rotate": {
+          "name": "Center and Rotate",
+          "description": "Center and rotate to the given rotation angle."
+        },
+        "rotation_angle": {
+          "name": "Rotation Angle",
+          "description": "Rotation angle in degrees. Requires Center and Rotate."
+        }
       }
     },
-    "mount_park": { "name": "Park Mount", "description": "Park the telescope mount." },
-    "mount_unpark": { "name": "Unpark Mount", "description": "Unpark the telescope mount." },
-    "mount_set_tracking": {
-      "name": "Set Tracking",
-      "description": "Enable or disable mount tracking.",
+    "mount_stop_slew": {
+      "name": "Stop Slew",
+      "description": "Stop the mount's current slew."
+    },
+    "mount_sync": {
+      "name": "Sync Mount",
+      "description": "Sync the mount's reported position to the given coordinates.",
       "fields": {
-        "enabled": { "name": "Tracking Enabled", "description": "True to enable tracking, false to disable." }
+        "ra": {
+          "name": "Right Ascension",
+          "description": "RA in decimal degrees (0–360)."
+        },
+        "dec": {
+          "name": "Declination",
+          "description": "Dec in decimal degrees (−90 to +90)."
+        }
+      }
+    },
+    "mount_park": {
+      "name": "Park Mount",
+      "description": "Send the telescope mount to its park position."
+    },
+    "mount_unpark": {
+      "name": "Unpark Mount",
+      "description": "Unpark the telescope mount."
+    },
+    "mount_meridian_flip": {
+      "name": "Meridian Flip",
+      "description": "Perform a meridian flip if one is needed. This never forces a flip."
+    },
+    "mount_set_tracking": {
+      "name": "Set Tracking Mode",
+      "description": "Set the mount's tracking mode.",
+      "fields": {
+        "mode": {
+          "name": "Tracking Mode",
+          "description": "Tracking rate to use. Choose Stopped to disable tracking."
+        }
       }
     },
     "focuser_move": {
       "name": "Move Focuser",
-      "description": "Move the focuser to an absolute position.",
+      "description": "Move the focuser to an absolute step position.",
       "fields": {
-        "position": { "name": "Position (steps)", "description": "Target focuser position in steps." }
+        "position": {
+          "name": "Position",
+          "description": "Absolute focuser position in steps."
+        }
       }
     },
-    "focuser_auto_focus": { "name": "Auto Focus", "description": "Run an autofocus routine." },
+    "focuser_auto_focus": {
+      "name": "Auto Focus",
+      "description": "Trigger an autofocus routine using the configured method.",
+      "fields": {
+        "cancel": {
+          "name": "Cancel",
+          "description": "Cancel an autofocus run that is already in progress."
+        }
+      }
+    },
     "filterwheel_change_filter": {
       "name": "Change Filter",
-      "description": "Rotate the filter wheel to a given filter.",
+      "description": "Rotate the filter wheel to the filter with the given Id.",
       "fields": {
-        "filter_index": { "name": "Filter Index", "description": "Zero-based index of the target filter." }
+        "filter_id": {
+          "name": "Filter Id",
+          "description": "The filter's Id as reported by the wheel — see the available_filters attribute on the Current Filter sensor. This is not a list position."
+        }
       }
     },
     "guider_start": {
       "name": "Start Guiding",
-      "description": "Start autoguiding.",
+      "description": "Start the autoguider.",
       "fields": {
-        "force_calibration": { "name": "Force Calibration", "description": "Force a new calibration before guiding." }
+        "calibrate": {
+          "name": "Force Calibration",
+          "description": "Force a new calibration run before guiding begins."
+        }
       }
     },
-    "guider_stop": { "name": "Stop Guiding", "description": "Stop autoguiding." },
-    "guider_dither": { "name": "Dither", "description": "Perform a guider dither." },
-    "dome_open": { "name": "Open Dome", "description": "Open the dome shutter." },
-    "dome_close": { "name": "Close Dome", "description": "Close the dome shutter." },
-    "dome_park": { "name": "Park Dome", "description": "Park the dome." },
-    "sequence_start": { "name": "Start Sequence", "description": "Start the loaded imaging sequence." },
-    "sequence_stop": { "name": "Stop Sequence", "description": "Stop the running sequence." },
+    "guider_stop": {
+      "name": "Stop Guiding",
+      "description": "Stop the autoguider."
+    },
+    "guider_clear_calibration": {
+      "name": "Clear Guider Calibration",
+      "description": "Discard the autoguider's stored calibration."
+    },
+    "rotator_move": {
+      "name": "Move Rotator",
+      "description": "Move the rotator to a position in degrees.",
+      "fields": {
+        "position": {
+          "name": "Position",
+          "description": "Target position in degrees."
+        },
+        "mechanical": {
+          "name": "Mechanical",
+          "description": "Treat the position as a mechanical angle rather than a sky angle."
+        }
+      }
+    },
+    "dome_open": {
+      "name": "Open Dome",
+      "description": "Open the dome shutter."
+    },
+    "dome_close": {
+      "name": "Close Dome",
+      "description": "Close the dome shutter."
+    },
+    "dome_park": {
+      "name": "Park Dome",
+      "description": "Park the dome."
+    },
+    "dome_slew": {
+      "name": "Slew Dome",
+      "description": "Slew the dome to an azimuth.",
+      "fields": {
+        "azimuth": {
+          "name": "Azimuth",
+          "description": "Target azimuth in degrees."
+        }
+      }
+    },
+    "dome_set_follow": {
+      "name": "Set Dome Follow",
+      "description": "Start or stop the dome following the telescope.",
+      "fields": {
+        "enabled": {
+          "name": "Enabled"
+        }
+      }
+    },
+    "switch_set_value": {
+      "name": "Set Switch Value",
+      "description": "Set a value on the connected switch device.",
+      "fields": {
+        "index": {
+          "name": "Switch Index",
+          "description": "Index of the switch to set."
+        },
+        "value": {
+          "name": "Value",
+          "description": "Value to set, within the switch's own minimum and maximum."
+        }
+      }
+    },
+    "sequence_start": {
+      "name": "Start Sequence",
+      "description": "Start the currently loaded imaging sequence.",
+      "fields": {
+        "skip_validation": {
+          "name": "Skip Validation",
+          "description": "Start without running N.I.N.A.'s pre-flight validation."
+        }
+      }
+    },
+    "sequence_stop": {
+      "name": "Stop Sequence",
+      "description": "Stop the currently running sequence."
+    },
+    "sequence_skip": {
+      "name": "Skip Sequence Items",
+      "description": "Skip ahead in the running sequence.",
+      "fields": {
+        "type": {
+          "name": "Skip Type",
+          "description": "CurrentItems skips the running instructions, ToImaging jumps to the imaging container, ToEnd jumps to the end of the sequence."
+        }
+      }
+    },
+    "sequence_reset": {
+      "name": "Reset Sequence",
+      "description": "Reset the loaded sequence's progress back to the start."
+    },
     "sequence_load": {
       "name": "Load Sequence",
-      "description": "Load a sequence file from disk.",
+      "description": "Load a sequence by name from N.I.N.A.'s configured sequence folder. Names come from the sequence/list-available endpoint — this is a name, not a path.",
       "fields": {
-        "path": { "name": "File Path", "description": "Full path to the .ninasequence file." }
+        "sequence_name": {
+          "name": "Sequence Name",
+          "description": "Name of the sequence to load."
+        }
+      }
+    },
+    "flats_trained_flat": {
+      "name": "Take Trained Flats",
+      "description": "Run the flat wizard using the filter's trained flat settings.",
+      "fields": {
+        "count": {
+          "name": "Count",
+          "description": "Number of flat frames to take."
+        },
+        "filter_id": {
+          "name": "Filter Id",
+          "description": "Filter to use. Omit for the current filter."
+        },
+        "binning": {
+          "name": "Binning",
+          "description": "Binning mode, e.g. 1x1."
+        },
+        "gain": {
+          "name": "Gain"
+        },
+        "offset": {
+          "name": "Offset"
+        },
+        "keep_closed": {
+          "name": "Keep Cover Closed",
+          "description": "Leave the flat panel cover closed after the run."
+        }
+      }
+    },
+    "flats_auto_exposure": {
+      "name": "Take Auto-Exposure Flats",
+      "description": "Run the flat wizard at a fixed panel brightness, letting N.I.N.A. pick the exposure time that reaches the target histogram mean.",
+      "fields": {
+        "count": {
+          "name": "Count"
+        },
+        "brightness": {
+          "name": "Panel Brightness",
+          "description": "Fixed flat panel brightness to hold during the run."
+        },
+        "filter_id": {
+          "name": "Filter Id"
+        },
+        "binning": {
+          "name": "Binning"
+        },
+        "gain": {
+          "name": "Gain"
+        },
+        "offset": {
+          "name": "Offset"
+        },
+        "histogram_mean": {
+          "name": "Histogram Mean",
+          "description": "Target histogram mean, 0–1."
+        },
+        "mean_tolerance": {
+          "name": "Mean Tolerance"
+        },
+        "min_exposure": {
+          "name": "Minimum Exposure"
+        },
+        "max_exposure": {
+          "name": "Maximum Exposure"
+        },
+        "keep_closed": {
+          "name": "Keep Cover Closed"
+        }
+      }
+    },
+    "flats_auto_brightness": {
+      "name": "Take Auto-Brightness Flats",
+      "description": "Run the flat wizard at a fixed exposure time, letting N.I.N.A. pick the flat panel brightness that reaches the target histogram mean.",
+      "fields": {
+        "count": {
+          "name": "Count"
+        },
+        "exposure_time": {
+          "name": "Exposure Time",
+          "description": "Fixed exposure time to hold during the run."
+        },
+        "filter_id": {
+          "name": "Filter Id"
+        },
+        "binning": {
+          "name": "Binning"
+        },
+        "gain": {
+          "name": "Gain"
+        },
+        "offset": {
+          "name": "Offset"
+        },
+        "histogram_mean": {
+          "name": "Histogram Mean"
+        },
+        "mean_tolerance": {
+          "name": "Mean Tolerance"
+        },
+        "min_brightness": {
+          "name": "Minimum Brightness"
+        },
+        "max_brightness": {
+          "name": "Maximum Brightness"
+        },
+        "keep_closed": {
+          "name": "Keep Cover Closed"
+        }
+      }
+    },
+    "flats_skyflat": {
+      "name": "Take Sky Flats",
+      "description": "Run the flat wizard against the twilight sky.",
+      "fields": {
+        "count": {
+          "name": "Count"
+        },
+        "filter_id": {
+          "name": "Filter Id"
+        },
+        "binning": {
+          "name": "Binning"
+        },
+        "gain": {
+          "name": "Gain"
+        },
+        "offset": {
+          "name": "Offset"
+        },
+        "histogram_mean": {
+          "name": "Histogram Mean"
+        },
+        "mean_tolerance": {
+          "name": "Mean Tolerance"
+        },
+        "min_exposure": {
+          "name": "Minimum Exposure"
+        },
+        "max_exposure": {
+          "name": "Maximum Exposure"
+        },
+        "dither": {
+          "name": "Dither",
+          "description": "Dither between sky flat frames."
+        }
+      }
+    },
+    "flats_stop": {
+      "name": "Stop Flat Wizard",
+      "description": "Stop the running flat wizard process."
+    },
+    "application_switch_tab": {
+      "name": "Switch Tab",
+      "description": "Switch the active tab in the N.I.N.A. user interface.",
+      "fields": {
+        "tab": {
+          "name": "Tab"
+        }
       }
     }
   }

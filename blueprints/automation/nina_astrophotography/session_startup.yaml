@@ -7,9 +7,26 @@ blueprint:
   domain: automation
   source_url: https://github.com/christian-photo/ninaAPI
   input:
+    nina_device:
+      name: N.I.N.A. Instance
+      description: Any device belonging to the instance to start up.
+      selector:
+        device:
+          filter:
+            - integration: nina_astrophotography
+
+    camera_temp_entity:
+      name: Camera Temperature Sensor
+      description: Usually sensor.<instance>_camera_temperature. Used in the notification.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: sensor
+
     trigger_time:
       name: Start Time
-      description: Time of day to begin the startup routine (leave blank to trigger manually).
+      description: Time of day to begin the startup routine.
       default: "21:00:00"
       selector:
         time:
@@ -51,21 +68,33 @@ blueprint:
       selector:
         boolean:
 
-    sequence_path:
-      name: Sequence File Path
+    sequence_name:
+      name: Sequence Name
       description: >
-        Full Windows path to the .ninasequence file to load and start.
-        Leave blank to start whatever is already loaded.
+        Name of the sequence to load from N.I.N.A.'s configured sequence folder.
+        This is a name, not a file path — the names come from the
+        sequence/list-available endpoint. Leave blank to start whatever is
+        already loaded.
       default: ""
       selector:
         text:
 
-    notify_device:
-      name: Notify Device (optional)
-      description: Mobile device to send a notification to when the session starts.
+    notify_service:
+      name: Notification Service (optional)
+      description: >
+        Notification service to call when the session starts, without the
+        leading "notify.". Leave blank to skip.
       default: ""
       selector:
         text:
+
+variables:
+  camera_temp_entity: !input camera_temp_entity
+  cooling_ramp_minutes: !input cooling_ramp_minutes
+  cooling_wait_minutes: !input cooling_wait_minutes
+  open_dome: !input open_dome
+  sequence_name: !input sequence_name
+  notify_service: !input notify_service
 
 trigger:
   - platform: time
@@ -74,14 +103,19 @@ trigger:
 condition: []
 
 action:
-  - alias: "Unpark mount and enable tracking"
+  - alias: "Unpark mount"
     service: nina_astrophotography.mount_unpark
+    target:
+      device_id: !input nina_device
 
   - delay: "00:00:05"
 
-  - service: nina_astrophotography.mount_set_tracking
+  - alias: "Enable sidereal tracking"
+    service: nina_astrophotography.mount_set_tracking
+    target:
+      device_id: !input nina_device
     data:
-      enabled: true
+      mode: Sidereal
 
   - alias: "Conditionally open dome"
     choose:
@@ -90,10 +124,14 @@ action:
             value_template: "{{ open_dome }}"
         sequence:
           - service: nina_astrophotography.dome_open
+            target:
+              device_id: !input nina_device
           - delay: "00:00:30"
 
   - alias: "Start camera cooling"
     service: nina_astrophotography.camera_cool
+    target:
+      device_id: !input nina_device
     data:
       temperature: !input camera_target_temp
       minutes: !input cooling_ramp_minutes
@@ -102,30 +140,35 @@ action:
     delay:
       minutes: "{{ cooling_ramp_minutes | int + cooling_wait_minutes | int }}"
 
-  - alias: "Load sequence if path provided"
+  - alias: "Load sequence if one was named"
     choose:
       - conditions:
           - condition: template
-            value_template: "{{ sequence_path != '' }}"
+            value_template: "{{ sequence_name != '' }}"
         sequence:
           - service: nina_astrophotography.sequence_load
+            target:
+              device_id: !input nina_device
             data:
-              path: !input sequence_path
+              sequence_name: !input sequence_name
           - delay: "00:00:03"
 
-  - service: nina_astrophotography.sequence_start
+  - alias: "Start the sequence"
+    service: nina_astrophotography.sequence_start
+    target:
+      device_id: !input nina_device
 
-  - alias: "Send notification if device configured"
+  - alias: "Send notification if one was configured"
     choose:
       - conditions:
           - condition: template
-            value_template: "{{ notify_device != '' }}"
+            value_template: "{{ notify_service != '' }}"
         sequence:
-          - service: "notify.{{ notify_device }}"
+          - service: "notify.{{ notify_service }}"
             data:
               title: "🔭 N.I.N.A. Session Started"
               message: >
                 Imaging sequence started.
-                Camera at {{ states('sensor.camera_temperature') }}°C.
+                Camera at {{ states(camera_temp_entity) }}°C.
 
 mode: single

@@ -5,13 +5,14 @@
  * telescope is currently pointing, with altitude rings, cardinal directions,
  * a meridian line, and a trail of recent positions.
  *
- * Reads from:
- *   sensor.mount_altitude          (degrees, 0–90)
- *   sensor.mount_azimuth           (degrees, 0–360, N=0)
- *   sensor.mount_ra                (decimal hours)
- *   sensor.mount_dec               (decimal degrees)
- *   sensor.mount_time_to_meridian_flip   (minutes)
- *   sensor.sequence_target_name
+ * Reads from (shown without the instance prefix the card adds at lookup time,
+ * so sensor.mount_altitude resolves to sensor.nina_mount_altitude by default):
+ *   sensor.mount_altitude                 (degrees, 0–90)
+ *   sensor.mount_azimuth                  (degrees, 0–360, N=0)
+ *   sensor.mount_ra                       (decimal hours)
+ *   sensor.mount_dec                      (decimal degrees)
+ *   sensor.mount_time_to_meridian_flip    (hours)
+ *   sensor.sequence_target
  *   binary_sensor.mount_connected
  *   binary_sensor.mount_tracking
  *   binary_sensor.mount_parked
@@ -28,6 +29,15 @@
  */
 
 const VERSION = "1.0.0";
+
+// Entity ids are prefixed with the instance name (device names drive entity
+// ids since 2.0). Default "nina"; override with `prefix:` in the card config
+// when you run more than one N.I.N.A. instance.
+function withPrefix(entityId, prefix) {
+  const dot = entityId.indexOf(".");
+  return entityId.slice(0, dot + 1) + (prefix || "nina") + "_" + entityId.slice(dot + 1);
+}
+
 
 /* ── Notable stars with alt/az computed at runtime from RA/Dec + observer lat ──
    We store as { name, ra_h, dec_deg } and project at render time using
@@ -210,7 +220,8 @@ class NinaSkyMapCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = {
+        this._prefix = (config && config.prefix) || "nina";
+this._config = {
       latitude: 40,
       trail_length: 60,
       show_constellations: true,
@@ -239,7 +250,7 @@ class NinaSkyMapCard extends HTMLElement {
   }
 
   _s(id, fallback = null) {
-    const e = this._hass?.states[id];
+    const e = this._hass?.states[withPrefix(id, this._prefix)];
     return e ? e.state : fallback;
   }
   _f(id, fallback = 0) {
@@ -301,7 +312,7 @@ class NinaSkyMapCard extends HTMLElement {
     const az  = this._f("sensor.mount_azimuth");
     const ra  = this._f("sensor.mount_ra");
     const dec = this._f("sensor.mount_dec");
-    const target = this._s("sensor.sequence_target_name", "");
+    const target = this._s("sensor.sequence_target", "");
     const ttf    = this._f("sensor.mount_time_to_meridian_flip", 999);
 
     const set = (id, v) => {

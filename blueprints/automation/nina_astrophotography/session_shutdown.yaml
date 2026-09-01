@@ -7,6 +7,32 @@ blueprint:
   domain: automation
   source_url: https://github.com/christian-photo/ninaAPI
   input:
+    nina_device:
+      name: N.I.N.A. Instance
+      description: Any device belonging to the instance to shut down.
+      selector:
+        device:
+          filter:
+            - integration: nina_astrophotography
+
+    sequence_entity:
+      name: Sequence Running Sensor
+      description: Usually binary_sensor.<instance>_sequence_running.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: binary_sensor
+
+    image_count_entity:
+      name: Session Image Count Sensor
+      description: Usually sensor.<instance>_session_image_count. Used in the notification.
+      selector:
+        entity:
+          filter:
+            - integration: nina_astrophotography
+              domain: sensor
+
     trigger_time:
       name: Shutdown Time
       description: Time to trigger shutdown (e.g. 30 min before dawn).
@@ -40,12 +66,21 @@ blueprint:
       selector:
         boolean:
 
-    notify_device:
-      name: Notify Device (optional)
-      description: Mobile device to notify on completion.
+    notify_service:
+      name: Notification Service (optional)
+      description: >
+        Notification service to call on completion, without the leading "notify.".
+        Leave blank to skip the notification.
       default: ""
       selector:
         text:
+
+variables:
+  sequence_entity: !input sequence_entity
+  image_count_entity: !input image_count_entity
+  only_if_sequence_stopped: !input only_if_sequence_stopped
+  close_dome: !input close_dome
+  notify_service: !input notify_service
 
 trigger:
   - platform: time
@@ -60,7 +95,7 @@ action:
           - condition: template
             value_template: "{{ only_if_sequence_stopped }}"
         sequence:
-          - wait_template: "{{ is_state('binary_sensor.sequence_running', 'off') }}"
+          - wait_template: "{{ is_state(sequence_entity, 'off') }}"
             timeout: "02:00:00"
             continue_on_timeout: true
 
@@ -68,22 +103,30 @@ action:
     choose:
       - conditions:
           - condition: state
-            entity_id: binary_sensor.sequence_running
+            entity_id: !input sequence_entity
             state: "on"
         sequence:
           - service: nina_astrophotography.sequence_stop
+            target:
+              device_id: !input nina_device
           - delay: "00:00:10"
 
   - alias: "Park the mount"
     service: nina_astrophotography.mount_park
+    target:
+      device_id: !input nina_device
 
-  - alias: "Disable tracking"
+  - alias: "Stop tracking"
     service: nina_astrophotography.mount_set_tracking
+    target:
+      device_id: !input nina_device
     data:
-      enabled: false
+      mode: Stopped
 
   - alias: "Warm the camera"
     service: nina_astrophotography.camera_warm
+    target:
+      device_id: !input nina_device
     data:
       minutes: !input warming_ramp_minutes
 
@@ -98,19 +141,21 @@ action:
             value_template: "{{ close_dome }}"
         sequence:
           - service: nina_astrophotography.dome_close
+            target:
+              device_id: !input nina_device
 
   - alias: "Notify on completion"
     choose:
       - conditions:
           - condition: template
-            value_template: "{{ notify_device != '' }}"
+            value_template: "{{ notify_service != '' }}"
         sequence:
-          - service: "notify.{{ notify_device }}"
+          - service: "notify.{{ notify_service }}"
             data:
               title: "🌅 N.I.N.A. Session Complete"
               message: >
                 Session ended. Mount parked. Camera warming complete.
-                Total frames: {{ states('sensor.image_count') }}.
+                Total frames: {{ states(image_count_entity) }}.
 
 mode: single
 max_exceeded: silent
