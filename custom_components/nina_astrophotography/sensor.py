@@ -55,7 +55,8 @@ def _safe_float(data: dict, *keys: str, default=None):
 def _latest_stat(data: dict, stat_key: str) -> Any:
     history = _safe(data, "image_history", "Response", default=[])
     if history and isinstance(history, list):
-        return history[0].get(stat_key)
+        # Oldest first, so the newest frame is at the end.
+        return history[-1].get(stat_key)
     return None
 
 
