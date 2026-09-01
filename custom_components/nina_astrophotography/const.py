@@ -90,7 +90,7 @@ ENDPOINT_SEQUENCE_LOAD = "/sequence/load"
 ENDPOINT_SEQUENCE_STATUS = "/sequence"
 
 # Image
-ENDPOINT_IMAGE_HISTORY = "/image/history"
+ENDPOINT_IMAGE_HISTORY = "/image-history"
 ENDPOINT_IMAGE_LATEST = "/image/latest"
 
 # ─── HA Entity IDs ────────────────────────────────────────────────────────────

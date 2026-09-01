@@ -233,8 +233,9 @@ class NinaApiClient:
         return await self._get("/sequence/load", params={"path": path})
 
     # Images
-    async def get_image_history(self, count=10):
-        return await self._get("/image/history", params={"count": count})
+    async def get_image_history(self):
+        """Every frame of the current session, oldest first."""
+        return await self._get("/image-history", params={"all": "true"})
 
     async def get_latest_image(self):
         return await self._get("/image/latest")
@@ -304,7 +305,7 @@ class NinaApiClient:
             "dome": self.get_dome(),
             "flatdevice": self.get_flatdevice(),
             "sequence": self.get_sequence(),
-            "image_history": self.get_image_history(count=1),
+            "image_history": self.get_image_history(),
             "weather": self.get_weather(),
             "safetymonitor": self.get_safetymonitor(),
         }
