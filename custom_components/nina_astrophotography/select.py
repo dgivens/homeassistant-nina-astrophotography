@@ -11,13 +11,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import NinaApiClient
-from .const import DOMAIN
+from .const import DOMAIN, TrackingMode
 from .coordinator import NinaDataCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Telescope tracking rate names as reported by ASCOM / N.I.N.A.
-TRACKING_RATES = ["Sidereal", "Lunar", "Solar", "King", "None"]
+TRACKING_RATES = [m.label for m in TrackingMode]
 
 
 def _safe(data: dict, *keys: str, default=None):
@@ -148,12 +147,8 @@ class NinaTrackingRateSelect(CoordinatorEntity[NinaDataCoordinator], SelectEntit
         return "Sidereal"
 
     async def async_select_option(self, option: str) -> None:
-        """Switch tracking rate. Uses generic tracking endpoint with rate param."""
-        rate_index = TRACKING_RATES.index(option) if option in TRACKING_RATES else 0
-        await self._client._get(
-            "/equipment/telescope/tracking",
-            params={"on": "true", "trackingMode": rate_index},
-        )
+        """Switch the tracking rate."""
+        await self._client.set_tracking_mode(TrackingMode[option.upper()])
         await self.coordinator.async_request_refresh()
 
     @property

@@ -1,5 +1,27 @@
 """Constants for the N.I.N.A. Astrophotography integration."""
 
+from enum import IntEnum
+
+
+class TrackingMode(IntEnum):
+    """Mount tracking rates.
+
+    The value is what /equipment/mount/tracking expects as its `mode`
+    parameter; the label is what /equipment/mount/info reports back as
+    TrackingMode, so one definition drives both the request and the display.
+    """
+
+    SIDEREAL = 0
+    LUNAR = 1
+    SOLAR = 2
+    KING = 3
+    STOPPED = 4
+
+    @property
+    def label(self) -> str:
+        return self.name.capitalize()
+
+
 DOMAIN = "nina_astrophotography"
 
 # Config entry keys

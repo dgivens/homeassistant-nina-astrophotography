@@ -7,7 +7,7 @@ from typing import Any
 
 import aiohttp
 
-from .const import API_BASE
+from .const import API_BASE, TrackingMode
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -112,9 +112,17 @@ class NinaApiClient:
     async def unpark_mount(self):
         return await self._get("/equipment/mount/unpark")
 
+    async def set_tracking_mode(self, mode: TrackingMode):
+        """Set the tracking rate."""
+        return await self._get(
+            "/equipment/mount/tracking", params={"mode": int(mode)}
+        )
+
     async def set_tracking(self, enabled):
-        return await self._get("/equipment/mount/tracking",
-                               params={"on": str(enabled).lower()})
+        """Start sidereal tracking, or stop it."""
+        return await self.set_tracking_mode(
+            TrackingMode.SIDEREAL if enabled else TrackingMode.STOPPED
+        )
 
     async def find_home(self):
         return await self._get("/equipment/mount/find-home")
