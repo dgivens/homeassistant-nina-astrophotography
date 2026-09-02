@@ -14,12 +14,12 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any
 
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .api import NinaApiClient, NinaApiError, NinaConnectionError
 from .const import DOMAIN
@@ -43,11 +43,15 @@ class NinaLatestImageEntity(ImageEntity):
 
     def __init__(
         self,
+        hass: HomeAssistant,
         client: NinaApiClient,
+        ws_client,
         entry_id: str,
     ) -> None:
-        super().__init__(None)   # no hass yet at construction time
+        super().__init__(hass)
         self._client = client
+        self._ws_client = ws_client
+        self._unsubscribe = None
         self._attr_unique_id = f"{entry_id}_latest_image"
         self._attr_device_info = {
             "identifiers": {(DOMAIN, entry_id)},
@@ -56,7 +60,9 @@ class NinaLatestImageEntity(ImageEntity):
             "model": "Advanced API v2",
         }
         self._image_bytes: bytes | None = None
-        self._last_updated: datetime = datetime.utcnow()
+        # HA renders image_last_updated as the entity state, so it must be
+        # timezone-aware or the frontend reads it as local time.
+        self._last_updated: datetime = dt_util.utcnow()
 
     @property
     def image_last_updated(self) -> datetime:
@@ -72,10 +78,26 @@ class NinaLatestImageEntity(ImageEntity):
             _LOGGER.debug("Could not fetch N.I.N.A. image: %s", exc)
             return self._image_bytes  # return cached bytes on failure
 
-    def mark_updated(self) -> None:
-        """Call when a new frame is saved — bumps last_updated so frontends refresh."""
-        self._last_updated = datetime.utcnow()
-        self.schedule_update_ha_states()
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to IMAGE-SAVE events.
+
+        Here rather than in async_setup_entry so hass is set before an event
+        can arrive, and so the unsubscribe is paired with removal.
+        """
+        await super().async_added_to_hass()
+        self._unsubscribe = self._ws_client.add_listener(
+            "IMAGE-SAVE", lambda _response: self._mark_updated()
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._unsubscribe:
+            self._unsubscribe()
+            self._unsubscribe = None
+
+    def _mark_updated(self) -> None:
+        """A new frame was saved; bump the timestamp so frontends refetch."""
+        self._last_updated = dt_util.utcnow()
+        self.async_write_ha_state()
 
 
 async def async_setup_entry(
@@ -87,11 +109,6 @@ async def async_setup_entry(
     client: NinaApiClient = entry_data["client"]
     ws_client = entry_data["ws_client"]
 
-    entity = NinaLatestImageEntity(client, entry.entry_id)
-    async_add_entities([entity])
-
-    # Wire IMAGE-SAVE WebSocket event → mark entity as updated
-    def _on_image_save(response: dict) -> None:
-        entity.mark_updated()
-
-    ws_client.add_listener("IMAGE-SAVE", _on_image_save)
+    async_add_entities(
+        [NinaLatestImageEntity(hass, client, ws_client, entry.entry_id)]
+    )
