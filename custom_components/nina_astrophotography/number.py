@@ -1,7 +1,6 @@
 """Number entities for N.I.N.A. Astrophotography – camera settings control."""
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,14 +13,14 @@ from homeassistant.components.number import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import NinaApiClient
+from .api import NinaApiClient, NinaApiError, NinaConnectionError
 from .const import DOMAIN
 from .coordinator import NinaDataCoordinator
 
-_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -181,14 +180,10 @@ class NinaNumber(CoordinatorEntity[NinaDataCoordinator], NumberEntity):
         if self.entity_description.set_fn:
             try:
                 await self.entity_description.set_fn(self._client, value)
-            except Exception as exc:  # noqa: BLE001
-                _LOGGER.error(
-                    "Failed to set %s to %s: %s",
-                    self.entity_description.key,
-                    value,
-                    exc,
-                )
-                return
+            except (NinaApiError, NinaConnectionError) as exc:
+                raise HomeAssistantError(
+                    f"Could not set {self.entity_description.name} to {value}: {exc}"
+                ) from exc
         # Refresh so the UI reflects the confirmed new value
         await self.coordinator.async_request_refresh()
 
