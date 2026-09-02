@@ -7,13 +7,12 @@ next poll cycle.
 """
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import (
+    RestoreSensor,
     SensorDeviceClass,
-    SensorEntity,
     SensorEntityDescription,
     SensorStateClass,
 )
@@ -21,12 +20,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN
 from .frame_statistics import NinaFrameStatisticsStore
 
-_LOGGER = logging.getLogger(__name__)
 
 DEVICE_INFO = {
     "manufacturer": "Nighttime Imaging 'N' Astronomy",
@@ -39,6 +36,10 @@ class NinaFrameSensorDescription(SensorEntityDescription):
     """Sensor description with a callable that extracts value from the store."""
     value_fn: Any = None          # (store: NinaFrameStatisticsStore) -> Any
     extra_attrs_fn: Any = None    # (store) -> dict | None  — optional extra state attrs
+    # Show the pre-restart value until this entry's first store update. Only
+    # for last-frame sensors: a restored session total would read stale and
+    # then jump when the next frame lands.
+    restore: bool = False
 
 
 # ── Sensor descriptors ────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     # ── Latest frame ──────────────────────────────────────────────────────────
     NinaFrameSensorDescription(
         key="frame_last_hfr",
+        restore=True,
         name="Last Frame HFR",
         native_unit_of_measurement="px",
         state_class=SensorStateClass.MEASUREMENT,
@@ -56,6 +58,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_hfr_std_dev",
+        restore=True,
         name="Last Frame HFR Std Dev",
         native_unit_of_measurement="px",
         state_class=SensorStateClass.MEASUREMENT,
@@ -65,6 +68,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_stars",
+        restore=True,
         name="Last Frame Stars",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:star-shooting",
@@ -72,6 +76,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_mean_adu",
+        restore=True,
         name="Last Frame Mean ADU",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:chart-histogram",
@@ -79,6 +84,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_median_adu",
+        restore=True,
         name="Last Frame Median ADU",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:chart-bell-curve",
@@ -87,6 +93,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_min_adu",
+        restore=True,
         name="Last Frame Min ADU",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:arrow-collapse-down",
@@ -95,6 +102,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_max_adu",
+        restore=True,
         name="Last Frame Max ADU",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:arrow-collapse-up",
@@ -103,6 +111,7 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_std_dev_adu",
+        restore=True,
         name="Last Frame ADU Std Dev",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:sigma",
@@ -111,12 +120,14 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_filter",
+        restore=True,
         name="Last Frame Filter",
         icon="mdi:filter",
         value_fn=lambda s: s.last_filter,
     ),
     NinaFrameSensorDescription(
         key="frame_last_exposure",
+        restore=True,
         name="Last Frame Exposure",
         native_unit_of_measurement="s",
         state_class=SensorStateClass.MEASUREMENT,
@@ -125,12 +136,14 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
     ),
     NinaFrameSensorDescription(
         key="frame_last_rms",
+        restore=True,
         name="Last Frame Guide RMS",
         icon="mdi:crosshairs",
         value_fn=lambda s: s.last_rms,
     ),
     NinaFrameSensorDescription(
         key="frame_last_target",
+        restore=True,
         name="Last Frame Target",
         icon="mdi:star-circle",
         value_fn=lambda s: s.last_target,
@@ -262,11 +275,13 @@ FRAME_SENSOR_DESCRIPTIONS: list[NinaFrameSensorDescription] = [
 
 # ── Entity class ──────────────────────────────────────────────────────────────
 
-class NinaFrameStatisticsSensor(SensorEntity, RestoreEntity):
+class NinaFrameStatisticsSensor(RestoreSensor):
     """A sensor that updates from the NinaFrameStatisticsStore.
 
-    Uses RestoreEntity so the last known value is available immediately after
-    an HA restart, before the next IMAGE-SAVE event arrives.
+    Sensors whose description sets `restore` show their pre-restart value until
+    the store first reports, then drop it for good. The aggregates do not
+    restore — the store is rebuilt empty, so they have nothing to recompute
+    from.
     """
 
     entity_description: NinaFrameSensorDescription
@@ -278,6 +293,7 @@ class NinaFrameStatisticsSensor(SensorEntity, RestoreEntity):
         entry_id: str,
     ) -> None:
         self._store = store
+        self._restored: Any = None
         self.entity_description = description
         self._attr_unique_id = f"{entry_id}_{description.key}"
         self._attr_device_info = {
@@ -292,16 +308,18 @@ class NinaFrameStatisticsSensor(SensorEntity, RestoreEntity):
     async def async_added_to_hass(self) -> None:
         """Register with the store when entity is added."""
         await super().async_added_to_hass()
+        # Read the restored value before subscribing: the await yields, and a
+        # store update landing in that window would otherwise be undone by an
+        # assignment arriving after it.
+        if self.entity_description.restore:
+            last = await self.async_get_last_sensor_data()
+            if last is not None:
+                self._restored = last.native_value
         self._store.add_update_listener(self._on_store_update)
-        # Restore last known state on startup
-        last_state = await self.async_get_last_state()
-        if last_state and last_state.state not in ("unknown", "unavailable"):
-            _LOGGER.debug(
-                "Restored %s = %s", self.entity_description.key, last_state.state
-            )
 
     async def async_will_remove_from_hass(self) -> None:
         """Deregister from the store on removal."""
+        await super().async_will_remove_from_hass()
         self._store.remove_update_listener(self._on_store_update)
 
     def _on_store_update(self) -> None:
@@ -309,10 +327,20 @@ class NinaFrameStatisticsSensor(SensorEntity, RestoreEntity):
 
         Registered in async_added_to_hass, so hass and entity_id are always set.
         """
+        # The store has spoken, so the pre-restart value is finished. Dropping
+        # it here rather than gating on the frame count matters because reset()
+        # zeroes that count at every SEQUENCE-STARTING, which would otherwise
+        # bring a value from a previous night back for each new sequence.
+        self._restored = None
         self.async_write_ha_state()
 
     @property
     def native_value(self) -> Any:
+        # The store is built empty at setup, so without this the first state
+        # write after a restart would be None. Cleared on the first store
+        # update, so it applies once.
+        if self._restored is not None:
+            return self._restored
         try:
             return self.entity_description.value_fn(self._store)
         except Exception:  # noqa: BLE001
