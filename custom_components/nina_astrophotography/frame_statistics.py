@@ -77,6 +77,26 @@ def _to_int(v: Any) -> int | None:
         return None
 
 
+def _hfr(v: Any) -> float | None:
+    """HFR, or None when star detection did not run.
+
+    Calibration frames report 0 rather than omitting the field, and a real HFR
+    is always positive, so 0 means "not measured", not "perfect focus".
+    """
+    value = _to_float(v)
+    return None if value is None or value <= 0 else value
+
+
+def _star_count(v: Any) -> int | None:
+    """Star count, or None when star detection did not run (reported as -1).
+
+    0 is a real measurement — detection ran and found nothing, which is what a
+    clouded-out frame looks like — so only negatives mean absent.
+    """
+    value = _to_int(v)
+    return None if value is None or value < 0 else value
+
+
 class NinaFrameStatisticsStore:
     """Central store for per-frame statistics.  One instance per config entry.
 
@@ -117,9 +137,15 @@ class NinaFrameStatisticsStore:
             timestamp=datetime.now(),
             filter_name=stats.get("Filter", "Unknown"),
             exposure=_to_float(stats.get("ExposureTime")) or 0.0,
-            hfr=_to_float(stats.get("HFR")),
+            # Star detection reports its own absence: HFR 0, Stars -1. Check
+            # those rather than ImageType, which the payload also carries — a
+            # light frame whose detection was skipped or failed reports the
+            # same values and has to be excluded too. Aggregates skip None,
+            # which is what keeps unmeasured frames out of bests and averages.
+            hfr=_hfr(stats.get("HFR")),
+            # HFRStDev reports "NaN" instead, which _to_float already drops.
             hfr_std_dev=_to_float(stats.get("HFRStDev")),
-            stars=_to_int(stats.get("Stars")),
+            stars=_star_count(stats.get("Stars")),
             mean_adu=_to_float(stats.get("Mean")),
             median_adu=_to_float(stats.get("Median")),
             std_dev_adu=_to_float(stats.get("StDev")),
