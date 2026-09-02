@@ -161,7 +161,7 @@ class NinaFrameStatisticsStore:
             try:
                 cb()
             except Exception:  # noqa: BLE001
-                pass
+                _LOGGER.exception("Frame statistics listener error")
 
     # ── Read-only derived properties ─────────────────────────────────────────
 
