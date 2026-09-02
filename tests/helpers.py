@@ -12,14 +12,18 @@ import json
 class FakeResponse:
     """Stands in for an aiohttp response."""
 
-    def __init__(self, payload, status: int = 200):
+    def __init__(self, payload, status: int = 200, content_type: str = "application/json"):
         self._payload = payload
         self.status = status
+        self.content_type = content_type
 
     async def json(self, **_kwargs):
         if isinstance(self._payload, (dict, list)):
             return self._payload
         return json.loads(self._payload)
+
+    async def read(self):
+        return self._payload if isinstance(self._payload, bytes) else str(self._payload).encode()
 
     async def text(self):
         return self._payload if isinstance(self._payload, str) else json.dumps(self._payload)

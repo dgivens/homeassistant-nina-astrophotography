@@ -324,24 +324,33 @@ class NinaApiClient:
         The Advanced API streams the image when stream=true.
         Use in the Lovelace card img src attribute.
         """
-        params = f"index={index}&stream=true&quality={quality}"
+        params = f"stream=true&quality={quality}"
         if stretch:
             params += "&useAutoStretch=true"
-        return f"{self._base}/image?{params}"
+        return f"{self._base}/image/{index}?{params}"
 
     async def get_image_bytes(self, index: int = 0, quality: int = 85, stretch: bool = True) -> bytes:
         """Fetch a JPEG image and return raw bytes. Used for HA image entities."""
-        url = self._base + "/image"
-        params = {"index": index, "stream": "true", "quality": quality}
+        path = f"/image/{index}"
+        url = self._base + path
+        params = {"stream": "true", "quality": quality}
         if stretch:
             params["useAutoStretch"] = "true"
         try:
             async with self._session.get(
                 url, params=params, timeout=aiohttp.ClientTimeout(total=30)
             ) as resp:
-                if resp.status == 200:
+                if resp.status != 200:
+                    raise _http_error("GET", path, resp.status)
+                # A refusal arrives as 200 carrying the JSON envelope. With
+                # stream=true a real image is served as image/jpeg or
+                # image/png, so the content type is what separates them.
+                if (resp.content_type or "").startswith("image/"):
                     return await resp.read()
-                raise _http_error("GET", "/image", resp.status)
+                _raise_for_envelope(path, await resp.json(content_type=None))
+                raise NinaApiError(
+                    f"GET {path} returned {resp.content_type}, not an image"
+                )
         except asyncio.TimeoutError as exc:
             raise NinaConnectionError("Timeout fetching image") from exc
         except aiohttp.ClientError as exc:
