@@ -5,7 +5,7 @@ blueprint:
     Unparks the mount, enables tracking, cools the camera to a target temperature,
     optionally opens the dome, and then loads and starts an imaging sequence.
   domain: automation
-  source_url: https://github.com/christian-photo/ninaAPI
+  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
   input:
     trigger_time:
       name: Start Time
@@ -66,6 +66,14 @@ blueprint:
       default: ""
       selector:
         text:
+
+# Inputs must be bound here before templates can reference them.
+variables:
+  cooling_ramp_minutes: !input cooling_ramp_minutes
+  cooling_wait_minutes: !input cooling_wait_minutes
+  notify_device: !input notify_device
+  open_dome: !input open_dome
+  sequence_path: !input sequence_path
 
 trigger:
   - platform: time

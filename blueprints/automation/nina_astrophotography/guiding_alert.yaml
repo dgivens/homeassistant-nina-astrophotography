@@ -5,7 +5,7 @@ blueprint:
     exceeds a threshold for a sustained period. Useful for catching cloud, wind
     or seeing degradation mid-session.
   domain: automation
-  source_url: https://github.com/christian-photo/ninaAPI
+  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
   input:
     rms_threshold:
       name: RMS Threshold (arcsec)
@@ -51,6 +51,13 @@ blueprint:
           max: 120
           unit_of_measurement: min
 
+# Inputs must be bound here before templates can reference them.
+variables:
+  notify_device: !input notify_device
+  rms_threshold: !input rms_threshold
+  run_autofocus: !input run_autofocus
+  sustained_minutes: !input sustained_minutes
+
 trigger:
   - platform: numeric_state
     entity_id: sensor.guider_rms_total
@@ -79,6 +86,12 @@ action:
             value_template: "{{ run_autofocus }}"
         sequence:
           - service: nina_astrophotography.focuser_auto_focus
+
+  # mode: single plus this delay is what implements the cooldown: the
+  # automation stays running, so re-triggers are dropped until it elapses.
+  - alias: "Hold off further alerts for the cooldown period"
+    delay:
+      minutes: !input cooldown_minutes
 
 mode: single
 max_exceeded: silent
