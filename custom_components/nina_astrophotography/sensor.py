@@ -52,6 +52,16 @@ def _safe_float(data: dict, *keys: str, default=None):
         return None
 
 
+def _minutes_from_hours(data: dict, *keys: str) -> float | None:
+    """Read an hours value and return minutes."""
+    value = _safe(data, *keys)
+    try:
+        hours = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(hours) else round(hours * 60, 1)
+
+
 def _latest_stat(data: dict, stat_key: str) -> Any:
     history = _safe(data, "image_history", "Response", default=[])
     if history and isinstance(history, list):
@@ -180,7 +190,12 @@ SENSOR_DESCRIPTIONS: list[NinaSensorDescription] = [
         native_unit_of_measurement="min",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:swap-horizontal",
-        value_fn=lambda d: _safe_float(d, "mount", "Response", "TimeToMeridianFlip"),
+        # TimeToMeridianFlip is hours — the sibling TimeToMeridianFlipString
+        # renders the same number as "HH:MM:SS". Minutes is the useful unit
+        # for a flip warning, so convert rather than relabel.
+        value_fn=lambda d: _minutes_from_hours(
+            d, "mount", "Response", "TimeToMeridianFlip"
+        ),
     ),
     NinaSensorDescription(
         key="mount_status",
