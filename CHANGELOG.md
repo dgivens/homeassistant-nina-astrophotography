@@ -4,6 +4,56 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [1.4.3] - 2026-09-02
+
+Bug-fix rollup. Every change here is also open as an individual pull request
+upstream; this release exists so the fixes can be installed together.
+
+### Behaviour changes to be aware of
+
+- **Failed commands now raise.** Button presses and number sets previously
+  logged a failure and returned normally, which Home Assistant reads as
+  success. They now raise `HomeAssistantError`, so an automation that silently
+  depended on a failing call carrying on will now stop at that step. This is
+  the point of the change, but it can surface automations that were quietly
+  broken.
+- **The mount tracking switch worked backwards.** Turning it *off* sent the
+  wrong parameter and started sidereal tracking. If any automation compensated
+  for that, it needs revisiting.
+
+### Fixed
+
+- API failures are no longer reported as success. The Advanced API answers HTTP
+  200 for everything and carries the outcome in the response envelope, which
+  was never checked.
+- N.I.N.A. being unreachable now marks entities unavailable instead of
+  publishing zeros. A crashed instance raises `ServerDisconnectedError`, which
+  was previously classified as an API error rather than a lost connection.
+- A wrong endpoint is distinguished from a refused command, so a permanently
+  missing path fails the config entry instead of retrying forever, while a 5xx
+  still retries.
+- The image entity works at all. `/image` was requested with the index as a
+  query parameter; the API serves `/image/{index}`, so every fetch returned
+  404. A refusal also arrives as HTTP 200 carrying JSON, which was handed to
+  the frontend as image data.
+- The image platform no longer fails to set up, and its WebSocket listener is
+  released on reload rather than leaking one per config entry reload.
+- Image history reads `/image-history`; `count` is a boolean, not a limit, and
+  the response is oldest-first, so the "latest frame" sensors read the wrong
+  end of the list.
+- Calibration frames no longer poison the session statistics. FLAT/DARK/BIAS
+  report `HFR 0` and `Stars -1`, which were being averaged in.
+- All 25 frame-statistics sensors update again — the callback called a method
+  that does not exist — and the twelve last-frame sensors survive a restart.
+- Blueprint inputs take effect. `!input` cannot be read from a template unless
+  it is bound in `variables:` first, so notifications went nowhere and weather
+  aborts never fired.
+- Filter selection handles unnamed filter slots, which were offered in the
+  dropdown but could not be selected.
+- `manifest.json` points at this integration rather than the N.I.N.A. plugin.
+
+---
+
 ## [1.4.2] - 2026-03-20
 
 ### Fixed
