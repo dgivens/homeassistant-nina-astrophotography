@@ -117,7 +117,9 @@ Two hard rules:
 
 **1. Read-only against a live rig.** Only `GET` endpoints that report state:
 `/version`, `/equipment/info`, `/equipment/*/info`, `/image-history`,
-`/sequence/json`, `/event-history`, `/flats/status`, `/equipment/focuser/last-af`.
+`/sequence/json`, `/sequence/state`, `/event-history`, `/flats/status`,
+`/equipment/focuser/last-af`, `/application-start`, `/livestack/status`, and
+`/profile/show` (as an allowlist projection only — see below).
 **Never** call anything that commands equipment — slew, capture, park, home,
 connect, disconnect, guider, filter change, focuser move, flat light, dome,
 sequence start/stop, profile switch — unless the operator has explicitly said
