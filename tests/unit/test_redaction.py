@@ -25,6 +25,13 @@ from redaction import PROFILE_ALLOWLIST, redact, scan
         # "rack" is a substring of a benign sequence node name, not a facility
         # reference — the facility pattern must be word-bounded.
         ({"Name": "Set Tracking"}, {"Name": "Set Tracking"}),
+        # "colo" is a substring of an OSC camera's Name, not a facility
+        # reference — the facility pattern must not match it unbounded.
+        ({"Name": "ASI2600MC Color"}, {"Name": "ASI2600MC Color"}),
+        # Distinctive stems stay unbounded so a camel-cased compound with no
+        # word boundary still matches.
+        ({"Name": "StarfrontObservatory"}, {"Name": "REDACTED"}),
+        ({"DisplayName": "Rack 4"}, {"DisplayName": "REDACTED"}),
         # A four-part .NET version string is shaped exactly like a bare IPv4
         # address when every segment is 1-3 digits.
         ({"api_version": "2.2.15.2"}, {"api_version": "2.2.15.2"}),
@@ -55,6 +62,14 @@ def test_filenames_become_stable_pseudonyms_not_positions() -> None:
     out = [f["Filename"] for f in redact(frames)]
     assert out[0] != out[1]
     assert all(name.startswith("frame_") and name.endswith(".fits") for name in out)
+
+
+def test_legacy_pseudonyms_pass_through_unchanged() -> None:
+    """The pre-script corpus used a narrower digest width (4 decimal digits
+    for Filename, 2 for DeviceId); still accepted so redact() stays idempotent
+    over those already-committed fixtures."""
+    assert redact({"Filename": "frame_0121.fits"})["Filename"] == "frame_0121.fits"
+    assert redact({"DeviceId": "device-09"})["DeviceId"] == "device-09"
 
 
 def test_scan_finds_what_redact_would_change() -> None:

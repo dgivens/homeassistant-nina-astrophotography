@@ -65,10 +65,13 @@ _VALUE_PATTERNS = (
 )
 
 # Site or facility identifiers seen in device Name/DisplayName/Description.
-# Word-bounded: an unbounded "rack" matches the sequence node named
-# "Set Tracking", which is not a facility reference.
+# Distinctive stems are left unbounded so camel-cased compounds still match
+# ("StarfrontObservatory"); short, generic words are word-bounded so they
+# don't match as substrings of something else — unbounded "rack" matches the
+# sequence node named "Set Tracking", and unbounded "colo" matches
+# "Color"/"Colour" (an OSC camera's Name). "coloc" (colocation), not "colo".
 _FACILITY = re.compile(
-    r"\b(?:observator\w*|data ?cent\w*|building|suite|rack|colo\w*)\b", re.I
+    r"observator|data ?cent|\b(?:building|suite|rack|coloc)\b", re.I
 )
 _NAME_KEYS = ("name", "displayname", "description")
 
@@ -83,22 +86,31 @@ PROFILE_ALLOWLIST: tuple[str, ...] = (
 )
 
 
-def _digest(value: str, prefix: str, width: int, suffix: str = "") -> str:
+def _digest(value: str, prefix: str, legacy_width: int, suffix: str = "") -> str:
     """A stable pseudonym derived from the value, not from arrival order.
 
     Order-derived numbering is wrong for Filename: frame identity is
     (Date, Filename) and the fold spans fixtures, so a per-file counter both
     collides distinct frames across files and splits identical ones.
 
-    Already-pseudonymised input passes through. Without that, hashing is not
-    idempotent — re-redacting `device-03` yields a different `device-NN` — and
-    `scan()`, which is a diff against `redact()`, reports every committed
-    fixture as dirty forever.
+    8 hex digits of the digest (32 bits, ~4.3 billion buckets). A
+    positionally-sized decimal form was too narrow: 4 digits is only 10,000
+    buckets, so a single 122-frame night collides at roughly 50%; `device-NN`
+    at 2 digits (100 buckets) collides even sooner.
+
+    Already-pseudonymised input passes through, in *either* the current 8-hex
+    form or the legacy `legacy_width`-digit decimal form the pre-script corpus
+    still carries. Without that, hashing is not idempotent — re-redacting an
+    already-redacted value yields a different pseudonym — and `scan()`, which
+    is a diff against `redact()`, reports every committed fixture as dirty
+    forever.
     """
-    if re.fullmatch(rf"{re.escape(prefix)}\d{{{width}}}{re.escape(suffix)}", value):
+    if re.fullmatch(rf"{re.escape(prefix)}[0-9a-f]{{8}}{re.escape(suffix)}", value):
         return value
-    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
-    return f"{prefix}{int(digest, 16) % 10 ** width:0{width}d}{suffix}"
+    if re.fullmatch(rf"{re.escape(prefix)}\d{{{legacy_width}}}{re.escape(suffix)}", value):
+        return value
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
+    return f"{prefix}{digest}{suffix}"
 
 
 def _typed_redaction(value: Any) -> Any:

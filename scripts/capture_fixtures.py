@@ -30,6 +30,7 @@ FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 # (endpoint slug, path, params). Read-only, all of them.
 ENDPOINTS: tuple[tuple[str, str, dict[str, str]], ...] = (
     ("version", "/version", {}),
+    ("nina_version", "/version/nina", {}),
     ("application_start", "/application-start", {}),
     ("equipment_info", "/equipment/info", {}),
     ("sequence_json", "/sequence/json", {}),
@@ -75,6 +76,8 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
 
             if slug == "version":
                 versions["api_version"] = str(envelope.get("Response"))
+            if slug == "nina_version":
+                versions["nina_version"] = str(envelope.get("Response"))
             if slug == "profile":
                 envelope["Response"] = _project(envelope.get("Response"),
                                                 PROFILE_ALLOWLIST)
