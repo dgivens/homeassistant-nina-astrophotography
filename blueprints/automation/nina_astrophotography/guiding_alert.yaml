@@ -5,7 +5,7 @@ blueprint:
     exceeds a threshold for a sustained period. Useful for catching cloud, wind
     or seeing degradation mid-session.
   domain: automation
-  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography
   input:
     rms_threshold:
       name: RMS Threshold (arcsec)

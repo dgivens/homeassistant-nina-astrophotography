@@ -5,7 +5,7 @@ blueprint:
     Unparks the mount, enables tracking, cools the camera to a target temperature,
     optionally opens the dome, and then loads and starts an imaging sequence.
   domain: automation
-  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography
   input:
     trigger_time:
       name: Start Time

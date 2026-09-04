@@ -18,7 +18,7 @@ blueprint:
       • Cloud cover exceeding a threshold
       • A manual service call (for testing)
   domain: automation
-  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography
   input:
 
     # ── Trigger sources ──────────────────────────────────────────────────

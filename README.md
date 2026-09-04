@@ -5,6 +5,13 @@
 
 # N.I.N.A. Astrophotography – Home Assistant Integration
 
+> **This is a maintained fork.** The original
+> [C3X0Astro/homeassistant-nina-astrophotography](https://github.com/C3X0Astro/homeassistant-nina-astrophotography)
+> was published on 2026-03-20 and has had no commits since. This fork has been
+> modified from that version, beginning 2026-09-01, to correct a number of
+> defects in the API client, sensors and blueprints — see `CHANGELOG.md`.
+> Distributed under GPL-3.0, as the original is.
+
 Connect [N.I.N.A. (Nighttime Imaging 'N' Astronomy)](https://nighttime-imaging.eu) to Home Assistant via the **[Advanced API plugin](https://github.com/christian-photo/ninaAPI)** (v2).  Monitor all equipment in real time and control your rig directly from HA automations, dashboards, and scripts.
 
 ---
