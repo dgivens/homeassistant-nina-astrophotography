@@ -26,6 +26,7 @@ test = [
     "aiohttp>=3.9",
     "PyYAML>=6.0",
     "coverage>=7.6",
+    "syrupy==6.0.0",
 ]
 
 # The Home-Assistant-dependent suite, added in v2.0 phase A. Pinned exactly:

@@ -1,0 +1,18 @@
+{
+  "WeatherData.CloudCover":      {"spec": "integer", "wire": "int|nan",   "why": "\"NaN\" arrives as a JSON string"},
+  "Dome.Azimuth":                {"spec": "integer", "wire": "nan",       "why": "\"NaN\" arrives as a JSON string"},
+  "WeatherData.Humidity":        {"spec": "integer", "wire": "int|nan",   "why": "59.3 observed"},
+  "WeatherData.Pressure":        {"spec": "integer", "wire": "float|nan", "why": "958.5 observed"},
+  "WeatherData.RainRate":        {"spec": "string",  "wire": "int|nan",   "why": "numeric on the wire"},
+  "WeatherData.SkyBrightness":   {"spec": "string",  "wire": "int|nan",   "why": "numeric on the wire"},
+  "WeatherData.SkyTemperature":  {"spec": "string",  "wire": "float|nan", "why": "numeric on the wire"},
+  "WeatherData.WindGust":        {"spec": "string",  "wire": "float|nan", "why": "numeric on the wire"},
+  "Rotator.Position":            {"spec": "integer", "wire": "float|int", "why": "335.0736 observed"},
+  "Rotator.MechanicalPosition":  {"spec": "integer", "wire": "float|int", "why": "53.86 observed"},
+  "Mount.TrackingRate":          {"spec": "object",  "wire": "dict",      "why": "always {} on this build"},
+  "Camera.Gains":                {"spec": "array",   "wire": "list",      "why": "always [] on this build"},
+  "Mount.TrackingMode":          {"spec": "enum",    "wire": "str",       "why": "'Sidereal', not the spec's 'Siderial'. NOT null when disconnected — the key is absent entirely, along with 13 others"},
+  "Camera.HasBattery":           {"spec": "absent",  "wire": "bool",      "why": "field on the wire, missing from the spec"},
+  "Mount.CanSlewAltAz":          {"spec": "absent",  "wire": "bool",      "why": "field on the wire, missing from the spec"},
+  "ImageStatistics.Index":       {"spec": "integer", "wire": "absent",    "why": "documented on ImageStatistics, present on neither path"}
+}
