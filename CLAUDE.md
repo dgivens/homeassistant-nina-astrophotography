@@ -7,6 +7,41 @@ Assistant. This repository is the maintained fork; upstream is inactive.
 before making structural changes — it carries measured numbers and verified API
 behaviour that are expensive to rediscover.
 
+## Commands
+
+```bash
+pip install -r requirements_test.txt
+pytest                                   # 69 tests, ~0.2s — no Home Assistant needed
+pytest tests/test_api_envelope.py -v     # one file
+```
+
+No linter, formatter or CI is configured yet. `pytest.ini` puts `tests/` on
+`sys.path`, so helpers import as `from helpers import ...`.
+
+## Layout (current)
+
+```
+custom_components/nina_astrophotography/
+  api.py              HTTP client — the only module that talks to N.I.N.A.
+  coordinator.py      DataUpdateCoordinator, polls api.poll_all()
+  websocket.py        event socket; fires HA events
+  frame_statistics.py per-frame session store, fed by IMAGE-SAVE
+  const.py            domain, config keys, service names, enums
+  config_flow.py      UI setup
+  sensor.py binary_sensor.py number.py select.py switch.py
+  light.py button.py image.py frame_stats_sensor.py
+blueprints/automation/nina_astrophotography/   5 automation blueprints
+www/                                           5 Lovelace cards
+tests/                                         flat; no HA import
+```
+
+## Branches
+
+- `main` — the shipping line
+- **`wip/v2.0` — a read-only reference. Never merge or rebase it.** It predates
+  every fix on `main` and has no tests; its value is the API audit in its
+  CHANGELOG and README, which `docs/v2.0-design.md` supersedes.
+
 ## Quality bar
 
 Target the Home Assistant **Bronze** quality-scale tier, and treat Silver/Gold
@@ -29,7 +64,8 @@ unimplemented.
 
 ## Testing
 
-Two suites, one command:
+**Target layout for 2.0** — today `tests/` is flat and there is no
+HA-dependent suite. Build toward this rather than assuming it exists:
 
 - `tests/unit/` — **no Home Assistant import.** Runs in milliseconds. Covers the
   API client, wire→model mapping, pure computations, and event parsing. Keep it
@@ -68,7 +104,8 @@ fixtures encode the spec's mistakes; captured ones encode reality.
 
 **Trust the rig over the spec wherever they disagree.**
 
-Capture with `scripts/capture_fixtures.py`. Two hard rules:
+Capture with `scripts/capture_fixtures.py` (**not yet written** — phase 0).
+Two hard rules:
 
 **1. Read-only against a live rig.** Only `GET` endpoints that report state:
 `/version`, `/equipment/info`, `/equipment/*/info`, `/image-history`,
