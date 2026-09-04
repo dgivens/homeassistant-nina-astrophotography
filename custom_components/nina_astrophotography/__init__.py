@@ -233,7 +233,7 @@ def _register_services(hass: HomeAssistant, client: NinaApiClient) -> None:
 
     async def handle_slew(call: ServiceCall) -> None:
         await _get_client(hass).slew_mount(
-            ra=call.data["ra"], dec=call.data["dec"]
+            ra_hours=call.data["ra"], dec=call.data["dec"]
         )
 
     hass.services.async_register(

@@ -158,9 +158,16 @@ class NinaApiClient:
     async def disconnect_mount(self):
         return await self._get("/equipment/mount/disconnect")
 
-    async def slew_mount(self, ra, dec):
-        return await self._get("/equipment/mount/slew-to-coordinates-j2000",
-                               params={"ra": ra, "dec": dec})
+    async def slew_mount(self, ra_hours, dec):
+        """Slew to J2000 coordinates, RA given in hours.
+
+        The endpoint reads `ra` in degrees, but every RA N.I.N.A. hands out is
+        in hours — `/equipment/mount/info` reports 22.07 for 22h04m, and the
+        service takes hours to match. Passing hours straight through is a
+        silent 15x error: the mount slews somewhere real, just not here.
+        """
+        return await self._get("/equipment/mount/slew",
+                               params={"ra": ra_hours * 15.0, "dec": dec})
 
     async def park_mount(self):
         return await self._get("/equipment/mount/park")
