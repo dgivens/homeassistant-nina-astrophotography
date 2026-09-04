@@ -18,7 +18,7 @@ blueprint:
       • Cloud cover exceeding a threshold
       • A manual service call (for testing)
   domain: automation
-  source_url: https://github.com/christian-photo/ninaAPI
+  source_url: https://github.com/C3X0Astro/homeassistant-nina-astrophotography
   input:
 
     # ── Trigger sources ──────────────────────────────────────────────────
@@ -167,6 +167,20 @@ blueprint:
       default: ""
       selector:
         text:
+
+# Inputs must be bound here before templates can reference them.
+variables:
+  auto_resume: !input auto_resume
+  close_dome: !input close_dome
+  notify_device: !input notify_device
+  park_mount: !input park_mount
+  resume_delay_minutes: !input resume_delay_minutes
+  stop_sequence: !input stop_sequence
+  use_cloud_threshold: !input use_cloud_threshold
+  use_rain_threshold: !input use_rain_threshold
+  use_safety_monitor: !input use_safety_monitor
+  use_wind_threshold: !input use_wind_threshold
+  warm_camera: !input warm_camera
 
 trigger:
   # Safety monitor — fires immediately, no sustained delay
