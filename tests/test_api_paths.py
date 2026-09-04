@@ -24,8 +24,9 @@ def make_client(session) -> NinaApiClient:
         (lambda c: c.abort_capture(), "/equipment/camera/abort-exposure"),
         (lambda c: c.start_guiding(), "/equipment/guider/start"),
         (lambda c: c.stop_guiding(), "/equipment/guider/stop"),
+        (lambda c: c.find_home(), "/equipment/mount/home"),
     ],
-    ids=["abort-capture", "start-guiding", "stop-guiding"],
+    ids=["abort-capture", "start-guiding", "stop-guiding", "find-home"],
 )
 async def test_the_command_reaches_the_path_the_api_serves(call, path):
     session = FakeSession()

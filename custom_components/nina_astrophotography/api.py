@@ -181,7 +181,7 @@ class NinaApiClient:
         )
 
     async def find_home(self):
-        return await self._get("/equipment/mount/find-home")
+        return await self._get("/equipment/mount/home")
 
     # Focuser
     async def get_focuser(self):
