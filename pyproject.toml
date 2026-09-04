@@ -1,0 +1,58 @@
+[project]
+name = "nina-astrophotography"
+version = "1.4.5"
+description = "Home Assistant integration for the N.I.N.A. Advanced API"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.14.2"
+# The integration itself has no runtime dependencies: Home Assistant supplies
+# aiohttp and voluptuous, and manifest.json declares `requirements: []`.
+# Anything added here would NOT be installed by Home Assistant.
+dependencies = []
+
+[tool.uv]
+# A Home Assistant custom component is loaded from custom_components/, never
+# pip-installed, so there is nothing to build.
+package = false
+default-groups = ["test"]
+
+[dependency-groups]
+# The fast suite. Deliberately Home-Assistant-free: the modules it covers have
+# no `homeassistant` imports, so `uv run pytest` completes in well under a
+# second. Keep it that way — see CLAUDE.md.
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "aiohttp>=3.9",
+    "PyYAML>=6.0",
+]
+
+# The Home-Assistant-dependent suite, added in v2.0 phase A. Pinned exactly:
+# this package releases near-daily and hard-pins homeassistant, pytest,
+# pytest-asyncio and syrupy, so an unpinned range breaks CI on an unrelated day.
+# Installing it deliberately overrides the `test` group's pytest range.
+test-ha = [
+    "pytest-homeassistant-custom-component==0.13.363",
+]
+
+# Tooling that generates or checks committed artifacts rather than running tests.
+dev = [
+    { include-group = "test" },
+    # Generates api/v2/schema.py from the committed OpenAPI spec. Pinned because
+    # the output is committed and a drift test diffs against it — an unpinned
+    # generator turns a regeneration into a large unrelated diff.
+    "datamodel-code-generator==0.76.1",
+    # Property-based tests for the session fold (idempotence, order-independence).
+    "hypothesis>=6.100",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# tests/ on sys.path so `from helpers import ...` works under any import mode.
+pythonpath = ["tests"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+parallel = true
+source = ["custom_components/nina_astrophotography"]

@@ -1,9 +1,0 @@
-# Test-only dependencies.
-#
-# Deliberately minimal: the modules under test (api.py, frame_statistics.py)
-# have no Home Assistant imports, so the suite runs without installing Home
-# Assistant. `pip install -r requirements_test.txt && pytest` is the whole setup.
-pytest>=8.0
-pytest-asyncio>=0.23
-aiohttp>=3.9
-PyYAML>=6.0

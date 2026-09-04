@@ -1,7 +1,7 @@
 """Registers the integration package for import.
 
 The modules under test import no Home Assistant code, so these tests run with
-`pip install -r requirements_test.txt` and no HA checkout. The integration's
+`uv sync` and no HA checkout. The integration's
 `__init__.py` does import Home Assistant, so the package is registered here
 with its `__path__` set but never executed — submodules and their relative
 imports still resolve.
