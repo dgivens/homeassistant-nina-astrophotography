@@ -4,6 +4,94 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [1.4.4] - 2026-09-03
+
+Published from this fork, which is now the maintained line — the original
+repository has had no commits since 2026-03-20. Every fix in 1.4.3 and 1.4.4 is
+also open as an individual pull request there, and will stay open.
+
+### Fixed
+
+- `Time to Meridian Flip` returned hours while the sensor declared minutes, so
+  every reading was 60x too small. A flip 45 minutes away read `0.75`. The
+  meridian-flip warning blueprint triggers `below: warning_minutes`, so a
+  15-minute threshold fired when the flip was 15 *hours* away.
+- `Last Image Star Count` read the field `DetectedStars`, which does not exist
+  on a frame — the API renames it to `Stars` on the way out. That sensor had
+  always been `unknown`.
+- `Latest Captured Frame` reported the moment the integration loaded as though
+  it were a capture time. It now reports nothing until a frame arrives.
+- `nina-image-panel-card.js` requested the same broken image-history endpoint
+  the integration did, and swallowed the failure, leaving its filmstrip filter
+  labels permanently blank.
+
+### Changed
+
+- Documentation and issue links in `manifest.json`, `hacs.json` and the five
+  blueprint `source_url` fields now point at this fork, so "Report an issue"
+  and Home Assistant's blueprint re-import check reach a maintained repository.
+- Adds the modification notice GPL-3.0 section 5(a) requires, naming the
+  upstream original and the date this line diverged.
+
+### Note on statistics
+
+`Time to Meridian Flip` keeps its `min` unit string, so Home Assistant will not
+treat this as a unit change. Existing long-term statistics show a 60x
+discontinuity at this version rather than being rescaled. The mount also
+reports 24 hours when no flip is pending, which now records as `1440`.
+
+---
+
+## [1.4.3] - 2026-09-02
+
+Bug-fix rollup. Every change here is also open as an individual pull request
+upstream; this release exists so the fixes can be installed together.
+
+### Behaviour changes to be aware of
+
+- **Failed commands now raise.** Button presses and number sets previously
+  logged a failure and returned normally, which Home Assistant reads as
+  success. They now raise `HomeAssistantError`, so an automation that silently
+  depended on a failing call carrying on will now stop at that step. This is
+  the point of the change, but it can surface automations that were quietly
+  broken.
+- **The mount tracking switch worked backwards.** Turning it *off* sent the
+  wrong parameter and started sidereal tracking. If any automation compensated
+  for that, it needs revisiting.
+
+### Fixed
+
+- API failures are no longer reported as success. The Advanced API answers HTTP
+  200 for everything and carries the outcome in the response envelope, which
+  was never checked.
+- N.I.N.A. being unreachable now marks entities unavailable instead of
+  publishing zeros. A crashed instance raises `ServerDisconnectedError`, which
+  was previously classified as an API error rather than a lost connection.
+- A wrong endpoint is distinguished from a refused command, so a permanently
+  missing path fails the config entry instead of retrying forever, while a 5xx
+  still retries.
+- The image entity works at all. `/image` was requested with the index as a
+  query parameter; the API serves `/image/{index}`, so every fetch returned
+  404. A refusal also arrives as HTTP 200 carrying JSON, which was handed to
+  the frontend as image data.
+- The image platform no longer fails to set up, and its WebSocket listener is
+  released on reload rather than leaking one per config entry reload.
+- Image history reads `/image-history`; `count` is a boolean, not a limit, and
+  the response is oldest-first, so the "latest frame" sensors read the wrong
+  end of the list.
+- Calibration frames no longer poison the session statistics. FLAT/DARK/BIAS
+  report `HFR 0` and `Stars -1`, which were being averaged in.
+- All 25 frame-statistics sensors update again — the callback called a method
+  that does not exist — and the twelve last-frame sensors survive a restart.
+- Blueprint inputs take effect. `!input` cannot be read from a template unless
+  it is bound in `variables:` first, so notifications went nowhere and weather
+  aborts never fired.
+- Filter selection handles unnamed filter slots, which were offered in the
+  dropdown but could not be selected.
+- `manifest.json` points at this integration rather than the N.I.N.A. plugin.
+
+---
+
 ## [1.4.2] - 2026-03-20
 
 ### Fixed
