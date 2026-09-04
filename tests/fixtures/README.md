@@ -14,7 +14,7 @@ Naming is `<state>_<endpoint>.json`. Each file holds the **raw envelope**
 Credentials, absolute paths, hostnames, IPv4 addresses, UUIDs and Home Assistant
 entity ids are `"REDACTED"`. `DeviceId` and `EntityId` are stable pseudonyms
 (`device-NN`) so *distinctness* survives — two weather sources still compare
-unequal. Site coordinates are zeroed, `TelescopeName`/`CameraName` are
+unequal. `TelescopeName`/`CameraName` are
 generic, and `Filename` is renumbered `frame_NNNN.fits`. `TargetName` is kept:
 an astronomical object is not identifying.
 

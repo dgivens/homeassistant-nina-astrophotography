@@ -130,14 +130,41 @@ recoverable. If unsure whether a call mutates state, do not make it.
 |---|---|
 | `*ApiKey`, `*Token`, `*Secret`, `*Password`, `*Credential` | `"REDACTED"` |
 | `*Path`, `*Folder`, `*Directory`, `*Host`, `*Url` | `"REDACTED"` |
-| any Windows path or bare IPv4 in a value | `"REDACTED"` |
-| `SiteLatitude`, `SiteLongitude`, `SiteElevation`, `Latitude`, `Longitude`, `Elevation` | `0` |
+| any Windows path, bare IPv4, UUID or HA entity id in a value | `"REDACTED"` |
+| `DeviceId`, `EntityId` | stable pseudonym, preserving distinctness |
 | `TelescopeName`, `CameraName` | `"Telescope"`, `"Camera"` |
-| `Filename` | renumbered `frame_NNNN.fits` |
+| `Filename` | stable pseudonym `frame_NNNN.fits`, derived from the original |
 | `TargetName` | keep — an astronomical object, not identifying |
+| `SiteLatitude`, `SiteLongitude`, `SiteElevation`, `Altitude`, `SiderealTime`, `SideOfPier` | **keep** — see below |
 
-`/profile/show` is excluded from the corpus entirely; its secret surface is too
-large to redact confidently.
+**Site coordinates are kept, deliberately.** The rig is hosted at a public
+commercial facility and its location is not sensitive here. Zeroing them was
+also ineffective: a mount parked at the pole reports `Altitude` equal to the
+site latitude, and `SiderealTime` against `Coordinates.DateTime.UtcNow` solves
+for longitude — so the coordinates were derivable from fixtures whose named
+fields were all correctly zeroed.
+
+Keeping them is what makes §11's meridian-flip maths testable:
+`(RA_JNOW − LST) mod 12` needs a real `SiderealTime`, and the already-flipped
+branch needs a real `SideOfPier`. The alternative is a hand-written synthetic
+`(LST, RA, longitude)` triple, and hand-written fixtures encode the spec's
+mistakes rather than reality.
+
+**`Filename` is pseudonymised by hashing the original, never numbered by
+position.** Frame identity is `(Date, Filename)` and the fold spans fixtures, so
+a per-file counter both collides distinct frames across files and splits
+identical ones — which would make the path-equivalence property untestable.
+
+The **existing corpus predates this rule** and still carries zeroed coordinates
+and a `SideOfPier` of `"REDACTED"`. Re-capture will change those fields, so a
+re-capture is not byte-identical to what is committed today; that is expected,
+not a regression.
+
+`/profile/show` is captured as an **allowlist projection** — only
+`TelescopeSettings.FocalLength`, `FocuserSettings.{AutoFocusTimeoutSeconds,
+RSquaredThreshold}`, `MeridianFlipSettings.*` and `CameraSettings.PixelSize`.
+Never denylist it: its secret surface is too large to redact confidently, and it
+held a live `WeatherUndergroundAPIKey` on a trial capture.
 
 The corpus needs **states**, not one snapshot — imaging, dawn flats (calibration
 sentinels), before the first sub, equipment disconnected, sequence complete,
