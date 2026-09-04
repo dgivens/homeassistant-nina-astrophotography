@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import NinaApiClient, NinaConnectionError
+from .legacy_api import NinaApiClient, NinaConnectionError
 from .const import (
     CONF_API_VERSION,
     CONF_HOST,

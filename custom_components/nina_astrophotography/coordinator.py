@@ -8,7 +8,7 @@ from typing import Any
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import NinaApiClient, NinaApiError, NinaConnectionError
+from .legacy_api import NinaApiClient, NinaApiError, NinaConnectionError
 
 _LOGGER = logging.getLogger(__name__)
 

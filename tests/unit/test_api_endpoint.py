@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from helpers import FakeResponse, FakeSession
-from nina_astrophotography.api import (
+from nina_astrophotography.legacy_api import (
     NinaApiClient,
     NinaApiError,
     NinaEndpointError,

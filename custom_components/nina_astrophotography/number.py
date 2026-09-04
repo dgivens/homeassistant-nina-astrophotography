@@ -17,7 +17,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import NinaApiClient, NinaApiError, NinaConnectionError
+from .legacy_api import NinaApiClient, NinaApiError, NinaConnectionError
 from .const import DOMAIN
 from .coordinator import NinaDataCoordinator
 

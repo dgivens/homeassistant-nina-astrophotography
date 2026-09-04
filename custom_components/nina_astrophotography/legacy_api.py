@@ -1,4 +1,7 @@
-"""N.I.N.A. Advanced API client — corrected for v2.2.15+ endpoint paths."""
+"""N.I.N.A. Advanced API client — corrected for v2.2.15+ endpoint paths.
+
+The 1.4.x client, kept for the services until phase C deletes it.
+"""
 from __future__ import annotations
 
 import asyncio

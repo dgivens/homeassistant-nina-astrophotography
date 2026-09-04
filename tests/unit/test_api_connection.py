@@ -8,7 +8,7 @@ import asyncio
 import aiohttp
 
 from helpers import FakeSession
-from nina_astrophotography.api import NinaApiClient, NinaConnectionError
+from nina_astrophotography.legacy_api import NinaApiClient, NinaConnectionError
 
 
 def make_client(session) -> NinaApiClient:

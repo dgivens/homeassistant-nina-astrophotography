@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from helpers import FakeResponse, FakeSession, failure
-from nina_astrophotography.api import NinaApiClient, NinaApiError
+from nina_astrophotography.legacy_api import NinaApiClient, NinaApiError
 
 JPEG = b"\xff\xd8\xff\xe0" + b"\x00" * 32
 
