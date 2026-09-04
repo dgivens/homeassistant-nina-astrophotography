@@ -283,7 +283,7 @@ class NinaApiClient:
         return await self._get("/equipment/flatdevice/connect")
 
     async def toggle_flat_light(self, on):
-        return await self._get("/equipment/flatdevice/toggle-light",
+        return await self._get("/equipment/flatdevice/set-light",
                                params={"on": str(on).lower()})
 
     async def set_flat_brightness(self, brightness):

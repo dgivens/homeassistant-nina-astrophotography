@@ -25,8 +25,15 @@ def make_client(session) -> NinaApiClient:
         (lambda c: c.start_guiding(), "/equipment/guider/start"),
         (lambda c: c.stop_guiding(), "/equipment/guider/stop"),
         (lambda c: c.find_home(), "/equipment/mount/home"),
+        (lambda c: c.toggle_flat_light(True), "/equipment/flatdevice/set-light"),
     ],
-    ids=["abort-capture", "start-guiding", "stop-guiding", "find-home"],
+    ids=[
+        "abort-capture",
+        "start-guiding",
+        "stop-guiding",
+        "find-home",
+        "flat-light",
+    ],
 )
 async def test_the_command_reaches_the_path_the_api_serves(call, path):
     session = FakeSession()
@@ -35,3 +42,17 @@ async def test_the_command_reaches_the_path_the_api_serves(call, path):
 
     url, _params = session.requests[0]
     assert url.endswith(path)
+
+
+async def test_the_flat_light_keeps_its_on_parameter():
+    """The spec renders this parameter as `true`; the name really is `on`.
+
+    Pinned because the published documentation is misleading here and a
+    future reader correcting it to match would break a call that works.
+    """
+    session = FakeSession()
+
+    await make_client(session).toggle_flat_light(False)
+
+    _url, params = session.requests[0]
+    assert params == {"on": "false"}
