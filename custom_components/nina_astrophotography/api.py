@@ -230,8 +230,8 @@ class NinaApiClient:
     async def stop_guiding(self):
         return await self._get("/equipment/guider/stop")
 
-    async def dither(self):
-        return await self._get("/equipment/guider/dither")
+    # No dither command: the API exposes none. Dithering is driven from inside
+    # a sequence and only reported back, over the GUIDER-DITHER event.
 
     # Rotator
     async def get_rotator(self):

@@ -40,7 +40,6 @@ from .const import (
     SERVICE_FILTERWHEEL_CHANGE,
     SERVICE_FOCUSER_AUTO_FOCUS,
     SERVICE_FOCUSER_MOVE,
-    SERVICE_GUIDER_DITHER,
     SERVICE_GUIDER_START,
     SERVICE_GUIDER_STOP,
     SERVICE_MOUNT_PARK,
@@ -317,11 +316,6 @@ def _register_services(hass: HomeAssistant, client: NinaApiClient) -> None:
         await _get_client(hass).stop_guiding()
 
     hass.services.async_register(DOMAIN, SERVICE_GUIDER_STOP, handle_guider_stop)
-
-    async def handle_dither(call: ServiceCall) -> None:
-        await _get_client(hass).dither()
-
-    hass.services.async_register(DOMAIN, SERVICE_GUIDER_DITHER, handle_dither)
 
     # ── Dome ─────────────────────────────────────────────────────────────────
 

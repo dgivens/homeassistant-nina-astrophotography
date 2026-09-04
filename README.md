@@ -123,7 +123,6 @@ Call these from automations, scripts, or the Developer Tools → Services panel.
 | `nina_astrophotography.filterwheel_change_filter` | Change filter | `filter_index` |
 | `nina_astrophotography.guider_start` | Start guiding | `force_calibration` |
 | `nina_astrophotography.guider_stop` | Stop guiding | — |
-| `nina_astrophotography.guider_dither` | Dither | — |
 | `nina_astrophotography.dome_open` | Open dome | — |
 | `nina_astrophotography.dome_close` | Close dome | — |
 | `nina_astrophotography.dome_park` | Park dome | — |
@@ -340,7 +339,7 @@ automation:
 
 ### Button Entities
 One-tap action buttons — ideal for dashboard card rows:
-`button.run_auto_focus` · `button.guider_dither` · `button.mount_find_home` ·
+`button.run_auto_focus` · `button.mount_find_home` ·
 `button.park_mount` · `button.unpark_mount` · `button.start_sequence` ·
 `button.stop_sequence` · `button.open_dome` · `button.close_dome` ·
 `button.park_dome` · `button.abort_capture` · `button.start_guiding` ·
@@ -464,7 +463,7 @@ The Observatory Card provides:
 - PHD2 guiding RMS bar chart (RA + Dec, colour-coded by severity)
 - Last image HFR, star count and mean ADU
 - One-tap control buttons: Start/Stop Sequence, Park/Unpark, Auto Focus,
-  Open/Close Dome, Cool/Warm Camera, Start/Stop Guiding, Dither
+  Open/Close Dome, Cool/Warm Camera, Start/Stop Guiding
 
 The Frame Stats Card provides:
 - live per-frame HFR trend, star count, ADU sparklines

@@ -459,7 +459,6 @@ class NinaObservatoryCard extends HTMLElement {
                 ? `<button class="nina-btn danger" id="btn-stop-guide">◼ Stop Guiding</button>`
                 : `<button class="nina-btn success" id="btn-start-guide">▶ Start Guiding</button>`
               }
-              <button class="nina-btn" id="btn-dither">↔ Dither</button>
             </div>
           </div>
 
@@ -489,7 +488,6 @@ class NinaObservatoryCard extends HTMLElement {
     bind("btn-warm",       () => svc("camera_warm", { minutes: 20 }));
     bind("btn-start-guide",() => svc("guider_start"));
     bind("btn-stop-guide", () => svc("guider_stop"));
-    bind("btn-dither",     () => svc("guider_dither"));
   }
 
   getCardSize() { return 8; }
