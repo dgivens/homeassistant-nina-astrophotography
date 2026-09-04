@@ -146,7 +146,7 @@ class NinaApiClient:
         return await self._get("/equipment/camera/capture", params=params)
 
     async def abort_capture(self):
-        return await self._get("/equipment/camera/abort")
+        return await self._get("/equipment/camera/abort-exposure")
 
     # Mount / Telescope
     async def get_mount(self):
@@ -158,9 +158,16 @@ class NinaApiClient:
     async def disconnect_mount(self):
         return await self._get("/equipment/mount/disconnect")
 
-    async def slew_mount(self, ra, dec):
-        return await self._get("/equipment/mount/slew-to-coordinates-j2000",
-                               params={"ra": ra, "dec": dec})
+    async def slew_mount(self, ra_hours, dec):
+        """Slew to J2000 coordinates, RA given in hours.
+
+        The endpoint reads `ra` in degrees, but every RA N.I.N.A. hands out is
+        in hours — `/equipment/mount/info` reports 22.07 for 22h04m, and the
+        service takes hours to match. Passing hours straight through is a
+        silent 15x error: the mount slews somewhere real, just not here.
+        """
+        return await self._get("/equipment/mount/slew",
+                               params={"ra": ra_hours * 15.0, "dec": dec})
 
     async def park_mount(self):
         return await self._get("/equipment/mount/park")
@@ -181,7 +188,7 @@ class NinaApiClient:
         )
 
     async def find_home(self):
-        return await self._get("/equipment/mount/find-home")
+        return await self._get("/equipment/mount/home")
 
     # Focuser
     async def get_focuser(self):
@@ -224,14 +231,14 @@ class NinaApiClient:
         return await self._get("/equipment/guider/disconnect")
 
     async def start_guiding(self, force_calibration=False):
-        return await self._get("/equipment/guider/start-guiding",
-                               params={"forceCalibration": str(force_calibration).lower()})
+        return await self._get("/equipment/guider/start",
+                               params={"calibrate": str(force_calibration).lower()})
 
     async def stop_guiding(self):
-        return await self._get("/equipment/guider/stop-guiding")
+        return await self._get("/equipment/guider/stop")
 
-    async def dither(self):
-        return await self._get("/equipment/guider/dither")
+    # No dither command: the API exposes none. Dithering is driven from inside
+    # a sequence and only reported back, over the GUIDER-DITHER event.
 
     # Rotator
     async def get_rotator(self):
@@ -276,7 +283,7 @@ class NinaApiClient:
         return await self._get("/equipment/flatdevice/connect")
 
     async def toggle_flat_light(self, on):
-        return await self._get("/equipment/flatdevice/toggle-light",
+        return await self._get("/equipment/flatdevice/set-light",
                                params={"on": str(on).lower()})
 
     async def set_flat_brightness(self, brightness):
@@ -335,7 +342,7 @@ class NinaApiClient:
         """
         params = f"stream=true&quality={quality}"
         if stretch:
-            params += "&useAutoStretch=true"
+            params += "&autoPrepare=true"
         return f"{self._base}/image/{index}?{params}"
 
     async def get_image_bytes(self, index: int = 0, quality: int = 85, stretch: bool = True) -> bytes:
@@ -344,7 +351,11 @@ class NinaApiClient:
         url = self._base + path
         params = {"stream": "true", "quality": quality}
         if stretch:
-            params["useAutoStretch"] = "true"
+            # autoPrepare, not useAutoStretch: an unknown parameter binds
+            # nothing and is not rejected, so the request succeeds and returns
+            # the linear frame. autoPrepare hands the stretch to N.I.N.A., so
+            # the frame arrives looking as it does on the imaging tab.
+            params["autoPrepare"] = "true"
         try:
             async with self._session.get(
                 url, params=params, timeout=aiohttp.ClientTimeout(total=30)

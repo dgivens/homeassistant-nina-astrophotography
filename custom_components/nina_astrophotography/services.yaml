@@ -188,10 +188,6 @@ guider_stop:
   name: Stop Guiding
   description: Stop the autoguider.
 
-guider_dither:
-  name: Dither
-  description: Perform a single dither move and wait for settle.
-
 dome_open:
   name: Open Dome
   description: Open the dome shutter.

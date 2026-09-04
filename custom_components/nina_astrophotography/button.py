@@ -31,12 +31,6 @@ BUTTON_DESCRIPTIONS: list[NinaButtonDescription] = [
         press_fn=lambda c: c.auto_focus(),
     ),
     NinaButtonDescription(
-        key="btn_guider_dither",
-        name="Guider Dither",
-        icon="mdi:swap-horizontal-bold",
-        press_fn=lambda c: c.dither(),
-    ),
-    NinaButtonDescription(
         key="btn_mount_find_home",
         name="Mount Find Home",
         icon="mdi:home-import-outline",

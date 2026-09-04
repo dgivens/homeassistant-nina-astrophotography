@@ -101,7 +101,6 @@
       }
     },
     "guider_stop": { "name": "Stop Guiding", "description": "Stop autoguiding." },
-    "guider_dither": { "name": "Dither", "description": "Perform a guider dither." },
     "dome_open": { "name": "Open Dome", "description": "Open the dome shutter." },
     "dome_close": { "name": "Close Dome", "description": "Close the dome shutter." },
     "dome_park": { "name": "Park Dome", "description": "Park the dome." },
