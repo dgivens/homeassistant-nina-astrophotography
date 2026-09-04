@@ -1,7 +1,7 @@
 {
   "domain": "nina_astrophotography",
   "name": "N.I.N.A. Astrophotography",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "documentation": "https://github.com/dgivens/homeassistant-nina-astrophotography",
   "issue_tracker": "https://github.com/dgivens/homeassistant-nina-astrophotography/issues",
   "requirements": [],

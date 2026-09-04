@@ -4,6 +4,83 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [1.4.5] - 2026-09-03
+
+Endpoint corrections. Seven commands in `api.py` asked for paths the Advanced
+API does not serve, so they returned a 404 page and the equipment never moved,
+and the image entity asked for its stretch under a parameter name that does not
+exist. Every path here is checked against the 2.2.15 specification and the
+fixes are pinned by tests; the rig they were confirmed against runs Advanced
+API 2.2.15.2 on N.I.N.A. 3.2.0.9001.
+
+### Behaviour changes to be aware of
+
+- **The dither service and button are gone.** The API has no dither route
+  anywhere in its 156 paths — dithering is driven from inside a sequence and
+  only reported back. `nina_astrophotography.guider_dither` and
+  `button.guider_dither` never worked and could not be made to, so they are
+  removed rather than left in the service picker to be written into an
+  automation. Delete the orphaned button entity from the entity registry, and
+  remove any script or dashboard row that calls the service. The
+  `nina_guider_dither` event still fires when a sequence dithers, so an
+  automation that *reacts* to dithering is unaffected.
+- **Commands that silently did nothing now actually run.** Abort Capture, Slew
+  Mount, Find Home, Start/Stop Guiding and the flat panel light all reached a
+  path that does not exist. An automation written around one of them has been
+  running with that step doing nothing; it will now move equipment.
+
+### Fixed
+
+- **Slew Mount pointed the mount at the wrong part of the sky.** Beyond the
+  wrong path, `/equipment/mount/slew` reads `ra` in degrees while the service
+  takes decimal hours — as its documentation says, and as `sensor.mount_ra`
+  reports, because every RA N.I.N.A. hands out is in hours. Unconverted, a
+  slew to 22h04m would have gone to RA 22.07 degrees: 1h28m, eight hours away,
+  with no error, because that is a valid RA either way. The service contract is
+  unchanged, so nothing written against it needs revisiting.
+- Abort Capture requested `/equipment/camera/abort`; the API serves
+  `/equipment/camera/abort-exposure`. The exposure ran to completion.
+- Start Guiding requested `/equipment/guider/start-guiding` and sent the
+  calibration flag as `forceCalibration`. The path is `/equipment/guider/start`
+  and the flag is `calibrate` — an unbound flag falls back to the API default,
+  so `force_calibration: true` would have reused the stale calibration a caller
+  asks to discard after a meridian flip.
+- Stop Guiding requested `/equipment/guider/stop-guiding`; the API serves
+  `/equipment/guider/stop`. The shutdown blueprint went on to park the mount
+  with PHD2 still guiding.
+- Mount Find Home requested `/equipment/mount/find-home`; the API serves
+  `/equipment/mount/home`.
+- The flat panel light requested `/equipment/flatdevice/toggle-light`; the API
+  serves `/equipment/flatdevice/set-light`. Brightness worked, so a flat run
+  driven from Home Assistant shot its flats against a dark panel.
+- `image.nina_latest_image` showed an unstretched frame. The stretch was asked
+  for as `useAutoStretch`, which is not a parameter on `/image/{index}`; the
+  API's is `autoPrepare`. An unknown query parameter binds nothing and is not
+  rejected, so the request succeeded and returned the linear frame — very
+  nearly black for a single sub-exposure, with nothing in the log to explain it.
+- `nina-image-panel-card.js` requested `/image?index=N`. `/image` is not a
+  route, so the main frame and every strip thumbnail came back 404. This is the
+  same bug fixed in the integration in 1.4.3; the card builds its own URL in
+  the browser and was missed. Its stretch parameter is corrected too, and both
+  are now pinned by a test.
+
+### Known remaining
+
+Two endpoints are still wrong and are deliberately not touched here, because
+neither is a path swap:
+
+- `get_latest_image()` calls `/image/latest` and `get_sequence()` calls
+  `/sequence`. The real path for the latter is `/sequence/state`, which returns
+  a nested container tree rather than the flat object every sensor reads.
+- `camera_capture` sends the exposure time as `time`, but the API reads
+  `duration`; `binning` and `filter_index` bind nothing at all, having no
+  equivalent parameters on the capture endpoint. `sequence_load` sends `path`
+  where the API reads `sequenceName`, which is a name from
+  `/sequence/list-available` and not a file path, so the service field is
+  wrong as well as the parameter.
+
+---
+
 ## [1.4.4] - 2026-09-03
 
 Published from this fork, which is now the maintained line — the original
