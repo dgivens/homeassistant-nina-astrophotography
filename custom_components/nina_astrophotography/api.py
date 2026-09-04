@@ -228,7 +228,7 @@ class NinaApiClient:
                                params={"calibrate": str(force_calibration).lower()})
 
     async def stop_guiding(self):
-        return await self._get("/equipment/guider/stop-guiding")
+        return await self._get("/equipment/guider/stop")
 
     async def dither(self):
         return await self._get("/equipment/guider/dither")
