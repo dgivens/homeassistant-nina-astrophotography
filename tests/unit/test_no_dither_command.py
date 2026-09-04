@@ -21,7 +21,7 @@ import yaml
 from nina_astrophotography.api import NinaApiClient
 
 COMPONENT = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[2]
     / "custom_components"
     / "nina_astrophotography"
 )

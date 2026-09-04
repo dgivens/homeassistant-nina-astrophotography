@@ -17,7 +17,7 @@ import ast
 from pathlib import Path
 
 SENSOR = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[2]
     / "custom_components"
     / "nina_astrophotography"
     / "sensor.py"
