@@ -82,7 +82,15 @@ def _collapse(path: str) -> str:
 
 
 def _observe(document: object, prefix: str = "") -> dict[str, set[str]]:
-    """Dotted path -> the set of JSON types seen at it."""
+    """Dotted path -> the set of JSON types seen at it.
+
+    A list ALWAYS records "list" at its own path, empty or not — Camera.Gains
+    is always [] and Mount.TrackingModes is a non-empty list of strings, and
+    both need the container fact recorded or a waiver naming either reads as
+    stale. A dict or list item keeps recursing; a scalar item (Mount.TrackingModes'
+    strings) matches neither branch below it, so it is recorded separately at
+    a synthetic `<path>[]` leaf rather than silently dropped.
+    """
     seen: dict[str, set[str]] = defaultdict(set)
     if isinstance(document, dict):
         if not document and prefix:
@@ -97,12 +105,14 @@ def _observe(document: object, prefix: str = "") -> dict[str, set[str]]:
             else:
                 seen[_collapse(path)].add(_type_name(value))
     elif isinstance(document, list):
-        if not document and prefix:
-            # Camera.Gains is always [] on this build — same trap.
+        if prefix:
             seen[_collapse(prefix)].add("list")
         for item in document:
-            for sub, types_ in _observe(item, prefix).items():
-                seen[sub] |= types_
+            if isinstance(item, (dict, list)):
+                for sub, types_ in _observe(item, prefix).items():
+                    seen[sub] |= types_
+            elif prefix:
+                seen[_collapse(f"{prefix}[]")].add(_type_name(item))
     return seen
 
 
@@ -115,7 +125,13 @@ def _corpus() -> dict[str, set[str]]:
         if not isinstance(document, dict):
             continue
         meta = document.pop("_meta", {})              # ours, not N.I.N.A.'s
-        prefix = _NAMESPACE.get(meta.get("endpoint", ""), "")
+        endpoint = meta.get("endpoint", "")
+        try:
+            prefix = _NAMESPACE[endpoint]
+        except KeyError:
+            raise KeyError(
+                f"{path.name}: endpoint {endpoint!r} has no _NAMESPACE entry"
+            ) from None
         for dotted, types_ in _observe(document.get("Response"), prefix).items():
             merged[dotted] |= types_
     return merged
@@ -150,6 +166,17 @@ def test_an_always_empty_container_is_still_observed() -> None:
     observed = _corpus()
     assert observed["Camera.Gains"] == {"list"}
     assert observed["Mount.TrackingRate"] == {"dict"}
+
+
+def test_a_scalar_list_item_is_recorded_at_a_bracket_leaf() -> None:
+    """A list of scalars (Mount.TrackingModes' strings) matches neither the
+    dict nor the list recursion branch, so without a dedicated leaf it is
+    silently dropped rather than merely under-typed."""
+    assert _observe({"Modes": ["Sidereal", "Lunar"], "Empty": []}, "Mount") == {
+        "Mount.Modes": {"list"},
+        "Mount.Modes[]": {"str"},
+        "Mount.Empty": {"list"},
+    }
 
 
 def test_observed_wire_shape_matches_snapshot(snapshot) -> None:
