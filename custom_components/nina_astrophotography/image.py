@@ -60,12 +60,13 @@ class NinaLatestImageEntity(ImageEntity):
             "model": "Advanced API v2",
         }
         self._image_bytes: bytes | None = None
-        # HA renders image_last_updated as the entity state, so it must be
-        # timezone-aware or the frontend reads it as local time.
-        self._last_updated: datetime = dt_util.utcnow()
+        # None until a frame actually arrives. Home Assistant renders this as
+        # the entity state, so seeding it with the current time reports the
+        # moment the integration loaded as the moment a frame was captured.
+        self._last_updated: datetime | None = None
 
     @property
-    def image_last_updated(self) -> datetime:
+    def image_last_updated(self) -> datetime | None:
         return self._last_updated
 
     async def async_image(self) -> bytes | None:
@@ -95,7 +96,10 @@ class NinaLatestImageEntity(ImageEntity):
             self._unsubscribe = None
 
     def _mark_updated(self) -> None:
-        """A new frame was saved; bump the timestamp so frontends refetch."""
+        """A new frame was saved; bump the timestamp so frontends refetch.
+
+        Timezone-aware, because the frontend reads a naive value as local time.
+        """
         self._last_updated = dt_util.utcnow()
         self.async_write_ha_state()
 
