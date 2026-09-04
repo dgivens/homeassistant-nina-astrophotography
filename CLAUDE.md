@@ -10,13 +10,21 @@ behaviour that are expensive to rediscover.
 ## Commands
 
 ```bash
-pip install -r requirements_test.txt
-pytest                                   # 69 tests, ~0.2s — no Home Assistant needed
-pytest tests/test_api_envelope.py -v     # one file
+uv sync                                  # installs the `test` group only — no Home Assistant
+uv run pytest                            # fast: well under a second
+uv run pytest tests/test_api_envelope.py -v
 ```
 
-No linter, formatter or CI is configured yet. `pytest.ini` puts `tests/` on
-`sys.path`, so helpers import as `from helpers import ...`.
+Dependencies and pytest config live in `pyproject.toml`; there is no
+`requirements*.txt` and no `pytest.ini`. Groups: `test` (lean, HA-free),
+`test-ha` (`pytest-homeassistant-custom-component`, pinned — add with
+`uv sync --group test-ha`), `dev` (schema generator, hypothesis).
+
+**Keep `uv sync` free of Home Assistant.** That is what makes the fast suite
+fast, and the modules it covers have no `homeassistant` imports.
+
+`pythonpath = ["tests"]` means helpers import as `from helpers import ...`.
+No linter, formatter or CI is configured yet.
 
 ## Layout (current)
 
@@ -37,7 +45,7 @@ tests/                                         flat; no HA import
 
 ## Branches
 
-- `main` — the shipping line
+- `main` — the shipping line, at 1.4.5
 - **`wip/v2.0` — a read-only reference. Never merge or rebase it.** It predates
   every fix on `main` and has no tests; its value is the API audit in its
   CHANGELOG and README, which `docs/v2.0-design.md` supersedes.
