@@ -1,20 +1,19 @@
 """Button entities for N.I.N.A. Astrophotography – one-shot action triggers."""
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .api import NinaApiClient
+from .api import NinaApiClient, NinaApiError, NinaConnectionError
 from .const import DOMAIN
 from .coordinator import NinaDataCoordinator
 
-_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -132,10 +131,10 @@ class NinaButton(ButtonEntity):
         if self.entity_description.press_fn:
             try:
                 await self.entity_description.press_fn(self._client)
-            except Exception as exc:  # noqa: BLE001
-                _LOGGER.error(
-                    "Button %s failed: %s", self.entity_description.key, exc
-                )
+            except (NinaApiError, NinaConnectionError) as exc:
+                raise HomeAssistantError(
+                    f"{self.entity_description.name} failed: {exc}"
+                ) from exc
 
 
 async def async_setup_entry(
