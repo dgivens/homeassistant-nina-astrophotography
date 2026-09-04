@@ -224,8 +224,8 @@ class NinaApiClient:
         return await self._get("/equipment/guider/disconnect")
 
     async def start_guiding(self, force_calibration=False):
-        return await self._get("/equipment/guider/start-guiding",
-                               params={"forceCalibration": str(force_calibration).lower()})
+        return await self._get("/equipment/guider/start",
+                               params={"calibrate": str(force_calibration).lower()})
 
     async def stop_guiding(self):
         return await self._get("/equipment/guider/stop-guiding")
