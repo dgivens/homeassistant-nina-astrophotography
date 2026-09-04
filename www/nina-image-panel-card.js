@@ -6,8 +6,8 @@
  * and histogram visualisation.
  *
  * API endpoints used:
- *   GET /v2/api/image?index=0&stream=true           → latest image (JPEG stream)
- *   GET /v2/api/image?index=N&stream=true           → Nth image from history
+ *   GET /v2/api/image/0?stream=true                 → latest image (JPEG stream)
+ *   GET /v2/api/image/N?stream=true                 → Nth image from history
  *   GET /v2/api/image-history?all=true              → image history metadata
  *
  * Reads HA sensors for the overlay:
@@ -381,13 +381,13 @@ class NinaImagePanelCard extends HTMLElement {
 
   _imageUrl(index, forStrip = false) {
     const cfg = this._config;
+    // The index is a path segment: /image is not a route, /image/{index} is.
     const params = new URLSearchParams({
-      index: String(index),
       stream: "true",
       quality: forStrip ? "40" : String(cfg.quality),
       ...(cfg.stretch ? { autoPrepare: "true" } : {}),
     });
-    return `${this._apiBase}/image?${params}`;
+    return `${this._apiBase}/image/${index}?${params}`;
   }
 
   async _loadImage(index, silent = false) {

@@ -22,3 +22,9 @@ assert CARDS, "no cards found"
 def test_no_card_asks_for_the_stretch_by_the_wrong_name(card: Path) -> None:
     """`useAutoStretch` is not a parameter on /image/{index}; `autoPrepare` is."""
     assert "useAutoStretch" not in card.read_text()
+
+
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
+def test_no_card_puts_the_image_index_in_the_query_string(card: Path) -> None:
+    """/image is not a route — the index is a path segment, /image/{index}."""
+    assert "/image?" not in card.read_text()
