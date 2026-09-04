@@ -1,12 +1,12 @@
 """Select entities for N.I.N.A. Astrophotography – filter wheel and tracking mode."""
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -14,9 +14,17 @@ from .api import NinaApiClient
 from .const import DOMAIN, TrackingMode
 from .coordinator import NinaDataCoordinator
 
-_LOGGER = logging.getLogger(__name__)
-
 TRACKING_RATES = [m.label for m in TrackingMode]
+
+
+def _filter_name(index: int, f: dict) -> str:
+    """Name a filter for the dropdown.
+
+    The lookup in async_select_option uses this too: an unnamed filter is
+    offered as "Filter 0", so matching on the raw Name would reject the very
+    option the entity produced.
+    """
+    return f.get("Name") or f"Filter {index}"
 
 
 def _safe(data: dict, *keys: str, default=None):
@@ -63,7 +71,7 @@ class NinaFilterSelect(CoordinatorEntity[NinaDataCoordinator], SelectEntity):
         filters = self._filters()
         if not filters:
             return ["—"]
-        return [f.get("Name", f"Filter {i}") for i, f in enumerate(filters)]
+        return [_filter_name(i, f) for i, f in enumerate(filters)]
 
     @property
     def current_option(self) -> str | None:
@@ -87,13 +95,14 @@ class NinaFilterSelect(CoordinatorEntity[NinaDataCoordinator], SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         """Change to the named filter."""
-        filters = self._filters()
-        for i, f in enumerate(filters):
-            if f.get("Name") == option:
+        for i, f in enumerate(self._filters()):
+            if _filter_name(i, f) == option:
                 await self._client.change_filter(i)
                 await self.coordinator.async_request_refresh()
                 return
-        _LOGGER.warning("Filter '%s' not found in filter wheel", option)
+        raise ServiceValidationError(
+            f"No filter named '{option}' in the wheel; have: {', '.join(self.options)}"
+        )
 
     @property
     def available(self) -> bool:
