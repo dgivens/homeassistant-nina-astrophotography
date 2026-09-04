@@ -55,6 +55,9 @@ pythonpath = ["tests", "."]
 # No testpaths: `pytest` with no argument must not mix the two suites. The unit
 # suite runs HA-free, the ha suite runs under PHACC, and loading PHACC's
 # pytest11 entry point imports Home Assistant before collection.
+markers = [
+    "slow: shells out to a generator; deselect with -m 'not slow'",
+]
 
 [tool.coverage.run]
 branch = true
