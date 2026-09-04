@@ -1,0 +1,299 @@
+{
+  "Response": {
+    "Camera": {
+      "TargetTemp": 0,
+      "AtTargetTemp": false,
+      "CanSetTemperature": true,
+      "HasShutter": false,
+      "Temperature": 35,
+      "Gain": 100,
+      "DefaultGain": 100,
+      "ElectronsPerADU": 0.24286292493343353,
+      "BinX": 1,
+      "BitDepth": 16,
+      "BinY": 1,
+      "CanSetOffset": true,
+      "CanGetGain": true,
+      "OffsetMin": 0,
+      "OffsetMax": 240,
+      "Offset": 50,
+      "DefaultOffset": 50,
+      "USBLimit": 100,
+      "IsSubSampleEnabled": false,
+      "CameraState": "Idle",
+      "XSize": 6248,
+      "YSize": 4176,
+      "PixelSize": 3.76,
+      "HasBattery": false,
+      "Battery": -1,
+      "GainMin": -25,
+      "GainMax": 700,
+      "CanSetGain": true,
+      "Gains": [],
+      "CoolerOn": false,
+      "CoolerPower": 0,
+      "HasDewHeater": true,
+      "DewHeaterOn": false,
+      "CanSubSample": true,
+      "SubSampleX": 0,
+      "SubSampleY": 0,
+      "SubSampleWidth": 6248,
+      "SubSampleHeight": 4176,
+      "TemperatureSetPoint": 20,
+      "ReadoutModes": [
+        "Default"
+      ],
+      "ReadoutMode": 0,
+      "ReadoutModeForSnapImages": 0,
+      "ReadoutModeForNormalImages": 0,
+      "IsExposing": false,
+      "ExposureEndTime": "2026-09-04T10:59:39.1249581-05:00",
+      "LastDownloadTime": -1,
+      "SensorType": "Monochrome",
+      "BayerOffsetX": 0,
+      "BayerOffsetY": 0,
+      "BinningModes": [
+        {
+          "Name": "1x1",
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "Name": "2x2",
+          "X": 2,
+          "Y": 2
+        },
+        {
+          "Name": "3x3",
+          "X": 3,
+          "Y": 3
+        },
+        {
+          "Name": "4x4",
+          "X": 4,
+          "Y": 4
+        }
+      ],
+      "ExposureMax": 2000,
+      "ExposureMin": 3.2e-05,
+      "LiveViewEnabled": false,
+      "CanShowLiveView": false,
+      "SupportedActions": [],
+      "CanSetUSBLimit": true,
+      "USBLimitMin": 40,
+      "USBLimitMax": 100,
+      "Connected": true,
+      "Name": "ZWO ASI2600MM Pro",
+      "DisplayName": "ZWO ASI2600MM Pro",
+      "DeviceId": "device-01"
+    },
+    "Dome": {
+      "IsFollowing": false,
+      "IsSynchronized": false,
+      "FollowingType": "Off",
+      "AzimuthDMS": "",
+      "AltitudeDMS": "",
+      "ShutterStatus": "ShutterNone",
+      "DriverCanFollow": false,
+      "CanSetShutter": false,
+      "CanSetPark": false,
+      "CanSetAzimuth": false,
+      "CanSyncAzimuth": false,
+      "CanPark": false,
+      "CanFindHome": false,
+      "AtPark": false,
+      "AtHome": false,
+      "DriverFollowing": false,
+      "ApplicationFollowing": false,
+      "Slewing": false,
+      "Azimuth": "NaN",
+      "Altitude": "NaN",
+      "SupportedActions": [],
+      "Connected": false
+    },
+    "FilterWheel": {
+      "Connected": false,
+      "IsMoving": false,
+      "AvailableFilters": [
+        {
+          "Name": "L",
+          "Id": 0
+        },
+        {
+          "Name": "R",
+          "Id": 1
+        },
+        {
+          "Name": "G",
+          "Id": 2
+        },
+        {
+          "Name": "B",
+          "Id": 3
+        },
+        {
+          "Name": "H",
+          "Id": 4
+        },
+        {
+          "Name": "O",
+          "Id": 5
+        },
+        {
+          "Name": "S",
+          "Id": 6
+        }
+      ]
+    },
+    "FlatDevice": {
+      "CoverState": "Closed",
+      "LocalizedCoverState": "Closed",
+      "LocalizedLightOnState": "Off",
+      "LightOn": false,
+      "Brightness": 0,
+      "SupportsOpenClose": true,
+      "MinBrightness": 0,
+      "MaxBrightness": 4096,
+      "SupportsOnOff": true,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "ASCOM DeepSkyDad FP",
+      "DisplayName": "ASCOM DeepSkyDad FP (ASCOM)",
+      "Description": "Deep Sky Dad FP (1)",
+      "DriverInfo": "Information about the driver itself. Version: 1.0",
+      "DriverVersion": "1.0",
+      "DeviceId": "device-03"
+    },
+    "Focuser": {
+      "Position": 0,
+      "StepSize": 0,
+      "Temperature": "NaN",
+      "IsMoving": false,
+      "IsSettling": false,
+      "TempComp": false,
+      "TempCompAvailable": false,
+      "Connected": false
+    },
+    "Guider": {
+      "Connected": false,
+      "CanClearCalibration": false,
+      "CanSetShiftRate": false,
+      "CanGetLockPosition": false,
+      "PixelScale": 0
+    },
+    "Mount": {
+      "SiderealTime": 0,
+      "RightAscension": 0,
+      "Declination": 0,
+      "SiteLatitude": 0,
+      "SiteLongitude": 0,
+      "SiteElevation": 0,
+      "TimeToMeridianFlip": 0,
+      "SideOfPier": "REDACTED",
+      "Altitude": "NaN",
+      "AltitudeString": "",
+      "Azimuth": "NaN",
+      "AzimuthString": "",
+      "AtPark": false,
+      "TrackingRate": {},
+      "TrackingEnabled": false,
+      "AtHome": false,
+      "CanFindHome": false,
+      "CanPark": false,
+      "CanSetPark": false,
+      "CanSetTrackingEnabled": false,
+      "CanSetDeclinationRate": false,
+      "CanSetRightAscensionRate": false,
+      "EquatorialSystem": "JNOW",
+      "HasUnknownEpoch": false,
+      "Slewing": false,
+      "GuideRateRightAscensionArcsecPerSec": 0,
+      "GuideRateDeclinationArcsecPerSec": 0,
+      "CanMovePrimaryAxis": false,
+      "CanMoveSecondaryAxis": false,
+      "AlignmentMode": "AltAz",
+      "CanPulseGuide": false,
+      "IsPulseGuiding": false,
+      "CanSetPierSide": false,
+      "CanSlew": false,
+      "CanSlewAltAz": false,
+      "UTCDate": "0001-01-01T00:00:00",
+      "Connected": false
+    },
+    "Rotator": {
+      "CanReverse": false,
+      "Reverse": false,
+      "MechanicalPosition": 0,
+      "Position": 0,
+      "StepSize": 0,
+      "IsMoving": false,
+      "Synced": false,
+      "Connected": false
+    },
+    "SafetyMonitor": {
+      "IsSafe": false,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Safety Monitor",
+      "DisplayName": "Safety Monitor (ASCOM)",
+      "Description": "REDACTED",
+      "DriverInfo": "Safety Monitor Driver",
+      "DriverVersion": "0.5.0",
+      "DeviceId": "device-07"
+    },
+    "Switch": {
+      "WritableSwitches": [
+        {
+          "Maximum": 1,
+          "Minimum": 0,
+          "StepSize": 1,
+          "TargetValue": 1,
+          "Id": 0,
+          "Name": "Flat Panel",
+          "Description": "REDACTED",
+          "Value": 1
+        },
+        {
+          "Maximum": 1,
+          "Minimum": 0,
+          "StepSize": 1,
+          "TargetValue": 1,
+          "Id": 1,
+          "Name": "OTA",
+          "Description": "REDACTED",
+          "Value": 1
+        }
+      ],
+      "ReadonlySwitches": [],
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Home Assistant",
+      "DisplayName": "Home Assistant",
+      "Description": "Bridges Home Assistant entities to a NINA switch device.",
+      "DriverInfo": "Home Assistant REST/WebSocket bridge",
+      "DriverVersion": "1.0.0",
+      "DeviceId": "device-08"
+    },
+    "WeatherData": {
+      "AveragePeriod": "NaN",
+      "CloudCover": "NaN",
+      "DewPoint": "NaN",
+      "Humidity": "NaN",
+      "Pressure": "NaN",
+      "RainRate": "NaN",
+      "SkyBrightness": "NaN",
+      "SkyQuality": "NaN",
+      "SkyTemperature": "NaN",
+      "StarFWHM": "NaN",
+      "Temperature": "NaN",
+      "WindDirection": "NaN",
+      "WindGust": "NaN",
+      "WindSpeed": "NaN",
+      "Connected": false
+    }
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}

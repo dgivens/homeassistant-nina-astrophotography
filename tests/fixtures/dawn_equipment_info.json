@@ -1,0 +1,374 @@
+{
+  "Response": {
+    "Camera": {
+      "TargetTemp": 0,
+      "AtTargetTemp": false,
+      "CanSetTemperature": true,
+      "HasShutter": false,
+      "Temperature": 32,
+      "Gain": 100,
+      "DefaultGain": 100,
+      "ElectronsPerADU": 0.24286292493343353,
+      "BinX": 1,
+      "BitDepth": 16,
+      "BinY": 1,
+      "CanSetOffset": true,
+      "CanGetGain": true,
+      "OffsetMin": 0,
+      "OffsetMax": 240,
+      "Offset": 50,
+      "DefaultOffset": 50,
+      "USBLimit": 100,
+      "IsSubSampleEnabled": false,
+      "CameraState": "Idle",
+      "XSize": 6248,
+      "YSize": 4176,
+      "PixelSize": 3.76,
+      "HasBattery": false,
+      "Battery": -1,
+      "GainMin": -25,
+      "GainMax": 700,
+      "CanSetGain": true,
+      "Gains": [],
+      "CoolerOn": false,
+      "CoolerPower": 0,
+      "HasDewHeater": true,
+      "DewHeaterOn": false,
+      "CanSubSample": true,
+      "SubSampleX": 0,
+      "SubSampleY": 0,
+      "SubSampleWidth": 6248,
+      "SubSampleHeight": 4176,
+      "TemperatureSetPoint": 20,
+      "ReadoutModes": [
+        "Default"
+      ],
+      "ReadoutMode": 0,
+      "ReadoutModeForSnapImages": 0,
+      "ReadoutModeForNormalImages": 0,
+      "IsExposing": false,
+      "ExposureEndTime": "2026-09-04T07:04:56.8891842-05:00",
+      "LastDownloadTime": 3.0183894,
+      "SensorType": "Monochrome",
+      "BayerOffsetX": 0,
+      "BayerOffsetY": 0,
+      "BinningModes": [
+        {
+          "Name": "1x1",
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "Name": "2x2",
+          "X": 2,
+          "Y": 2
+        },
+        {
+          "Name": "3x3",
+          "X": 3,
+          "Y": 3
+        },
+        {
+          "Name": "4x4",
+          "X": 4,
+          "Y": 4
+        }
+      ],
+      "ExposureMax": 2000,
+      "ExposureMin": 3.2e-05,
+      "LiveViewEnabled": false,
+      "CanShowLiveView": false,
+      "SupportedActions": [],
+      "CanSetUSBLimit": true,
+      "USBLimitMin": 40,
+      "USBLimitMax": 100,
+      "Connected": true,
+      "Name": "ZWO ASI2600MM Pro",
+      "DisplayName": "ZWO ASI2600MM Pro",
+      "DeviceId": "device-01"
+    },
+    "Dome": {
+      "IsFollowing": false,
+      "IsSynchronized": false,
+      "FollowingType": "Off",
+      "AzimuthDMS": "",
+      "AltitudeDMS": "",
+      "ShutterStatus": "ShutterNone",
+      "DriverCanFollow": false,
+      "CanSetShutter": false,
+      "CanSetPark": false,
+      "CanSetAzimuth": false,
+      "CanSyncAzimuth": false,
+      "CanPark": false,
+      "CanFindHome": false,
+      "AtPark": false,
+      "AtHome": false,
+      "DriverFollowing": false,
+      "ApplicationFollowing": false,
+      "Slewing": false,
+      "Azimuth": "NaN",
+      "Altitude": "NaN",
+      "SupportedActions": [],
+      "Connected": false
+    },
+    "FilterWheel": {
+      "Connected": true,
+      "Name": "EFW",
+      "DisplayName": "EFW",
+      "Description": "Native driver for ZWOptical filter wheels",
+      "DriverInfo": "SDK: 1, 7; FW: 4.0.4",
+      "DriverVersion": "1.0",
+      "DeviceId": "device-02",
+      "SupportedActions": [],
+      "IsMoving": false,
+      "SelectedFilter": {
+        "Name": "R",
+        "Id": 1
+      },
+      "AvailableFilters": [
+        {
+          "Name": "L",
+          "Id": 0
+        },
+        {
+          "Name": "R",
+          "Id": 1
+        },
+        {
+          "Name": "G",
+          "Id": 2
+        },
+        {
+          "Name": "B",
+          "Id": 3
+        },
+        {
+          "Name": "H",
+          "Id": 4
+        },
+        {
+          "Name": "O",
+          "Id": 5
+        },
+        {
+          "Name": "S",
+          "Id": 6
+        }
+      ]
+    },
+    "FlatDevice": {
+      "CoverState": "Closed",
+      "LocalizedCoverState": "Closed",
+      "LocalizedLightOnState": "Off",
+      "LightOn": false,
+      "Brightness": 0,
+      "SupportsOpenClose": true,
+      "MinBrightness": 0,
+      "MaxBrightness": 4096,
+      "SupportsOnOff": true,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "ASCOM DeepSkyDad FP",
+      "DisplayName": "ASCOM DeepSkyDad FP (ASCOM)",
+      "Description": "Deep Sky Dad FP (1)",
+      "DriverInfo": "Information about the driver itself. Version: 1.0",
+      "DriverVersion": "1.0",
+      "DeviceId": "device-03"
+    },
+    "Focuser": {
+      "Position": 2332,
+      "StepSize": 100,
+      "Temperature": 27.9,
+      "IsMoving": false,
+      "IsSettling": false,
+      "TempComp": false,
+      "TempCompAvailable": false,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "ASCOM.ToupTek.AAF1",
+      "DisplayName": "ASCOM.ToupTek.AAF1 (ASCOM)",
+      "Description": "ASCOM ToupTek AAF 1",
+      "DriverInfo": "ASCOM ToupTek AAF 1 6.5.29798.20251020",
+      "DriverVersion": "6.5",
+      "DeviceId": "device-04"
+    },
+    "Guider": {
+      "Connected": false,
+      "CanClearCalibration": false,
+      "CanSetShiftRate": false,
+      "CanGetLockPosition": false,
+      "PixelScale": 0,
+      "LastGuideStep": {
+        "RADistanceRaw": -0.204,
+        "DECDistanceRaw": -0.089,
+        "RADuration": 24,
+        "DECDuration": 0
+      }
+    },
+    "Mount": {
+      "TrackingMode": "Stopped",
+      "SiderealTime": 5.476111111111111,
+      "RightAscension": 11.476111111111111,
+      "Declination": 90,
+      "SiteLatitude": 0,
+      "SiteLongitude": 0,
+      "SiteElevation": 0,
+      "RightAscensionString": "11:28:34",
+      "DeclinationString": "90\u00b0 00' 00\"",
+      "Coordinates": {
+        "RA": 11.476111111111111,
+        "RAString": "11:28:34",
+        "RADegrees": 172.14166666666665,
+        "Dec": 90,
+        "DecString": "90\u00b0 00' 00\"",
+        "Epoch": "JNOW",
+        "DateTime": {
+          "Now": "2026-09-04T08:11:22.6564893-05:00",
+          "UtcNow": "2026-09-04T13:11:22.6564904Z"
+        }
+      },
+      "TimeToMeridianFlip": 24,
+      "SideOfPier": "REDACTED",
+      "Altitude": 31.547777777777778,
+      "AltitudeString": "31\u00b0 32' 52\"",
+      "Azimuth": 0,
+      "AzimuthString": "00\u00b0 00' 00\"",
+      "SiderealTimeString": "05:28:34",
+      "HoursToMeridianString": "24:00:00",
+      "AtPark": false,
+      "TrackingRate": {},
+      "TrackingEnabled": false,
+      "TrackingModes": [
+        "Sidereal",
+        "Lunar",
+        "Solar",
+        "Stopped"
+      ],
+      "AtHome": true,
+      "CanFindHome": true,
+      "CanPark": true,
+      "CanSetPark": true,
+      "CanSetTrackingEnabled": true,
+      "CanSetDeclinationRate": false,
+      "CanSetRightAscensionRate": false,
+      "EquatorialSystem": "JNOW",
+      "HasUnknownEpoch": false,
+      "TimeToMeridianFlipString": "24:00:00",
+      "Slewing": false,
+      "GuideRateRightAscensionArcsecPerSec": 13.5369756,
+      "GuideRateDeclinationArcsecPerSec": 13.5369756,
+      "CanMovePrimaryAxis": true,
+      "CanMoveSecondaryAxis": true,
+      "PrimaryAxisRates": [
+        {}
+      ],
+      "SecondaryAxisRates": [
+        {}
+      ],
+      "SupportedActions": [
+        "ShutdownIfIdle",
+        "BeginShutdown"
+      ],
+      "AlignmentMode": "GermanPolar",
+      "CanPulseGuide": true,
+      "IsPulseGuiding": false,
+      "CanSetPierSide": false,
+      "CanSlew": true,
+      "CanSlewAltAz": false,
+      "UTCDate": "2026-09-04T13:11:24",
+      "Connected": true,
+      "Name": "ASI Mount",
+      "DisplayName": "ASI Mount (ASCOM)",
+      "DeviceId": "device-05"
+    },
+    "Rotator": {
+      "CanReverse": true,
+      "Reverse": false,
+      "MechanicalPosition": 53.86,
+      "Position": 334.67316,
+      "StepSize": 0,
+      "IsMoving": false,
+      "Synced": true,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "ZWO CAA",
+      "DisplayName": "ZWO CAA (ASCOM)",
+      "Description": "ZWO CAA",
+      "DriverInfo": "Information about the driver itself. Version: 6.5",
+      "DriverVersion": "6.5",
+      "DeviceId": "device-06"
+    },
+    "SafetyMonitor": {
+      "IsSafe": false,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Safety Monitor",
+      "DisplayName": "Safety Monitor (ASCOM)",
+      "Description": "REDACTED",
+      "DriverInfo": "Safety Monitor Driver",
+      "DriverVersion": "0.5.0",
+      "DeviceId": "device-07"
+    },
+    "Switch": {
+      "WritableSwitches": [
+        {
+          "Maximum": 1,
+          "Minimum": 0,
+          "StepSize": 1,
+          "TargetValue": 1,
+          "Id": 0,
+          "Name": "Flat Panel",
+          "Description": "REDACTED",
+          "Value": 1
+        },
+        {
+          "Maximum": 1,
+          "Minimum": 0,
+          "StepSize": 1,
+          "TargetValue": 1,
+          "Id": 1,
+          "Name": "OTA",
+          "Description": "REDACTED",
+          "Value": 1
+        }
+      ],
+      "ReadonlySwitches": [],
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Home Assistant",
+      "DisplayName": "Home Assistant",
+      "Description": "Bridges Home Assistant entities to a NINA switch device.",
+      "DriverInfo": "Home Assistant REST/WebSocket bridge",
+      "DriverVersion": "1.0.0",
+      "DeviceId": "device-08"
+    },
+    "WeatherData": {
+      "AveragePeriod": 0,
+      "CloudCover": "NaN",
+      "DewPoint": 21.5,
+      "Humidity": 75,
+      "Pressure": 960.9,
+      "RainRate": 0,
+      "SkyBrightness": 5692,
+      "SkyQuality": "NaN",
+      "SkyTemperature": 10.8,
+      "StarFWHM": "NaN",
+      "Temperature": 26.3,
+      "WindDirection": 154,
+      "WindGust": 1.9,
+      "WindSpeed": 1.2,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Safety Monitor",
+      "DisplayName": "Safety Monitor (ASCOM)",
+      "Description": "REDACTED",
+      "DriverInfo": "Observing Conditions Driver",
+      "DriverVersion": "0.5.0",
+      "DeviceId": "device-09"
+    }
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}

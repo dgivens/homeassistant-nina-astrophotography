@@ -1,0 +1,66 @@
+{
+  "Response": [
+    {
+      "Time": "2026-09-04T10:59:27.0493321-05:00",
+      "Event": "SAFETY-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T10:59:28.8524508-05:00",
+      "Event": "SAFETY-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T10:59:30.8652178-05:00",
+      "Event": "SWITCH-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T10:59:30.9707627-05:00",
+      "Event": "SWITCH-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T10:59:38.4640729-05:00",
+      "Event": "CAMERA-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T10:59:39.1493152-05:00",
+      "Event": "CAMERA-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T10:59:43.4238194-05:00",
+      "Event": "FLAT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T10:59:45.4776886-05:00",
+      "Event": "FLAT-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T11:01:17.5850945-05:00",
+      "Event": "FLAT-LIGHT-TOGGLED"
+    },
+    {
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "Time": "2026-09-04T11:01:37.5870756-05:00",
+      "Previous": 4096,
+      "New": 255
+    },
+    {
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "Time": "2026-09-04T11:01:39.5806699-05:00",
+      "Previous": 512,
+      "New": 4096
+    },
+    {
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "Time": "2026-09-04T11:01:41.6877759-05:00",
+      "Previous": 255,
+      "New": 4096
+    },
+    {
+      "Time": "2026-09-04T11:01:55.5896928-05:00",
+      "Event": "FLAT-LIGHT-TOGGLED"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}

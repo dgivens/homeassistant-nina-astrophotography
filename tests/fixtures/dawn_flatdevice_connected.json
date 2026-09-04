@@ -1,0 +1,25 @@
+{
+  "Response": {
+    "CoverState": "Closed",
+    "LocalizedCoverState": "Closed",
+    "LocalizedLightOnState": "Off",
+    "LightOn": false,
+    "Brightness": 0,
+    "SupportsOpenClose": true,
+    "MinBrightness": 0,
+    "MaxBrightness": 4096,
+    "SupportsOnOff": true,
+    "SupportedActions": [],
+    "Connected": true,
+    "Name": "ASCOM DeepSkyDad FP",
+    "DisplayName": "ASCOM DeepSkyDad FP (ASCOM)",
+    "Description": "Deep Sky Dad FP (1)",
+    "DriverInfo": "Information about the driver itself. Version: 1.0",
+    "DriverVersion": "1.0",
+    "DeviceId": "device-03"
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}

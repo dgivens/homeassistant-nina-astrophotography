@@ -1,0 +1,11 @@
+{
+  "Response": {
+    "State": "Finished",
+    "TotalIterations": -1,
+    "CompletedIterations": -1
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}

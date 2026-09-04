@@ -1,0 +1,4020 @@
+{
+  "Response": [
+    {
+      "Time": "2026-09-03T19:41:26.3673848-05:00",
+      "Event": "SAFETY-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T19:41:28.4057436-05:00",
+      "Event": "SAFETY-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T19:41:30.4266648-05:00",
+      "Event": "SWITCH-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T19:41:30.5409551-05:00",
+      "Event": "SWITCH-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:04.415476-05:00",
+      "Event": "SAFETY-CHANGED",
+      "IsSafe": true
+    },
+    {
+      "Time": "2026-09-03T21:06:09.5721046-05:00",
+      "Event": "CAMERA-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:10.2911361-05:00",
+      "Event": "CAMERA-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:13.8929657-05:00",
+      "Event": "FILTERWHEEL-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:14.7004552-05:00",
+      "Event": "FILTERWHEEL-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:15.6327185-05:00",
+      "Event": "FLAT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:16.725456-05:00",
+      "Event": "FOCUSER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:17.2327727-05:00",
+      "Event": "FOCUSER-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:17.7311642-05:00",
+      "Event": "FLAT-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:19.2805816-05:00",
+      "Event": "ROTATOR-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:20.6102429-05:00",
+      "Event": "ROTATOR-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:22.6527417-05:00",
+      "Event": "WEATHER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:23.1778937-05:00",
+      "Event": "WEATHER-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:23.2302119-05:00",
+      "Event": "GUIDER-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:25.2709948-05:00",
+      "Event": "MOUNT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:25.8762141-05:00",
+      "Event": "MOUNT-CONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:31.8726204-05:00",
+      "Event": "FLAT-COVER-OPENED"
+    },
+    {
+      "Time": "2026-09-03T21:06:32.3152971-05:00",
+      "Event": "FLAT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-03T21:06:38.1473945-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-03T21:06:38.1787369-05:00",
+      "Event": "STACK-STATUS",
+      "Status": "Running"
+    },
+    {
+      "Time": "2026-09-03T21:06:38.3217932-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-03T21:07:17.2066548-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.5690353629516833,
+      "Position": 2440
+    },
+    {
+      "Time": "2026-09-03T21:07:39.1408254-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.581895386591401,
+      "Position": 2405
+    },
+    {
+      "Time": "2026-09-03T21:08:01.2654993-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.362964135065027,
+      "Position": 2370
+    },
+    {
+      "Time": "2026-09-03T21:08:23.1230239-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.233672009659785,
+      "Position": 2335
+    },
+    {
+      "Time": "2026-09-03T21:08:47.2984644-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.246391890872465,
+      "Position": 2300
+    },
+    {
+      "Time": "2026-09-03T21:09:09.3251005-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.7614883567065391,
+      "Position": 2475
+    },
+    {
+      "Time": "2026-09-03T21:09:31.160851-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.379930815305824,
+      "Position": 2510
+    },
+    {
+      "Time": "2026-09-03T21:09:51.4029038-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.453072320989224,
+      "Position": 2545
+    },
+    {
+      "Time": "2026-09-03T21:10:11.1574846-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.437697393017682,
+      "Position": 2580
+    },
+    {
+      "Time": "2026-09-03T21:10:35.3236411-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:15:32.7848473",
+      "Event": "TS-NEWTARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:15:32.7914606",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-03T21:15:48.9769097-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Time": "2026-09-03T21:15:56.634796-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 168.81,
+      "From": 136.83
+    },
+    {
+      "Time": "2026-09-03T21:16:00.030697-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Time": "2026-09-03T21:16:29.26289-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:16:42.8842417-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T21:26:56.6584856-05:00"
+    },
+    {
+      "StackCount": 1,
+      "Target": "Lobster & Bubble",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T21:26:58.0641937-05:00",
+      "Filter": "O"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:26:59.5921737",
+      "Event": "TS-NEWTARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "Wizard Nebula"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:26:59.5928397",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "Wizard Nebula"
+    },
+    {
+      "Time": "2026-09-03T21:27:00.6607293-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T21:27:13.2676117-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:27:21.2738319-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:27:21.2779477-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Time": "2026-09-03T21:27:31.2400643-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:27:39.280297-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:27:52.4414693-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T21:27:54.4559909-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T21:28:13.2935939-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T21:28:13.2952584-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:28:13.2988909-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T21:33:29.0597982-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:33:30.0502474",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "Wizard Nebula"
+    },
+    {
+      "Time": "2026-09-03T21:33:30.0597145-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "StackCount": 1,
+      "Target": "Wizard Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T21:33:30.3353046-05:00",
+      "Filter": "R"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T21:38:45.2315559-05:00"
+    },
+    {
+      "StackCount": 2,
+      "Target": "Wizard Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T21:38:46.456429-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:38:50.9351801",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "Wizard Nebula"
+    },
+    {
+      "Time": "2026-09-03T21:39:04.1157174-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T21:39:04.1209096-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T21:44:18.907913-05:00"
+    },
+    {
+      "StackCount": 3,
+      "Target": "Wizard Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T21:44:20.1406146-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:44:22.85483",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "Wizard Nebula"
+    },
+    {
+      "Time": "2026-09-03T21:44:22.8814692-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T21:44:22.9798221-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-03T21:44:25.0099437-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T21:44:31.2653769-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:45:09.2680022-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 9.77484180946625,
+      "Position": 2587
+    },
+    {
+      "Time": "2026-09-03T21:45:31.3040634-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.773125880843061,
+      "Position": 2552
+    },
+    {
+      "Time": "2026-09-03T21:45:53.2201009-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.832869651464404,
+      "Position": 2517
+    },
+    {
+      "Time": "2026-09-03T21:46:15.2863283-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.8242620054845418,
+      "Position": 2482
+    },
+    {
+      "Time": "2026-09-03T21:46:39.2904592-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.035572201570704,
+      "Position": 2447
+    },
+    {
+      "Time": "2026-09-03T21:47:03.4784301-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.45311182222762,
+      "Position": 2412
+    },
+    {
+      "Time": "2026-09-03T21:47:27.3036045-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.0266793354494292,
+      "Position": 2377
+    },
+    {
+      "Time": "2026-09-03T21:47:51.5156669-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.6804376097061144,
+      "Position": 2342
+    },
+    {
+      "Time": "2026-09-03T21:48:13.263803-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.4594410676349705,
+      "Position": 2307
+    },
+    {
+      "Time": "2026-09-03T21:48:35.1742596-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.37232043904261,
+      "Position": 2272
+    },
+    {
+      "Time": "2026-09-03T21:48:57.3045232-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Time": "2026-09-03T21:49:01.307637-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T21:49:15.0595398-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T21:54:26.9349",
+      "Event": "ERROR-PLATESOLVE"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T21:54:30.9851603-05:00"
+    },
+    {
+      "StackCount": 4,
+      "Target": "Wizard Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T21:54:31.9689462-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 90,
+      "Time": "2026-09-04T02:54:36.515328",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "Wizard Nebula"
+    },
+    {
+      "Time": "2026-09-03T21:54:48.7029746-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T21:54:48.7087283-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:00:04.5878546-05:00"
+    },
+    {
+      "StackCount": 5,
+      "Target": "Wizard Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:00:05.7458973-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:00:08.6464539",
+      "Event": "TS-NEWTARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:00:08.646868",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:00:09.7335536-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:00:25.2859088-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:00:31.2540638-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:00:31.2581621-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Time": "2026-09-03T22:00:50.6862485-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 53.86,
+      "From": 168.81
+    },
+    {
+      "Time": "2026-09-03T22:00:55.3127322-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:01:01.3058662-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:01:01.3099741-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Time": "2026-09-03T22:01:11.2731427-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:01:33.3077266-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:01:46.66089-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:01:47.6980131-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:02:07.0575538-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:02:07.0596785-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:02:07.0631629-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:05:20.744146-05:00"
+    },
+    {
+      "StackCount": 1,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:05:21.8686394-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:05:24.1038101",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:05:24.1264762-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:08:37.659305-05:00"
+    },
+    {
+      "StackCount": 2,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:08:38.7901343-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:08:39.9588139",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:08:40.9724921-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:08:58.9011006-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:08:58.9058043-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:08:58.9087639-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:14:11.1819878-05:00"
+    },
+    {
+      "StackCount": 1,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:14:12.2226662-05:00",
+      "Filter": "B"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:14:14.5814473",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:14:14.599377-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:19:28.1147225-05:00"
+    },
+    {
+      "StackCount": 2,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:19:29.2216588-05:00",
+      "Filter": "B"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:19:31.7634789",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:19:32.784495-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:19:51.0504951-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:19:51.0531302-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:19:51.0641289-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:23:04.8446699-05:00"
+    },
+    {
+      "StackCount": 3,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:23:05.910049-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:23:06.87485",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:23:06.8834197-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:26:19.6152594-05:00"
+    },
+    {
+      "StackCount": 4,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:26:20.7212053-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:26:21.6754157",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:26:30.7927184-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T22:26:32.8267483-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:26:50.47721-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:26:50.4848071-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:26:50.4878921-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:32:03.4234027-05:00"
+    },
+    {
+      "StackCount": 3,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:32:04.5715016-05:00",
+      "Filter": "B"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:32:06.9317874",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:32:06.9487396-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:37:19.5285094-05:00"
+    },
+    {
+      "StackCount": 4,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:37:20.6474686-05:00",
+      "Filter": "B"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:37:22.9661372",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:37:23.9912987-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:37:42.9368402-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:37:42.9388306-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:37:42.9576086-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:40:56.7931789-05:00"
+    },
+    {
+      "StackCount": 5,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:40:57.8723874-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:40:59.643704",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:40:59.6614137-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:40:59.7662795-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-03T22:41:00.7883597-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:41:39.3368255-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.889321208388642,
+      "Position": 2551
+    },
+    {
+      "Time": "2026-09-03T22:42:01.3954066-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.945496925369192,
+      "Position": 2516
+    },
+    {
+      "Time": "2026-09-03T22:42:23.2665986-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.952636652861896,
+      "Position": 2481
+    },
+    {
+      "Time": "2026-09-03T22:42:45.1922158-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.9663691574700937,
+      "Position": 2446
+    },
+    {
+      "Time": "2026-09-03T22:43:09.1985779-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.5989456569068652,
+      "Position": 2411
+    },
+    {
+      "Time": "2026-09-03T22:43:33.2623333-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.6087980528555967,
+      "Position": 2376
+    },
+    {
+      "Time": "2026-09-03T22:43:57.1962599-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.7379660580872502,
+      "Position": 2341
+    },
+    {
+      "Time": "2026-09-03T22:44:21.3170591-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.601226269237855,
+      "Position": 2306
+    },
+    {
+      "Time": "2026-09-03T22:44:43.3227044-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.491062831049388,
+      "Position": 2271
+    },
+    {
+      "Time": "2026-09-03T22:45:05.4299137-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Time": "2026-09-03T22:45:19.2944197-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:48:33.1190201-05:00"
+    },
+    {
+      "StackCount": 6,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:48:34.2604577-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:48:38.1187172",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:48:55.3970746-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T22:48:57.4172069-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T22:49:15.0140392-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T22:49:15.0188638-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T22:49:15.021789-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:54:28.3004877-05:00"
+    },
+    {
+      "StackCount": 5,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:54:29.4210817-05:00",
+      "Filter": "B"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:54:31.7361145",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:54:31.7621271-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T22:59:44.2299202-05:00"
+    },
+    {
+      "StackCount": 6,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T22:59:45.3185039-05:00",
+      "Filter": "B"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T03:59:46.8694554",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T22:59:48.8902607-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T23:00:07.040931-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T23:00:07.042789-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:00:07.0464818-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:03:20.1446189-05:00"
+    },
+    {
+      "StackCount": 7,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:03:21.2920385-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:03:22.1549819",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:03:22.1748883-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:06:35.4274475-05:00"
+    },
+    {
+      "StackCount": 8,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:06:36.4866301-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:06:37.4460249",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:06:57.2000129-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T23:06:58.2290471-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T23:07:16.4349156-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T23:07:16.4372965-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:07:16.4557029-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:12:28.5420574-05:00"
+    },
+    {
+      "StackCount": 7,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:12:29.6397587-05:00",
+      "Filter": "B"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:12:31.9802008",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:12:32.9902028-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T23:12:49.5234254-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T23:12:49.5252054-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:12:49.528341-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:16:03.2673252-05:00"
+    },
+    {
+      "StackCount": 9,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:16:04.3972189-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:16:05.1113446",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:16:05.1298279-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:19:17.2804054-05:00"
+    },
+    {
+      "StackCount": 10,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:19:18.4081638-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:19:19.3464743",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:19:39.1537021-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T23:19:39.1877731-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:22:53.3908622-05:00"
+    },
+    {
+      "StackCount": 11,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:22:54.5186573-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:22:55.4498001",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:22:55.4770006-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:26:08.3444054-05:00"
+    },
+    {
+      "StackCount": 12,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:26:09.5015356-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:26:10.2070846",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:26:19.3686508-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T23:26:19.4025496-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:29:31.8725506-05:00"
+    },
+    {
+      "StackCount": 13,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:29:32.9827744-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:29:33.7245647",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:29:33.765867-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:32:46.5645872-05:00"
+    },
+    {
+      "StackCount": 14,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:32:47.68812-05:00",
+      "Filter": "L"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:32:48.6458532",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:32:50.6685092-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T23:33:09.0573361-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T23:33:09.0598658-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:33:09.0715256-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:38:22.4245268-05:00"
+    },
+    {
+      "StackCount": 1,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:38:23.4770674-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:38:25.9528161",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:38:25.9707985-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:43:39.6285605-05:00"
+    },
+    {
+      "StackCount": 2,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:43:40.9018958-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:43:43.3838303",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:44:00.6303475-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-03T23:44:00.6452086-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:49:13.0179236-05:00"
+    },
+    {
+      "StackCount": 3,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:49:14.0905271-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T05:51:51.4609355",
+      "Rotation": 155,
+      "Time": "2026-09-04T04:49:15.4613749",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "REDACTED",
+      "TargetName": "Dark Shark Nebula"
+    },
+    {
+      "Time": "2026-09-03T23:49:15.4742103-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-03T23:49:15.5714881-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-03T23:49:16.5872325-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T23:49:21.2658151-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:49:59.1217253-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.73715351998642,
+      "Position": 2532
+    },
+    {
+      "Time": "2026-09-03T23:50:21.3181902-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.8090671410543875,
+      "Position": 2497
+    },
+    {
+      "Time": "2026-09-03T23:50:43.2839758-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.747431821055915,
+      "Position": 2462
+    },
+    {
+      "Time": "2026-09-03T23:51:05.2007064-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.843617479151206,
+      "Position": 2427
+    },
+    {
+      "Time": "2026-09-03T23:51:29.3116582-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.5153271479401222,
+      "Position": 2392
+    },
+    {
+      "Time": "2026-09-03T23:51:53.3816205-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.6736849967076484,
+      "Position": 2357
+    },
+    {
+      "Time": "2026-09-03T23:52:17.328261-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.942387380400748,
+      "Position": 2322
+    },
+    {
+      "Time": "2026-09-03T23:52:39.3326499-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.800000646869971,
+      "Position": 2287
+    },
+    {
+      "Time": "2026-09-03T23:53:01.281659-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.73747912838004,
+      "Position": 2252
+    },
+    {
+      "Time": "2026-09-03T23:53:23.3605163-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Time": "2026-09-03T23:53:27.2853853-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:53:41.0744451-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-03T23:58:54.7234449-05:00"
+    },
+    {
+      "StackCount": 4,
+      "Target": "Dark Shark Nebula",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-03T23:58:55.8511753-05:00",
+      "Filter": "R"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T04:58:57.127577",
+      "Event": "TS-NEWTARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T04:58:57.1280905",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-03T23:58:58.1856202-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-03T23:59:17.2408057-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:59:23.302006-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:59:23.3060265-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Time": "2026-09-03T23:59:28.6593202-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 64.14,
+      "From": 53.86
+    },
+    {
+      "Time": "2026-09-03T23:59:33.2852456-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:59:39.2843585-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-03T23:59:39.2884328-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Time": "2026-09-03T23:59:49.2817041-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T00:00:11.3072389-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T00:00:24.5418974-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T00:00:27.6160364-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T00:00:49.0153845-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T00:00:49.0192675-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T00:00:49.0219558-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T00:11:02.4793976-05:00"
+    },
+    {
+      "StackCount": 1,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T00:11:03.6547648-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T05:11:04.8544814",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T00:11:04.8820675-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T00:21:17.9220343-05:00"
+    },
+    {
+      "StackCount": 2,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T00:21:18.9483078-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T05:21:22.1061388",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T00:21:37.7690083-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T00:21:37.7904083-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T00:31:51.0929926-05:00"
+    },
+    {
+      "StackCount": 3,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T00:31:52.0676362-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T05:31:52.9801226",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T00:31:52.9887522-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T00:42:06.7626869-05:00"
+    },
+    {
+      "StackCount": 4,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T00:42:07.9209611-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T05:42:09.6373026",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T00:42:25.3443418-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T00:42:25.3584073-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T00:52:39.0721019-05:00"
+    },
+    {
+      "StackCount": 5,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T00:52:40.0905899-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T05:52:42.7851675",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T00:52:42.8163756-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T01:02:54.8981159-05:00"
+    },
+    {
+      "StackCount": 6,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T01:02:56.1021988-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T06:02:57.7823573",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T01:03:08.4167508-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T01:03:08.4310162-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T01:03:08.5233308-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-04T01:03:09.5390971-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T01:03:15.2754687-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T01:03:53.2033023-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.931610231179812,
+      "Position": 2520
+    },
+    {
+      "Time": "2026-09-04T01:04:15.3164337-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.0467985533877515,
+      "Position": 2485
+    },
+    {
+      "Time": "2026-09-04T01:04:37.381601-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.995466448884905,
+      "Position": 2450
+    },
+    {
+      "Time": "2026-09-04T01:04:59.3580141-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.0428882009934792,
+      "Position": 2415
+    },
+    {
+      "Time": "2026-09-04T01:05:23.3650761-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.6262265526645665,
+      "Position": 2380
+    },
+    {
+      "Time": "2026-09-04T01:05:47.386095-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.6361028156056279,
+      "Position": 2345
+    },
+    {
+      "Time": "2026-09-04T01:06:11.3925637-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.6724378426259947,
+      "Position": 2310
+    },
+    {
+      "Time": "2026-09-04T01:06:35.2601629-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.471514898546005,
+      "Position": 2275
+    },
+    {
+      "Time": "2026-09-04T01:06:57.258285-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.498855863829043,
+      "Position": 2240
+    },
+    {
+      "Time": "2026-09-04T01:07:19.3223807-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Time": "2026-09-04T01:07:23.3041008-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T01:07:36.975826-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T01:17:50.2419419-05:00"
+    },
+    {
+      "StackCount": 7,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T01:17:51.4101523-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T06:17:52.7130429",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T01:17:52.7435021-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T01:28:06.0162019-05:00"
+    },
+    {
+      "StackCount": 8,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T01:28:07.1970515-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T06:28:09.7012509",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T01:28:25.4364581-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T01:28:25.4523191-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T01:38:38.2534805-05:00"
+    },
+    {
+      "StackCount": 9,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T01:38:39.3530342-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T06:38:41.9350539",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T01:38:41.973086-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T01:48:55.4542341-05:00"
+    },
+    {
+      "StackCount": 10,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T01:48:56.3183866-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T06:48:58.7295868",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T01:49:13.4872837-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T01:49:13.5017017-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T01:59:26.7629872-05:00"
+    },
+    {
+      "StackCount": 11,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T01:59:27.9938366-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T06:59:29.0895516",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T01:59:29.1297049-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T02:09:41.3786755-05:00"
+    },
+    {
+      "StackCount": 12,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T02:09:42.5690964-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T07:09:44.4121614",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T02:09:53.0157561-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T02:09:53.0212473-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T02:09:53.111258-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-04T02:09:54.1235914-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T02:09:59.29562-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T02:10:37.3602473-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.581690170737359,
+      "Position": 2499
+    },
+    {
+      "Time": "2026-09-04T02:10:59.3645451-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.5765236804827225,
+      "Position": 2464
+    },
+    {
+      "Time": "2026-09-04T02:11:21.3457598-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.651892646231598,
+      "Position": 2429
+    },
+    {
+      "Time": "2026-09-04T02:11:43.3620774-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.5603797253912592,
+      "Position": 2394
+    },
+    {
+      "Time": "2026-09-04T02:12:07.4846222-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.5933366531076987,
+      "Position": 2359
+    },
+    {
+      "Time": "2026-09-04T02:12:31.1930162-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.695652525695251,
+      "Position": 2324
+    },
+    {
+      "Time": "2026-09-04T02:12:55.2162653-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.029487114526036,
+      "Position": 2289
+    },
+    {
+      "Time": "2026-09-04T02:13:17.373072-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.908839744655859,
+      "Position": 2254
+    },
+    {
+      "Time": "2026-09-04T02:13:39.3502897-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.914864199763031,
+      "Position": 2219
+    },
+    {
+      "Time": "2026-09-04T02:14:01.4259523-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Time": "2026-09-04T02:14:05.309267-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T02:14:18.6224728-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T02:24:30.4554369-05:00"
+    },
+    {
+      "StackCount": 13,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T02:24:31.6764574-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T07:24:36.0383364",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T02:24:36.0718947-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T02:34:48.378443-05:00"
+    },
+    {
+      "StackCount": 14,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T02:34:49.5580826-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T07:34:52.0146865",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T02:35:04.695102-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T02:35:04.7102519-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T02:45:17.9383303-05:00"
+    },
+    {
+      "StackCount": 15,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T02:45:19.1239431-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T07:45:21.5571706",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T02:45:21.5976636-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T02:55:33.9957489-05:00"
+    },
+    {
+      "StackCount": 16,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T02:55:35.170822-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T07:55:37.0257117",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T02:55:52.7365934-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T02:55:52.766129-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T03:06:06.396882-05:00"
+    },
+    {
+      "StackCount": 17,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T03:06:07.2702859-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T08:06:08.4562991",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T03:06:08.4649093-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T03:16:21.8774806-05:00"
+    },
+    {
+      "StackCount": 18,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T03:16:23.0944359-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T08:16:24.1200866",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T03:16:38.2850809-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T03:16:38.3177798-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T03:16:38.406019-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-04T03:16:39.4261036-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T03:16:45.2908606-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T03:17:23.2225456-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 9.614733197234516,
+      "Position": 2489
+    },
+    {
+      "Time": "2026-09-04T03:17:45.3871087-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.496476171349094,
+      "Position": 2454
+    },
+    {
+      "Time": "2026-09-04T03:18:07.3354295-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.689656513149509,
+      "Position": 2419
+    },
+    {
+      "Time": "2026-09-04T03:18:29.3190231-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.5121997701367644,
+      "Position": 2384
+    },
+    {
+      "Time": "2026-09-04T03:18:53.2998622-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.0031286887498614,
+      "Position": 2349
+    },
+    {
+      "Time": "2026-09-04T03:19:17.3822759-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.4934384834723229,
+      "Position": 2314
+    },
+    {
+      "Time": "2026-09-04T03:19:41.3386543-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.2176401601462494,
+      "Position": 2279
+    },
+    {
+      "Time": "2026-09-04T03:20:05.4743442-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.001453265506753,
+      "Position": 2244
+    },
+    {
+      "Time": "2026-09-04T03:20:27.2955605-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.957012540886098,
+      "Position": 2209
+    },
+    {
+      "Time": "2026-09-04T03:20:49.3622457-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.934634072061573,
+      "Position": 2174
+    },
+    {
+      "Time": "2026-09-04T03:21:11.4144399-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Time": "2026-09-04T03:21:15.256096-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T03:21:29.0220341-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T03:31:42.6354656-05:00"
+    },
+    {
+      "StackCount": 19,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T03:31:43.83959-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T08:31:44.7197232",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T03:31:44.7336588-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T03:41:57.0839187-05:00"
+    },
+    {
+      "StackCount": 20,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T03:41:58.3080097-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T08:42:00.268419",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T03:42:17.5229138-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T03:42:17.5450213-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T03:52:30.9566187-05:00"
+    },
+    {
+      "StackCount": 21,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T03:52:32.1574146-05:00",
+      "Filter": "S"
+    },
+    {
+      "Time": "2026-09-04T03:52:34.8502112-05:00",
+      "Event": "MOUNT-BEFORE-FLIP"
+    },
+    {
+      "Time": "2026-09-04T03:52:35.8793778-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T03:53:47.3043112-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T03:54:09.2529661-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T03:54:30.1877711-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T03:54:59.3874049-05:00",
+      "Event": "MOUNT-AFTER-FLIP"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T08:54:59.4979337",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T03:54:59.5253513-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T04:05:11.4170227-05:00"
+    },
+    {
+      "StackCount": 22,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T04:05:12.7554733-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T09:05:17.0453812",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T04:05:30.7460742-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T04:05:30.767235-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T04:15:44.280875-05:00"
+    },
+    {
+      "StackCount": 23,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T04:15:45.5299627-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T09:15:46.4700778",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T04:15:46.4963412-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T04:25:57.4254368-05:00"
+    },
+    {
+      "StackCount": 24,
+      "Target": "NGC 281",
+      "IsMonochrome": true,
+      "Event": "STACK-UPDATED",
+      "Time": "2026-09-04T04:25:58.5030256-05:00",
+      "Filter": "S"
+    },
+    {
+      "TargetEndTime": "2026-09-04T06:21:20.4046076",
+      "Rotation": 165,
+      "Time": "2026-09-04T09:25:59.549447",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "ProjectName": "Narrowband",
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T04:26:09.7069814-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T04:26:09.7215513-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T04:26:09.8124674-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-04T04:26:11.8348599-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T04:26:17.2594697-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T04:26:46.4229676-05:00",
+      "Event": "SAFETY-CHANGED",
+      "IsSafe": false
+    },
+    {
+      "Time": "2026-09-04T04:26:59.2535932-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T04:27:13.1286066-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T04:27:14.8082409-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T04:27:18.0255996-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:34:10.4285376-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:35:30.7829839-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:36:51.073128-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:38:11.4624807-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:39:31.794678-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:40:52.166356-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:42:12.5111208-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:43:32.8204125-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:44:53.1662568-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:46:13.4498359-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:47:33.8126149-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:48:54.1733124-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:50:14.5122751-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:51:34.8268686-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:52:55.1833733-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:54:15.5384418-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:55:35.8277861-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:56:56.1784211-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:58:16.4919665-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T04:59:36.7434207-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:00:57.1698557-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:02:17.7430948-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:03:38.1095145-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:04:58.4577901-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:06:18.7852321-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:07:39.0268853-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:08:59.4099936-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:10:19.7635224-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:11:40.0601724-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:13:00.3911253-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:14:20.7295415-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:15:41.0084887-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:17:01.4017768-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:18:21.7420551-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:19:42.0433737-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:21:02.4528-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:22:22.8166954-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:23:43.1534582-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:25:03.5061741-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:26:23.9065657-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:27:44.2294056-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:29:04.5621558-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:30:24.9294527-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:31:45.3778572-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:33:05.7569817-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:34:26.0441409-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:35:46.3933342-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:37:06.7181578-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:38:26.9618813-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:39:47.317263-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:41:07.8073026-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:42:28.1781263-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:43:48.5143459-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:45:08.950778-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:46:29.2850064-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:47:49.5809374-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:49:09.9170146-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:50:30.2359702-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:51:50.5514344-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:53:10.9293325-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:54:31.2120773-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:55:51.5006776-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:57:11.7712546-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:58:32.1072144-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T05:59:52.4052695-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:01:12.8961504-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:02:33.2308918-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:03:53.5584502-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:05:13.8579459-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:06:34.1749584-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:07:54.4731865-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:09:14.8433257-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:10:35.2382002-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:11:55.6179563-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:13:15.9460434-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:14:36.3071537-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:15:56.6402217-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:17:17.3102349-05:00",
+      "Event": "STACK-STATUS",
+      "Status": "Stopped"
+    },
+    {
+      "Time": "2026-09-04T06:17:17.3118876-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Time": "2026-09-04T06:17:17.7678249-05:00",
+      "Event": "GUIDER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T06:21:29.7787004-05:00",
+      "Event": "FLAT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T06:21:31.854145-05:00",
+      "Event": "FLAT-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T06:21:45.9633511-05:00",
+      "Event": "FLAT-COVER-CLOSED"
+    },
+    {
+      "Time": "2026-09-04T06:21:49.9730761-05:00",
+      "Event": "FLAT-LIGHT-TOGGLED"
+    },
+    {
+      "Time": "2026-09-04T06:21:52.6525025-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 64.14,
+      "From": 64.14
+    },
+    {
+      "Time": "2026-09-04T06:21:55.9759256-05:00",
+      "Previous": 4096,
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "New": 3072
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:01.3147532-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:05.7588306-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:10.1007929-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:14.4431408-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:18.8345854-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:23.2119323-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:27.6152945-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:31.9545906-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:36.360108-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:40.6916291-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:45.0782849-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:49.4193171-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:53.8011661-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:22:58.1619904-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:02.5355032-05:00"
+    },
+    {
+      "Time": "2026-09-04T06:23:22.6410939-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 169.03,
+      "From": 64.14
+    },
+    {
+      "Time": "2026-09-04T06:23:27.2536515-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T06:23:29.976388-05:00",
+      "Previous": 3072,
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "New": 384
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:32.8523381-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:34.8677792-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:36.7153572-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:38.5666332-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:40.4481768-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:42.2742657-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:44.0517227-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:45.9490394-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:47.7649028-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:49.5662368-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:51.4915143-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:53.3336246-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:55.20116-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:57.1577061-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:23:58.9693854-05:00"
+    },
+    {
+      "Time": "2026-09-04T06:24:04.6583414-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 168.81,
+      "From": 169.03
+    },
+    {
+      "Time": "2026-09-04T06:24:09.2867517-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T06:24:12.0057259-05:00",
+      "Previous": 384,
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "New": 768
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:17.3848314-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:21.7102391-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:26.0692019-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:30.6190791-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:34.9988219-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:39.4379104-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:43.7684999-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:48.1615868-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:52.4728697-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:24:56.9503751-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:01.3549855-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:05.714818-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:10.1701721-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:14.5584852-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:19.2188127-05:00"
+    },
+    {
+      "Time": "2026-09-04T06:25:30.6654241-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 136.83,
+      "From": 168.81
+    },
+    {
+      "Time": "2026-09-04T06:25:35.3130962-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T06:25:38.0852864-05:00",
+      "Previous": 768,
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "New": 128
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:41.0811318-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:43.083231-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:44.7343937-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:46.666185-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:48.8363465-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:50.7703142-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:52.6250551-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:54.4189866-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:56.1169678-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:57.9463736-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:25:59.816505-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:01.8193086-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:03.5237916-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:05.2726086-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:07.1524155-05:00"
+    },
+    {
+      "Time": "2026-09-04T06:26:12.6393734-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 136.83,
+      "From": 136.83
+    },
+    {
+      "Time": "2026-09-04T06:26:17.2631589-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T06:26:19.9921459-05:00",
+      "Previous": 128,
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "New": 48
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:22.8430595-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:24.8380522-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:26.6576803-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:28.5542639-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:30.4282719-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:32.2575275-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T06:26:34.1452244-05:00"
+    },
+    {
+      "Time": "2026-09-04T06:32:52.6269062-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 136.83,
+      "From": 136.83
+    },
+    {
+      "Time": "2026-09-04T06:32:57.3049216-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T06:32:59.9783102-05:00",
+      "Previous": 48,
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "New": 80
+    },
+    {
+      "Time": "2026-09-04T06:54:08.6469309-05:00",
+      "Event": "ROTATOR-MOVED",
+      "To": 53.86,
+      "From": 136.83
+    },
+    {
+      "Time": "2026-09-04T06:54:13.2940493-05:00",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T06:54:15.963664-05:00",
+      "Previous": 80,
+      "Event": "FLAT-BRIGHTNESS-CHANGED",
+      "New": 384
+    },
+    {
+      "Time": "2026-09-04T07:06:05.9956359-05:00",
+      "Event": "FLAT-LIGHT-TOGGLED"
+    },
+    {
+      "Time": "2026-09-04T07:06:32.5003671-05:00",
+      "Event": "SEQUENCE-FINISHED"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}

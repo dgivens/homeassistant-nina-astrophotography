@@ -1,0 +1,82 @@
+{
+  "Response": {
+    "TrackingMode": "Stopped",
+    "SiderealTime": 5.476111111111111,
+    "RightAscension": 11.476111111111111,
+    "Declination": 90,
+    "SiteLatitude": 0,
+    "SiteLongitude": 0,
+    "SiteElevation": 0,
+    "RightAscensionString": "11:28:34",
+    "DeclinationString": "90\u00b0 00' 00\"",
+    "Coordinates": {
+      "RA": 11.476111111111111,
+      "RAString": "11:28:34",
+      "RADegrees": 172.14166666666665,
+      "Dec": 90,
+      "DecString": "90\u00b0 00' 00\"",
+      "Epoch": "JNOW",
+      "DateTime": {
+        "Now": "2026-09-04T08:11:22.7801281-05:00",
+        "UtcNow": "2026-09-04T13:11:22.7801354Z"
+      }
+    },
+    "TimeToMeridianFlip": 24,
+    "SideOfPier": "REDACTED",
+    "Altitude": 31.547777777777778,
+    "AltitudeString": "31\u00b0 32' 52\"",
+    "Azimuth": 0,
+    "AzimuthString": "00\u00b0 00' 00\"",
+    "SiderealTimeString": "05:28:34",
+    "HoursToMeridianString": "24:00:00",
+    "AtPark": false,
+    "TrackingRate": {},
+    "TrackingEnabled": false,
+    "TrackingModes": [
+      "Sidereal",
+      "Lunar",
+      "Solar",
+      "Stopped"
+    ],
+    "AtHome": true,
+    "CanFindHome": true,
+    "CanPark": true,
+    "CanSetPark": true,
+    "CanSetTrackingEnabled": true,
+    "CanSetDeclinationRate": false,
+    "CanSetRightAscensionRate": false,
+    "EquatorialSystem": "JNOW",
+    "HasUnknownEpoch": false,
+    "TimeToMeridianFlipString": "24:00:00",
+    "Slewing": false,
+    "GuideRateRightAscensionArcsecPerSec": 13.5369756,
+    "GuideRateDeclinationArcsecPerSec": 13.5369756,
+    "CanMovePrimaryAxis": true,
+    "CanMoveSecondaryAxis": true,
+    "PrimaryAxisRates": [
+      {}
+    ],
+    "SecondaryAxisRates": [
+      {}
+    ],
+    "SupportedActions": [
+      "ShutdownIfIdle",
+      "BeginShutdown"
+    ],
+    "AlignmentMode": "GermanPolar",
+    "CanPulseGuide": true,
+    "IsPulseGuiding": false,
+    "CanSetPierSide": false,
+    "CanSlew": true,
+    "CanSlewAltAz": false,
+    "UTCDate": "2026-09-04T13:11:24",
+    "Connected": true,
+    "Name": "ASI Mount",
+    "DisplayName": "ASI Mount (ASCOM)",
+    "DeviceId": "device-05"
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}

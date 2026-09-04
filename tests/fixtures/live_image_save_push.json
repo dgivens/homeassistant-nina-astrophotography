@@ -1,0 +1,33 @@
+{
+  "Response": {
+    "Event": "IMAGE-SAVE",
+    "ImageStatistics": {
+      "ExposureTime": 1.0,
+      "ImageType": "DARK",
+      "Filter": "",
+      "RmsText": "Tot: 0.00 (0.00\")",
+      "Temperature": 38.0,
+      "CameraName": "Camera",
+      "TargetName": "Snapshot",
+      "Gain": 100,
+      "Offset": 50,
+      "Date": "2026-09-04T13:49:05.4202709-05:00",
+      "TelescopeName": "Telescope",
+      "FocalLength": 500.0,
+      "StDev": 30.560510005030284,
+      "Mean": 502.38238657826446,
+      "Median": 502.0,
+      "Min": 347.0,
+      "Max": 65535.0,
+      "Stars": 1,
+      "HFR": 0.0,
+      "HFRStDev": 0.0,
+      "IsBayered": false,
+      "Filename": "frame_0000.fits"
+    }
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "Socket"
+}

@@ -1,0 +1,1472 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": [
+        {
+          "Status": "CREATED",
+          "Issues": [],
+          "Name": "Failures to Discord_Trigger"
+        },
+        {
+          "Name": "Dew Heater Control_Trigger",
+          "Status": "CREATED"
+        },
+        {
+          "Topic": "astro/nina",
+          "Issues": [],
+          "Retain": true,
+          "Name": "Failures to MQTT broker_Trigger",
+          "QoS": 1,
+          "Status": "CREATED"
+        }
+      ]
+    },
+    {
+      "Triggers": [],
+      "Iterations": 0,
+      "Conditions": [],
+      "Name": "Start_Container",
+      "Items": [
+        {
+          "Triggers": [],
+          "ShowAddTemplate": false,
+          "Iterations": 1,
+          "Conditions": [],
+          "Name": "Constant/Variable Container_Container",
+          "Items": [
+            {
+              "IsReference": false,
+              "Executed": true,
+              "CValue": null,
+              "IsGlobalVariable": true,
+              "Identifier": "AbortNight",
+              "OriginalExpr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Definition": "0",
+              "Expr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Issues": [],
+              "OValueExpr": null,
+              "CValueExpr": null,
+              "OriginalDefinition": "0",
+              "Status": "FINISHED",
+              "Name": "Global Variable",
+              "Variable": null,
+              "isDataSymbol": false
+            },
+            {
+              "IsReference": false,
+              "Executed": true,
+              "CValue": null,
+              "IsGlobalVariable": true,
+              "Identifier": "DiscordUnsafeNotified",
+              "OriginalExpr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Definition": "0",
+              "Expr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Issues": [],
+              "OValueExpr": null,
+              "CValueExpr": null,
+              "OriginalDefinition": "0",
+              "Status": "FINISHED",
+              "Name": "Global Variable",
+              "Variable": null,
+              "isDataSymbol": false
+            }
+          ],
+          "Status": "FINISHED"
+        },
+        {
+          "Triggers": [],
+          "Iterations": 0,
+          "Conditions": [],
+          "Name": "MY START_Container",
+          "Items": [
+            {
+              "Status": "FINISHED",
+              "Issues": [],
+              "SelectedDevice": "Safety Monitor",
+              "Name": "Connect Equipment"
+            },
+            {
+              "Status": "FINISHED",
+              "Issues": [],
+              "SelectedDevice": "Switch",
+              "Name": "Connect Equipment"
+            },
+            {
+              "Hours": 20,
+              "Minutes": 23,
+              "RolloverTime": "07:15:12.9844127",
+              "Seconds": 5,
+              "MinutesOffset": 0,
+              "Issues": [],
+              "Name": "Wait for Time",
+              "SelectedProvider": {},
+              "Status": "RUNNING"
+            },
+            {
+              "EmbedText": "",
+              "Status": "CREATED",
+              "WindowService": {},
+              "Issues": [],
+              "EmbedTitle": "",
+              "EmbedEdgeColor": "#FF206694",
+              "Name": "Send to Discord",
+              "Message": "\ud83d\udce1 FRA500 -  Beginning startup sequence",
+              "ShowEmbed": false
+            },
+            {
+              "Status": "CREATED",
+              "Issues": [],
+              "Name": "Check PSF Guard connection"
+            },
+            {
+              "Status": "CREATED",
+              "Issues": [],
+              "Name": "Pull PSF Guard planning"
+            },
+            {
+              "Status": "CREATED",
+              "Issues": [],
+              "Name": "Pull PSF Guard grades"
+            },
+            {
+              "Switches": [
+                "TargetValid: 0",
+                "MoonAltitude: 40.71",
+                "MoonIllumination: 0.46",
+                "SunAltitude: 51.35",
+                "SunAzimuth: 122.61",
+                "LocalSiderealTime: 8.77",
+                "TIME: 1770",
+                "EXITCODE: 0",
+                "IsSafe: 'False'",
+                "RoofStatus: RoofNotOpen",
+                "SensorTemp: 35",
+                "CoverState: CoverClosed",
+                "S: FlatPanel: 1",
+                "S: OTA: 1"
+              ],
+              "Iterations": 0,
+              "Issues": [],
+              "Predicate": null,
+              "IfExpr": {
+                "Expression": "!IsSafe",
+                "Type": "Any"
+              },
+              "Name": "If_Container",
+              "Items": [
+                {
+                  "EmbedText": "",
+                  "Status": "CREATED",
+                  "WindowService": {},
+                  "Issues": [],
+                  "EmbedTitle": "",
+                  "EmbedEdgeColor": "#FFFFA500",
+                  "Name": "Send to Discord",
+                  "Message": "\ud83d\udce1 FRA500 - Initial startup paused due to unsafe conditions",
+                  "ShowEmbed": false
+                },
+                {
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "Name": "Loop while unsafe_Condition"
+                    },
+                    {
+                      "Hours": 6,
+                      "Minutes": 21,
+                      "RolloverTime": "19:58:33.3321057",
+                      "Seconds": 20,
+                      "MinutesOffset": 0,
+                      "Issues": [],
+                      "Name": "Loop Until Time_Condition",
+                      "SelectedProvider": {},
+                      "Status": "CREATED"
+                    }
+                  ],
+                  "Name": "Wait for safety_Container",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Time": 60.0,
+                      "Name": "Wait for Time Span"
+                    }
+                  ],
+                  "Status": "CREATED"
+                },
+                {
+                  "ElseInstructions": {
+                    "Strategy": {},
+                    "Name": "If/Then/Else",
+                    "Conditions": [],
+                    "IsExpanded": true,
+                    "Items": [
+                      {
+                        "Message": "\ud83d\udce1 FRA500 - Safety conditions never cleared overnight.",
+                        "EmbedTitle": "",
+                        "EmbedText": "",
+                        "EmbedEdgeColor": "#FFFF0000",
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      {
+                        "Expr": {
+                          "Expression": "1",
+                          "Type": "Any"
+                        },
+                        "Variable": "AbortNight",
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      }
+                    ],
+                    "Triggers": [],
+                    "ErrorBehavior": 0,
+                    "Attempts": 1
+                  },
+                  "Switches": null,
+                  "IfExpr": {
+                    "Expression": "IsSafe",
+                    "Type": "Any"
+                  },
+                  "Iterations": 0,
+                  "Issues": [],
+                  "Predicate": null,
+                  "Name": "If/Then/Else_Container",
+                  "Items": [
+                    {
+                      "EmbedText": "",
+                      "Status": "CREATED",
+                      "WindowService": {},
+                      "Issues": [],
+                      "EmbedTitle": "",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Name": "Send to Discord",
+                      "Message": "\ud83d\udce1 FRA500 - Conditions are now safe. Proceeding with startup.",
+                      "ShowEmbed": false
+                    }
+                  ],
+                  "Status": "CREATED"
+                }
+              ],
+              "Status": "CREATED"
+            },
+            {
+              "Switches": [
+                "TargetValid: 0",
+                "MoonAltitude: 40.71",
+                "MoonIllumination: 0.46",
+                "SunAltitude: 51.35",
+                "SunAzimuth: 122.61",
+                "LocalSiderealTime: 8.77",
+                "TIME: 1770",
+                "EXITCODE: 0",
+                "IsSafe: 'False'",
+                "RoofStatus: RoofNotOpen",
+                "SensorTemp: 35",
+                "CoverState: CoverClosed",
+                "S: FlatPanel: 1",
+                "S: OTA: 1"
+              ],
+              "Iterations": 0,
+              "Issues": [],
+              "Predicate": null,
+              "IfExpr": {
+                "Expression": "!AbortNight",
+                "Type": "Any"
+              },
+              "Name": "If_Container",
+              "Items": [
+                {
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Conditions": [],
+                  "Name": "Initial Startup_Container",
+                  "Items": [
+                    {
+                      "Triggers": [],
+                      "Iterations": 0,
+                      "Conditions": [],
+                      "Name": "Connect Equipment_Container",
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Camera",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Filter Wheel",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Focuser",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Rotator",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Weather",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Guider",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Mount",
+                          "Name": "Connect Equipment"
+                        }
+                      ],
+                      "Status": "CREATED"
+                    },
+                    {
+                      "Triggers": [],
+                      "Iterations": 0,
+                      "Conditions": [],
+                      "Name": "Open Flat Panel_Container",
+                      "Items": [
+                        {
+                          "Triggers": [],
+                          "Iterations": 0,
+                          "Conditions": [],
+                          "Name": "Turn on Flat Panel_Container",
+                          "Items": [
+                            {
+                              "EmbedText": "",
+                              "Status": "CREATED",
+                              "WindowService": {},
+                              "Issues": [],
+                              "EmbedTitle": "",
+                              "EmbedEdgeColor": "#FF206694",
+                              "Name": "Send to Discord",
+                              "Message": "\ud83d\udce1 FRA500 - Turning on flat panel",
+                              "ShowEmbed": false
+                            },
+                            {
+                              "WritableSwitches": [
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 0,
+                                  "EntityId": "device-10",
+                                  "Name": "Flat Panel",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                },
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 1,
+                                  "EntityId": "device-11",
+                                  "Name": "OTA",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                }
+                              ],
+                              "SelectedSwitch": {
+                                "Minimum": 0.0,
+                                "Maximum": 1.0,
+                                "StepSize": 1.0,
+                                "TargetValue": 1.0,
+                                "Id": 0,
+                                "EntityId": "device-10",
+                                "Name": "Flat Panel",
+                                "Description": "REDACTED",
+                                "Value": 1.0
+                              },
+                              "Value": 1.0,
+                              "Issues": [],
+                              "Name": "Set Switch Value",
+                              "Status": "CREATED",
+                              "SwitchIndex": 0
+                            },
+                            {
+                              "Status": "CREATED",
+                              "Time": 5.0,
+                              "Name": "Wait for Time Span"
+                            },
+                            {
+                              "Status": "CREATED",
+                              "Issues": [],
+                              "SelectedDevice": "Flat Panel",
+                              "Name": "Connect Equipment"
+                            }
+                          ],
+                          "Status": "CREATED"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "Name": "Open Flat Panel Cover"
+                        },
+                        {
+                          "Triggers": [],
+                          "Iterations": 0,
+                          "Conditions": [],
+                          "Name": "Turn off Flat Panel_Container",
+                          "Items": [
+                            {
+                              "EmbedText": "",
+                              "Status": "CREATED",
+                              "WindowService": {},
+                              "Issues": [],
+                              "EmbedTitle": "",
+                              "EmbedEdgeColor": "#FF206694",
+                              "Name": "Send to Discord",
+                              "Message": "\ud83d\udce1 FRA500 - Powering off flat panel",
+                              "ShowEmbed": false
+                            },
+                            {
+                              "Status": "CREATED",
+                              "Issues": [],
+                              "SelectedDevice": "Flat Panel",
+                              "Name": "Disconnect Equipment"
+                            },
+                            {
+                              "WritableSwitches": [
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 0,
+                                  "EntityId": "device-10",
+                                  "Name": "Flat Panel",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                },
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 1,
+                                  "EntityId": "device-11",
+                                  "Name": "OTA",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                }
+                              ],
+                              "SelectedSwitch": {
+                                "Minimum": 0.0,
+                                "Maximum": 1.0,
+                                "StepSize": 1.0,
+                                "TargetValue": 1.0,
+                                "Id": 0,
+                                "EntityId": "device-10",
+                                "Name": "Flat Panel",
+                                "Description": "REDACTED",
+                                "Value": 1.0
+                              },
+                              "Value": 0.0,
+                              "Issues": [],
+                              "Name": "Set Switch Value",
+                              "Status": "CREATED",
+                              "SwitchIndex": 0
+                            }
+                          ],
+                          "Status": "CREATED"
+                        }
+                      ],
+                      "Status": "CREATED"
+                    }
+                  ],
+                  "Status": "CREATED"
+                },
+                {
+                  "Status": "CREATED",
+                  "Issues": [
+                    "Telescope not connected"
+                  ],
+                  "Name": "Find home"
+                },
+                {
+                  "Hours": 20,
+                  "Minutes": 52,
+                  "RolloverTime": "07:15:12.9844127",
+                  "Seconds": 12,
+                  "MinutesOffset": 0,
+                  "Issues": [],
+                  "Name": "Wait for Time",
+                  "SelectedProvider": {},
+                  "Status": "CREATED"
+                },
+                {
+                  "Switches": [
+                    "TargetValid: 0",
+                    "MoonAltitude: 40.71",
+                    "MoonIllumination: 0.46",
+                    "SunAltitude: 51.35",
+                    "SunAzimuth: 122.61",
+                    "LocalSiderealTime: 8.77",
+                    "TIME: 1770",
+                    "EXITCODE: 0",
+                    "IsSafe: 'False'",
+                    "RoofStatus: RoofNotOpen",
+                    "SensorTemp: 35",
+                    "CoverState: CoverClosed",
+                    "S: FlatPanel: 1",
+                    "S: OTA: 1"
+                  ],
+                  "Iterations": 0,
+                  "Issues": [],
+                  "Predicate": null,
+                  "IfExpr": {
+                    "Expression": "FlatPanel == 1",
+                    "Type": "Any"
+                  },
+                  "Name": "If_Container",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Text": "REDACTED",
+                      "Name": "Annotation"
+                    },
+                    {
+                      "EmbedText": "",
+                      "Status": "CREATED",
+                      "WindowService": {},
+                      "Issues": [],
+                      "EmbedTitle": "",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Name": "Send to Discord",
+                      "Message": "\ud83d\udce1 FRA500 - Power to flat panel was still on. Powering off now",
+                      "ShowEmbed": false
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "SelectedDevice": "Flat Panel",
+                      "Name": "Disconnect Equipment"
+                    },
+                    {
+                      "WritableSwitches": [
+                        {
+                          "Minimum": 0.0,
+                          "Maximum": 1.0,
+                          "StepSize": 1.0,
+                          "TargetValue": 1.0,
+                          "Id": 0,
+                          "EntityId": "device-10",
+                          "Name": "Flat Panel",
+                          "Description": "REDACTED",
+                          "Value": 1.0
+                        },
+                        {
+                          "Minimum": 0.0,
+                          "Maximum": 1.0,
+                          "StepSize": 1.0,
+                          "TargetValue": 1.0,
+                          "Id": 1,
+                          "EntityId": "device-11",
+                          "Name": "OTA",
+                          "Description": "REDACTED",
+                          "Value": 1.0
+                        }
+                      ],
+                      "SelectedSwitch": {
+                        "Minimum": 0.0,
+                        "Maximum": 1.0,
+                        "StepSize": 1.0,
+                        "TargetValue": 1.0,
+                        "Id": 0,
+                        "EntityId": "device-10",
+                        "Name": "Flat Panel",
+                        "Description": "REDACTED",
+                        "Value": 1.0
+                      },
+                      "Value": 0.0,
+                      "Issues": [],
+                      "Name": "Set Switch Value",
+                      "Status": "CREATED",
+                      "SwitchIndex": 0
+                    }
+                  ],
+                  "Status": "CREATED"
+                },
+                {
+                  "Name": "Start live stacking",
+                  "Status": "CREATED"
+                }
+              ],
+              "Status": "CREATED"
+            }
+          ],
+          "Status": "RUNNING"
+        }
+      ],
+      "Status": "RUNNING"
+    },
+    {
+      "Triggers": [],
+      "Iterations": 0,
+      "Conditions": [],
+      "Name": "Targets_Container",
+      "Items": [
+        {
+          "Switches": [
+            "TargetValid: 0",
+            "MoonAltitude: 40.71",
+            "MoonIllumination: 0.46",
+            "SunAltitude: 51.35",
+            "SunAzimuth: 122.61",
+            "LocalSiderealTime: 8.77",
+            "TIME: 1770",
+            "EXITCODE: 0",
+            "IsSafe: 'False'",
+            "RoofStatus: RoofNotOpen",
+            "SensorTemp: 35",
+            "CoverState: CoverClosed",
+            "S: FlatPanel: 1",
+            "S: OTA: 1"
+          ],
+          "Iterations": 0,
+          "Issues": [],
+          "Predicate": null,
+          "IfExpr": {
+            "Expression": "!AbortNight",
+            "Type": "Any"
+          },
+          "Name": "If_Container",
+          "Items": [
+            {
+              "Name": "Night Summary Start",
+              "Status": "CREATED"
+            },
+            {
+              "Triggers": [],
+              "Iterations": 0,
+              "Conditions": [],
+              "Name": "Camera Prep_Container",
+              "Items": [
+                {
+                  "Status": "CREATED",
+                  "Issues": [
+                    "Focuser not connected"
+                  ],
+                  "Name": "Run Autofocus",
+                  "WindowServiceFactory": {}
+                },
+                {
+                  "Name": "Dynamic Cool Camera",
+                  "Status": "CREATED"
+                }
+              ],
+              "Status": "CREATED"
+            },
+            {
+              "Triggers": [
+                {
+                  "Coordinates": {
+                    "RAHours": 0,
+                    "RAMinutes": 0,
+                    "RASeconds": 0.0,
+                    "NegativeDec": false,
+                    "DecDegrees": 0,
+                    "DecMinutes": 0,
+                    "DecSeconds": 0.0
+                  },
+                  "DistanceArcMinutes": 10.0,
+                  "Issues": [
+                    "Telescope not connected"
+                  ],
+                  "Name": "Center After Drift_Trigger",
+                  "Inherited": true,
+                  "Status": "CREATED",
+                  "AfterExposures": 1
+                },
+                {
+                  "Status": "CREATED",
+                  "Issues": [
+                    "Guider not connected"
+                  ],
+                  "Name": "Restore Guiding_Trigger"
+                },
+                {
+                  "Status": "CREATED",
+                  "SampleSize": 10,
+                  "Issues": [
+                    "Focuser not connected"
+                  ],
+                  "Name": "AF After HFR Increase_Trigger",
+                  "Amount": 5.0
+                },
+                {
+                  "Status": "CREATED",
+                  "DeltaT": 0.0,
+                  "Issues": [
+                    "Focuser not connected"
+                  ],
+                  "Name": "AF After Temperature Change_Trigger",
+                  "Amount": 2.0
+                },
+                {
+                  "Status": "CREATED",
+                  "Issues": [
+                    "Focuser not connected"
+                  ],
+                  "Name": "AF After Time_Trigger",
+                  "Amount": 60.0
+                },
+                {
+                  "MinutesAfterMeridian": 5.0,
+                  "TimeToMeridianFlip": 0.0,
+                  "UseSideOfPier": true,
+                  "Issues": [
+                    "Telescope not connected"
+                  ],
+                  "Name": "Meridian Flip_Trigger",
+                  "PauseTimeBeforeMeridian": 0.0,
+                  "Status": "CREATED",
+                  "MaxMinutesAfterMeridian": 15.0
+                },
+                {
+                  "RmsInstance": null,
+                  "RmsThreshold": 2.5,
+                  "Mode": 1,
+                  "MinimumPoints": 5,
+                  "Name": "Interrupt when RMS above_Trigger",
+                  "Status": "CREATED"
+                },
+                {
+                  "Status": "CREATED",
+                  "Saturated": false,
+                  "Name": "Restart When Saturated_Trigger"
+                },
+                {
+                  "Status": "CREATED",
+                  "Issues": [
+                    "Guider not connected"
+                  ],
+                  "Name": "Settle before Exposure_Trigger"
+                },
+                {
+                  "Name": "Reconnect Camera On Download Failure_Trigger",
+                  "Status": "CREATED"
+                },
+                {
+                  "Name": "Dew Heater Control_Trigger",
+                  "Status": "CREATED"
+                }
+              ],
+              "Iterations": 0,
+              "Conditions": [
+                {
+                  "Status": "CREATED",
+                  "CheckIsActive": true,
+                  "SelectedMode": "While Targets Remain Tonight",
+                  "Name": "Target Scheduler Condition_Condition",
+                  "ConditionWasCompleted": false
+                },
+                {
+                  "Name": "Target Scheduler Background Condition_Condition",
+                  "Status": "CREATED"
+                }
+              ],
+              "Name": "Target Scheduler Imaging_Container",
+              "Items": [
+                {
+                  "Triggers": [
+                    {
+                      "Status": "CREATED",
+                      "AfterExposures": 1,
+                      "Issues": [],
+                      "Name": "PSF Guard target sync_Trigger"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "UploadImage": false,
+                      "Name": "PSF Guard exposure sync_Trigger"
+                    }
+                  ],
+                  "Iterations": 0,
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "Name": "Loop while safe_Condition"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "CheckIsActive": true,
+                      "SelectedMode": "While Targets Remain Tonight",
+                      "Name": "Target Scheduler Condition_Condition",
+                      "ConditionWasCompleted": false
+                    }
+                  ],
+                  "Name": "Target Acquisition_Container",
+                  "Items": [
+                    {
+                      "AfterAllTargetsContainer": {
+                        "EventContainerType": 5,
+                        "Strategy": {},
+                        "Name": "AfterEachTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "AfterTargetCompleteContainer": {
+                        "EventContainerType": 6,
+                        "Strategy": {},
+                        "Name": "AfterTargetComplete",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "Condition": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [
+                                {
+                                  "Message": "\ud83d\udce1 Ground Station - FRA500",
+                                  "EmbedTitle": "Completion",
+                                  "EmbedText": "Target Scheduler has completed imaging of the current target",
+                                  "EmbedEdgeColor": "#FF206694",
+                                  "ErrorBehavior": 0,
+                                  "Attempts": 1
+                                }
+                              ],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "Instructions": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Triggers": [],
+                      "Items": [],
+                      "SchedulerProgress": {
+                        "ProgressItemList": [],
+                        "ItemsView": []
+                      },
+                      "AfterWaitContainer": {
+                        "EventContainerType": 1,
+                        "Strategy": {},
+                        "Name": "AfterWait",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "PauseEnabled": false,
+                      "UnpauseEnabled": false,
+                      "ContainerPaused": false,
+                      "Iterations": 0,
+                      "UnpauseRequested": false,
+                      "Conditions": [],
+                      "PauseRequested": false,
+                      "AfterEachExposureContainer": {
+                        "EventContainerType": 3,
+                        "Strategy": {},
+                        "Name": "AfterEachExposure",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Status": "CREATED",
+                      "AfterTargetContainer": {
+                        "EventContainerType": 4,
+                        "Strategy": {},
+                        "Name": "AfterTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Name": "Target Scheduler Container_Container",
+                      "BeforeWaitContainer": {
+                        "EventContainerType": 0,
+                        "Strategy": {},
+                        "Name": "BeforeWait",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "TrackingMode": 5,
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "Condition": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [
+                                {
+                                  "Message": "\ud83d\udce1 FRA500 - Target Scheduler",
+                                  "EmbedTitle": "Beginning wait",
+                                  "EmbedText": "Target Scheduler has paused until {TS_NextTargetStart} for the next target {TS_NextTargetName}",
+                                  "EmbedEdgeColor": "#FF206694",
+                                  "ErrorBehavior": 0,
+                                  "Attempts": 1
+                                }
+                              ],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "Instructions": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "BeforeTargetContainer": {
+                        "EventContainerType": 2,
+                        "Strategy": {},
+                        "Name": "BeforeTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Target": {
+                        "TargetName": "",
+                        "PositionAngle": 0.0,
+                        "InputCoordinates": {
+                          "RAHours": 0,
+                          "RAMinutes": 0,
+                          "RASeconds": 0.0,
+                          "NegativeDec": false,
+                          "DecDegrees": 0,
+                          "DecMinutes": 0,
+                          "DecSeconds": 0.0
+                        }
+                      },
+                      "TotalExposureCount": -1
+                    }
+                  ],
+                  "Status": "CREATED"
+                },
+                {
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "CheckIsActive": true,
+                      "SelectedMode": "While Targets Remain Tonight",
+                      "Name": "Target Scheduler Condition_Condition",
+                      "ConditionWasCompleted": false
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "Name": "Loop while unsafe_Condition"
+                    }
+                  ],
+                  "Name": "Unsafe Wait_Container",
+                  "Items": [
+                    {
+                      "Switches": [
+                        "TargetValid: 0",
+                        "MoonAltitude: 40.71",
+                        "MoonIllumination: 0.46",
+                        "SunAltitude: 51.35",
+                        "SunAzimuth: 122.61",
+                        "LocalSiderealTime: 8.77",
+                        "TIME: 1770",
+                        "EXITCODE: 0",
+                        "IsSafe: 'False'",
+                        "RoofStatus: RoofNotOpen",
+                        "SensorTemp: 35",
+                        "CoverState: CoverClosed",
+                        "S: FlatPanel: 1",
+                        "S: OTA: 1"
+                      ],
+                      "Iterations": 0,
+                      "Issues": [],
+                      "Predicate": null,
+                      "IfExpr": {
+                        "Expression": "DiscordUnsafeNotified == 0",
+                        "Type": "Any"
+                      },
+                      "Name": "If_Container",
+                      "Items": [
+                        {
+                          "EmbedText": "",
+                          "Status": "CREATED",
+                          "WindowService": {},
+                          "Issues": [],
+                          "EmbedTitle": "",
+                          "EmbedEdgeColor": "#FFFFA500",
+                          "Name": "Send to Discord",
+                          "Message": "\ud83d\udce1 FRA500 -  Imaging interrupted due to unsafe conditions",
+                          "ShowEmbed": false
+                        },
+                        {
+                          "Variable": "DiscordUnsafeNotified",
+                          "Issues": [],
+                          "Name": "Set Variable",
+                          "Expr": {
+                            "Expression": "1",
+                            "Type": "Any"
+                          },
+                          "Status": "CREATED",
+                          "CValueExpr": null
+                        }
+                      ],
+                      "Status": "CREATED"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [
+                        "Guider not connected"
+                      ],
+                      "Name": "Stop Guiding"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [
+                        "Telescope not connected"
+                      ],
+                      "TrackingMode": 5,
+                      "Name": "Set Tracking"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [
+                        "Telescope not connected"
+                      ],
+                      "Name": "Find home"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Duration": 5.0,
+                      "Issues": [],
+                      "Name": "Warm Camera"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Time": 60.0,
+                      "Name": "Wait for Time Span"
+                    },
+                    {
+                      "Switches": [
+                        "TargetValid: 0",
+                        "MoonAltitude: 40.71",
+                        "MoonIllumination: 0.46",
+                        "SunAltitude: 51.35",
+                        "SunAzimuth: 122.61",
+                        "LocalSiderealTime: 8.77",
+                        "TIME: 1770",
+                        "EXITCODE: 0",
+                        "IsSafe: 'False'",
+                        "RoofStatus: RoofNotOpen",
+                        "SensorTemp: 35",
+                        "CoverState: CoverClosed",
+                        "S: FlatPanel: 1",
+                        "S: OTA: 1"
+                      ],
+                      "Iterations": 0,
+                      "Issues": [],
+                      "Predicate": null,
+                      "IfExpr": {
+                        "Expression": "IsSafe",
+                        "Type": "Any"
+                      },
+                      "Name": "If_Container",
+                      "Items": [
+                        {
+                          "EmbedText": "",
+                          "Status": "CREATED",
+                          "WindowService": {},
+                          "Issues": [],
+                          "EmbedTitle": "",
+                          "EmbedEdgeColor": "#FF008000",
+                          "Name": "Send to Discord",
+                          "Message": "\ud83d\udce1 FRA500 - Safe conditions returned. Resuming imaging...",
+                          "ShowEmbed": false
+                        },
+                        {
+                          "Variable": "DiscordUnsafeNotified",
+                          "Issues": [],
+                          "Name": "Set Variable",
+                          "Expr": {
+                            "Expression": "0",
+                            "Type": "Any"
+                          },
+                          "Status": "CREATED",
+                          "CValueExpr": null
+                        }
+                      ],
+                      "Status": "CREATED"
+                    }
+                  ],
+                  "Status": "CREATED"
+                }
+              ],
+              "Status": "CREATED"
+            }
+          ],
+          "Status": "CREATED"
+        }
+      ],
+      "Status": "CREATED"
+    },
+    {
+      "Triggers": [],
+      "Iterations": 0,
+      "Conditions": [],
+      "Name": "End_Container",
+      "Items": [
+        {
+          "Triggers": [],
+          "Iterations": 0,
+          "Conditions": [],
+          "Name": "MY END_Container",
+          "Items": [
+            {
+              "ElseInstructions": {
+                "Strategy": {},
+                "Name": "If/Then/Else",
+                "Conditions": [],
+                "IsExpanded": true,
+                "Items": [
+                  {
+                    "Message": "\ud83d\udce1 FRA500 - Night aborted. Sequence ending now.",
+                    "EmbedTitle": "",
+                    "EmbedText": "",
+                    "EmbedEdgeColor": "#FFDC143C",
+                    "ErrorBehavior": 0,
+                    "Attempts": 1
+                  }
+                ],
+                "Triggers": [],
+                "ErrorBehavior": 0,
+                "Attempts": 1
+              },
+              "Switches": null,
+              "IfExpr": {
+                "Expression": "!AbortNight",
+                "Type": "Any"
+              },
+              "Iterations": 0,
+              "Issues": [],
+              "Predicate": null,
+              "Name": "If/Then/Else_Container",
+              "Items": [
+                {
+                  "EmbedText": "",
+                  "Status": "CREATED",
+                  "WindowService": {},
+                  "Issues": [],
+                  "EmbedTitle": "",
+                  "EmbedEdgeColor": "#FF206694",
+                  "Name": "Send to Discord",
+                  "Message": "\ud83d\udce1 FRA500 - Planned imaging done for the evening",
+                  "ShowEmbed": false
+                },
+                {
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Conditions": [],
+                  "Name": "Initial Shutdown Steps_Container",
+                  "Items": [
+                    {
+                      "Name": "Stop live stacking",
+                      "Status": "CREATED"
+                    },
+                    {
+                      "Triggers": [],
+                      "Iterations": 0,
+                      "Conditions": [],
+                      "Name": "Shutdown PHD2_Container",
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Issues": [
+                            "Guider not connected"
+                          ],
+                          "Name": "Stop Guiding"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [
+                            "Guider not connected"
+                          ],
+                          "Name": "Shutdown PHD2"
+                        }
+                      ],
+                      "Status": "CREATED"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [
+                        "Telescope not connected"
+                      ],
+                      "Name": "Find home"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [
+                        "Telescope not connected"
+                      ],
+                      "TrackingMode": 5,
+                      "Name": "Set Tracking"
+                    }
+                  ],
+                  "Status": "CREATED"
+                },
+                {
+                  "Hours": 6,
+                  "Minutes": 21,
+                  "RolloverTime": "19:58:33.3321057",
+                  "Seconds": 20,
+                  "MinutesOffset": 0,
+                  "Issues": [],
+                  "Name": "Wait for Time",
+                  "SelectedProvider": {},
+                  "Status": "CREATED"
+                },
+                {
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Conditions": [],
+                  "Name": "Flats_Container",
+                  "Items": [
+                    {
+                      "EmbedText": "",
+                      "Status": "CREATED",
+                      "WindowService": {},
+                      "Issues": [],
+                      "EmbedTitle": "",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Name": "Send to Discord",
+                      "Message": "\ud83d\udce1 FRA500 - Capturing flats",
+                      "ShowEmbed": false
+                    },
+                    {
+                      "Triggers": [],
+                      "Iterations": 0,
+                      "Conditions": [],
+                      "Name": "Turn on Flat Panel_Container",
+                      "Items": [
+                        {
+                          "EmbedText": "",
+                          "Status": "CREATED",
+                          "WindowService": {},
+                          "Issues": [],
+                          "EmbedTitle": "",
+                          "EmbedEdgeColor": "#FF206694",
+                          "Name": "Send to Discord",
+                          "Message": "\ud83d\udce1 FRA500 - Turning on flat panel",
+                          "ShowEmbed": false
+                        },
+                        {
+                          "WritableSwitches": [
+                            {
+                              "Minimum": 0.0,
+                              "Maximum": 1.0,
+                              "StepSize": 1.0,
+                              "TargetValue": 1.0,
+                              "Id": 0,
+                              "EntityId": "device-10",
+                              "Name": "Flat Panel",
+                              "Description": "REDACTED",
+                              "Value": 1.0
+                            },
+                            {
+                              "Minimum": 0.0,
+                              "Maximum": 1.0,
+                              "StepSize": 1.0,
+                              "TargetValue": 1.0,
+                              "Id": 1,
+                              "EntityId": "device-11",
+                              "Name": "OTA",
+                              "Description": "REDACTED",
+                              "Value": 1.0
+                            }
+                          ],
+                          "SelectedSwitch": {
+                            "Minimum": 0.0,
+                            "Maximum": 1.0,
+                            "StepSize": 1.0,
+                            "TargetValue": 1.0,
+                            "Id": 0,
+                            "EntityId": "device-10",
+                            "Name": "Flat Panel",
+                            "Description": "REDACTED",
+                            "Value": 1.0
+                          },
+                          "Value": 1.0,
+                          "Issues": [],
+                          "Name": "Set Switch Value",
+                          "Status": "CREATED",
+                          "SwitchIndex": 0
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Time": 5.0,
+                          "Name": "Wait for Time Span"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Issues": [],
+                          "SelectedDevice": "Flat Panel",
+                          "Name": "Connect Equipment"
+                        }
+                      ],
+                      "Status": "CREATED"
+                    },
+                    {
+                      "AlwaysRepeatFlatSet": false,
+                      "DisplayText": "",
+                      "CompletedIterations": 0,
+                      "TotalFlatSets": 0,
+                      "Iterations": 0,
+                      "Issues": [],
+                      "TargetName": null,
+                      "CompletedFlatSets": 0,
+                      "Name": "Target Scheduler Flats",
+                      "Status": "CREATED",
+                      "FlatCount": 15
+                    }
+                  ],
+                  "Status": "CREATED"
+                },
+                {
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Conditions": [],
+                  "Name": "Final Shutdown Steps_Container",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Duration": 10.0,
+                      "Issues": [],
+                      "Name": "Warm Camera"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "OnOff": false,
+                      "Name": "Dew Heater"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "Name": "Reconcile PSF Guard catalog"
+                    },
+                    {
+                      "Name": "Night Summary End",
+                      "Status": "CREATED"
+                    }
+                  ],
+                  "Status": "CREATED"
+                },
+                {
+                  "EmbedText": "",
+                  "Status": "CREATED",
+                  "WindowService": {},
+                  "Issues": [],
+                  "EmbedTitle": "",
+                  "EmbedEdgeColor": "#FF206694",
+                  "Name": "Send to Discord",
+                  "Message": "\ud83d\udce1 FRA500 - Sequence complete",
+                  "ShowEmbed": false
+                }
+              ],
+              "Status": "CREATED"
+            }
+          ],
+          "Status": "CREATED"
+        }
+      ],
+      "Status": "CREATED"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API"
+}
