@@ -342,7 +342,7 @@ class NinaApiClient:
         """
         params = f"stream=true&quality={quality}"
         if stretch:
-            params += "&useAutoStretch=true"
+            params += "&autoPrepare=true"
         return f"{self._base}/image/{index}?{params}"
 
     async def get_image_bytes(self, index: int = 0, quality: int = 85, stretch: bool = True) -> bytes:
@@ -351,7 +351,11 @@ class NinaApiClient:
         url = self._base + path
         params = {"stream": "true", "quality": quality}
         if stretch:
-            params["useAutoStretch"] = "true"
+            # autoPrepare, not useAutoStretch: an unknown parameter binds
+            # nothing and is not rejected, so the request succeeds and returns
+            # the linear frame. autoPrepare hands the stretch to N.I.N.A., so
+            # the frame arrives looking as it does on the imaging tab.
+            params["autoPrepare"] = "true"
         try:
             async with self._session.get(
                 url, params=params, timeout=aiohttp.ClientTimeout(total=30)

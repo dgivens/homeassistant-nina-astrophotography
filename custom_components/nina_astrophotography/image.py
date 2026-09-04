@@ -5,7 +5,7 @@ This means it can be used in the built-in Picture Entity Card as well as
 the custom nina-image-panel-card.
 
 The image is fetched from the Advanced API's streaming endpoint:
-  GET /v2/api/image?index=0&stream=true&useAutoStretch=true
+  GET /v2/api/image/0?stream=true&autoPrepare=true
 
 The entity updates whenever the IMAGE-SAVE WebSocket event fires, so the
 HA image state reflects the last saved frame within a second of capture.

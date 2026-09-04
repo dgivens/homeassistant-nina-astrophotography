@@ -385,7 +385,7 @@ class NinaImagePanelCard extends HTMLElement {
       index: String(index),
       stream: "true",
       quality: forStrip ? "40" : String(cfg.quality),
-      ...(cfg.stretch ? { useAutoStretch: "true" } : {}),
+      ...(cfg.stretch ? { autoPrepare: "true" } : {}),
     });
     return `${this._apiBase}/image?${params}`;
   }
