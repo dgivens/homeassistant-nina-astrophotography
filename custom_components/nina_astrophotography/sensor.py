@@ -55,7 +55,8 @@ def _safe_float(data: dict, *keys: str, default=None):
 def _latest_stat(data: dict, stat_key: str) -> Any:
     history = _safe(data, "image_history", "Response", default=[])
     if history and isinstance(history, list):
-        return history[0].get(stat_key)
+        # Oldest first, so the newest frame is at the end.
+        return history[-1].get(stat_key)
     return None
 
 
@@ -286,7 +287,7 @@ SENSOR_DESCRIPTIONS: list[NinaSensorDescription] = [
         name="Last Image Star Count",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:star-shooting",
-        value_fn=lambda d: _latest_stat(d, "DetectedStars"),
+        value_fn=lambda d: _latest_stat(d, "Stars"),
     ),
     NinaSensorDescription(
         key="image_last_mean_adu",

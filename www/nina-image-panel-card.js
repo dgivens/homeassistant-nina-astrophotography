@@ -8,7 +8,7 @@
  * API endpoints used:
  *   GET /v2/api/image?index=0&stream=true           → latest image (JPEG stream)
  *   GET /v2/api/image?index=N&stream=true           → Nth image from history
- *   GET /v2/api/image/history?count=10              → image history metadata
+ *   GET /v2/api/image-history?all=true              → image history metadata
  *
  * Reads HA sensors for the overlay:
  *   sensor.last_frame_hfr, sensor.last_frame_stars, sensor.last_frame_mean_adu
@@ -451,10 +451,13 @@ class NinaImagePanelCard extends HTMLElement {
     // Fetch image history metadata for filter names
     let meta = [];
     try {
-      const resp = await fetch(`${this._apiBase}/image/history?count=${count}`);
+      // /image-history, not /image/history, and `count` is a boolean asking
+      // for the number of frames rather than a limit. Oldest first, so the
+      // newest `count` frames are at the end.
+      const resp = await fetch(`${this._apiBase}/image-history?all=true`);
       if (resp.ok) {
         const data = await resp.json();
-        meta = data?.Response ?? [];
+        meta = (data?.Response ?? []).slice(-count);
       }
     } catch (_) {}
 
