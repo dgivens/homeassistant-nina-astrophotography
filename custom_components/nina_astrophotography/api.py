@@ -146,7 +146,7 @@ class NinaApiClient:
         return await self._get("/equipment/camera/capture", params=params)
 
     async def abort_capture(self):
-        return await self._get("/equipment/camera/abort")
+        return await self._get("/equipment/camera/abort-exposure")
 
     # Mount / Telescope
     async def get_mount(self):
