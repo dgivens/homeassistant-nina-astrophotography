@@ -62,7 +62,9 @@ def device_identifiers(entry_id: str, kind: str | None = None) -> set[tuple[str,
 
 
 def hub_device_info(
-    entry_id: str, instance_name: str, version: VersionInfo,
+    entry_id: str,
+    instance_name: str,
+    version: VersionInfo,
     configuration_url: str | None = None,
 ) -> DeviceInfo:
     """The service device every piece of equipment hangs off."""

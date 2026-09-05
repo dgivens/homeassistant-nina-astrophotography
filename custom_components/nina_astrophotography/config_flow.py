@@ -39,7 +39,10 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-        vol.Required(CONF_INSTANCE_NAME, default=DEFAULT_INSTANCE_NAME): str,
+        # An empty name would title the entry "" and name devices " Camera".
+        vol.Required(CONF_INSTANCE_NAME, default=DEFAULT_INSTANCE_NAME): vol.All(
+            str, vol.Length(min=1)
+        ),
         vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): _POLL_INTERVAL,
     }
 )
@@ -92,14 +95,16 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> NinaOptionsFlow:
-        return NinaOptionsFlow(config_entry)
+        """Home Assistant assigns `config_entry` on the flow it is handed."""
+        return NinaOptionsFlow()
 
 
 class NinaOptionsFlow(config_entries.OptionsFlow):
-    """Handle options for the N.I.N.A. integration."""
+    """Handle options for the N.I.N.A. integration.
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self._config_entry = config_entry
+    Not `OptionsFlowWithReload`: the entry already carries an update listener
+    that reloads it, and both would reload it twice.
+    """
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -107,7 +112,7 @@ class NinaOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        options = self._config_entry.options
+        options = self.config_entry.options
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(

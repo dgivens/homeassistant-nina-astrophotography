@@ -3,6 +3,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
@@ -87,21 +88,8 @@ async def test_the_form_recovers_after_an_error(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
-@pytest.fixture
-def existing(hass: HomeAssistant) -> MockConfigEntry:
-    """An instance already configured on nina.local:1888, not set up."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="N.I.N.A.",
-        data={CONF_HOST: "nina.local", CONF_PORT: 1888},
-        unique_id="nina.local:1888",
-    )
-    entry.add_to_hass(hass)
-    return entry
-
-
 async def test_the_same_host_and_port_cannot_be_added_twice(
-    hass: HomeAssistant, existing: MockConfigEntry
+    hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
     result = await _submit(hass, ROOFTOP, return_value=VERSIONS)
     assert result["type"] is FlowResultType.ABORT
@@ -109,7 +97,7 @@ async def test_the_same_host_and_port_cannot_be_added_twice(
 
 
 async def test_a_second_rig_on_a_different_host_is_allowed(
-    hass: HomeAssistant, existing: MockConfigEntry
+    hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
     """Two rigs must coexist — that is why the instance name exists."""
     result = await _submit(
@@ -118,6 +106,12 @@ async def test_a_second_rig_on_a_different_host_is_allowed(
         return_value=VERSIONS,
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
+async def test_an_empty_instance_name_is_refused(hass: HomeAssistant) -> None:
+    """It would title the entry "" and name every device " Camera"."""
+    with pytest.raises(vol.Invalid):
+        await _submit(hass, ROOFTOP | {CONF_INSTANCE_NAME: ""}, return_value=VERSIONS)
 
 
 async def _set_option(hass: HomeAssistant, entry: MockConfigEntry, **options) -> dict:
@@ -134,6 +128,8 @@ async def test_the_options_flow_changes_the_poll_interval(
 ) -> None:
     result = await _set_option(hass, loaded_entry, **{CONF_POLL_INTERVAL: 30})
     assert result["type"] is FlowResultType.CREATE_ENTRY
+    # Coordinator-level by necessity: nothing in §5 exposes the poll cadence as
+    # an entity, so there is no public surface to assert this through.
     coordinator = loaded_entry.runtime_data.coordinator
     assert coordinator.update_interval == timedelta(seconds=30)
 
@@ -143,16 +139,23 @@ async def test_the_options_flow_moves_the_session_rollover_hour(
 ) -> None:
     """A rig on a UTC clock needs the boundary off local noon (§4.4)."""
     await _set_option(hass, loaded_entry, **{CONF_ROLLOVER_HOUR: 3})
+    # Phase C exposes this as `sensor.session_start` (§5.4); assert through the
+    # entity once it exists.
     session = loaded_entry.runtime_data.coordinator.data.session
     assert session.session_start.hour == 3
 
 
 async def test_a_pre_2_0_entry_names_the_instance_from_its_title(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
+    hass: HomeAssistant, two_rigs
 ) -> None:
-    """1.4.x entries carry no `instance_name`; the title is what they have."""
-    assert CONF_INSTANCE_NAME not in loaded_entry.data
+    """1.4.x entries carry no `instance_name`; the title is what they have.
+
+    The second rig, whose title is not the default: an entry titled "N.I.N.A."
+    cannot tell the title fallback from the default apart.
+    """
+    entry = two_rigs.entries[1]
+    assert CONF_INSTANCE_NAME not in entry.data
     hub = dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, loaded_entry.entry_id), loaded_entry.entry_id
+        (DOMAIN, entry.entry_id), entry.entry_id
     )
-    assert hub.name == "N.I.N.A."
+    assert hub.name == "Dome"
