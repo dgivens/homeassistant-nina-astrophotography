@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 FLOORS: dict[str, int] = {
+    "derive.py": 95,
     "api/v2/mapper.py": 90,
 }
 
@@ -22,7 +23,6 @@ FLOORS: dict[str, int] = {
 # failure. D5 asserts PENDING is empty.
 PENDING = {
     "config_flow.py": 100,
-    "derive.py": 95,
     "session.py": 95,
 }
 
