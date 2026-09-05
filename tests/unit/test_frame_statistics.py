@@ -16,7 +16,7 @@ import pytest
 
 from nina_astrophotography.frame_statistics import NinaFrameStatisticsStore
 
-FIXTURE = Path(__file__).parent / "fixtures" / "image_history_session.json"
+FIXTURE = Path(__file__).parent.parent / "fixtures" / "image_history_session.json"
 
 
 @pytest.fixture(scope="module")

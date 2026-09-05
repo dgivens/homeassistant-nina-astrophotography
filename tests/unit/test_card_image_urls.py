@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-CARDS = sorted((Path(__file__).resolve().parents[1] / "www").glob("*.js"))
+CARDS = sorted((Path(__file__).resolve().parents[2] / "www").glob("*.js"))
 assert CARDS, "no cards found"
 
 

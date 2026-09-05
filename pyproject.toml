@@ -48,9 +48,12 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-# tests/ on sys.path so `from helpers import ...` works under any import mode.
-pythonpath = ["tests"]
-testpaths = ["tests"]
+# tests/ on sys.path so `from helpers import ...` works under any import mode;
+# "." so tests/ha can import custom_components.nina_astrophotography as HA does.
+pythonpath = ["tests", "."]
+# No testpaths: `pytest` with no argument must not mix the two suites. The unit
+# suite runs HA-free, the ha suite runs under PHACC, and loading PHACC's
+# pytest11 entry point imports Home Assistant before collection.
 
 [tool.coverage.run]
 branch = true

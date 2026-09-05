@@ -13,7 +13,7 @@ import pytest
 import yaml
 
 BLUEPRINTS = sorted(
-    (Path(__file__).resolve().parents[1] / "blueprints").rglob("*.yaml")
+    (Path(__file__).resolve().parents[2] / "blueprints").rglob("*.yaml")
 )
 assert BLUEPRINTS, "no blueprints found"
 
