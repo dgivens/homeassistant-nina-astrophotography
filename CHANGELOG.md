@@ -6,8 +6,18 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [2.0.0] - unreleased
 
-### Changed
+### Breaking
 
+- Every entity id changes on a fresh install: entities now hang off a device
+  per equipment type rather than one device per integration, and the device
+  name is part of the id. `docs/2.0-renames.md` is the mapping. An **existing**
+  install is not renamed — Home Assistant keys the registry on `unique_id`, so
+  an entity whose `unique_id` is unchanged keeps the id it already has and only
+  moves to its new device.
+- The poll interval is now capped at **60 s** in both the add and the options
+  form; 1.4.5 accepted 5–300. The tiering design assumes a fast tier near 10 s.
+  An entry already storing a longer interval keeps polling at that rate, and
+  has to be lowered to 60 or less the next time the options form is submitted.
 - Home Assistant bus events keep their names (`nina_<event>` and the catch-all
   `nina_event`) but the payload is now `event` / `time` / `data` / `frame`
   instead of the raw `response` dict: the event socket emits models, and a wire
@@ -21,6 +31,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   to `frame` as a mapped frame — sentinels already normalised, keys in
   snake_case (`frame.hfr`, `frame.stars`). `trigger.event.data.event` is
   unchanged.
+
+### Changed
+
 - `nina_websocket_connected` and `nina_websocket_disconnected` now fire on
   connection **transitions** only; 1.4.x re-fired `disconnected` on every failed
   reconnect attempt, so an automation counting them will see far fewer.
