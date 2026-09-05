@@ -50,13 +50,17 @@ def config_entry() -> MockConfigEntry:
 def _serve(monkeypatch, session) -> None:
     """Give the integration `session` as its HTTP transport, and silence the
     event socket: pytest-socket refuses the connection and the reconnect loop
-    would otherwise outlive the test. Tests push through the `push` fixture."""
+    would otherwise outlive the test. Tests push through the `push` fixture.
+
+    Only `start` is stubbed. With no receive task and no socket, the real
+    `stop` runs harmlessly on unload — and stubbing it too would leave nothing
+    for a test of the unload path to observe.
+    """
     import custom_components.nina_astrophotography as integration
     from custom_components.nina_astrophotography.api.v2 import NinaEventStream
 
     monkeypatch.setattr(integration, "async_get_clientsession", lambda hass: session)
     monkeypatch.setattr(NinaEventStream, "start", lambda self: _async(None))
-    monkeypatch.setattr(NinaEventStream, "stop", lambda self: _async(None))
 
 
 @pytest.fixture

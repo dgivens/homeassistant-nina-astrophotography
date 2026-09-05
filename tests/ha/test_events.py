@@ -1,6 +1,8 @@
 """The push path's Home Assistant surface: the bus contract and unload."""
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.nina_astrophotography.api.v2 import NinaEventStream
 
 
 async def test_a_pushed_event_reaches_the_bus_under_both_names(
@@ -22,8 +24,30 @@ async def test_a_pushed_event_reaches_the_bus_under_both_names(
 
 
 async def test_unloading_stops_the_event_stream(
-    hass: HomeAssistant, loaded_entry
+    hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses, monkeypatch
 ) -> None:
-    assert await hass.config_entries.async_unload(loaded_entry.entry_id)
+    """`entry.async_on_unload(events.stop)` is what keeps the reconnect task
+    from outliving the entry. The spy wraps the real `stop` rather than
+    replacing it, and is installed before setup because `async_on_unload`
+    captures the bound method there.
+    """
+    stopped: list[NinaEventStream] = []
+    real_stop = NinaEventStream.stop
+
+    async def spy(self: NinaEventStream) -> None:
+        await real_stop(self)
+        stopped.append(self)
+
+    monkeypatch.setattr(NinaEventStream, "stop", spy)
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    assert loaded_entry.state is ConfigEntryState.NOT_LOADED
+
+    stream = config_entry.runtime_data.events
+    stream.connected = True  # as a live socket would leave it
+
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert stopped == [stream]
+    assert stream.connected is False
