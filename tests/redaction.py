@@ -77,8 +77,13 @@ _VALUE_PATTERNS = (
                r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"),  # HA entity id
 )
 
-# Site or facility identifiers seen in device Name/DisplayName/Description and
-# in a Target Scheduler ProjectName. Distinctive stems are left unbounded so
+# Site or facility identifiers, matched two ways: as the whole value of a name
+# key (`_NAME_KEYS` below), and as a TOKEN anywhere inside any string value —
+# a sequence node's text, a Target Scheduler group label. The token rule
+# substitutes rather than replacing the value, because the rest of a sequence
+# node's text is the structure the fixtures exist to record.
+#
+# Distinctive stems are left unbounded so
 # camel-cased compounds still match ("StarfrontObservatory"); short, generic
 # words and acronyms are word-bounded so they don't match as substrings of
 # something else — unbounded "rack" matches the sequence node named "Set
@@ -182,6 +187,10 @@ def _redact_scalar(key: str, value: Any) -> Any:
         return REDACTED
     if isinstance(value, str) and any(p.search(value) for p in _VALUE_PATTERNS):
         return REDACTED
+    if isinstance(value, str) and _FACILITY.search(value):
+        # Free text under a key no rule names — the token goes, the sentence
+        # stays. Idempotent: "REDACTED" carries no facility token itself.
+        return _FACILITY.sub(REDACTED, value)
     return value
 
 
