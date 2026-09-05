@@ -11,7 +11,9 @@ import json
 import sys
 from pathlib import Path
 
-FLOORS: dict[str, int] = {}
+FLOORS: dict[str, int] = {
+    "api/v2/mapper.py": 90,
+}
 
 # A floor lives here until the PR that creates its module promotes it into
 # FLOORS — A11 the mapper, A12 derive, A13 session, B7 the config flow. That
@@ -22,7 +24,6 @@ PENDING = {
     "config_flow.py": 100,
     "derive.py": 95,
     "session.py": 95,
-    "api/v2/mapper.py": 90,
 }
 
 PREFIX = "custom_components/nina_astrophotography/"
