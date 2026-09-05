@@ -349,6 +349,22 @@ STATES: dict[str, State] = {
         WritableSwitches=[{**_DAWN_CHANNELS[0], "Value": 0, "TargetValue": 1},
                           _DAWN_CHANNELS[1]],
     ),
+    # The two channels numbered 5 and 6. `Id` is the API's own channel index
+    # and every capture happens to number from 0 in list order, so nothing
+    # else distinguishes the id from the position in `WritableSwitches`.
+    "switch_channels_numbered_from_five": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[{**_DAWN_CHANNELS[0], "Id": 5},
+                          {**_DAWN_CHANNELS[1], "Id": 6}],
+    ),
+    # Both channels unnamed. A driver is not obliged to name a channel, and an
+    # empty entity name resolves to the device's own under `has_entity_name`,
+    # which would make two unnamed channels one entity.
+    "switch_channels_with_no_names": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[{**_DAWN_CHANNELS[0], "Name": ""},
+                          {**_DAWN_CHANNELS[1], "Name": ""}],
+    ),
     # The same channel numbering its two states 1 and 2. An ASCOM switch is
     # free to do that — 0-1 is a convention, not a rule — and every channel in
     # the corpus follows the convention, so nothing else can show that the
