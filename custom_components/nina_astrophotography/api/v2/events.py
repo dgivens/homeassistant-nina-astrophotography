@@ -168,7 +168,11 @@ class NinaEventStream:
                     "N.I.N.A. event socket: connection refused – retrying in %ds", delay
                 )
             except Exception as exc:                # noqa: BLE001
-                _LOGGER.warning("N.I.N.A. event socket: unexpected error: %s", exc)
+                # With the traceback: this catch is what keeps the socket
+                # reconnecting, so without it an unanticipated failure loops
+                # silently every 5 s with nothing to diagnose it by.
+                _LOGGER.warning("N.I.N.A. event socket: unexpected error: %s",
+                                exc, exc_info=True)
             finally:
                 self._ws = None
 

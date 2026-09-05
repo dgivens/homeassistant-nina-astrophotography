@@ -260,6 +260,20 @@ async def test_an_unmappable_event_is_skipped_not_fatal() -> None:
     assert [event.name for event in events] == ["SAFETY-CONNECTED"]
 
 
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    "response",
+    [{"Event": "IMAGE-SAVE"}, ["IMAGE-SAVE"], 5],
+    ids=["one-object", "list-of-strings", "scalar"],
+)
+async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) -> None:
+    """The setup replay runs inside `async_config_entry_first_refresh`, so a
+    shape this never anticipated would fail the whole entry rather than lose
+    one event. Every capture is a list of objects; these are not."""
+    session = FakeSession({"event-history": ok(response)})
+    assert await _client(session).get_events() == []
+
+
 # ── request parameters ───────────────────────────────────────────────────────
 #
 # Request parameter names are verified by live probe and pinned here.

@@ -1,6 +1,7 @@
 """The socket is a data source, not a hint — and it lives inside the seam."""
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 
@@ -145,3 +146,15 @@ async def test_replay_caps_the_fold_at_the_newest_events(monkeypatch) -> None:
 async def test_stopping_a_stream_that_never_started_is_harmless() -> None:
     """Unload runs the on_unload callbacks even when setup failed before start."""
     await stream().stop()
+
+
+async def test_stopping_a_stream_cancels_its_receive_loop() -> None:
+    """`entry.async_on_unload(events.stop)` is what keeps the reconnect loop
+    from outliving the entry, and the loop only ends when the task is
+    cancelled: it reconnects for as long as it is running."""
+    socket = stream()
+    task = asyncio.create_task(asyncio.Event().wait())
+    socket._task = task
+    await socket.stop()
+    assert task.cancelled()
+    assert socket._task is None
