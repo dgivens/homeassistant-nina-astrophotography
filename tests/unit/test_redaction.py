@@ -14,7 +14,19 @@ from redaction import PROFILE_ALLOWLIST, project, redact, scan
         ({"ImageFilePath": "C:\\Astro"}, {"ImageFilePath": "REDACTED"}),
         ({"Note": "C:\\Users\\dan\\N.I.N.A."}, {"Note": "REDACTED"}),
         ({"Note": "192.168.1.40"}, {"Note": "REDACTED"}),
+        ({"Note": "fe80::1c2d:3e4f:5a6b:7c8d"}, {"Note": "REDACTED"}),
+        ({"Note": "nina.tail1234.ts.net"}, {"Note": "REDACTED"}),
         ({"Note": "sensor.observatory_roof"}, {"Note": "REDACTED"}),
+        ({"UserName": "dan"}, {"UserName": "REDACTED"}),
+        ({"User": "dan"}, {"User": "REDACTED"}),
+        ({"Email": "dan@example.org"}, {"Email": "REDACTED"}),
+        ({"IPAddress": "10.0.0.5"}, {"IPAddress": "REDACTED"}),
+        ({"MachineName": "OBS-PC"}, {"MachineName": "REDACTED"}),
+        # A timestamp has colons too; only eight groups or a "::" is an IPv6.
+        ({"Time": "2026-09-03T21:26:56.6584856-05:00"},
+         {"Time": "2026-09-03T21:26:56.6584856-05:00"}),
+        # "user" is a whole-word rule: Focuser is a device, not an account.
+        ({"Focuser": {"Position": 2332}}, {"Focuser": {"Position": 2332}}),
         # Site and pointing fields are KEPT — see the module docstring.
         ({"SiteLatitude": 41.87}, {"SiteLatitude": 41.87}),
         ({"Altitude": 31.5478}, {"Altitude": 31.5478}),

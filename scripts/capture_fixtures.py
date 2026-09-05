@@ -54,7 +54,18 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
         for slug, path, params in ENDPOINTS:
             async with session.get(base + path, params=params,
                                    timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                envelope = await resp.json(content_type=None)
+                body = await resp.text()
+            try:
+                envelope = json.loads(body)
+            except ValueError:
+                envelope = None
+            if not isinstance(envelope, dict):
+                # The sequence-serialization failure answers an empty body with
+                # no envelope. That is a state worth keeping, not a reason to
+                # abandon the other endpoints.
+                print(f"warning: {slug} answered no JSON envelope ({len(body)} B); "
+                      "recording the raw body", file=sys.stderr)
+                envelope = {"_raw": body}
 
             if slug == "version":
                 versions["api_version"] = str(envelope.get("Response"))

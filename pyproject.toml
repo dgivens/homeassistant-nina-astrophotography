@@ -48,6 +48,9 @@ dev = [
     # the output is committed and a drift test diffs against it — an unpinned
     # generator turns a regeneration into a large unrelated diff.
     "datamodel-code-generator==0.76.1",
+    # Runs scripts/check_fixtures.py on every staged fixture: install the hook
+    # once with `uv run --group dev pre-commit install`.
+    "pre-commit>=4.0",
 ]
 
 [tool.pytest.ini_options]
