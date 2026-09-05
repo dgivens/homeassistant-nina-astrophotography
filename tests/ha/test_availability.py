@@ -17,12 +17,17 @@ LIGHT = "light.n_i_n_a_flat_panel_light"
 
 
 async def test_a_disconnected_device_makes_its_entities_unavailable(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
+    hass: HomeAssistant, set_up_with_flat_device
 ) -> None:
-    """Level 2, and the panel's own conditions cannot account for it: a
-    disconnected device drops its identity keys and keeps the rest, so the
-    panel still reports MaxBrightness 4096 and SupportsOnOff true here."""
-    await advance("equipment_disconnected")
+    """Level 2 alone, isolated from the panel's own range condition.
+
+    The mapper blanks every reading of a block reporting `Connected: false`, so
+    a disconnected panel maps to a zero range and the platform's own condition
+    accounts for it. The captured range is restored here deliberately: with
+    `_span > 0` and `SupportsOnOff` true, nothing but `connected` can produce
+    `unavailable`.
+    """
+    await set_up_with_flat_device(connected=False)
     assert hass.states.get(LIGHT).state == "unavailable"
 
 
