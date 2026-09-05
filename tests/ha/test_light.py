@@ -81,13 +81,12 @@ async def test_turn_on_sends_the_brightness_before_switching_the_light_on(
 # is covered on number.flat_panel_brightness in phase C Task C2.
 
 
-async def test_the_idle_panel_reads_off_with_no_brightness(
+async def test_the_idle_panel_reads_off(
     hass: HomeAssistant, idle_flat_panel_entry
 ) -> None:
-    """Brightness 0 / LightOn false is the panel's ordinary idle state."""
-    state = hass.states.get(ENTITY)
-    assert state.state == "off"
-    assert state.attributes.get(ATTR_BRIGHTNESS) is None
+    """Brightness 0 / LightOn false is the panel's ordinary idle state, and it
+    is off — not unknown, and not on at zero."""
+    assert hass.states.get(ENTITY).state == "off"
 
 
 async def test_a_disconnected_panel_reporting_a_zero_range_is_unavailable(

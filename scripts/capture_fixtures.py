@@ -46,26 +46,46 @@ ENDPOINTS: tuple[tuple[str, str, dict[str, str]], ...] = (
 )
 
 
+def _as_envelope(slug: str, body: str) -> dict:
+    """The decoded envelope, or the raw body recorded as one.
+
+    The sequence-serialization failure answers an empty body with no envelope.
+    That is a state worth keeping, not a reason to abandon the other endpoints.
+    """
+    try:
+        envelope = json.loads(body)
+    except ValueError:
+        envelope = None
+    if isinstance(envelope, dict):
+        return envelope
+    print(f"warning: {slug} answered no JSON envelope ({len(body)} B); "
+          "recording the raw body", file=sys.stderr)
+    return {"_raw": body}
+
+
+def _serialize(envelope: dict, target: Path) -> str:
+    """The file body, keeping the existing `_meta` when nothing else changed.
+
+    That is what makes a re-capture against an unchanged rig byte-identical, so
+    a capture run produces no diff of timestamps alone.
+    """
+    if target.exists():
+        previous = json.loads(target.read_text(encoding="utf-8"))
+        previous_meta = previous.pop("_meta", None)
+        if previous == {k: v for k, v in envelope.items() if k != "_meta"}:
+            envelope["_meta"] = previous_meta
+    return json.dumps(envelope, indent=2, sort_keys=False) + "\n"
+
+
 async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
     base = f"http://{host}:{port}/v2/api"
     written = 0
+    versions: dict[str, str] = {}
     async with aiohttp.ClientSession() as session:
-        versions = {}
         for slug, path, params in ENDPOINTS:
             async with session.get(base + path, params=params,
                                    timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                body = await resp.text()
-            try:
-                envelope = json.loads(body)
-            except ValueError:
-                envelope = None
-            if not isinstance(envelope, dict):
-                # The sequence-serialization failure answers an empty body with
-                # no envelope. That is a state worth keeping, not a reason to
-                # abandon the other endpoints.
-                print(f"warning: {slug} answered no JSON envelope ({len(body)} B); "
-                      "recording the raw body", file=sys.stderr)
-                envelope = {"_raw": body}
+                envelope = _as_envelope(slug, await resp.text())
 
             if slug == "version":
                 versions["api_version"] = str(envelope.get("Response"))
@@ -89,12 +109,7 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
                 "params": params,
             }
             target = FIXTURES / f"{state}_{slug}.json"
-            if target.exists():
-                previous = json.loads(target.read_text(encoding="utf-8"))
-                previous_meta = previous.pop("_meta", None)
-                if previous == {k: v for k, v in envelope.items() if k != "_meta"}:
-                    envelope["_meta"] = previous_meta
-            body = json.dumps(envelope, indent=2, sort_keys=False) + "\n"
+            body = _serialize(envelope, target)
             if dry_run:
                 print(f"would write {target} ({len(body)} B)")
             else:

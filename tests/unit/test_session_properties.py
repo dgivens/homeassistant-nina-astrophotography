@@ -5,21 +5,15 @@ than inventing frames, so a passing property says something about N.I.N.A.
 """
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
+from helpers import load_fixture
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from nina_astrophotography.api.v2.mapper import map_frame
 from nina_astrophotography.session import fold
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-_document = json.loads(
-    (FIXTURES / "dawn_image_history_with_flats.json").read_text(encoding="utf-8")
-)
-_document.pop("_meta", None)
-FRAMES = [map_frame(f, generation="g1") for f in _document["Response"]]
+FRAMES = [map_frame(f, generation="g1")
+          for f in load_fixture("dawn_image_history_with_flats.json")]
 # Frames 50-69 straddle the LIGHT → FLAT transition (5 lights, then flats), so
 # a permutation reorders calibration frames among lights, which is where an
 # order-dependent aggregate would show.

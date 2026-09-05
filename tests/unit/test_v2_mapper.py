@@ -1,31 +1,26 @@
 """wire → models. Every sentinel, timezone and quirk dies in this module."""
 from __future__ import annotations
 
-import json
 from datetime import timedelta
-from pathlib import Path
 
 import pytest
+from helpers import load_fixture as load
 
 from nina_astrophotography.api.v2.mapper import (
     map_equipment_info,
     map_event,
-    map_frame,
+    map_flat_device,
     map_flats_status,
+    map_frame,
+    map_guider,
     map_livestack_status,
+    map_mount,
     map_profile,
     map_sequence,
+    map_switch,
     nan_to_none,
-    rig_offset,
+    rig_utc_offset,
 )
-
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-
-
-def load(name: str):
-    document = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
-    document.pop("_meta", None)
-    return document["Response"]
 
 
 @pytest.mark.parametrize(
@@ -93,8 +88,6 @@ def test_only_the_literal_24_sentinel_or_tracking_off_nulls_the_flip_time(
     is exactly 24; a rig that flips MaxMinutesAfterMeridian late legitimately
     reads a few minutes over 24 for that long. No capture has a tracking mount,
     so the dawn mount is re-timed."""
-    from nina_astrophotography.api.v2.mapper import map_mount
-
     wire = load("dawn_equipment_info.json")["Mount"]
     mount = map_mount({**wire, "TrackingEnabled": tracking, "TimeToMeridianFlip": flip})
     assert mount.time_to_meridian_flip == expected
@@ -108,8 +101,6 @@ def test_flat_panel_range_comes_from_the_driver() -> None:
 
 def test_the_per_device_endpoint_shape_maps_too() -> None:
     """dawn_flatdevice_connected.json is a bare FlatDeviceInfo, not a snapshot."""
-    from nina_astrophotography.api.v2.mapper import map_flat_device
-
     panel = map_flat_device(load("dawn_flatdevice_connected.json"))
     assert panel.max_brightness == 4096
 
@@ -151,8 +142,6 @@ def test_a_disconnected_device_reports_no_readings(field) -> None:
 @pytest.mark.synthetic
 def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
     """No capture has a connected guider, so the dawn guider is re-flagged."""
-    from nina_astrophotography.api.v2.mapper import map_guider
-
     wire = load("dawn_equipment_info.json")["Guider"]
     assert map_guider({**wire, "Connected": True}).pixel_scale is None
 
@@ -160,6 +149,16 @@ def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
 def test_switch_channels_carry_their_writability_and_range() -> None:
     channel = map_equipment_info(load("dawn_equipment_info.json")).switch_device.channels[0]
     assert (channel.name, channel.writable, channel.binary) == ("Flat Panel", True, True)
+
+
+@pytest.mark.synthetic
+def test_a_disconnected_switch_keeps_its_channels_and_loses_only_their_values() -> None:
+    """Channel names and ranges are the device's capability, not a reading, so
+    they survive a disconnect the way every other block's option lists do. No
+    capture has a disconnected switch, so the dawn block is re-flagged."""
+    wire = load("dawn_equipment_info.json")["Switch"]
+    channel = map_switch({**wire, "Connected": False}).channels[0]
+    assert (channel.name, channel.maximum, channel.value) == ("Flat Panel", 1.0, None)
 
 
 def test_the_channel_map_is_the_thirteen_channels_not_average_period() -> None:
@@ -178,7 +177,7 @@ def test_a_channel_this_source_reports_keeps_its_reading() -> None:
 
 def test_the_rig_offset_comes_from_the_mounts_own_clock() -> None:
     """The client caches it so naive log-scraped event times can be resolved."""
-    assert rig_offset(load("dawn_equipment_info.json")) == timedelta(hours=-5)
+    assert rig_utc_offset(load("dawn_equipment_info.json")) == timedelta(hours=-5)
 
 
 def test_the_rig_offset_falls_back_to_the_gap_between_the_two_clocks() -> None:
@@ -187,11 +186,11 @@ def test_the_rig_offset_falls_back_to_the_gap_between_the_two_clocks() -> None:
     wire = load("dawn_equipment_info.json")
     clock = wire["Mount"]["Coordinates"]["DateTime"]
     clock["Now"] = clock["Now"].removesuffix("-05:00")
-    assert rig_offset(wire) == timedelta(hours=-5)
+    assert rig_utc_offset(wire) == timedelta(hours=-5)
 
 
 def test_the_rig_offset_is_unknown_without_a_mount_clock() -> None:
-    assert rig_offset(load("restart_equipment_partial_connect.json")) is None
+    assert rig_utc_offset(load("restart_equipment_partial_connect.json")) is None
 
 
 @pytest.fixture

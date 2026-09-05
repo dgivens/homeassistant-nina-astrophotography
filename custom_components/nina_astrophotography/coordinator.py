@@ -52,6 +52,20 @@ FAST_INTERVAL = timedelta(seconds=10)
 
 _DEVICE_SLOTS = tuple(field.name for field in fields(EquipmentSnapshot))
 
+# Phase A polls the fast tier only, so these three publish as "nothing read yet"
+# until phase B adds their endpoints to the poll.
+_NO_FLATS = FlatsStatus(state=None, total_iterations=None, completed_iterations=None)
+_NO_LIVESTACK = LivestackStatus(running=False, raw_state="")
+_NO_PROFILE = ProfileSettings(
+    focal_length=None,
+    pixel_size=None,
+    autofocus_timeout_seconds=None,
+    r_squared_threshold=None,
+    min_minutes_after_meridian=None,
+    max_minutes_after_meridian=None,
+    use_side_of_pier=None,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class NinaData:
@@ -161,19 +175,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 now=self._now(),
             ),
             sequence=None,
-            flats=FlatsStatus(
-                state=None, total_iterations=None, completed_iterations=None
-            ),
-            livestack=LivestackStatus(running=False, raw_state=""),
-            profile=ProfileSettings(
-                focal_length=None,
-                pixel_size=None,
-                autofocus_timeout_seconds=None,
-                r_squared_threshold=None,
-                min_minutes_after_meridian=None,
-                max_minutes_after_meridian=None,
-                use_side_of_pier=None,
-            ),
+            flats=_NO_FLATS,
+            livestack=_NO_LIVESTACK,
+            profile=_NO_PROFILE,
             generation=self.generation,
             version=self._version,
         )
