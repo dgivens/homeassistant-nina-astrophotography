@@ -7,8 +7,8 @@ cannot ever succeed is worse than an absent one: it appears in the service
 picker, an automation is written against it, and the failure only shows up
 mid-session.
 
-A source check rather than a behavioural one, because the service registry
-lives in `__init__.py`, which imports Home Assistant, and this suite
+The service checks read the source rather than the registry, because the
+registry lives in `__init__.py`, which imports Home Assistant and this suite
 deliberately does not.
 """
 from __future__ import annotations
@@ -18,6 +18,7 @@ from pathlib import Path
 
 import yaml
 
+from nina_astrophotography.api.v2.events import NinaEventStream
 from nina_astrophotography.legacy_api import NinaApiClient
 
 COMPONENT = (
@@ -41,6 +42,10 @@ def test_no_dither_service_is_translated() -> None:
     assert "guider_dither" not in strings.get("services", {})
 
 
-def test_the_dither_event_is_still_listened_for() -> None:
+def test_the_dither_event_is_still_delivered() -> None:
     """Removing the command must not lose the notification that it happened."""
-    assert "GUIDER-DITHER" in (COMPONENT / "websocket.py").read_text()
+    stream = NinaEventStream(host="nina.local", port=1888, session=None)
+    seen: list[str] = []
+    stream.subscribe(lambda event: seen.append(event.name))
+    stream._dispatch({"Event": "GUIDER-DITHER"}, None)
+    assert seen == ["GUIDER-DITHER"]

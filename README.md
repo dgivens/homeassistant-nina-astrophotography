@@ -356,7 +356,9 @@ can react instantly — no polling delay.
 ### Event naming convention
 N.I.N.A. event `IMAGE-SAVE` → HA event `nina_image_save`  
 N.I.N.A. event `MOUNT-AFTER-FLIP` → HA event `nina_mount_after_flip`  
-All events also fire as `nina_event` with `event` and `response` in event data.
+All events also fire as `nina_event`. Event data is `event` (the N.I.N.A. name),
+`time` (ISO 8601, offset-aware), `data` (the event's own scalar fields) and
+`frame` (the mapped statistics on `IMAGE-SAVE`, otherwise `null`).
 
 ### Using WebSocket events in automations
 
@@ -370,8 +372,8 @@ automation:
       - service: notify.mobile_app_myphone
         data:
           message: >
-            Frame saved: HFR {{ trigger.event.data.response.ImageStatistics.HFR | round(2) }}
-            Stars: {{ trigger.event.data.response.ImageStatistics.Stars }}
+            Frame saved: HFR {{ trigger.event.data.frame.hfr | round(2) }}
+            Stars: {{ trigger.event.data.frame.stars }}
 
   - alias: "Alert when autofocus fails"
     trigger:
