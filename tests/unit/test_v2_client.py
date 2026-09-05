@@ -215,6 +215,19 @@ async def test_frames_are_mapped_from_the_history_list() -> None:
     assert isinstance(frames[0], Frame)
 
 
+@pytest.mark.synthetic
+@pytest.mark.parametrize("missing", ["Date", "Filename"])
+async def test_a_history_item_without_an_identity_is_skipped_not_fatal(missing) -> None:
+    """Frame identity is (Date, Filename); an item lacking either cannot enter
+    the fold, so it is dropped the way an unmappable event is. Every captured
+    frame carries both, so one is stripped."""
+    wire = envelope("dawn_image_history_with_flats.json")
+    items = wire["Response"]
+    items[0] = {k: v for k, v in items[0].items() if k != missing}
+    frames = await _client(FakeSession({"image-history": wire})).get_frames(include_all=True)
+    assert len(frames) == len(items) - 1
+
+
 async def test_a_bare_history_dict_is_one_frame() -> None:
     """Bare /image-history answers the latest frame as a single object."""
     latest = envelope("dawn_image_history_with_flats.json")["Response"][-1]

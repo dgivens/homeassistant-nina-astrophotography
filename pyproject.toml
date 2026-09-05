@@ -60,6 +60,7 @@ pythonpath = ["tests", "."]
 # pytest11 entry point imports Home Assistant before collection.
 markers = [
     "slow: shells out to a generator; deselect with -m 'not slow'",
+    "synthetic: wire data constructed for a branch the corpus cannot show",
 ]
 
 [tool.coverage.run]

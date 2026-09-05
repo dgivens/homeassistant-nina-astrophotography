@@ -185,7 +185,14 @@ class NinaClientV2:
             response = [response]
         if not isinstance(response, list):
             return []
-        return [map_frame(item, generation) for item in response]
+        frames: list[Frame] = []
+        for item in response:
+            try:
+                frames.append(map_frame(item, generation))
+            except (KeyError, TypeError, ValueError) as exc:
+                # No (Date, Filename) identity means it cannot enter the fold.
+                _LOGGER.debug("Skipping unmappable frame %s: %s", item, exc)
+        return frames
 
     async def get_image_history_count(self) -> int:
         return int(await self._get("/image-history", {"count": "true"}) or 0)

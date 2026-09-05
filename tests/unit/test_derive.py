@@ -40,9 +40,15 @@ def test_image_scale_is_the_standard_206_265_formula() -> None:
     assert image_scale_arcsec_per_px(3.76, 500.0) == pytest.approx(1.5511, abs=1e-4)
 
 
-def test_image_scale_is_none_without_a_focal_length() -> None:
-    """Absent, not zero: a missing reading must not become a division by zero."""
-    assert image_scale_arcsec_per_px(3.76, 0.0) is None
+@pytest.mark.parametrize(
+    ("pixel_size", "focal_length"),
+    [(3.76, 0.0), (0.0, 500.0)],
+    ids=["no-focal-length", "no-pixel-size"],
+)
+def test_image_scale_is_none_when_either_input_is_missing(pixel_size, focal_length) -> None:
+    """Absent, not zero: a disconnected camera reports PixelSize 0, and a scale
+    of 0 arcsec/px would make every HFR read as perfect."""
+    assert image_scale_arcsec_per_px(pixel_size, focal_length) is None
 
 
 def test_binning_multiplies_the_scale() -> None:

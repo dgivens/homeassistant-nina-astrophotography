@@ -65,32 +65,39 @@ def test_nan_fields_map_to_none_not_zero() -> None:
     assert all(v is None for v in snapshot.weather.channels.values())
 
 
-def test_tracking_mode_is_the_wire_spelling_not_the_specs() -> None:
-    """The spec says 'Siderial'; the wire says 'Sidereal'."""
+def test_tracking_mode_is_mapped_verbatim() -> None:
+    """The wire's own spelling, never the spec's enum ('Siderial')."""
     snapshot = map_equipment_info(load("dawn_equipment_info.json"))
     # /equipment/info nests eleven device blocks under Camera, Dome, FilterWheel,
     # FlatDevice, Focuser, Guider, Mount, Rotator, SafetyMonitor, Switch and
     # WeatherData. The per-device /equipment/<x>/info captures are a BARE device
     # object — do not feed them to map_equipment_info.
-    assert snapshot.mount.tracking_mode in {"Sidereal", "Lunar", "Solar", "King",
-                                            "Stopped", None}
+    assert snapshot.mount.tracking_mode == "Stopped"
 
 
-def test_the_meridian_24_sentinel_maps_to_none() -> None:
-    """24 h to flip means tracking is off, not 'a day away' (§11)."""
-    snapshot = map_equipment_info(load("dawn_equipment_info.json"))
-    assert snapshot.mount.tracking_enabled is False
-    assert snapshot.mount.time_to_meridian_flip is None
-
-
-def test_a_tracking_mount_keeps_a_twelve_hour_flip_time() -> None:
-    """12 h is legitimate — it means "just flipped" — so "≥12 → unknown" would
-    be wrong. No capture has a tracking mount, so the fixture is retimed."""
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("tracking", "flip", "expected"),
+    [
+        (False, 24, None),      # the dawn capture verbatim: tracking off
+        (True, 24, None),       # the literal sentinel, whatever TrackingEnabled says
+        (True, 12, 12.0),       # just flipped — legitimate, not "unknown"
+        (True, 1.5, 1.5),
+        (True, 24.08, 24.08),   # a UseSideOfPier rig just after its flip
+    ],
+)
+def test_only_the_literal_24_sentinel_or_tracking_off_nulls_the_flip_time(
+    tracking, flip, expected
+) -> None:
+    """24 h to flip means tracking is off, not 'a day away' (§11). The sentinel
+    is exactly 24; a rig that flips MaxMinutesAfterMeridian late legitimately
+    reads a few minutes over 24 for that long. No capture has a tracking mount,
+    so the dawn mount is re-timed."""
     from nina_astrophotography.api.v2.mapper import map_mount
 
     wire = load("dawn_equipment_info.json")["Mount"]
-    mount = map_mount({**wire, "TrackingEnabled": True, "TimeToMeridianFlip": 12})
-    assert mount.time_to_meridian_flip == 12
+    mount = map_mount({**wire, "TrackingEnabled": tracking, "TimeToMeridianFlip": flip})
+    assert mount.time_to_meridian_flip == expected
 
 
 def test_flat_panel_range_comes_from_the_driver() -> None:
@@ -113,16 +120,16 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("camera", "gain", 100),
         ("camera", "binning_modes", ("1x1", "2x2", "3x3", "4x4")),
         ("camera", "target_temperature", 0.0),
+        ("camera", "battery", None),            # Battery -1 with HasBattery false
         ("mount", "epoch", "JNOW"),
         ("mount", "tracking_modes", ("Sidereal", "Lunar", "Solar", "Stopped")),
         ("focuser", "position", 2332),
-        ("focuser", "max_step", None),          # not on the wire, nor in the spec
         ("filter_wheel", "selected_filter", "R"),
         ("filter_wheel", "available_filters", ("L", "R", "G", "B", "H", "O", "S")),
         ("guider", "state", None),              # no capture has a connected guider
         ("rotator", "synced", True),
         ("dome", "azimuth", None),              # "NaN" on a dome that never existed
-        ("dome", "shutter_status", "ShutterNone"),
+        ("dome", "shutter_status", None),       # ShutterNone from a disconnected driver
         ("flat_device", "cover_state", "Closed"),
         ("safety_monitor", "is_safe", False),
     ],
@@ -130,6 +137,24 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
 def test_each_device_block_maps_its_readings(device, field, expected) -> None:
     snapshot = map_equipment_info(load("dawn_equipment_info.json"))
     assert getattr(getattr(snapshot, device), field) == expected
+
+
+@pytest.mark.parametrize("field", ["position", "step_size", "temperature"])
+def test_a_disconnected_device_reports_no_readings(field) -> None:
+    """A disconnected driver answers Position 0 / StepSize 0: artefacts of the
+    driver template, not readings. Only `connected`, `meta` and the capability
+    flags survive a Connected: false block."""
+    focuser = map_equipment_info(load("restart_equipment_partial_connect.json")).focuser
+    assert getattr(focuser, field) is None
+
+
+@pytest.mark.synthetic
+def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
+    """No capture has a connected guider, so the dawn guider is re-flagged."""
+    from nina_astrophotography.api.v2.mapper import map_guider
+
+    wire = load("dawn_equipment_info.json")["Guider"]
+    assert map_guider({**wire, "Connected": True}).pixel_scale is None
 
 
 def test_switch_channels_carry_their_writability_and_range() -> None:
@@ -169,52 +194,78 @@ def test_the_rig_offset_is_unknown_without_a_mount_clock() -> None:
     assert rig_offset(load("restart_equipment_partial_connect.json")) is None
 
 
-def test_calibration_frames_lose_their_hfr_but_keep_their_adu() -> None:
+@pytest.fixture
+def first_flat() -> dict:
+    return next(f for f in load("dawn_image_history_with_flats.json")
+                if f["ImageType"] == "FLAT")
+
+
+@pytest.fixture
+def first_light() -> dict:
+    return next(f for f in load("dawn_image_history_with_flats.json")
+                if f["ImageType"] == "LIGHT")
+
+
+def test_calibration_frames_lose_their_hfr_but_keep_their_adu(first_flat) -> None:
     """Keyed on ImageType, which is on both paths. HFR 0 is a reliable
     calibration signal but not a sufficient one — see the clouded-light test."""
-    flats = [f for f in load("dawn_image_history_with_flats.json")
-             if f["ImageType"] == "FLAT"]
-    frame = map_frame(flats[0], generation="g1")
-    assert frame.hfr is None
-    assert frame.stars is None
+    frame = map_frame(first_flat, generation="g1")
+    assert (frame.hfr, frame.stars) == (None, None)
     assert frame.mean is not None
 
 
-def test_light_frames_keep_their_hfr() -> None:
-    lights = [f for f in load("dawn_image_history_with_flats.json")
-              if f["ImageType"] == "LIGHT"]
-    assert map_frame(lights[0], generation="g1").hfr is not None
+@pytest.mark.synthetic
+@pytest.mark.parametrize("image_type", ["DARK", "BIAS", "DARKFLAT"])
+def test_every_calibration_type_is_stripped_like_a_flat(first_flat, image_type) -> None:
+    """Calibration is the explicit set FLAT/DARK/BIAS/DARKFLAT. The corpus has
+    flats and one dark push; the flat is re-typed for the rest."""
+    frame = map_frame({**first_flat, "ImageType": image_type}, generation="g1")
+    assert (frame.hfr, frame.stars) == (None, None)
 
 
-def test_the_total_guide_rms_is_parsed_out_of_the_rms_text() -> None:
-    """RmsText is 'Tot: 0.26 (0.42")' — pixels first, arcseconds in brackets."""
-    lights = [f for f in load("dawn_image_history_with_flats.json")
-              if f["ImageType"] == "LIGHT"]
-    assert map_frame(lights[0], generation="g1").rms == 0.26
+def test_light_frames_keep_their_hfr(first_light) -> None:
+    assert map_frame(first_light, generation="g1").hfr is not None
 
 
-def test_a_calibration_frame_has_no_guide_rms() -> None:
+@pytest.mark.synthetic
+def test_a_snapshot_is_not_calibration_and_keeps_its_readings(first_light) -> None:
+    """Only the calibration set loses readings; a SNAPSHOT is of the sky. No
+    capture holds one, so a light is re-typed."""
+    frame = map_frame({**first_light, "ImageType": "SNAPSHOT"}, generation="g1")
+    assert (frame.hfr, frame.stars) == (first_light["HFR"], first_light["Stars"])
+
+
+def test_the_guide_rms_is_the_arcsecond_figure_in_the_rms_text(first_light) -> None:
+    """RmsText is 'Tot: 0.26 (0.42")' — guide-camera pixels first, then
+    arcseconds. Pixels are not comparable between rigs; arcseconds are."""
+    assert map_frame(first_light, generation="g1").rms_arcsec == 0.42
+
+
+def test_a_calibration_frame_has_no_guide_rms(first_flat) -> None:
     """A flat reports 'Tot: 0.00 (0.00")' because the guider is stopped. Kept as
     0.0 it reads as perfect guiding across 67 of this session's 122 frames."""
-    flats = [f for f in load("dawn_image_history_with_flats.json")
-             if f["ImageType"] == "FLAT"]
-    assert map_frame(flats[0], generation="g1").rms is None
+    assert map_frame(first_flat, generation="g1").rms_arcsec is None
 
 
-def test_a_frame_of_unknown_type_keeps_the_readings_it_has() -> None:
+@pytest.mark.synthetic
+def test_an_unguided_light_has_no_guide_rms(first_light) -> None:
+    """Zero total RMS is no guiding, not perfect guiding — the same rule as
+    HFR 0 on a light. Every captured light was guided, so one is re-texted."""
+    frame = map_frame({**first_light, "RmsText": 'Tot: 0.00 (0.00")'}, generation="g1")
+    assert frame.rms_arcsec is None
+
+
+def test_a_frame_of_unknown_type_keeps_the_readings_it_has(first_light) -> None:
     """The type decides only what is dropped. No captured frame is missing its
     ImageType, so a captured light is stripped of it deliberately."""
-    light = next(f for f in load("dawn_image_history_with_flats.json")
-                 if f["ImageType"] == "LIGHT")
-    frame = map_frame({k: v for k, v in light.items() if k != "ImageType"},
+    frame = map_frame({k: v for k, v in first_light.items() if k != "ImageType"},
                       generation="g1")
-    assert (frame.hfr, frame.stars, frame.rms) == (light["HFR"], light["Stars"], 0.26)
+    assert (frame.hfr, frame.stars, frame.rms_arcsec) == (
+        first_light["HFR"], first_light["Stars"], 0.42)
 
 
-def test_an_unparsable_rms_text_is_no_reading() -> None:
-    lights = [f for f in load("dawn_image_history_with_flats.json")
-              if f["ImageType"] == "LIGHT"]
-    assert map_frame({**lights[0], "RmsText": "n/a"}, generation="g1").rms is None
+def test_an_unparsable_rms_text_is_no_reading(first_light) -> None:
+    assert map_frame({**first_light, "RmsText": "n/a"}, generation="g1").rms_arcsec is None
 
 
 def test_a_clouded_light_keeps_its_zero_star_count() -> None:
