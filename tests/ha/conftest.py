@@ -43,6 +43,9 @@ def config_entry() -> MockConfigEntry:
         domain=DOMAIN,
         title="N.I.N.A.",
         data={CONF_HOST: "nina.local", CONF_PORT: 1888},
+        # No `instance_name`: a 1.4.x entry, which is what an upgrade brings.
+        # 1.4.5's flow already set this unique id, so every real entry has one.
+        unique_id="nina.local:1888",
         entry_id="01JTESTENTRY0000000000000",
     )
 
@@ -142,6 +145,7 @@ async def two_rigs(hass, monkeypatch) -> TwoRigs:
         entry = MockConfigEntry(
             domain=DOMAIN, title=title,
             data={CONF_HOST: host, CONF_PORT: 1888},
+            unique_id=f"{host}:1888",
             entry_id=f"01JTESTENTRY000000000000{index}",
         )
         entry.add_to_hass(hass)
