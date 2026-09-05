@@ -102,6 +102,27 @@ async def test_an_unreadable_application_start_does_not_blank_the_session(
     assert data.session.image_count == 122
 
 
+@pytest.mark.synthetic
+async def test_a_generation_adopted_late_reseeds_the_frames_under_it(
+    hass, config_entry: MockConfigEntry, rig: FakeRig
+) -> None:
+    """An `/application-start` unreadable on the FIRST poll seeds the frames
+    under a null tag; adopting the real one on the next poll filters every one
+    of them out of the fold, and the reseed guard takes two more ticks to put
+    them back.
+
+    A transiently empty endpoint has no capture: the state varies the captured
+    envelope's one scalar."""
+    rig.goto("imaging_start_unreadable")
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    rig.goto("imaging")
+    await config_entry.runtime_data.coordinator.async_refresh()
+    assert config_entry.runtime_data.coordinator.data.session.image_count == 122
+
+
 async def test_an_empty_history_is_not_a_failure(
     loaded_entry: MockConfigEntry, advance
 ) -> None:
