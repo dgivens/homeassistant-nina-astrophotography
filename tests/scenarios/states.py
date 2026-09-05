@@ -10,11 +10,11 @@ Every state carries the same endpoints, so advancing never changes which routes
 exist — an endpoint one state serves and another does not reads to the client
 as a build that dropped a route.
 
-No capture exists yet for `/livestack/status`, `/profile/show?active=true` or
-`/equipment/focuser/last-af`, all three of which the event-driven tier polls
-(§11's meridian flip needs `MeridianFlipSettings`; the autofocus R² check needs
-`/last-af`). They are in no state: an unregistered path answers 404 so the
-coordinator's not-served handling is exercised, never a fake body.
+Every endpoint the integration reads now has a capture, in `imaging_guiding`.
+The other states deliberately do NOT serve `/livestack/status`,
+`/profile/show?active=true` or `/equipment/focuser/last-af`: an unregistered
+path answers 404, which is what a build without the livestack plugin sends, and
+that keeps the coordinator's not-served latch exercised.
 
 Adding a state: build it from captured envelopes, never from a hand-written
 document. A state the corpus cannot show belongs in `AWAITING_CAPTURE`.
@@ -46,11 +46,14 @@ _IDENTITY_KEYS = (
 )
 
 
-def _versions() -> State:
-    """`/version` and `/version/nina`, read from what the capture ran against."""
-    meta = json.loads(
-        (FIXTURES / "dawn_equipment_info.json").read_text(encoding="utf-8")
-    )["_meta"]
+def _versions(name: str = "dawn_equipment_info.json") -> State:
+    """`/version` and `/version/nina`, read from what the capture ran against.
+
+    From `_meta`, not from the captured `/version` envelope: a four-part .NET
+    version is shaped exactly like a bare IPv4 address, so the redactor claims
+    the Response and leaves the real number only in `_meta`.
+    """
+    meta = json.loads((FIXTURES / name).read_text(encoding="utf-8"))["_meta"]
     return {
         "/version": ok(meta["api_version"]),
         "/version/nina": ok(meta["nina_version"]),
@@ -101,6 +104,25 @@ _IMAGING: State = {
     "/event-history": load_envelope("dawn_event_history.json"),
     "/sequence/json": load_envelope("dawn_sequence_complete.json"),
     "/flats/status": load_envelope("dawn_flats_status_idle.json"),
+}
+
+# 01:45 rig-local, 4.2 h into a session that began with a restart at 17:27: the
+# camera exposing, the guider locked, 27 frames down, livestack running. The
+# only state whose every endpoint is captured.
+_IMAGING_GUIDING: State = {
+    **_versions("imaging_guiding_equipment_info.json"),
+    "/application-start": load_envelope("imaging_guiding_application_start.json"),
+    "/equipment/info": load_envelope("imaging_guiding_equipment_info.json"),
+    "/image-history?count=true": load_envelope("imaging_guiding_image_history_count.json"),
+    "/image-history?all=true": load_envelope("imaging_guiding_image_history_all.json"),
+    "/image-history": load_envelope("imaging_guiding_image_history_latest.json"),
+    "/event-history": load_envelope("imaging_guiding_event_history.json"),
+    "/sequence/json": load_envelope("imaging_guiding_sequence_json.json"),
+    "/sequence/state": load_envelope("imaging_guiding_sequence_state.json"),
+    "/flats/status": load_envelope("imaging_guiding_flats_status.json"),
+    "/livestack/status": load_envelope("imaging_guiding_livestack_status.json"),
+    "/profile/show?active=true": load_envelope("imaging_guiding_profile.json"),
+    "/equipment/focuser/last-af": load_envelope("imaging_guiding_last_af.json"),
 }
 
 _RESTARTED: State = {
@@ -155,6 +177,9 @@ def disconnect(state: State, *devices: str) -> State:
 STATES: dict[str, State] = {
     # Mid-session: eleven devices, 122 frames, the sequence running.
     "imaging": dict(_IMAGING),
+    # Mid-session with everything captured: guider Guiding, camera exposing,
+    # livestack Running, the profile and the last autofocus run served.
+    "imaging_guiding": dict(_IMAGING_GUIDING),
     # The 67 flats are in the same history — dawn flats are a phase of the
     # night, not a different snapshot.
     "dawn_flats": dict(_IMAGING),
@@ -227,6 +252,8 @@ SEQUENCES: dict[str, list[str]] = {
 # - idle_with_stale_running_nodes: /sequence/json reading RUNNING with no
 #   frames captured.
 # - guider_lost_lock: the guider connected and no longer guiding.
+#
+# No ENDPOINT awaits capture any more — `imaging_guiding` serves all of them.
 AWAITING_CAPTURE = frozenset(
     {"camera_warm_at_setup", "idle_with_stale_running_nodes", "guider_lost_lock"}
 )

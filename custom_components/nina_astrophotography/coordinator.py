@@ -14,12 +14,19 @@ The polling decisions themselves — is this a restart, does the invariant hold 
 live in `polling.py`, which knows nothing of Home Assistant. This module is the
 I/O and the ownership.
 
-Phase B polls the fast tier and holds the generation; the remaining tiers and
-the push path follow.
+Polling runs in six tiers behind ONE 10 s tick, not three coordinators: the
+per-tier due-time checks live inside `_async_update_data`.
+
+    fast       7,442 B @ 10 s  =  44,652 B/min
+    sequence   8,429 B @ 30 s  =  16,858 B/min
+                                  ──────────
+                                  61,510 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
+    before                        82,606 B x 6/min ~ 297 MB / night
 """
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, fields, replace
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
@@ -43,7 +50,7 @@ from .api.models import (
     VersionInfo,
 )
 from .api.v2 import NinaClientV2
-from .polling import ReseedGuard, RestartDetector
+from .polling import ReseedGuard, RestartDetector, TierSchedule, imaging
 from .session import fold
 
 if TYPE_CHECKING:
@@ -57,8 +64,22 @@ FAST_INTERVAL = timedelta(seconds=10)
 
 _DEVICE_SLOTS = tuple(field.name for field in fields(EquipmentSnapshot))
 
-# Phase A polls the fast tier only, so these three publish as "nothing read yet"
-# until phase B adds their endpoints to the poll.
+# endpoint -> (the attribute the model is stored on, the client getter).
+# `/equipment/focuser/last-af` is deliberately absent: phase C adds its model,
+# and there is nothing to store until then.
+_TIER_READS: dict[str, tuple[str, str]] = {
+    "/sequence/json": ("_sequence", "get_sequence"),
+    "/flats/status": ("_flats", "get_flats"),
+    "/livestack/status": ("_livestack", "get_livestack"),
+    "/profile/show": ("_profile", "get_profile"),
+}
+
+# The floor backstops the event-driven set. `/flats/status` has no event at
+# all — the FLAT-* events are panel hardware, not the flat wizard.
+_FLOOR_ENDPOINTS = ("/flats/status", "/livestack/status", "/profile/show")
+
+# What a slot reads before its endpoint has ever answered, and what it goes on
+# reading if the build does not serve it.
 _NO_FLATS = FlatsStatus(state=None, total_iterations=None, completed_iterations=None)
 _NO_LIVESTACK = LivestackStatus(running=False, raw_state="")
 _NO_PROFILE = ProfileSettings(
@@ -129,6 +150,14 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._reseed_guard = ReseedGuard()
         self._seeded = False
         self._mismatch_logged = False
+        self._schedule = TierSchedule()
+        self._sequence: SequenceNode | None = None
+        self._flats = _NO_FLATS
+        self._livestack = _NO_LIVESTACK
+        self._profile = _NO_PROFILE
+        self._not_served: set[str] = set()
+        self._last_image_save: float | None = None
+        self._last_count: int | None = None
 
     async def _async_update_data(self) -> NinaData:
         try:
@@ -168,10 +197,100 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             raise UpdateFailed(str(exc)) from exc
 
         self._rejection_logged = False
-        return self._assemble(self._latch_observed(snapshot))
+        snapshot = self._latch_observed(snapshot)
+        await self._run_tiers(snapshot, count)
+        return self._assemble(snapshot)
 
     def handle_event(self, event: NinaEvent) -> None:
-        """Take one pushed event. A no-op until B4 gives it the fold."""
+        """React to one pushed event on the tiers. The fold and the push
+        publish are B4's; nothing here touches the accumulated sets.
+        """
+        name = event.name
+        if name == "IMAGE-SAVE":
+            # The imaging heuristic only — the frame itself rides the push path.
+            self._last_image_save = time.monotonic()
+        elif name == "SEQUENCE-FINISHED":
+            # The recency arm of the heuristic is what keeps the tier at 30 s
+            # for five minutes after the last frame, so the event has to clear
+            # it as well as the cadence; live activity — a rising count, a
+            # camera still exposing — still overrides both on the next tick.
+            self._last_image_save = None
+            self._schedule.sequence_finished()
+        elif name.startswith("PROFILE-"):
+            self._schedule.add_pending("/profile/show")
+        elif name == "STACK-STATUS":
+            # A bare {Event, Time}: it says THAT the status changed, never
+            # what to, so the status has to be read back.
+            self._schedule.add_pending("/livestack/status")
+        elif name == "SAFETY-CHANGED" or name.endswith(("-CONNECTED", "-DISCONNECTED")):
+            # Nothing safety-related waits for a tier (§6.4), and a connection
+            # change moves all eleven device blocks at once.
+            #
+            # `async_request_refresh`, not `async_refresh`: its debouncer runs
+            # the first call immediately and coalesces the rest. A N.I.N.A.
+            # start emits eleven connection events in a few seconds, and eleven
+            # bare refreshes would both spend eleven snapshots and interleave
+            # their awaits over the frame set.
+            self.hass.async_create_task(self.async_request_refresh())
+        # AUTOFOCUS-FINISHED queues nothing yet: /equipment/focuser/last-af has
+        # no model until phase C. TS-* queue nothing by design — TS-TARGETSTART
+        # fires once per exposure and its payload already carries TargetName,
+        # ProjectName, Rotation and TargetEndTime (§6.1).
+
+    async def _run_tiers(self, snapshot: EquipmentSnapshot, count: int) -> None:
+        """The non-fast tiers, behind the fast tier's own tick.
+
+        A tier never fails the poll: the fast tier owns the entry's
+        availability, and a five-minute endpoint going quiet must not make
+        eleven devices unavailable.
+        """
+        schedule = self._schedule
+        # The first read has no baseline, so 122 frames against an initial 0 is
+        # not a rise — the same first-read rule the restart detector applies.
+        baseline = count if self._last_count is None else self._last_count
+        self._last_count = count
+        schedule.set_imaging(
+            imaging(snapshot, count, baseline, self._since_last_image_save())
+        )
+        endpoints = schedule.take_pending()
+        # Every /sequence/json read passes one debounce — the tier's own and
+        # any an event queued — so ≤1 per 30 s is structural rather than a
+        # property of whichever caller asked (§6.1).
+        wanted = "/sequence/json" in endpoints or schedule.due("sequence")
+        endpoints.discard("/sequence/json")
+        if wanted and schedule.request_sequence_refetch():
+            endpoints.add("/sequence/json")
+            schedule.mark("sequence")
+        if schedule.due("floor"):
+            endpoints.update(_FLOOR_ENDPOINTS)
+            schedule.mark("floor")
+        for endpoint in sorted(endpoints):
+            await self._read_tier(endpoint)
+
+    async def _read_tier(self, endpoint: str) -> None:
+        if endpoint in self._not_served:
+            return
+        attribute, getter = _TIER_READS[endpoint]
+        try:
+            setattr(self, attribute, await getattr(self.client, getter)())
+        except NinaEndpointError:
+            # A build without the livestack plugin, or a route this API version
+            # does not carry. It cannot start working, so stop asking and leave
+            # the model at its empty value — the entities read "nothing here"
+            # rather than going unavailable.
+            self._not_served.add(endpoint)
+            _LOGGER.info("%s is not served by this N.I.N.A.; not polling it again",
+                         endpoint)
+        except NinaError as exc:
+            # Transient. Keep what the last successful read left and try again
+            # when the tier is next due.
+            _LOGGER.debug("%s failed this tick: %s", endpoint, exc)
+
+    def _since_last_image_save(self) -> float:
+        """Seconds since the last IMAGE-SAVE; infinite before the first."""
+        if self._last_image_save is None:
+            return float("inf")
+        return time.monotonic() - self._last_image_save
 
     def _set_generation(self, generation: str | None) -> None:
         """Publish the process tag everything the fold keeps is stamped with."""
@@ -244,10 +363,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 self.generation,
                 now=self._now(),
             ),
-            sequence=None,
-            flats=_NO_FLATS,
-            livestack=_NO_LIVESTACK,
-            profile=_NO_PROFILE,
+            sequence=self._sequence,
+            flats=self._flats,
+            livestack=self._livestack,
+            profile=self._profile,
             generation=self.generation,
             version=self._version,
         )

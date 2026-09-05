@@ -589,9 +589,13 @@ def map_flats_status(wire: dict) -> FlatsStatus:
     )
 
 
-def map_livestack_status(wire: dict) -> LivestackStatus:
-    """The spec's enum is lowercase; the rig answers "Stopped"."""
-    raw = _text(wire, "Status") or ""
+def map_livestack_status(wire: dict | str) -> LivestackStatus:
+    """The Response is the BARE status string — `"Running"`, not
+    `{"Status": "Running"}` as the spec documents. The documented shape is
+    still read, because only one build has been observed. The spec's enum is
+    also lowercase, and the rig answers "Stopped".
+    """
+    raw = wire if isinstance(wire, str) else _text(wire, "Status") or ""
     return LivestackStatus(running=raw.lower() == "running", raw_state=raw)
 
 
