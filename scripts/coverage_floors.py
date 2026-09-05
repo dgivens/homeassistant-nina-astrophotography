@@ -13,6 +13,7 @@ from pathlib import Path
 
 FLOORS: dict[str, int] = {
     "derive.py": 95,
+    "session.py": 95,
     "api/v2/mapper.py": 90,
 }
 
@@ -21,10 +22,7 @@ FLOORS: dict[str, int] = {
 # keeps this job green on every PR in the stack while never leaving a floor
 # silently unenforced for a module that exists. Printed as a warning, never a
 # failure. D5 asserts PENDING is empty.
-PENDING = {
-    "config_flow.py": 100,
-    "session.py": 95,
-}
+PENDING = {"config_flow.py": 100}
 
 PREFIX = "custom_components/nina_astrophotography/"
 
