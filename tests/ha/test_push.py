@@ -186,3 +186,28 @@ async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
     await config_entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
     assert asked == 1
+
+
+async def test_the_rigs_own_autofocus_timeout_bounds_a_running_run(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig: FakeRig, freezer
+) -> None:
+    """`FocuserSettings.AutoFocusTimeoutSeconds` is polled from /profile/show
+    and reads 600 on this rig, so folding against the 300 s fallback would
+    report a run eight minutes in as failed.
+
+    `imaging_guiding` is the one state that serves the profile, and its clock
+    is its own: 02:30 rig-local, eight minutes after the pushed start.
+    """
+    freezer.move_to("2026-09-05T07:30:00+00:00")
+    rig.goto("imaging_guiding")
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    runtime = config_entry.runtime_data
+    runtime.events._dispatch(
+        {"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-05T02:22:00-05:00"},
+        runtime.coordinator.generation,
+    )
+    await hass.async_block_till_done()
+    assert runtime.coordinator.data.session.autofocus.failed is False
