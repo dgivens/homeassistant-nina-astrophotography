@@ -156,7 +156,7 @@ async def test_only_a_socket_reconnect_reseeds_and_replays(
 
 
 async def test_a_restart_replays_the_new_processs_event_history(
-    hass: HomeAssistant, loaded_entry, advance, rig: FakeRig
+    loaded_entry, advance, rig: FakeRig
 ) -> None:
     """A restart resets `/event-history`, so the once-per-entry replay latch is
     scoped to the process it replayed."""
