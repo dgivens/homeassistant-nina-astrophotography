@@ -324,12 +324,19 @@ class AutoFocusState:
     """`AUTOFOCUS-STARTING` and `AUTOFOCUS-FINISHED` do not pair up — an
     ordinary night ends with one more STARTING than FINISHED, and there is no
     failure event. A run is a failure once it has gone unanswered for longer
-    than the profile's autofocus timeout (§4.4).
+    than the profile's autofocus timeout (§4.4); a run interrupted inside that
+    window — the sky turning unsafe, the sequence ending, a park, a disconnect,
+    or the sequencer moving on to the next exposure — was aborted, not failed.
     """
 
-    last_success_at: datetime | None
+    last_finished_at: datetime | None
+    """The newest FINISHED. A FINISHED is the report, not a verdict: an
+    autofocus that found no focus still reports. Whether it succeeded is read
+    from `/equipment/focuser/last-af` — R² against the profile's
+    `RSquaredThreshold` — once phase C consumes it.
+    """
     running_since: datetime | None
-    """The newest STARTING with no FINISHED after it."""
+    """The newest STARTING with nothing answering it yet."""
     failed: bool
 
 
