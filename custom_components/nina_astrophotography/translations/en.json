@@ -35,53 +35,170 @@
   },
   "entity": {
     "binary_sensor": {
-      "autofocus_failed": { "name": "Autofocus failed" },
-      "camera_is_exposing": { "name": "Exposing" },
-      "dome_at_home": { "name": "At home" },
-      "dome_at_park": { "name": "At park" },
-      "dome_slewing": { "name": "Slewing" },
-      "filterwheel_is_moving": { "name": "Moving" },
-      "focuser_is_moving": { "name": "Moving" },
-      "mount_at_home": { "name": "At home" },
-      "mount_at_park": { "name": "At park" },
-      "rotator_is_moving": { "name": "Moving" },
-      "rotator_synced": { "name": "Synced" },
-      "safety_monitor_connected": { "name": "Connected" },
-      "safety_unsafe": { "name": "Unsafe" },
-      "sequence_running": { "name": "Sequence running" }
+      "autofocus_failed": {
+        "name": "Autofocus failed"
+      },
+      "camera_is_exposing": {
+        "name": "Exposing"
+      },
+      "dome_at_home": {
+        "name": "At home"
+      },
+      "dome_at_park": {
+        "name": "At park"
+      },
+      "dome_slewing": {
+        "name": "Slewing"
+      },
+      "filterwheel_is_moving": {
+        "name": "Moving"
+      },
+      "focuser_is_moving": {
+        "name": "Moving"
+      },
+      "mount_at_home": {
+        "name": "At home"
+      },
+      "mount_at_park": {
+        "name": "At park"
+      },
+      "rotator_is_moving": {
+        "name": "Moving"
+      },
+      "rotator_synced": {
+        "name": "Synced"
+      },
+      "safety_monitor_connected": {
+        "name": "Connected"
+      },
+      "safety_unsafe": {
+        "name": "Unsafe"
+      },
+      "sequence_running": {
+        "name": "Sequence running"
+      }
     },
     "light": {
-      "flat_panel_light": { "name": "Light" }
+      "flat_panel_light": {
+        "name": "Light"
+      }
+    },
+    "number": {
+      "camera_target_temperature": {
+        "name": "Target temperature"
+      },
+      "camera_usb_limit": {
+        "name": "USB limit"
+      },
+      "dome_azimuth": {
+        "name": "Azimuth"
+      },
+      "flat_panel_brightness": {
+        "name": "Brightness"
+      },
+      "focuser_position": {
+        "name": "Position"
+      },
+      "rotator_mechanical_position": {
+        "name": "Mechanical position"
+      },
+      "rotator_position": {
+        "name": "Position"
+      }
+    },
+    "select": {
+      "filter": {
+        "name": "Filter"
+      },
+      "mount_tracking_rate": {
+        "name": "Tracking rate"
+      }
     },
     "sensor": {
-      "cloud_cover": { "name": "Cloud cover" },
-      "dew_point": { "name": "Dew point" },
-      "humidity": { "name": "Humidity" },
-      "last_image_exposure": { "name": "Last image exposure" },
-      "last_image_filter": { "name": "Last image filter" },
-      "last_image_hfr": { "name": "Last image HFR" },
-      "last_image_mean_adu": { "name": "Last image mean ADU" },
-      "last_image_rms": { "name": "Last image RMS" },
-      "last_image_star_count": { "name": "Last image star count" },
-      "last_image_target": { "name": "Last image target" },
-      "pressure": { "name": "Pressure" },
-      "rain_rate": { "name": "Rain rate" },
-      "session_avg_hfr": { "name": "Session avg HFR" },
-      "session_avg_stars": { "name": "Session avg stars" },
-      "session_best_hfr": { "name": "Session best HFR" },
-      "session_image_count": { "name": "Session image count" },
-      "session_integration_time": { "name": "Session integration time" },
-      "session_start": { "name": "Session start" },
-      "session_worst_hfr": { "name": "Session worst HFR" },
-      "sky_brightness": { "name": "Sky brightness" },
-      "sky_quality": { "name": "Sky quality" },
-      "sky_temperature": { "name": "Sky temperature" },
-      "star_fwhm": { "name": "Star FWHM" },
-      "temperature": { "name": "Temperature" },
-      "weather_source": { "name": "Weather source" },
-      "wind_direction": { "name": "Wind direction" },
-      "wind_gust": { "name": "Wind gust" },
-      "wind_speed": { "name": "Wind speed" }
+      "cloud_cover": {
+        "name": "Cloud cover"
+      },
+      "dew_point": {
+        "name": "Dew point"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "last_image_exposure": {
+        "name": "Last image exposure"
+      },
+      "last_image_filter": {
+        "name": "Last image filter"
+      },
+      "last_image_hfr": {
+        "name": "Last image HFR"
+      },
+      "last_image_mean_adu": {
+        "name": "Last image mean ADU"
+      },
+      "last_image_rms": {
+        "name": "Last image RMS"
+      },
+      "last_image_star_count": {
+        "name": "Last image star count"
+      },
+      "last_image_target": {
+        "name": "Last image target"
+      },
+      "pressure": {
+        "name": "Pressure"
+      },
+      "rain_rate": {
+        "name": "Rain rate"
+      },
+      "session_avg_hfr": {
+        "name": "Session avg HFR"
+      },
+      "session_avg_stars": {
+        "name": "Session avg stars"
+      },
+      "session_best_hfr": {
+        "name": "Session best HFR"
+      },
+      "session_image_count": {
+        "name": "Session image count"
+      },
+      "session_integration_time": {
+        "name": "Session integration time"
+      },
+      "session_start": {
+        "name": "Session start"
+      },
+      "session_worst_hfr": {
+        "name": "Session worst HFR"
+      },
+      "sky_brightness": {
+        "name": "Sky brightness"
+      },
+      "sky_quality": {
+        "name": "Sky quality"
+      },
+      "sky_temperature": {
+        "name": "Sky temperature"
+      },
+      "star_fwhm": {
+        "name": "Star FWHM"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "weather_source": {
+        "name": "Weather source"
+      },
+      "wind_direction": {
+        "name": "Wind direction"
+      },
+      "wind_gust": {
+        "name": "Wind gust"
+      },
+      "wind_speed": {
+        "name": "Wind speed"
+      }
     }
   },
   "services": {
@@ -89,26 +206,50 @@
       "name": "Cool Camera",
       "description": "Start cooling the camera to a target temperature.",
       "fields": {
-        "temperature": { "name": "Target Temperature (°C)", "description": "Target sensor temperature in degrees Celsius." },
-        "minutes": { "name": "Ramp Time (minutes)", "description": "Time over which to ramp to target temperature." }
+        "temperature": {
+          "name": "Target Temperature (°C)",
+          "description": "Target sensor temperature in degrees Celsius."
+        },
+        "minutes": {
+          "name": "Ramp Time (minutes)",
+          "description": "Time over which to ramp to target temperature."
+        }
       }
     },
     "camera_warm": {
       "name": "Warm Camera",
       "description": "Gradually warm the camera sensor.",
       "fields": {
-        "minutes": { "name": "Ramp Time (minutes)", "description": "Time over which to ramp back to ambient." }
+        "minutes": {
+          "name": "Ramp Time (minutes)",
+          "description": "Time over which to ramp back to ambient."
+        }
       }
     },
     "camera_capture": {
       "name": "Capture Image",
       "description": "Take a single exposure.",
       "fields": {
-        "exposure": { "name": "Exposure (seconds)", "description": "Exposure duration in seconds." },
-        "gain": { "name": "Gain", "description": "Camera gain (optional, uses current setting if omitted)." },
-        "filter_index": { "name": "Filter Index", "description": "Zero-based filter wheel index (optional)." },
-        "binning": { "name": "Binning", "description": "Camera binning factor (1, 2, 3, or 4)." },
-        "save": { "name": "Save to Disk", "description": "Whether to save the image to disk." }
+        "exposure": {
+          "name": "Exposure (seconds)",
+          "description": "Exposure duration in seconds."
+        },
+        "gain": {
+          "name": "Gain",
+          "description": "Camera gain (optional, uses current setting if omitted)."
+        },
+        "filter_index": {
+          "name": "Filter Index",
+          "description": "Zero-based filter wheel index (optional)."
+        },
+        "binning": {
+          "name": "Binning",
+          "description": "Camera binning factor (1, 2, 3, or 4)."
+        },
+        "save": {
+          "name": "Save to Disk",
+          "description": "Whether to save the image to disk."
+        }
       }
     },
     "camera_abort_capture": {
@@ -119,53 +260,109 @@
       "name": "Slew Mount",
       "description": "Slew the mount to J2000 RA/Dec coordinates.",
       "fields": {
-        "ra": { "name": "RA (decimal hours)", "description": "Right Ascension in decimal hours (0–24)." },
-        "dec": { "name": "Dec (decimal degrees)", "description": "Declination in decimal degrees (-90 to +90)." }
+        "ra": {
+          "name": "RA (decimal hours)",
+          "description": "Right Ascension in decimal hours (0–24)."
+        },
+        "dec": {
+          "name": "Dec (decimal degrees)",
+          "description": "Declination in decimal degrees (-90 to +90)."
+        }
       }
     },
-    "mount_park": { "name": "Park Mount", "description": "Park the telescope mount." },
-    "mount_unpark": { "name": "Unpark Mount", "description": "Unpark the telescope mount." },
+    "mount_park": {
+      "name": "Park Mount",
+      "description": "Park the telescope mount."
+    },
+    "mount_unpark": {
+      "name": "Unpark Mount",
+      "description": "Unpark the telescope mount."
+    },
     "mount_set_tracking": {
       "name": "Set Tracking",
       "description": "Enable or disable mount tracking.",
       "fields": {
-        "enabled": { "name": "Tracking Enabled", "description": "True to enable tracking, false to disable." }
+        "enabled": {
+          "name": "Tracking Enabled",
+          "description": "True to enable tracking, false to disable."
+        }
       }
     },
     "focuser_move": {
       "name": "Move Focuser",
       "description": "Move the focuser to an absolute position.",
       "fields": {
-        "position": { "name": "Position (steps)", "description": "Target focuser position in steps." }
+        "position": {
+          "name": "Position (steps)",
+          "description": "Target focuser position in steps."
+        }
       }
     },
-    "focuser_auto_focus": { "name": "Auto Focus", "description": "Run an autofocus routine." },
+    "focuser_auto_focus": {
+      "name": "Auto Focus",
+      "description": "Run an autofocus routine."
+    },
     "filterwheel_change_filter": {
       "name": "Change Filter",
       "description": "Rotate the filter wheel to a given filter.",
       "fields": {
-        "filter_index": { "name": "Filter Index", "description": "Zero-based index of the target filter." }
+        "filter_index": {
+          "name": "Filter Index",
+          "description": "Zero-based index of the target filter."
+        }
       }
     },
     "guider_start": {
       "name": "Start Guiding",
       "description": "Start autoguiding.",
       "fields": {
-        "force_calibration": { "name": "Force Calibration", "description": "Force a new calibration before guiding." }
+        "force_calibration": {
+          "name": "Force Calibration",
+          "description": "Force a new calibration before guiding."
+        }
       }
     },
-    "guider_stop": { "name": "Stop Guiding", "description": "Stop autoguiding." },
-    "dome_open": { "name": "Open Dome", "description": "Open the dome shutter." },
-    "dome_close": { "name": "Close Dome", "description": "Close the dome shutter." },
-    "dome_park": { "name": "Park Dome", "description": "Park the dome." },
-    "sequence_start": { "name": "Start Sequence", "description": "Start the loaded imaging sequence." },
-    "sequence_stop": { "name": "Stop Sequence", "description": "Stop the running sequence." },
+    "guider_stop": {
+      "name": "Stop Guiding",
+      "description": "Stop autoguiding."
+    },
+    "dome_open": {
+      "name": "Open Dome",
+      "description": "Open the dome shutter."
+    },
+    "dome_close": {
+      "name": "Close Dome",
+      "description": "Close the dome shutter."
+    },
+    "dome_park": {
+      "name": "Park Dome",
+      "description": "Park the dome."
+    },
+    "sequence_start": {
+      "name": "Start Sequence",
+      "description": "Start the loaded imaging sequence."
+    },
+    "sequence_stop": {
+      "name": "Stop Sequence",
+      "description": "Stop the running sequence."
+    },
     "sequence_load": {
       "name": "Load Sequence",
       "description": "Load a sequence file from disk.",
       "fields": {
-        "path": { "name": "File Path", "description": "Full path to the .ninasequence file." }
+        "path": {
+          "name": "File Path",
+          "description": "Full path to the .ninasequence file."
+        }
       }
+    }
+  },
+  "exceptions": {
+    "no_driver_range": {
+      "message": "{entity_id} cannot be set: the driver reports no usable range."
+    },
+    "unknown_tracking_mode": {
+      "message": "The mount offers a tracking mode the API cannot encode: {option}."
     }
   }
 }
