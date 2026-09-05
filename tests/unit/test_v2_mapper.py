@@ -193,6 +193,24 @@ def test_the_total_guide_rms_is_parsed_out_of_the_rms_text() -> None:
     assert map_frame(lights[0], generation="g1").rms == 0.26
 
 
+def test_a_calibration_frame_has_no_guide_rms() -> None:
+    """A flat reports 'Tot: 0.00 (0.00")' because the guider is stopped. Kept as
+    0.0 it reads as perfect guiding across 67 of this session's 122 frames."""
+    flats = [f for f in load("dawn_image_history_with_flats.json")
+             if f["ImageType"] == "FLAT"]
+    assert map_frame(flats[0], generation="g1").rms is None
+
+
+def test_a_frame_of_unknown_type_keeps_the_readings_it_has() -> None:
+    """The type decides only what is dropped. No captured frame is missing its
+    ImageType, so a captured light is stripped of it deliberately."""
+    light = next(f for f in load("dawn_image_history_with_flats.json")
+                 if f["ImageType"] == "LIGHT")
+    frame = map_frame({k: v for k, v in light.items() if k != "ImageType"},
+                      generation="g1")
+    assert (frame.hfr, frame.stars, frame.rms) == (light["HFR"], light["Stars"], 0.26)
+
+
 def test_an_unparsable_rms_text_is_no_reading() -> None:
     lights = [f for f in load("dawn_image_history_with_flats.json")
               if f["ImageType"] == "LIGHT"]
@@ -221,6 +239,12 @@ def test_a_dark_is_calibration_even_though_its_star_count_is_positive() -> None:
     push = load("live_image_save_push.json")["ImageStatistics"]
     frame = map_frame(push, generation="g1")
     assert frame.hfr is None and frame.stars is None
+
+
+def test_a_frame_taken_with_no_filter_names_none() -> None:
+    """The dark push carries Filter "" — no filter is not a filter named ""."""
+    push = load("live_image_save_push.json")["ImageStatistics"]
+    assert map_frame(push, generation="g1").filter_name is None
 
 
 def test_mediator_event_times_are_offset_aware_local() -> None:
@@ -330,6 +354,12 @@ def test_livestack_status_compares_case_insensitively(raw: str) -> None:
     """The OpenAPI enum is [running, stopped]; a live rig returned "Stopped"."""
     status = map_livestack_status({"Status": raw})
     assert status.running is (raw.lower() == "running")
+
+
+def test_a_missing_livestack_status_is_not_a_state_named_none() -> None:
+    """The plugin may not be installed; the empty state is "", not "None"."""
+    status = map_livestack_status({})
+    assert (status.running, status.raw_state) == (False, "")
 
 
 def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
