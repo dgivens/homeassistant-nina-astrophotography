@@ -34,7 +34,28 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
         kind: str | None = None,
     ) -> None:
         super().__init__(coordinator)
+        self._kind = kind
         self._attr_unique_id = f"{entry.entry_id}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers=device_identifiers(entry.entry_id, kind)
         )
+
+    @property
+    def available(self) -> bool:
+        """Level 2 of §7.3: the equipment this entity belongs to is connected.
+
+        Level 1 — the rig being reachable at all — is `CoordinatorEntity`'s and
+        is inherited through `super()`. A hub entity has no equipment of its
+        own and stops there. Level 3, a sentinel reading `unknown` rather than
+        `unavailable`, is a value concern of the platform.
+
+        §7.3's one exception must override this: the safety monitor's own
+        connectivity sensor stays available while the monitor is down, or a
+        roof-close automation triggering on `to: "off"` never fires.
+        """
+        if not super().available:
+            return False
+        if self._kind is None:
+            return True
+        device = getattr(self.coordinator.data.snapshot, self._kind)
+        return device is not None and device.connected
