@@ -7,7 +7,6 @@ import pytest
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.binary_sensor import DESCRIPTIONS
@@ -27,15 +26,6 @@ def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
     """
     return registry.async_get_entity_id(
         BINARY_SENSOR_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
-    )
-
-
-def _count(registry, entry: MockConfigEntry) -> int:
-    """How many binary sensors this entry has registered."""
-    return sum(
-        1
-        for row in er.async_entries_for_config_entry(registry, entry.entry_id)
-        if row.domain == BINARY_SENSOR_DOMAIN
     )
 
 
@@ -182,13 +172,16 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
 
 
 async def test_a_device_observed_after_setup_gets_its_entities(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig, entity_registry
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, caplog
 ) -> None:
     """Equipment routinely connects long after Home Assistant starts, and the
     focuser carries no DeviceId in the partial-connection capture.
 
     The second refresh pins the other half of the rule: the listener runs on
-    every publish, so without suppression it would re-add every descriptor.
+    every publish, so without the `added` set it would re-add every descriptor.
+    The entity registry cannot show that — Home Assistant recognises the
+    re-added `unique_id`, refuses the entity and logs it — so the assertion is
+    on the log line, which is the only observable difference.
     """
     await _set_up_at(hass, config_entry, rig, "partial_equipment_connection")
     assert hass.states.get(AUTOFOCUS_FAILED) is None
@@ -198,11 +191,11 @@ async def test_a_device_observed_after_setup_gets_its_entities(
     await coordinator.async_refresh()
     await hass.async_block_till_done()
     assert hass.states.get(AUTOFOCUS_FAILED) is not None
-    after_first = _count(entity_registry, config_entry)
 
+    caplog.clear()
     await coordinator.async_refresh()
     await hass.async_block_till_done()
-    assert _count(entity_registry, config_entry) == after_first
+    assert "does not generate unique IDs" not in caplog.text
 
 
 async def test_a_hub_entity_is_not_on_an_equipment_device(
