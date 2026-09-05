@@ -331,8 +331,7 @@ class SessionStats:
 
     Every aggregate but `image_count` is over LIGHT frames only. Flats report a
     Mean ADU two orders of magnitude above a light's and an HFR of zero, which
-    is what made `Last Image Mean ADU` read 33,139 after a dawn flat run on
-    1.4.4.
+    is what made `Last Image Mean ADU` read 33,139 after a dawn flat run.
     """
 
     session_start: datetime | None

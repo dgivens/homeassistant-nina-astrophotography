@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from nina_astrophotography.api.models import Frame, NinaEvent
+from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import fold
 
@@ -140,6 +141,20 @@ def test_a_fold_of_nothing_reports_empty_aggregates(field, expected) -> None:
     assert getattr(fold([], [], generation="g1"), field) == expected
 
 
+@pytest.mark.parametrize("reversed_arrival", [False, True])
+def test_a_stale_copy_of_a_refetched_frame_never_wins_the_dedupe(
+    night, reversed_arrival
+) -> None:
+    """A restart leaves the pre-restart and refetched copies of one frame in the
+    store. Deduplicating before filtering would let the stale copy win and then
+    be discarded, so the frame would vanish.
+    """
+    light = next(f for f in night if f.image_type == "LIGHT")
+    both = [replace(light, generation="g2"), replace(light, generation="g1")]
+    stats = fold(both[::-1] if reversed_arrival else both, [], generation="g2")
+    assert (stats.image_count, stats.last_frame.generation) == (1, "g2")
+
+
 def test_an_untagged_frame_folds_under_an_untagged_generation() -> None:
     """Frames received before `/application-start` answered carry no tag."""
     assert fold([_light(generation=None)], [], generation=None).image_count == 1
@@ -159,6 +174,24 @@ def test_a_light_with_no_readings_fakes_no_aggregate(field, expected) -> None:
     """`None` is "no reading" — it must not read as a zero."""
     bare = _light(exposure_time=None, hfr=None, stars=None)
     assert getattr(fold([bare], [], generation="g1"), field) == expected
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        ("image_count", 1),
+        ("light_count", 0),
+        ("integration_seconds", 0.0),
+        ("by_target", ()),
+        ("last_frame", None),
+    ],
+)
+def test_an_unclassified_frame_is_counted_but_never_aggregated(field, expected) -> None:
+    """A frame with no ImageType is neither calibration nor light; it is counted
+    because it exists, and aggregated nowhere because nothing says it is a sub.
+    """
+    unclassified = _light(image_type=None)
+    assert getattr(fold([unclassified], [], generation="g1"), field) == expected
 
 
 def test_a_breakdown_row_with_no_measured_hfr_reports_none() -> None:
@@ -215,4 +248,4 @@ def test_an_autofocus_that_finished_is_no_longer_running() -> None:
 def test_events_from_a_previous_session_do_not_report_an_autofocus(night_events) -> None:
     tomorrow = max(e.time for e in night_events) + timedelta(days=1)
     stats = fold([], night_events, generation="g1", now=tomorrow)
-    assert stats.autofocus == fold([], [], generation="g1").autofocus
+    assert stats.autofocus == AutoFocusState(None, None, False)
