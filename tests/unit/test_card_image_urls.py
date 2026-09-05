@@ -1,7 +1,7 @@
-"""The Lovelace cards build their own image URLs, and drift from api.py.
+"""The Lovelace cards build their own image URLs, and drift from legacy_api.py.
 
 They call the Advanced API directly from the browser rather than going through
-the integration, so a path or parameter corrected in `api.py` leaves them
+the integration, so a path or parameter corrected in `legacy_api.py` leaves them
 behind — which is how the image-history endpoint stayed broken in
 `nina-image-panel-card.js` for a release after it was fixed everywhere else.
 

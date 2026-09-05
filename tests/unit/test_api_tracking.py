@@ -4,7 +4,7 @@ from __future__ import annotations
 import pytest
 
 from helpers import FakeSession
-from nina_astrophotography.api import NinaApiClient
+from nina_astrophotography.legacy_api import NinaApiClient
 from nina_astrophotography.const import TrackingMode
 
 

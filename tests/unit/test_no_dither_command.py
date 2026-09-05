@@ -18,7 +18,7 @@ from pathlib import Path
 
 import yaml
 
-from nina_astrophotography.api import NinaApiClient
+from nina_astrophotography.legacy_api import NinaApiClient
 
 COMPONENT = (
     Path(__file__).resolve().parents[2]

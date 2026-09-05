@@ -13,7 +13,7 @@ from __future__ import annotations
 import pytest
 
 from helpers import FakeSession, failure, ok
-from nina_astrophotography.api import NinaApiClient, NinaApiError
+from nina_astrophotography.legacy_api import NinaApiClient, NinaApiError
 
 
 def make_client(session) -> NinaApiClient:

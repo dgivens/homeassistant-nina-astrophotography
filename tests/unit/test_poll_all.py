@@ -10,7 +10,7 @@ import aiohttp
 import pytest
 
 from helpers import FakeResponse, FakeSession, failure, ok
-from nina_astrophotography.api import (
+from nina_astrophotography.legacy_api import (
     NinaApiClient,
     NinaApiError,
     NinaConnectionError,
