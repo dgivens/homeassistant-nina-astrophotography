@@ -230,6 +230,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         """
         if not self._take(event):
             return
+        # Published BEFORE the tier reactions below, and the order is
+        # load-bearing: `async_set_updated_data` cancels the debouncer, so a
+        # publish after §6.4's `async_request_refresh` would eat the very
+        # refetch that branch had just asked for.
+        self._publish()
         name = event.name
         if name == "IMAGE-SAVE":
             # The imaging heuristic only — the frame itself rides the push path.
@@ -262,20 +267,25 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         # no model until phase C. TS-* queue nothing by design — TS-TARGETSTART
         # fires once per exposure and its payload already carries TargetName,
         # ProjectName, Rotation and TargetEndTime (§6.1).
-        self._publish()
+
+    def schedule_reconnect(self) -> None:
+        """Run the reconnect recovery on the entry, so unload cancels it."""
+        self.config_entry.async_create_task(
+            self.hass, self.async_reconnected(), "nina_reconnect"
+        )
 
     async def async_reconnected(self) -> None:
         """The socket came back: recover what it could not deliver while down.
 
-        Both halves are needed. `/event-history` carries `{Event, Time}` only,
-        so it can never reconstruct the statistics a missed `IMAGE-SAVE` push
-        held; the frames come back from `?all=true` instead.
+        The poll comes FIRST. N.I.N.A. may have restarted while the socket was
+        down, and replaying under the stale generation would tag every replayed
+        event to be filtered straight back out of the fold. That poll also
+        performs §6.1's one-shot reseed: `/event-history` carries
+        `{Event, Time}` only, so it can never reconstruct the statistics a
+        missed `IMAGE-SAVE` push held — the frames come back from `?all=true`.
         """
-        try:
-            await self._reseed(await self.client.get_image_history_count())
-        except NinaError as exc:
-            # The next poll reseeds anyway if the invariant is still broken.
-            _LOGGER.debug("Could not reseed after a socket reconnect: %s", exc)
+        self._seeded = False
+        await self.async_refresh()
         await self._replay()
         self._publish()
 
@@ -318,11 +328,18 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def _publish(self) -> None:
         """Freeze the live sets and hand them to the entities, with no poll.
 
-        Silent before the first successful poll: there is no equipment snapshot
-        to publish beside the fold, and the refresh in flight will assemble
-        whatever has accumulated by the time it returns.
+        Silent while the last poll failed, and before the first has succeeded.
+        `async_set_updated_data` sets `last_update_success`, so publishing
+        against a stale `_last_snapshot` would flip eleven devices back to
+        available on a rig that is still unreachable. The fold accumulates
+        either way; the next successful poll publishes what piled up.
+
+        Each publish also restarts the fast tier's interval — that is what
+        `async_set_updated_data` does — so a busy night's ~600 events push the
+        next tick out by up to 10 s apiece. Bounded and harmless: an event
+        arriving IS the fresher information the tick would have gone to fetch.
         """
-        if self._last_snapshot is None:
+        if self._last_snapshot is None or not self.last_update_success:
             return
         self.async_set_updated_data(self._assemble(self._last_snapshot))
 

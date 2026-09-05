@@ -140,7 +140,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
             # A RECONNECT, so the socket has been silent for a while: the frame
             # set is reseeded and /event-history replayed for what it missed.
             # The first connection needs neither — setup has just done both.
-            hass.async_create_task(coordinator.async_reconnected())
+            coordinator.schedule_reconnect()
         connected_before = True
 
     events = NinaEventStream(

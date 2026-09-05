@@ -71,6 +71,22 @@ async def test_a_disconnect_event_refetches_the_snapshot_before_the_next_tick(
     assert hass.states.get(LIGHT).state == "unavailable"
 
 
+async def test_a_push_cannot_resurrect_a_failed_poll(
+    hass: HomeAssistant, loaded_entry, push, advance, nina_responses
+) -> None:
+    """`async_set_updated_data` sets `last_update_success`, so an ungated push
+    would report eleven devices available on a rig that is still unreachable.
+    The fold still takes the frame — it appears once the rig answers again."""
+    before = _count(loaded_entry)
+    await advance("nina_unreachable")
+    push(nina_responses("live_image_save_push.json"))
+    await hass.async_block_till_done()
+    assert hass.states.get(LIGHT).state == "unavailable"
+
+    await advance("imaging")
+    assert _count(loaded_entry) == before + 1
+
+
 async def test_setup_replays_the_event_history(
     loaded_entry, nina_responses
 ) -> None:
@@ -116,6 +132,10 @@ async def test_only_a_socket_reconnect_reseeds_and_replays(
     only, so the statistics a missed `IMAGE-SAVE` push held come back from
     `?all=true` and nowhere else. The FIRST connection needs neither — setup
     has just done both.
+
+    `_set_connected` is the one private call: pytest-socket refuses the real
+    connection and `start` is stubbed, so driving the transition by hand is the
+    minimal seam. Everything it reaches is public.
     """
     connect = loaded_entry.runtime_data.events._set_connected
     rig.requests.clear()

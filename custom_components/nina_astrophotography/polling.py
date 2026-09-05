@@ -28,6 +28,12 @@ class EventLedger:
     with fresh timestamps that can be EARLIER than a retained mark — a
     next-evening restart emits 21:00 events against an 05:30 one — so a mark
     spanning generations would filter a whole replay away as already-seen.
+
+    `IMAGE-SAVE` is the one event that cannot be deduplicated across the live
+    and replayed paths: the socket sends it with no `Time` (it is stamped from
+    the frame's own `Date`) and `/event-history` stores it with the rig's, so
+    the two copies key differently. Consumers must therefore never COUNT
+    events — frames are counted, events are signals.
     """
 
     def __init__(self) -> None:
