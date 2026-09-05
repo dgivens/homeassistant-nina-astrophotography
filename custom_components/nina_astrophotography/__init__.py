@@ -2,23 +2,29 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 
-import aiohttp
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
+from homeassistant.exceptions import (
+    ConfigEntryError,
+    ConfigEntryNotReady,
+    ServiceValidationError,
+)
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .legacy_api import (
-    NinaApiClient,
-    NinaApiError,
+from .api.errors import (
+    NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
+    NinaRequestError,
+    NinaUnavailableError,
 )
+from .api.v2 import NinaClientV2
+from .legacy_api import NinaApiClient
 from .websocket import NinaWebSocketClient
 from .frame_statistics import NinaFrameStatisticsStore
 from .const import (
@@ -50,23 +56,19 @@ from .const import (
     SERVICE_SEQUENCE_START,
     SERVICE_SEQUENCE_STOP,
 )
-from .coordinator import NinaDataCoordinator
+from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [
-    Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-    Platform.NUMBER,
-    Platform.SELECT,
-    Platform.SWITCH,
-    Platform.LIGHT,
-    Platform.BUTTON,
-    Platform.IMAGE,
-]
+# A platform is registered only once it reads NinaData: Home Assistant imports
+# every listed platform module during entry setup, so listing one that still
+# speaks the 1.4.x coordinator fails the entry. `light.py` joins when it moves
+# onto the seam (phase A); each remaining platform is re-added by the phase-C PR
+# that migrates it. Until then the modules stay on disk, unregistered.
+PLATFORMS: list[Platform] = []
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
     """Set up N.I.N.A. from a config entry."""
     host = entry.data[CONF_HOST]
     port = entry.data.get(CONF_PORT, DEFAULT_PORT)
@@ -77,26 +79,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     session = async_get_clientsession(hass)
-    client = NinaApiClient(host=host, port=port, api_version=api_version, session=session)
+    client = NinaClientV2(host, port, session)
+    # The unmigrated services still speak 1.4.x; phase D retires this client.
+    service_client = NinaApiClient(
+        host=host, port=port, api_version=api_version, session=session
+    )
 
     # Verify reachability at startup
     try:
-        await client.get_version()
-    except NinaEndpointError as exc:
+        version = await client.get_versions()
+    except (NinaEndpointError, NinaRequestError) as exc:
         # A path this build does not serve will not appear later, so fail the
         # entry rather than retrying forever.
         raise ConfigEntryError(
             f"N.I.N.A. at {host}:{port} does not serve the expected API: {exc}"
         ) from exc
-    except (NinaConnectionError, NinaApiError) as exc:
-        # Both are transient at startup — NINA may still be booting, or
-        # answering unhappily while equipment connects. ConfigEntryNotReady
-        # retries; an uncaught exception fails the entry permanently.
+    except (NinaConnectionError, NinaUnavailableError, NinaCommandError) as exc:
+        # All transient at startup — NINA may still be booting, or answering
+        # unhappily while equipment connects. ConfigEntryNotReady retries; an
+        # uncaught exception fails the entry permanently.
         raise ConfigEntryNotReady(
             f"N.I.N.A. at {host}:{port} is not ready: {exc}"
         ) from exc
 
-    coordinator = NinaDataCoordinator(hass, client, poll_interval)
+    coordinator = NinaCoordinator(
+        hass,
+        client,
+        config_entry=entry,
+        update_interval=timedelta(seconds=poll_interval),
+        version=version,
+    )
     await coordinator.async_config_entry_first_refresh()
 
     # ── WebSocket: real-time push events ──────────────────────────────────────
@@ -126,34 +138,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     ws_client.add_listener("SEQUENCE-STARTING", _on_sequence_starting)
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
-        "coordinator": coordinator,
-        "client": client,
-        "ws_client": ws_client,
-        "frame_store": frame_store,
-    }
+    entry.runtime_data = NinaRuntimeData(
+        client=client,
+        coordinator=coordinator,
+        service_client=service_client,
+        instance_name=entry.title,
+        ws_client=ws_client,
+        frame_store=frame_store,
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    _register_services(hass, client)
+    _register_services(hass, service_client)
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
     """Unload a config entry."""
-    entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
-    ws: NinaWebSocketClient | None = entry_data.get("ws_client")
-    if ws:
-        await ws.stop()
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
-    return unload_ok
+    await entry.runtime_data.ws_client.stop()
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _async_update_listener(hass: HomeAssistant, entry: NinaConfigEntry) -> None:
     """Handle options update — reload to apply new poll interval."""
     await hass.config_entries.async_reload(entry.entry_id)
 
@@ -161,10 +169,14 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
 # ─── Service registration ─────────────────────────────────────────────────────
 
 def _get_client(hass: HomeAssistant) -> NinaApiClient:
-    """Return the first available N.I.N.A. client."""
-    for entry_data in hass.data.get(DOMAIN, {}).values():
-        return entry_data["client"]
-    raise ValueError("No N.I.N.A. integration configured")
+    """Return the first loaded entry's service client.
+
+    Still "first entry wins" — phase D replaces this with device targeting.
+    What changes here is only where the client is stored.
+    """
+    for entry in hass.config_entries.async_loaded_entries(DOMAIN):
+        return entry.runtime_data.service_client
+    raise ServiceValidationError("No N.I.N.A. instance is configured")
 
 
 def _register_services(hass: HomeAssistant, client: NinaApiClient) -> None:

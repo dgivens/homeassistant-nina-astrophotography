@@ -1,39 +1,182 @@
-"""DataUpdateCoordinator for N.I.N.A. Astrophotography."""
+"""The single DataUpdateCoordinator.
+
+It owns the accumulated frame and event set. session.py is stateless and
+receives that set as an argument.
+
+All mutation happens on the event loop, and NinaData is assembled from the live
+set at the moment of publication with no `await` between reading the set and
+freezing the dataclass. Four writers touch it — the poll, the WebSocket
+callback, /event-history replay and the restart reseed — and without that rule a
+poll awaiting /equipment/info while IMAGE-SAVE arrives publishes a snapshot
+assembled from a pre-event read, so the frame appears, vanishes and reappears.
+
+Phase A polls the fast tier only. Tiering, the push path and generation handling
+land in phase B.
+"""
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
-from typing import Any
+from dataclasses import dataclass, fields, replace
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
-from .legacy_api import NinaApiClient, NinaApiError, NinaConnectionError
+from .api.errors import NinaEndpointError, NinaError, NinaRequestError
+from .api.models import (
+    EquipmentSnapshot,
+    FlatsStatus,
+    Frame,
+    LivestackStatus,
+    NinaEvent,
+    ProfileSettings,
+    SequenceNode,
+    SessionStats,
+    VersionInfo,
+)
+from .api.v2 import NinaClientV2
+from .session import fold
+
+if TYPE_CHECKING:
+    from .frame_statistics import NinaFrameStatisticsStore
+    from .legacy_api import NinaApiClient
+    from .websocket import NinaWebSocketClient
 
 _LOGGER = logging.getLogger(__name__)
 
+FAST_INTERVAL = timedelta(seconds=10)
 
-class NinaDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Polls N.I.N.A. API and distributes data to all entities."""
+_DEVICE_SLOTS = tuple(field.name for field in fields(EquipmentSnapshot))
+
+
+@dataclass(frozen=True, slots=True)
+class NinaData:
+    """One published snapshot. Frozen, and assembled without awaiting."""
+
+    snapshot: EquipmentSnapshot
+    session: SessionStats
+    sequence: SequenceNode | None
+    flats: FlatsStatus
+    livestack: LivestackStatus
+    profile: ProfileSettings
+    generation: str | None
+    version: VersionInfo
+
+
+class NinaCoordinator(DataUpdateCoordinator[NinaData]):
+    """Polls the fast tier and publishes `NinaData`.
+
+    The §5.2.2 first-sight rule lives here because the mapper is stateless:
+    `/equipment/info` always emits all eleven device blocks, so a block's
+    presence proves nothing. A device is *observed* once it has carried a
+    `DeviceId`, and the observation is latched for the coordinator's lifetime —
+    disconnection drops the `DeviceId`, so evaluating it per poll would delete
+    the device the moment it went down. A never-observed slot publishes as
+    `None`; an observed one that is down publishes with `connected=False`.
+    """
 
     def __init__(
         self,
         hass: HomeAssistant,
-        client: NinaApiClient,
-        poll_interval: int,
+        client: NinaClientV2,
+        *,
+        config_entry: ConfigEntry,
+        update_interval: timedelta = FAST_INTERVAL,
+        version: VersionInfo = VersionInfo(None, None),
     ) -> None:
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=config_entry,
             name="N.I.N.A. Astrophotography",
-            update_interval=timedelta(seconds=poll_interval),
+            update_interval=update_interval,
         )
         self.client = client
+        self.frames: dict[tuple[datetime, str], Frame] = {}
+        self.events: list[NinaEvent] = []
+        self.generation: str | None = None
+        self._version = version
+        self._observed: set[str] = set()
+        self._rejection_logged = False
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> NinaData:
         try:
-            return await self.client.poll_all()
-        except NinaConnectionError as exc:
-            raise UpdateFailed(f"Cannot reach N.I.N.A.: {exc}") from exc
-        except NinaApiError as exc:
-            raise UpdateFailed(f"N.I.N.A. API error: {exc}") from exc
+            snapshot = await self.client.get_equipment()
+            generation = await self.client.get_application_start()
+            # Unused until phase B's history invariant; kept so the fast tier's
+            # byte cost is real from the start.
+            _ = await self.client.get_image_history_count()
+        except (NinaRequestError, NinaEndpointError) as exc:
+            # Neither becomes right by retrying. Log once and keep the previous
+            # snapshot rather than making every entity unavailable.
+            if not self._rejection_logged:
+                _LOGGER.error("N.I.N.A. rejected a request: %s", exc)
+                self._rejection_logged = True
+            if self.data is not None:
+                return self.data
+            raise UpdateFailed(str(exc)) from exc
+        except NinaError as exc:
+            raise UpdateFailed(str(exc)) from exc
+
+        self._rejection_logged = False
+        self.generation = generation
+        return self._assemble(self._latch_observed(snapshot))
+
+    def _latch_observed(self, snapshot: EquipmentSnapshot) -> EquipmentSnapshot:
+        """Record every slot carrying a `DeviceId`; blank the never-observed."""
+        for slot in _DEVICE_SLOTS:
+            device = getattr(snapshot, slot)
+            if device is not None and device.meta.device_id is not None:
+                self._observed.add(slot)
+        unseen = {slot: None for slot in _DEVICE_SLOTS if slot not in self._observed}
+        return replace(snapshot, **unseen)
+
+    def _assemble(self, snapshot: EquipmentSnapshot) -> NinaData:
+        """Freeze the live sets into one snapshot. Synchronous by design."""
+        return NinaData(
+            snapshot=snapshot,
+            session=fold(
+                self.frames.values(),
+                self.events,
+                self.generation,
+                now=dt_util.utcnow(),
+            ),
+            sequence=None,
+            flats=FlatsStatus(
+                state=None, total_iterations=None, completed_iterations=None
+            ),
+            livestack=LivestackStatus(running=False, raw_state=""),
+            profile=ProfileSettings(
+                focal_length=None,
+                pixel_size=None,
+                autofocus_timeout_seconds=None,
+                r_squared_threshold=None,
+                min_minutes_after_meridian=None,
+                max_minutes_after_meridian=None,
+                use_side_of_pier=None,
+            ),
+            generation=self.generation,
+            version=self._version,
+        )
+
+
+@dataclass
+class NinaRuntimeData:
+    """Everything setup builds, hung on `entry.runtime_data` (Bronze).
+
+    `service_client`, `ws_client` and `frame_store` are the 1.4.x modules the
+    unmigrated services still call; phases B–D retire them.
+    """
+
+    client: NinaClientV2
+    coordinator: NinaCoordinator
+    service_client: NinaApiClient
+    instance_name: str
+    ws_client: NinaWebSocketClient
+    frame_store: NinaFrameStatisticsStore
+
+
+type NinaConfigEntry = ConfigEntry[NinaRuntimeData]
