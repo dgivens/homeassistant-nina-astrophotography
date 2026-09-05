@@ -42,6 +42,8 @@ custom_components/nina_astrophotography/
   legacy_api.py       the 1.4.x client the unmigrated services still use
   coordinator.py      DataUpdateCoordinator publishing NinaData; owns frames/events
   entity.py           the shared entity base
+  device.py           the hub and one device per equipment type; the only
+                      writer of driver metadata into the device registry
   derive.py           pure maths; session.py — the pure session fold
   polling.py          HA-free polling decisions: restart, reseed, tiers, event ledger
   const.py            domain, config keys, service names, enums
