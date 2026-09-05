@@ -46,12 +46,22 @@ class NinaBinarySensorDescription(BinarySensorEntityDescription):
     against hardware — a test asserts every dome descriptor carries the marker.
     `survives_disconnect` drops §7.3's level 2 for the one entity whose job is
     to report that its own device is down.
+
+    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
+    `unique_id_suffix` where the new `key` reads better than the old one. Home
+    Assistant keys the registry on `unique_id`, so changing it mints a fresh
+    entity and strands the old row as `unavailable` — a roof-close automation
+    pointing at the 1.4.5 safety entity would stop working on upgrade. Renaming
+    is the user's to do, never the upgrade's.
     """
 
     value: Callable[[NinaData], bool | None]
     kind: str | None
     verified: bool = True
     survives_disconnect: bool = False
+    unique_id_suffix: str | None = None
+    """The 1.4.5 key, where it differs from `key`. `unique_id` is
+    `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _read(kind: str, field: str) -> Callable[[NinaData], bool | None]:
@@ -79,6 +89,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
         key="safety_unsafe",
         translation_key="safety_unsafe",
+        unique_id_suffix="safetymonitor_is_safe",
         device_class=BinarySensorDeviceClass.SAFETY,
         kind="safety_monitor",
         value=_unsafe,
@@ -86,6 +97,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
         key="safety_monitor_connected",
         translation_key="safety_monitor_connected",
+        unique_id_suffix="safetymonitor_connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="safety_monitor",
@@ -95,12 +107,14 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
         key="camera_is_exposing",
         translation_key="camera_is_exposing",
+        unique_id_suffix="camera_exposing",
         kind="camera",
         value=_read("camera", "is_exposing"),
     ),
     NinaBinarySensorDescription(
         key="mount_at_park",
         translation_key="mount_at_park",
+        unique_id_suffix="mount_parked",
         kind="mount",
         value=_read("mount", "at_park"),
     ),
@@ -208,7 +222,12 @@ class NinaBinarySensor(NinaEntity, BinarySensorEntity):
         entry: NinaConfigEntry,
         description: NinaBinarySensorDescription,
     ) -> None:
-        super().__init__(coordinator, entry, description.key, kind=description.kind)
+        super().__init__(
+            coordinator,
+            entry,
+            description.unique_id_suffix or description.key,
+            kind=description.kind,
+        )
         self.entity_description = description
         self._survives_disconnect = description.survives_disconnect
 

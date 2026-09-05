@@ -7,6 +7,7 @@ import pytest
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.binary_sensor import DESCRIPTIONS
@@ -18,10 +19,23 @@ SEQUENCE_RUNNING = "binary_sensor.n_i_n_a_sequence_running"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 
 
-def _registered(registry, entry: MockConfigEntry, key: str) -> str | None:
-    """The entity id of `key` on this entry, or None if it was never created."""
+def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
+    """The entity id claiming this `unique_id` suffix, or None if nothing does.
+
+    The suffix is the 1.4.5 key wherever one survives, which is what an upgraded
+    install's registry rows are keyed on.
+    """
     return registry.async_get_entity_id(
-        BINARY_SENSOR_DOMAIN, DOMAIN, f"{entry.entry_id}_{key}"
+        BINARY_SENSOR_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
+    )
+
+
+def _count(registry, entry: MockConfigEntry) -> int:
+    """How many binary sensors this entry has registered."""
+    return sum(
+        1
+        for row in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if row.domain == BINARY_SENSOR_DOMAIN
     )
 
 
@@ -62,17 +76,20 @@ async def test_the_cut_binary_sensors_are_not_registered(
 
 
 @pytest.mark.parametrize(
-    "key",
-    ["safety_unsafe", "safety_monitor_connected", "mount_at_park", "mount_at_home",
-     "camera_is_exposing", "focuser_is_moving", "filterwheel_is_moving",
-     "rotator_is_moving", "rotator_synced", "autofocus_failed", "sequence_running"],
+    "suffix",
+    # The four 1.4.5 spellings are the point: a survivor keeps its unique_id,
+    # so an upgraded install keeps the registry row and the automations on it.
+    ["safetymonitor_is_safe", "safetymonitor_connected", "mount_parked",
+     "camera_exposing", "mount_at_home", "focuser_is_moving",
+     "filterwheel_is_moving", "rotator_is_moving", "rotator_synced",
+     "autofocus_failed", "sequence_running"],
 )
 async def test_the_kept_binary_sensors_are_registered(
-    loaded_entry: MockConfigEntry, entity_registry, key: str
+    loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
     """The dome's three are absent from this table on purpose: no capture has a
     dome carrying a DeviceId, so the slot is None and §5.2.2 gates them out."""
-    assert _registered(entity_registry, loaded_entry, key) is not None
+    assert _registered(entity_registry, loaded_entry, suffix) is not None
 
 
 @pytest.mark.parametrize(
@@ -146,31 +163,46 @@ async def test_sequence_running_follows_activity_and_not_node_status(
     assert hass.states.get(SEQUENCE_RUNNING).state == expected
 
 
+@pytest.mark.parametrize(
+    "suffix",
+    ["focuser_is_moving", "filterwheel_is_moving", "rotator_is_moving",
+     "rotator_synced"],
+)
 async def test_the_long_tail_ships_diagnostic_and_disabled(
-    loaded_entry: MockConfigEntry, entity_registry
+    loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    """Gold entity-category / entity-disabled-by-default. `rotator_synced` is
-    retained but noisy: sky-PA Position is meaningful only when synced."""
-    entry = entity_registry.async_get(
-        _registered(entity_registry, loaded_entry, "rotator_synced")
+    """Gold entity-category / entity-disabled-by-default. The dome's three are
+    not here: no capture observes a dome, so they are never registered."""
+    row = entity_registry.async_get(
+        _registered(entity_registry, loaded_entry, suffix)
     )
-    assert (entry.entity_category, entry.disabled_by is not None) == (
+    assert (row.entity_category, row.disabled_by is not None) == (
         EntityCategory.DIAGNOSTIC, True,
     )
 
 
 async def test_a_device_observed_after_setup_gets_its_entities(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, entity_registry
 ) -> None:
     """Equipment routinely connects long after Home Assistant starts, and the
-    focuser carries no DeviceId in the partial-connection capture."""
+    focuser carries no DeviceId in the partial-connection capture.
+
+    The second refresh pins the other half of the rule: the listener runs on
+    every publish, so without suppression it would re-add every descriptor.
+    """
     await _set_up_at(hass, config_entry, rig, "partial_equipment_connection")
     assert hass.states.get(AUTOFOCUS_FAILED) is None
 
+    coordinator = config_entry.runtime_data.coordinator
     rig.goto("imaging")
-    await config_entry.runtime_data.coordinator.async_refresh()
+    await coordinator.async_refresh()
     await hass.async_block_till_done()
     assert hass.states.get(AUTOFOCUS_FAILED) is not None
+    after_first = _count(entity_registry, config_entry)
+
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert _count(entity_registry, config_entry) == after_first
 
 
 async def test_a_hub_entity_is_not_on_an_equipment_device(

@@ -226,7 +226,7 @@ STATES: dict[str, State] = {
     ),
     # The same idle rig with every sequence node reading RUNNING: node status
     # is what §6.2 refuses to infer imaging from. Synthetic in its
-    # /sequence/json alone — a real capture of it is on the soak list.
+    # /sequence/json alone — a real capture would replace it in place.
     "idle_with_stale_running_nodes": {
         **_replace_device(
             _IMAGING, "Mount",
