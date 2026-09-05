@@ -1,143 +1,232 @@
-"""Button entities for N.I.N.A. Astrophotography – one-shot action triggers."""
+"""Buttons: the one-shot commands, each of which is a single endpoint.
+
+**A press awaits the HTTP round trip and nothing more** (§3.5). Autofocus and a
+mount park take minutes, but v2 issues no request id, so a completion event
+cannot be attributed to the caller that started it; waiting would block the
+service call on something it cannot identify. The result arrives as the state of
+the entities that report it — `binary_sensor.<instance>_mount_at_park`,
+`sensor.<instance>_focuser_position` — on the next poll.
+
+**A command's own response confirms nothing**, so nothing is read back here and
+no state is assumed. `guider/clear-calibration` is one of the seven handlers
+that assign `Success` from a driver boolean and answer
+`Success: false, Error: "", StatusCode: 200` on a call that worked; the client's
+envelope classification already keys on `StatusCode` and `Error` rather than
+`Success` alone, so that is a normal return here rather than a special case.
+
+Guiding is not on this platform: it is a state that can be read back, so it is
+`switch.<instance>_guider` (§5.2.3).
+"""
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .legacy_api import NinaApiClient, NinaApiError, NinaConnectionError
+from .api.errors import NinaError
+from .api.v2.client import NinaClientV2
 from .const import DOMAIN
-from .coordinator import NinaDataCoordinator
+from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .entity import NinaEntity
+
+# One in-flight command per platform: these move hardware.
+PARALLEL_UPDATES = 1
 
 
-
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class NinaButtonDescription(ButtonEntityDescription):
-    """Extends ButtonEntityDescription with press action callable."""
+    """A button, plus the command it sends.
 
-    press_fn: Any = None  # async (client) → None
+    `kind` names the child device the entity hangs off (§5.1); `None` puts it on
+    the hub. `verified` is False only for the dome, which cannot be validated
+    against hardware — a test asserts every dome descriptor carries the marker.
 
+    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
+    `unique_id_suffix`. Home Assistant keys the registry on `unique_id`, so
+    changing it mints a fresh entity and strands the old row as `unavailable`.
+    """
 
-BUTTON_DESCRIPTIONS: list[NinaButtonDescription] = [
-    NinaButtonDescription(
-        key="btn_auto_focus",
-        name="Run Auto Focus",
-        icon="mdi:image-filter-center-focus",
-        press_fn=lambda c: c.auto_focus(),
-    ),
-    NinaButtonDescription(
-        key="btn_mount_find_home",
-        name="Mount Find Home",
-        icon="mdi:home-import-outline",
-        press_fn=lambda c: c.find_home(),
-    ),
-    NinaButtonDescription(
-        key="btn_mount_park",
-        name="Park Mount",
-        icon="mdi:parking",
-        press_fn=lambda c: c.park_mount(),
-    ),
-    NinaButtonDescription(
-        key="btn_mount_unpark",
-        name="Unpark Mount",
-        icon="mdi:arrow-up-circle-outline",
-        press_fn=lambda c: c.unpark_mount(),
-    ),
-    NinaButtonDescription(
-        key="btn_sequence_start",
-        name="Start Sequence",
-        icon="mdi:play-circle-outline",
-        press_fn=lambda c: c.start_sequence(),
-    ),
-    NinaButtonDescription(
-        key="btn_sequence_stop",
-        name="Stop Sequence",
-        icon="mdi:stop-circle-outline",
-        press_fn=lambda c: c.stop_sequence(),
-    ),
-    NinaButtonDescription(
-        key="btn_dome_open",
-        name="Open Dome",
-        icon="mdi:home-circle-outline",
-        press_fn=lambda c: c.open_dome(),
-    ),
-    NinaButtonDescription(
-        key="btn_dome_close",
-        name="Close Dome",
-        icon="mdi:home-circle",
-        press_fn=lambda c: c.close_dome(),
-    ),
-    NinaButtonDescription(
-        key="btn_dome_park",
-        name="Park Dome",
-        icon="mdi:home-lock",
-        press_fn=lambda c: c.park_dome(),
-    ),
-    NinaButtonDescription(
-        key="btn_camera_abort",
-        name="Abort Capture",
-        icon="mdi:camera-off",
-        press_fn=lambda c: c.abort_capture(),
-    ),
-    NinaButtonDescription(
-        key="btn_guider_start",
-        name="Start Guiding",
-        icon="mdi:crosshairs-gps",
-        press_fn=lambda c: c.start_guiding(),
-    ),
-    NinaButtonDescription(
-        key="btn_guider_stop",
-        name="Stop Guiding",
-        icon="mdi:crosshairs",
-        press_fn=lambda c: c.stop_guiding(),
-    ),
-]
+    press: Callable[[NinaClientV2], Awaitable[None]]
+    kind: str | None
+    verified: bool = True
+    unique_id_suffix: str | None = None
+    """The 1.4.5 key, where it differs from `key`. `unique_id` is
+    `{entry_id}_{unique_id_suffix or key}`."""
 
 
-class NinaButton(ButtonEntity):
-    """A button entity that fires a one-shot N.I.N.A. API action."""
+DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
+    NinaButtonDescription(
+        key="mount_park",
+        translation_key="mount_park",
+        unique_id_suffix="btn_mount_park",
+        kind="mount",
+        press=lambda client: client.park_mount(),
+    ),
+    NinaButtonDescription(
+        key="mount_unpark",
+        translation_key="mount_unpark",
+        unique_id_suffix="btn_mount_unpark",
+        kind="mount",
+        press=lambda client: client.unpark_mount(),
+    ),
+    NinaButtonDescription(
+        key="mount_find_home",
+        translation_key="mount_find_home",
+        unique_id_suffix="btn_mount_find_home",
+        kind="mount",
+        press=lambda client: client.find_home(),
+    ),
+    NinaButtonDescription(
+        key="camera_abort_exposure",
+        translation_key="camera_abort_exposure",
+        unique_id_suffix="btn_camera_abort",
+        kind="camera",
+        press=lambda client: client.abort_capture(),
+    ),
+    NinaButtonDescription(
+        key="focuser_auto_focus",
+        translation_key="focuser_auto_focus",
+        unique_id_suffix="btn_auto_focus",
+        kind="focuser",
+        press=lambda client: client.auto_focus(),
+    ),
+    # Sequence control is rig-scoped, so it hangs off the hub.
+    NinaButtonDescription(
+        key="sequence_start",
+        translation_key="sequence_start",
+        unique_id_suffix="btn_sequence_start",
+        kind=None,
+        press=lambda client: client.start_sequence(),
+    ),
+    NinaButtonDescription(
+        key="sequence_stop",
+        translation_key="sequence_stop",
+        unique_id_suffix="btn_sequence_stop",
+        kind=None,
+        press=lambda client: client.stop_sequence(),
+    ),
+    NinaButtonDescription(
+        key="guider_clear_calibration",
+        translation_key="guider_clear_calibration",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="guider",
+        press=lambda client: client.clear_guider_calibration(),
+    ),
+    # Spec-derived and untested against hardware (§5.3.1): `verified=False`.
+    NinaButtonDescription(
+        key="dome_open",
+        translation_key="dome_open",
+        unique_id_suffix="btn_dome_open",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        press=lambda client: client.open_dome(),
+    ),
+    NinaButtonDescription(
+        key="dome_close",
+        translation_key="dome_close",
+        unique_id_suffix="btn_dome_close",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        press=lambda client: client.close_dome(),
+    ),
+    NinaButtonDescription(
+        key="dome_park",
+        translation_key="dome_park",
+        unique_id_suffix="btn_dome_park",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        press=lambda client: client.park_dome(),
+    ),
+    NinaButtonDescription(
+        key="dome_home",
+        translation_key="dome_home",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        press=lambda client: client.home_dome(),
+    ),
+)
+
+
+class NinaButton(NinaEntity, ButtonEntity):
+    """One descriptor's command, sent and not waited on."""
 
     entity_description: NinaButtonDescription
 
     def __init__(
         self,
+        coordinator: NinaCoordinator,
+        entry: NinaConfigEntry,
         description: NinaButtonDescription,
-        client: NinaApiClient,
-        entry_id: str,
     ) -> None:
+        super().__init__(
+            coordinator,
+            entry,
+            description.unique_id_suffix or description.key,
+            kind=description.kind,
+        )
         self.entity_description = description
-        self._client = client
-        self._attr_unique_id = f"{entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry_id)},
-            "name": "N.I.N.A. Astrophotography",
-            "manufacturer": "Nighttime Imaging 'N' Astronomy",
-            "model": "Advanced API v2",
-        }
 
     async def async_press(self) -> None:
-        """Handle button press — call the N.I.N.A. API action."""
-        if self.entity_description.press_fn:
-            try:
-                await self.entity_description.press_fn(self._client)
-            except (NinaApiError, NinaConnectionError) as exc:
-                raise HomeAssistantError(
-                    f"{self.entity_description.name} failed: {exc}"
-                ) from exc
+        try:
+            await self.entity_description.press(self.coordinator.client)
+        except NinaError as exc:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="command_failed",
+                translation_placeholders={"error": str(exc)},
+            ) from exc
+
+
+def _observed(data: NinaData, description: NinaButtonDescription) -> bool:
+    """The device this button commands has been seen at least once."""
+    return (
+        description.kind is None
+        or getattr(data.snapshot, description.kind) is not None
+    )
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: NinaConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    client: NinaApiClient = hass.data[DOMAIN][entry.entry_id]["client"]
-    async_add_entities(
-        NinaButton(desc, client, entry.entry_id)
-        for desc in BUTTON_DESCRIPTIONS
-    )
+    coordinator = entry.runtime_data.coordinator
+    added: set[str] = set()
+
+    @callback
+    def _add_observed() -> None:
+        """Create the buttons whose equipment the snapshot now carries.
+
+        Re-run on every publish, so equipment that connects hours after Home
+        Assistant started still gets its buttons (Gold `dynamic-devices`). A
+        slot never returns to `None`, so nothing is ever removed here.
+        """
+        descriptions = [
+            description
+            for description in DESCRIPTIONS
+            if description.key not in added
+            and _observed(coordinator.data, description)
+        ]
+        if not descriptions:
+            return
+        added.update(description.key for description in descriptions)
+        async_add_entities(
+            NinaButton(coordinator, entry, description)
+            for description in descriptions
+        )
+
+    _add_observed()
+    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
