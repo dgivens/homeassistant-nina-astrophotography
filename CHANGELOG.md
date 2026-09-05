@@ -4,6 +4,31 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [2.0.0] - unreleased
+
+### Changed
+
+- Home Assistant bus events keep their names (`nina_<event>` and the catch-all
+  `nina_event`) but the payload is now `event` / `time` / `data` / `frame`
+  instead of the raw `response` dict: the event socket emits models, and a wire
+  dict must not cross the API seam. Only the wrapper changed — `data` carries
+  the event's own scalar fields under the wire's own key names (`IsSafe` on
+  `SAFETY-CHANGED`, `Previous`/`New` on `FLAT-BRIGHTNESS-CHANGED`, …), so
+  `trigger.event.data.response.IsSafe` becomes `trigger.event.data.data.IsSafe`.
+  Nested objects and arrays are not carried: the only ones the API sends are
+  `FILTERWHEEL-CHANGED`'s `Previous`/`New` and the `TS-*` coordinates, both of
+  which put empty arrays where scalars belong. `IMAGE-SAVE`'s statistics move
+  to `frame` as a mapped frame — sentinels already normalised, keys in
+  snake_case (`frame.hfr`, `frame.stars`). `trigger.event.data.event` is
+  unchanged.
+- `nina_websocket_connected` and `nina_websocket_disconnected` now fire on
+  connection **transitions** only; 1.4.x re-fired `disconnected` on every failed
+  reconnect attempt, so an automation counting them will see far fewer.
+  `disconnected` also fires when the integration is unloaded or reloaded while
+  the socket was connected.
+
+---
+
 ## [1.4.5] - 2026-09-03
 
 Endpoint corrections. Seven commands in `api.py` asked for paths the Advanced
