@@ -34,6 +34,7 @@ _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
 # polled from /profile/show and is 600 on the captured rig, so folding against
 # this would call a seven-minute run failed.
 DEFAULT_AUTOFOCUS_TIMEOUT = 300.0
+
 # Events that cancel a running autofocus without it reporting: the sequence
 # ending, a park, any device dropping, or the sequencer moving on to the next
 # exposure. SAFETY-CHANGED counts only when it reports unsafe.
