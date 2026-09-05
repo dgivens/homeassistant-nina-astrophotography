@@ -47,6 +47,13 @@ async def test_the_hub_carries_the_nina_version(
     assert _device(hass, loaded_entry).sw_version == "3.2.0.9001"
 
 
+async def test_the_hub_links_to_the_advanced_api(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    """The entry's own host and port — the API serves the only page there is."""
+    assert _device(hass, loaded_entry).configuration_url == "http://nina.local:1888"
+
+
 async def test_driver_metadata_lands_in_the_registry_not_entity_attributes(
     hass: HomeAssistant, loaded_entry
 ) -> None:

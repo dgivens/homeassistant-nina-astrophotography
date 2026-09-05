@@ -16,6 +16,7 @@ FLOORS: dict[str, int] = {
     "polling.py": 95,
     "session.py": 95,
     "api/v2/mapper.py": 90,
+    "config_flow.py": 100,
 }
 
 # A floor lives here until the PR that creates its module promotes it into
@@ -23,7 +24,7 @@ FLOORS: dict[str, int] = {
 # keeps this job green on every PR in the stack while never leaving a floor
 # silently unenforced for a module that exists. Printed as a warning, never a
 # failure. D5 asserts PENDING is empty.
-PENDING = {"config_flow.py": 100}
+PENDING: dict[str, int] = {}
 
 PREFIX = "custom_components/nina_astrophotography/"
 

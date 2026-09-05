@@ -7,13 +7,14 @@
         "data": {
           "host": "Host / IP Address",
           "port": "API Port",
-          "api_version": "API Version",
+          "instance_name": "Instance Name",
           "poll_interval": "Poll Interval (seconds)"
         }
       }
     },
     "error": {
       "cannot_connect": "Cannot connect to N.I.N.A. – check host/port and ensure the Advanced API plugin is running.",
+      "unsupported_api": "Something answered, but not the N.I.N.A. Advanced API – check the port and update the plugin.",
       "unknown": "Unexpected error – check the Home Assistant logs."
     },
     "abort": {
@@ -25,7 +26,8 @@
       "init": {
         "title": "N.I.N.A. Options",
         "data": {
-          "poll_interval": "Poll Interval (seconds)"
+          "poll_interval": "Poll Interval (seconds)",
+          "rollover_hour": "Session Rollover Hour (rig local time)"
         }
       }
     }

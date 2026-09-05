@@ -42,7 +42,22 @@ Connect [N.I.N.A. (Nighttime Imaging 'N' Astronomy)](https://nighttime-imaging.e
    ```
 2. Restart Home Assistant.
 3. Go to **Settings → Devices & Services → Add Integration** and search for **N.I.N.A. Astrophotography**.
-4. Enter the IP/hostname of your imaging PC and the API port (default `1888`).
+4. Enter the IP/hostname of your imaging PC, the API port (default `1888`) and a
+   name for the instance. The name titles the entry and prefixes every device,
+   so two rigs can coexist.
+
+## Session rollover hour
+
+A session runs from one rollover to the next, defaulting to **12:00 in the rig's
+own local time** — the boundary an astrophotographer means by "last night", and
+the one N.I.N.A.'s image-history dockable uses.
+
+Change it under **Settings → Devices & Services → N.I.N.A. → Configure** if your
+imaging PC's Windows clock runs UTC, which is common on hosted rigs. Every
+N.I.N.A. timestamp is local to that clock, so for a site at UTC−05:00 the noon
+default falls at 07:00 site time — in the middle of the dawn flat run, splitting
+one night's statistics across two sessions. Set it to an hour that is genuinely
+midday at the site, expressed in the rig's clock.
 
 ---
 
