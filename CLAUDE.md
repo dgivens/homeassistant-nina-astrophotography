@@ -10,42 +10,53 @@ behaviour that are expensive to rediscover.
 ## Commands
 
 ```bash
-uv sync                                  # installs the `test` group only — no Home Assistant
-uv run pytest                            # fast: well under a second
-uv run pytest tests/test_api_envelope.py -v
+uv sync                                                  # the `test` group only — no Home Assistant
+uv run pytest tests/unit -p no:homeassistant -q          # fast: well under a second
+uv run --group test-ha pytest tests/ha -q                # the Home Assistant suite; never -n auto
+uv run pytest tests/unit/test_api_envelope.py -v
 ```
+
+**A bare `uv run pytest` collects both suites** and loads Home Assistant before
+collection; always name the suite.
 
 Dependencies and pytest config live in `pyproject.toml`; there is no
 `requirements*.txt` and no `pytest.ini`. Groups: `test` (lean, HA-free),
 `test-ha` (`pytest-homeassistant-custom-component`, pinned — add with
-`uv sync --group test-ha`), `dev` (schema generator, hypothesis).
+`uv sync --group test-ha`), `dev` (schema generator, pre-commit).
 
 **Keep `uv sync` free of Home Assistant.** That is what makes the fast suite
 fast, and the modules it covers have no `homeassistant` imports.
 
-`pythonpath = ["tests"]` means helpers import as `from helpers import ...`.
-No linter, formatter or CI is configured yet.
+`pythonpath = ["tests", "."]` means helpers import as `from helpers import ...`.
+CI is `.github/workflows/ci.yml` (both suites, coverage floors, fixture
+redaction, hassfest, HACS); no linter or formatter is configured.
 
 ## Layout (current)
 
 ```
 custom_components/nina_astrophotography/
-  api.py              HTTP client — the only module that talks to N.I.N.A.
-  coordinator.py      DataUpdateCoordinator, polls api.poll_all()
+  api/                the version-independent seam: errors.py, models.py (THE CONTRACT)
+  api/v2/             client.py (the only module that talks to N.I.N.A.), mapper.py
+                      (wire → models; every sentinel dies here), schema.py (generated)
+  legacy_api.py       the 1.4.x client the unmigrated services still use
+  coordinator.py      DataUpdateCoordinator publishing NinaData; owns frames/events
+  entity.py           the shared entity base
+  derive.py           pure maths; session.py — the pure session fold
   websocket.py        event socket; fires HA events
   frame_statistics.py per-frame session store, fed by IMAGE-SAVE
   const.py            domain, config keys, service names, enums
   config_flow.py      UI setup
-  sensor.py binary_sensor.py number.py select.py switch.py
-  light.py button.py image.py frame_stats_sensor.py
+  light.py            the flat panel (migrated); the other platforms are
+                      unregistered until phase C migrates them
 blueprints/automation/nina_astrophotography/   5 automation blueprints
 www/                                           5 Lovelace cards
-tests/                                         flat; no HA import
+tests/unit/                                    HA-free; tests/ha/ under PHACC
 ```
 
 ## Branches
 
 - `main` — the shipping line, at 1.4.5
+- `v2` — the 2.0 integration branch; work lands as stacked task PRs onto it
 - **`wip/v2.0` — a read-only reference. Never merge or rebase it.** It predates
   every fix on `main` and has no tests; its value is the API audit in its
   CHANGELOG and README, which `docs/v2.0-design.md` supersedes.
@@ -72,8 +83,7 @@ unimplemented.
 
 ## Testing
 
-**Target layout for 2.0** — today `tests/` is flat and there is no
-HA-dependent suite. Build toward this rather than assuming it exists:
+Two suites, run separately:
 
 - `tests/unit/` — **no Home Assistant import.** Runs in milliseconds. Covers the
   API client, wire→model mapping, pure computations, and event parsing. Keep it
@@ -112,11 +122,12 @@ fixtures encode the spec's mistakes; captured ones encode reality.
 
 **Trust the rig over the spec wherever they disagree.**
 
-Capture with `scripts/capture_fixtures.py`.
-Two hard rules:
+Capture with `scripts/capture_fixtures.py`; install the redaction guard once
+with `uv run --group dev pre-commit install` so a fixture cannot be committed
+unredacted. Two hard rules:
 
 **1. Read-only against a live rig.** Only `GET` endpoints that report state:
-`/version`, `/equipment/info`, `/equipment/*/info`, `/image-history`,
+`/version`, `/version/nina`, `/equipment/info`, `/equipment/*/info`, `/image-history`,
 `/sequence/json`, `/sequence/state`, `/event-history`, `/flats/status`,
 `/equipment/focuser/last-af`, `/application-start`, `/livestack/status`, and
 `/profile/show` (as an allowlist projection only — see below).
