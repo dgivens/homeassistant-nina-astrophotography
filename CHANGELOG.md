@@ -8,6 +8,20 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Breaking
 
+- **The config entry is now titled by an instance name you choose**, not
+  `N.I.N.A. <version> @ <host>`: a version in a title goes stale on the rig's
+  next update, and the title is what names the hub device. Existing entries keep
+  their title, and it becomes their instance name.
+- **`instance_name` is a new, required field in the add form** (default
+  `N.I.N.A.`). It prefixes every device name, so two rigs can coexist; a blank
+  name, or one another entry already uses, is refused.
+- **The `api_version` dropdown is gone from the add form.** It only ever offered
+  one value. The key is still read from existing entry data by the client that
+  serves the unmigrated services.
+- **`switch.<instance>_flat_panel_light` is removed.** The flat panel's light
+  was both a `light` and a `switch` for one device function; the `light`
+  survives. Nothing in 2.0 claims the switch's `unique_id`, so an upgraded
+  install keeps the row as an unavailable leftover until it is deleted.
 - New installs get device-scoped entity ids: entities now hang off a device
   per equipment type rather than one device per integration, and the device
   name is part of the id. `docs/2.0-renames.md` is the mapping. An **existing**
@@ -31,6 +45,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   to `frame` as a mapped frame — sentinels already normalised, keys in
   snake_case (`frame.hfr`, `frame.stars`). `trigger.event.data.event` is
   unchanged.
+
+### Added
+
+- **A session rollover hour**, under **Configure**: `rollover_hour`, 0–23,
+  default 12. It is read in the RIG's local hours, so a rig whose Windows clock
+  runs UTC can put the boundary at a real midday on site rather than in the
+  middle of its dawn flats.
 
 ### Changed
 
