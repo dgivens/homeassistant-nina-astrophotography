@@ -2,13 +2,19 @@
 from __future__ import annotations
 
 import sys
+from dataclasses import replace
 from typing import NamedTuple
 
 import pytest
+from helpers import load_fixture
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from scenarios.fake_rig import FakeRig
 from scenarios.states import AWAITING_CAPTURE, STATES
 
+import custom_components.nina_astrophotography as integration
+from custom_components.nina_astrophotography.api.v2 import NinaEventStream
+from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 from custom_components.nina_astrophotography.const import (
     CONF_HOST,
     CONF_PORT,
@@ -59,9 +65,6 @@ def _serve(monkeypatch, session) -> None:
     `stop` runs harmlessly on unload — and stubbing it too would leave nothing
     for a test of the unload path to observe.
     """
-    import custom_components.nina_astrophotography as integration
-    from custom_components.nina_astrophotography.api.v2 import NinaEventStream
-
     monkeypatch.setattr(integration, "async_get_clientsession", lambda hass: session)
     monkeypatch.setattr(NinaEventStream, "start", lambda self: _async(None))
 
@@ -87,8 +90,6 @@ def nina_responses(rig):
     Returns the fixture loader, so a test that needs the same wire data can
     read it without opening the file itself.
     """
-    from helpers import load_fixture
-
     return load_fixture
 
 
@@ -156,20 +157,29 @@ async def two_rigs(hass, monkeypatch) -> TwoRigs:
 
 
 @pytest.fixture
-def push(loaded_entry):
-    """Deliver one socket payload — the `Response` of a captured push — as the
-    live receive loop would.
+def push(config_entry):
+    """Deliver one socket payload — the `Response` of a captured push — to the
+    loaded entry, as the live receive loop would.
 
     `_dispatch` is the one private call test code makes: the socket itself is
     silenced, and driving the stream from outside is the only way to exercise
     the push path. Everything above it is public.
-    """
-    runtime = loaded_entry.runtime_data
 
+    The runtime is read per call, not captured, so a test may set the entry up
+    itself rather than through `loaded_entry`.
+    """
     def _push(payload: dict) -> None:
+        runtime = config_entry.runtime_data
         runtime.events._dispatch(payload, runtime.coordinator.generation)
 
     return _push
+
+
+@pytest.fixture
+def inside_the_dawn_session(freezer):
+    """07:30 on the rig — after its dawn flats, before its noon rollover — so
+    the 122 captured frames and anything pushed are all the same session."""
+    freezer.move_to("2026-09-04T12:30:00+00:00")
 
 
 async def _async(value):
@@ -193,11 +203,6 @@ def set_up_with_flat_device(hass, config_entry, nina_responses, monkeypatch):
     hand-written wire documents, and every flat-panel state a test needs is one
     field away from the panel the rig actually reported.
     """
-    from dataclasses import replace
-
-    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-    from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
-
     async def _set_up(**changes):
         snapshot = map_equipment_info(nina_responses("dawn_equipment_info.json"))
         snapshot = replace(snapshot, flat_device=replace(snapshot.flat_device, **changes))
@@ -254,8 +259,6 @@ class _Sent:
         return self.calls[-1] if self.calls else None
 
     def patch(self, name: str, method) -> None:
-        from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-
         self._monkeypatch.setattr(NinaClientV2, name, method)
 
 

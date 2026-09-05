@@ -778,8 +778,9 @@ async def test_a_nan_reading_is_unknown(hass, loaded_entry, advance) -> None:
 async def test_the_meridian_24_sentinel_is_unknown_but_twelve_hours_is_a_value(
     hass, loaded_entry, advance
 ) -> None:
-    """24 is returned when TrackingEnabled is false; 12 h legitimately means
-    "just flipped", so a "≥12 → unknown" rule would be wrong."""
+    """24 is returned when TrackingEnabled is false; 12 h is legitimate — a
+    mount inside the pier-side window that adds 12 h reads it — so a
+    "≥12 → unknown" rule would be wrong."""
     await advance("sequence_complete_tracking_off")
     assert hass.states.get("sensor.n_i_n_a_mount_time_to_meridian_flip").state == "unknown"
 

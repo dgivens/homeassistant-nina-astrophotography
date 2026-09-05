@@ -205,8 +205,10 @@ async def test_a_history_item_without_an_identity_is_skipped_not_fatal(missing) 
     assert len(frames) == len(items) - 1
 
 
+@pytest.mark.synthetic
 async def test_a_bare_history_dict_is_one_frame() -> None:
-    """Bare /image-history answers the latest frame as a single object."""
+    """The rig answers bare /image-history with a one-element list; a single
+    object is the shape the spec documents, and the client takes either."""
     latest = load_envelope("dawn_image_history_with_flats.json")["Response"][-1]
     frames = await _client(FakeSession({"image-history": ok(latest)})).get_frames()
     assert [frame.filename for frame in frames] == [latest["Filename"]]
@@ -258,6 +260,20 @@ async def test_an_unmappable_event_is_skipped_not_fatal() -> None:
     wire = ok([{"Event": "GHOST"}, {"Event": "SAFETY-CONNECTED", "Time": "2026-09-03T19:41:28-05:00"}])
     events = await _client(FakeSession({"event-history": wire})).get_events()
     assert [event.name for event in events] == ["SAFETY-CONNECTED"]
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    "response",
+    [{"Event": "IMAGE-SAVE"}, ["IMAGE-SAVE"], 5],
+    ids=["one-object", "list-of-strings", "scalar"],
+)
+async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) -> None:
+    """The setup replay runs inside `async_config_entry_first_refresh`, so a
+    shape this never anticipated would fail the whole entry rather than lose
+    one event. Every capture is a list of objects; these are not."""
+    session = FakeSession({"event-history": ok(response)})
+    assert await _client(session).get_events() == []
 
 
 # ── request parameters ───────────────────────────────────────────────────────

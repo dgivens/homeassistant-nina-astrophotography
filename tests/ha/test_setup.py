@@ -106,3 +106,26 @@ async def test_an_options_update_reloads_the_entry(
     hass.config_entries.async_update_entry(loaded_entry, options={CONF_POLL_INTERVAL: 30})
     await hass.async_block_till_done()
     assert loaded_entry.runtime_data.coordinator.update_interval == timedelta(seconds=30)
+
+
+async def test_home_assistant_started_before_nina_loads_once_the_rig_answers(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, freezer
+) -> None:
+    """The ordinary case on a hosted rig: Home Assistant is up continuously and
+    the imaging PC boots at dusk. The retry must then find the whole session
+    rather than an empty one.
+
+    Through the rig states, not a patched client: the retry path has to survive
+    a refused connection followed by a real one on the same transport.
+    """
+    freezer.move_to("2026-09-04T12:30:00+00:00")
+    rig.goto("nina_unreachable")
+    config_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(config_entry.entry_id)
+    assert config_entry.state is ConfigEntryState.SETUP_RETRY
+
+    rig.goto("imaging")
+    assert await hass.config_entries.async_reload(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert config_entry.state is ConfigEntryState.LOADED
+    assert config_entry.runtime_data.coordinator.data.session.image_count == 122

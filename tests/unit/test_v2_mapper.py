@@ -76,18 +76,23 @@ def test_tracking_mode_is_mapped_verbatim() -> None:
     [
         (False, 24, None),      # the dawn capture verbatim: tracking off
         (True, 24, None),       # the literal sentinel, whatever TrackingEnabled says
-        (True, 12, 12.0),       # just flipped — legitimate, not "unknown"
+        # A mount inside the pier-side window that adds 12 h: legitimate,
+        # not "unknown".
+        (True, 12, 12.0),
         (True, 1.5, 1.5),
-        (True, 24.08, 24.08),   # a UseSideOfPier rig just after its flip
+        # Over 24 is not a value the calculation can produce — it subtracts 24
+        # from whatever reaches it — and it still passes through: the rule is
+        # the literal 24 and nothing else.
+        (True, 24.08, 24.08),
     ],
 )
 def test_only_the_literal_24_sentinel_or_tracking_off_nulls_the_flip_time(
     tracking, flip, expected
 ) -> None:
     """24 h to flip means tracking is off, not 'a day away' (§11). The sentinel
-    is exactly 24; a rig that flips MaxMinutesAfterMeridian late legitimately
-    reads a few minutes over 24 for that long. No capture has a tracking mount,
-    so the dawn mount is re-timed."""
+    is exactly 24, and every other reading passes through — the mapper never
+    infers one from a range. No capture has a tracking mount, so the dawn mount
+    is re-timed."""
     wire = load("dawn_equipment_info.json")["Mount"]
     mount = map_mount({**wire, "TrackingEnabled": tracking, "TimeToMeridianFlip": flip})
     assert mount.time_to_meridian_flip == expected

@@ -76,13 +76,27 @@ def _truncated_after_the_last_autofocus_start(name: str) -> dict:
 def _newest_frame(name: str) -> dict:
     """Bare `/image-history`: the newest frame of a captured `?all=true` list.
 
-    The bytes are captured; only the envelope around them is assembled, because
-    no bare capture of a rig holding frames exists. The frame is the wire's own
-    newest by `Date`, and it is a single object rather than a list — reseeding
-    the session from it is what leaves `Session Image Count` reading 1.
+    The bytes are captured; only the envelope around them is assembled, for a
+    rig state whose own bare path was never captured. The frame is the wire's
+    own newest by `Date`, wrapped in a ONE-ELEMENT LIST — which is what the
+    captured `imaging_guiding_image_history_latest.json` holds, so that is the
+    shape. One frame is one frame either way: reseeding the session from this
+    path is what leaves `Session Image Count` reading 1.
     """
     frames = load_envelope(name)["Response"]
-    return ok(max(frames, key=lambda frame: frame["Date"]))
+    return ok([max(frames, key=lambda frame: frame["Date"])])
+
+
+def _shorter_history(name: str, keep: int) -> dict:
+    """The captured `?all=true` list cut to its newest `keep` frames.
+
+    A history that shrinks is the other restart signal, and the only one when
+    `/application-start` reads unchanged. No capture holds a cleared history
+    beside an unchanged start time, so the list is a slice of a captured one.
+    """
+    envelope = load_envelope(name)
+    frames = sorted(envelope["Response"], key=lambda frame: frame["Date"])
+    return {**envelope, "Response": frames[-keep:]}
 
 
 def _replace_device(state: State, device: str, block: dict) -> State:
@@ -180,8 +194,10 @@ STATES: dict[str, State] = {
     # Mid-session with everything captured: guider Guiding, camera exposing,
     # livestack Running, the profile and the last autofocus run served.
     "imaging_guiding": dict(_IMAGING_GUIDING),
-    # The 67 flats are in the same history — dawn flats are a phase of the
-    # night, not a different snapshot.
+    # CONTENT-IDENTICAL to `imaging`, deliberately: the 67 flats are in the
+    # same history, because dawn flats are a phase of the night rather than a
+    # different snapshot. The name exists so a test can say what it is
+    # exercising; a distinct capture would replace it in place.
     "dawn_flats": dict(_IMAGING),
     # The mount parked with tracking off, which is what reports 24 hours to
     # meridian flip. The sequence document is the completed one _IMAGING already
@@ -196,8 +212,9 @@ STATES: dict[str, State] = {
         **_IMAGING,
         "/sequence/json": load_envelope("startup_sequence_not_initialized.json"),
     },
-    # The dawn capture IS the physical station: SkyBrightness 5692 with
-    # CloudCover "NaN", on device-09.
+    # Also content-identical to `imaging`: the dawn capture IS the physical
+    # station — SkyBrightness 5692 with CloudCover "NaN", on device-09 — and
+    # `weather_openmeteo` below is the contrast it exists for.
     "weather_physical_station": dict(_IMAGING),
     # The same rig reporting weather from OpenMeteo on device-12: CloudCover 14
     # with SkyBrightness "NaN". The two sources' fields are disjoint.
@@ -215,6 +232,21 @@ STATES: dict[str, State] = {
             **load_envelope("dawn_image_history_count.json"),
             "Response": 123,
         },
+    },
+    # The same rig with a SHORTER history under an UNCHANGED
+    # /application-start: `?count=true` going backwards is a restart signal in
+    # its own right, and the generation tag does not move with it. Slice and
+    # scalar variants of captured envelopes, for the same reason
+    # `imaging_count_ahead` is one.
+    "imaging_count_behind": {
+        **_IMAGING,
+        "/image-history?count=true": {
+            **load_envelope("dawn_image_history_count.json"),
+            "Response": 100,
+        },
+        "/image-history?all=true": _shorter_history(
+            "dawn_image_history_with_flats.json", 100
+        ),
     },
     # The same rig answering /application-start with a null Response — the
     # generation unreadable for one tick. Also a scalar variant: the corpus

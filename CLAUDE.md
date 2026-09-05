@@ -35,6 +35,7 @@ redaction, hassfest, HACS); no linter or formatter is configured.
 
 ```
 custom_components/nina_astrophotography/
+  __init__.py         entry setup and unload, the socket wiring, the services
   api/                the version-independent seam: errors.py, models.py (THE CONTRACT)
   api/v2/             client.py (the only module that talks to N.I.N.A.), mapper.py
                       (wire → models; every sentinel dies here), schema.py (generated),
@@ -146,7 +147,8 @@ recoverable. If unsure whether a call mutates state, do not make it.
 | `*ApiKey`, `*Token`, `*Secret`, `*Password`, `*Credential` | `"REDACTED"` |
 | `*Path`, `*Folder`, `*Directory`, `*Host`, `*Url` | `"REDACTED"` |
 | any Windows path, bare IPv4, UUID or HA entity id in a value | `"REDACTED"` |
-| a site or facility identifier in `Name`, `DisplayName` or `Description` | `"REDACTED"` |
+| a site or facility identifier in `Name`, `DisplayName`, `Description` or `ProjectName` | `"REDACTED"` |
+| a facility token inside any other string value | the token → `"REDACTED"`, the rest of the string kept |
 | `DeviceId`, `EntityId` | stable pseudonym `device-<8 hex>`, preserving distinctness |
 | `TelescopeName`, `CameraName` | `"Telescope"`, `"Camera"` |
 | `Filename` | stable pseudonym `frame_<8 hex>.fits`, derived from the original |
@@ -161,10 +163,10 @@ for longitude — so the coordinates were derivable from fixtures whose named
 fields were all correctly zeroed.
 
 Keeping them is what makes §11's meridian-flip maths testable:
-`(RA_JNOW − LST) mod 12` needs a real `SiderealTime`, and the already-flipped
-branch needs a real `SideOfPier`. The alternative is a hand-written synthetic
-`(LST, RA, longitude)` triple, and hand-written fixtures encode the spec's
-mistakes rather than reality.
+`(RA_JNOW − LST) mod 12` needs a real `SiderealTime`, and the pier-side windows
+that add 12 h need a real `SideOfPier`. The alternative is a hand-written
+synthetic `(LST, RA, longitude)` triple, and hand-written fixtures encode the
+spec's mistakes rather than reality.
 
 **`Filename` is pseudonymised by hashing the original, never numbered by
 position.** Frame identity is `(Date, Filename)` and the fold spans fixtures, so

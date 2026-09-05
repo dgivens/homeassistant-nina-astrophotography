@@ -87,18 +87,27 @@ def test_hours_to_meridian_wraps_just_after_transit() -> None:
     assert hours_to_meridian(21.9, 22.0) == pytest.approx(11.9)
 
 
-def test_time_to_meridian_flip_adds_the_profile_offset() -> None:
-    assert time_to_meridian_flip(1.0, max_minutes_after_meridian=15.0) == pytest.approx(1.25)
-
-
-def test_an_already_flipped_mount_is_twelve_hours_out() -> None:
-    assert time_to_meridian_flip(1.0, 15.0, flipped=True) == pytest.approx(13.25)
-
-
-def test_a_mount_just_past_a_flip_is_not_minutes_from_the_next_one() -> None:
-    """Just flipped: the next flip is a sidereal day away, not five minutes; a
-    wrap here was the bug."""
-    assert time_to_meridian_flip(11.8333, 15.0, flipped=True) == pytest.approx(24.0833)
+@pytest.mark.parametrize(
+    ("hours_to_meridian_value", "expected"),
+    [
+        (1.0, 1.25),
+        # The rig's own pierEast row: hours past transit, and no +12 h.
+        (9.4908, 9.7408),
+        # Five minutes past transit reads 11.9167, and the flip is ten minutes
+        # off — N.I.N.A. wraps mod 12 and so must this.
+        (11.9167, 10 / 60),
+    ],
+    ids=["before-transit", "past-transit", "inside-the-limit"],
+)
+def test_time_to_meridian_flip_adds_the_profile_offset_and_wraps(
+    hours_to_meridian_value, expected
+) -> None:
+    """`(HoursToMeridian + Max/60) mod 12`, the base N.I.N.A. computes. The
+    +12 h it can add needs the expected pier side, which the API never
+    reports."""
+    assert time_to_meridian_flip(
+        hours_to_meridian_value, max_minutes_after_meridian=15.0
+    ) == pytest.approx(expected, abs=1e-4)
 
 
 def test_the_flip_warning_threshold_is_not_a_bare_number() -> None:

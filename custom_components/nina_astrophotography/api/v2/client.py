@@ -207,11 +207,21 @@ class NinaClientV2:
         return int(await self._get("/image-history", {"count": "true"}) or 0)
 
     async def get_events(self, generation: str | None = None) -> list[NinaEvent]:
+        """The stored events, mapped. A malformed one is skipped, not raised.
+
+        This feeds the setup replay, which runs inside
+        `async_config_entry_first_refresh`, so anything escaping here fails the
+        entry over one bad stored event — and the same widths guard `get_frames`
+        and the socket's own dispatch.
+        """
+        raw = await self._raw_event_history()
+        if not isinstance(raw, list):
+            return []
         events: list[NinaEvent] = []
-        for item in await self._raw_event_history():
+        for item in raw:
             try:
                 events.append(map_event(item, generation, rig_offset=self._rig_offset))
-            except ValueError as exc:
+            except (AttributeError, KeyError, TypeError, ValueError) as exc:
                 _LOGGER.debug("Skipping unmappable event %s: %s", item, exc)
         return events
 

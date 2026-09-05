@@ -61,13 +61,14 @@ async def test_the_history_parameters_dispatch_to_different_answers() -> None:
 @pytest.mark.parametrize(
     ("state", "frames"),
     [("imaging", 1), ("imaging_guiding", 1), ("nina_restarted", 0)],
-    ids=["newest frame only", "captured as a one-item list", "index out of range"],
+    ids=["assembled one-item list", "captured one-item list", "index out of range"],
 )
 async def test_the_bare_history_path_is_served_by_every_state(
     state: str, frames: int
 ) -> None:
-    """Bare /image-history answers the newest frame alone — which is why it is
-    not a reseed source — or `Index out of range`, which is no data."""
+    """Bare /image-history answers the newest frame alone, as a one-element
+    list — which is why it is not a reseed source — or `Index out of range`,
+    which is no data."""
     assert len(await _client(FakeRig(STATES, start=state)).get_frames()) == frames
 
 
