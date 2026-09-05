@@ -1,0 +1,14 @@
+{
+  "Response": "Running",
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-05T06:43:39+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/livestack/status",
+    "params": {}
+  }
+}

@@ -1,0 +1,1710 @@
+{
+  "Response": [
+    {
+      "Time": "2026-09-04T17:28:14.4764046-05:00",
+      "Event": "SAFETY-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:28:16.0833257-05:00",
+      "Event": "SAFETY-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:28:18.092445-05:00",
+      "Event": "SWITCH-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:28:18.2150177-05:00",
+      "Event": "SWITCH-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:26.9575076-05:00",
+      "Event": "WEATHER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:27.2188353-05:00",
+      "Event": "WEATHER-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:29.9011782-05:00",
+      "Event": "FLAT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:31.9448109-05:00",
+      "Event": "FLAT-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:40.3051221-05:00",
+      "Event": "GUIDER-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:41.3988223-05:00",
+      "Event": "ROTATOR-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:42.7591889-05:00",
+      "Event": "ROTATOR-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:44.3238042-05:00",
+      "Event": "FOCUSER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:44.8051557-05:00",
+      "Event": "FOCUSER-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:46.2191681-05:00",
+      "Event": "FILTERWHEEL-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:46.995516-05:00",
+      "Event": "FILTERWHEEL-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:48.4087142-05:00",
+      "Event": "CAMERA-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:49.0958087-05:00",
+      "Event": "CAMERA-CONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:42:59.9597135-05:00",
+      "Event": "MOUNT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T17:43:00.5683245-05:00",
+      "Event": "MOUNT-CONNECTED"
+    },
+    {
+      "Event": "SAFETY-CHANGED",
+      "Time": "2026-09-04T19:33:18.0916452-05:00",
+      "IsSafe": true
+    },
+    {
+      "Time": "2026-09-04T20:22:20.0079478-05:00",
+      "Event": "FLAT-COVER-OPENED"
+    },
+    {
+      "Time": "2026-09-04T20:22:20.5716448-05:00",
+      "Event": "FLAT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-09-04T20:22:26.7105629-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "Event": "STACK-STATUS",
+      "Time": "2026-09-04T20:33:13.560972-05:00",
+      "Status": "Running"
+    },
+    {
+      "Time": "2026-09-04T20:33:13.7741594-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Position": 2472,
+      "Time": "2026-09-04T20:33:52.7899913-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.191600292747839
+    },
+    {
+      "Position": 2437,
+      "Time": "2026-09-04T20:34:14.8375613-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.345432704634798
+    },
+    {
+      "Position": 2402,
+      "Time": "2026-09-04T20:34:36.7962974-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.401948387230271
+    },
+    {
+      "Position": 2367,
+      "Time": "2026-09-04T20:34:58.7687767-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.9411015124123967
+    },
+    {
+      "Position": 2332,
+      "Time": "2026-09-04T20:35:22.6921605-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.5357301007799857
+    },
+    {
+      "Position": 2297,
+      "Time": "2026-09-04T20:35:46.9005565-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.242820931849326
+    },
+    {
+      "Position": 2262,
+      "Time": "2026-09-04T20:36:11.0733012-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.252502673013168
+    },
+    {
+      "Position": 2507,
+      "Time": "2026-09-04T20:36:32.7504866-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.184784641825836
+    },
+    {
+      "Position": 2542,
+      "Time": "2026-09-04T20:36:52.5968971-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.374170188765858
+    },
+    {
+      "Time": "2026-09-04T20:37:16.7252095-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Event": "TS-WAITSTART",
+      "Time": "2026-09-05T01:42:02.8596034",
+      "WaitEndTime": "2026-09-04T20:51:48.2162519-05:00"
+    },
+    {
+      "Time": "2026-09-04T20:42:02.8918663-05:00",
+      "Event": "MOUNT-HOMED"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T01:51:48.6733785",
+      "ProjectName": "SFRO",
+      "Event": "TS-NEWTARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T01:51:48.6771268",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T20:52:05.0471463-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "From": 53.86,
+      "Event": "ROTATOR-MOVED",
+      "Time": "2026-09-04T20:52:24.7985687-05:00",
+      "To": 169.03
+    },
+    {
+      "Time": "2026-09-04T20:52:28.4073543-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T20:52:56.8358592-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T20:53:10.6610587-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:03:24.4628922-05:00"
+    },
+    {
+      "Filter": "O",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 1,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:03:25.8203362-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:03:28.4737021",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T21:03:28.4798304-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:13:41.2274001-05:00"
+    },
+    {
+      "Filter": "O",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 2,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:13:42.5004005-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:13:46.4773707",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T21:13:59.7105869-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T21:13:59.7246482-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:24:13.6333364-05:00"
+    },
+    {
+      "Filter": "O",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 3,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:24:14.5646709-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:24:15.2753714",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T21:24:16.3035395-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T21:24:34.0137603-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T21:24:34.0161349-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T21:24:34.0225622-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:29:48.5896744-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:29:49.5029893",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T21:29:49.5421314-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Filter": "B",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 1,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:29:49.6753482-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:35:04.8884682-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:35:06.0448593",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Filter": "B",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 2,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:35:06.0697316-05:00"
+    },
+    {
+      "Time": "2026-09-04T21:35:18.1337229-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T21:35:18.1534512-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:40:32.8523826-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:40:33.8499102",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T21:40:33.8830107-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T21:40:34.0003169-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Filter": "B",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 3,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:40:34.0135079-05:00"
+    },
+    {
+      "Time": "2026-09-04T21:40:36.01654-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T21:40:40.8747339-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Position": 2538,
+      "Time": "2026-09-04T21:41:18.8668385-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 9.345534457378255
+    },
+    {
+      "Position": 2503,
+      "Time": "2026-09-04T21:41:40.8544718-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.369234548830836
+    },
+    {
+      "Position": 2468,
+      "Time": "2026-09-04T21:42:02.6793242-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.3618960873556665
+    },
+    {
+      "Position": 2433,
+      "Time": "2026-09-04T21:42:24.6763635-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.388652353298902
+    },
+    {
+      "Position": 2398,
+      "Time": "2026-09-04T21:42:48.8753098-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.7304350973021585
+    },
+    {
+      "Position": 2363,
+      "Time": "2026-09-04T21:43:12.8481906-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.513828920067046
+    },
+    {
+      "Position": 2328,
+      "Time": "2026-09-04T21:43:36.876676-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.3578855907632392
+    },
+    {
+      "Position": 2293,
+      "Time": "2026-09-04T21:44:00.9176898-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.120319559199267
+    },
+    {
+      "Position": 2258,
+      "Time": "2026-09-04T21:44:22.8042349-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.002337125750171
+    },
+    {
+      "Position": 2223,
+      "Time": "2026-09-04T21:44:44.5879918-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.030477357863056
+    },
+    {
+      "Time": "2026-09-04T21:45:06.8815498-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T21:45:10.8507361-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T21:45:24.5695818-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:50:39.3393542-05:00"
+    },
+    {
+      "Filter": "B",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 4,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:50:40.460187-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:50:43.0700221",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T21:50:52.2048503-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T21:50:52.2184456-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T21:56:07.488568-05:00"
+    },
+    {
+      "Filter": "B",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 5,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T21:56:08.6164422-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T02:56:08.6819917",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Time": "2026-09-04T21:56:08.7018934-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T22:01:24.0077715-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 90,
+      "Time": "2026-09-05T03:01:24.7280606",
+      "ProjectName": "SFRO",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Lobster & Bubble"
+    },
+    {
+      "Filter": "B",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 6,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T22:01:25.1276793-05:00"
+    },
+    {
+      "Time": "2026-09-04T22:01:35.3884574-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T22:01:35.4114155-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T22:06:48.7494447-05:00"
+    },
+    {
+      "Filter": "B",
+      "Target": "Lobster & Bubble",
+      "Event": "STACK-UPDATED",
+      "StackCount": 7,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T22:06:49.849933-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T03:06:59.5283789",
+      "ProjectName": "Narrowband",
+      "Event": "TS-NEWTARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T03:06:59.5288213",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T22:07:01.6013653-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:07:18.834428-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:07:25.1275855-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T22:07:25.1317261-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "From": 169.03,
+      "Event": "ROTATOR-MOVED",
+      "Time": "2026-09-04T22:07:42.789841-05:00",
+      "To": 64.12
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:07:48.8521235-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:07:55.1913735-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T22:07:55.195313-05:00",
+      "Event": "ROTATOR-SYNCED"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:08:04.8444444-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:08:26.8409388-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T22:08:41.2139419-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T22:13:54.7144714-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T22:14:12.6187459-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:14:12.6206489-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T22:14:12.6505318-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T22:24:25.1127325-05:00"
+    },
+    {
+      "Filter": "S",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 1,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T22:24:26.1992152-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T03:24:30.8546401",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T22:24:30.873667-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T22:34:44.3770729-05:00"
+    },
+    {
+      "Filter": "S",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 2,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T22:34:45.4245873-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T03:34:47.6241217",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T22:35:01.8278986-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T22:35:01.841643-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T22:45:14.5587114-05:00"
+    },
+    {
+      "Filter": "S",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 3,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T22:45:15.7053829-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T03:45:18.1946256",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T22:45:19.2162609-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-09-04T22:45:36.6234355-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:45:36.6257287-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T22:45:36.6467371-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T22:45:36.7445398-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-04T22:45:37.76122-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:45:42.8848626-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Position": 2508,
+      "Time": "2026-09-04T22:46:20.8084401-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.263819160948502
+    },
+    {
+      "Position": 2473,
+      "Time": "2026-09-04T22:46:42.9112291-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.304812635750334
+    },
+    {
+      "Position": 2438,
+      "Time": "2026-09-04T22:47:04.8886339-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.301248849484896
+    },
+    {
+      "Position": 2403,
+      "Time": "2026-09-04T22:47:26.8639965-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.3809466523987397
+    },
+    {
+      "Position": 2368,
+      "Time": "2026-09-04T22:47:50.7506092-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.4531011412659665
+    },
+    {
+      "Position": 2333,
+      "Time": "2026-09-04T22:48:14.9165847-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.8498037194906285
+    },
+    {
+      "Position": 2298,
+      "Time": "2026-09-04T22:48:38.7027955-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.3170648621115375
+    },
+    {
+      "Position": 2263,
+      "Time": "2026-09-04T22:49:00.9452918-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.170677499815773
+    },
+    {
+      "Position": 2228,
+      "Time": "2026-09-04T22:49:22.8110086-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.200368748891019
+    },
+    {
+      "Time": "2026-09-04T22:49:44.9459833-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T22:49:48.9445472-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-04T22:50:02.7626329-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T23:00:16.0576971-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 1,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T23:00:17.1324186-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T04:04:19.9758013",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T23:04:19.9820205-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T23:14:33.786927-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 2,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T23:14:34.9807435-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T04:17:56.8256227",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T23:18:07.5192281-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T23:18:07.538866-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T23:28:19.8618756-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 3,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T23:28:20.9959241-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T04:38:19.4153332",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T23:38:19.4754726-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T23:48:31.3111485-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 4,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T23:48:32.448732-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T04:48:34.8561555",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T23:48:45.0347743-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-04T23:48:45.0481269-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-04T23:58:57.0025116-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 5,
+      "IsMonochrome": true,
+      "Time": "2026-09-04T23:58:58.1913573-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T04:59:12.070361",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-04T23:59:12.0957004-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-04T23:59:12.1845077-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-04T23:59:14.2209201-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-04T23:59:18.8395909-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Position": 2502,
+      "Time": "2026-09-04T23:59:56.7550074-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.522291342442067
+    },
+    {
+      "Position": 2467,
+      "Time": "2026-09-05T00:00:18.8646813-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.556620653249753
+    },
+    {
+      "Position": 2432,
+      "Time": "2026-09-05T00:00:41.0057576-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.570743153285409
+    },
+    {
+      "Position": 2397,
+      "Time": "2026-09-05T00:01:02.9988632-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.5916732414657115
+    },
+    {
+      "Position": 2362,
+      "Time": "2026-09-05T00:01:26.785514-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.478800056327157
+    },
+    {
+      "Position": 2327,
+      "Time": "2026-09-05T00:01:50.7060182-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.7116857532525254
+    },
+    {
+      "Position": 2292,
+      "Time": "2026-09-05T00:02:14.7646654-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.006693249859494
+    },
+    {
+      "Position": 2257,
+      "Time": "2026-09-05T00:02:36.9878431-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.9078934474425155
+    },
+    {
+      "Position": 2222,
+      "Time": "2026-09-05T00:02:58.7838632-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.837224898731122
+    },
+    {
+      "Time": "2026-09-05T00:03:20.9821498-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-05T00:03:25.0030676-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-05T00:03:38.787122-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T00:13:51.4544256-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 6,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T00:13:52.60281-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T05:13:57.5770104",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T00:14:12.2715483-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-05T00:14:12.2854535-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T00:24:25.0573464-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 7,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T00:24:26.2391993-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T05:24:28.0558016",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T00:24:28.0684406-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T00:34:40.9219742-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 8,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T00:34:41.9842481-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T05:34:43.0568637",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T00:35:00.3108937-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-05T00:35:00.3159114-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T00:45:13.7915801-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 9,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T00:45:15.0050558-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T05:45:19.1678323",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T00:45:19.1945331-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T00:55:31.5408074-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 10,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T00:55:32.6800676-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T05:55:33.6144912",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T00:55:49.8145854-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-05T00:55:49.834014-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T01:06:03.2419576-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 11,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T01:06:04.3941557-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T06:06:05.4321123",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T01:06:05.4687536-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-09-05T01:06:05.5829894-05:00",
+      "Event": "AUTOFOCUS-STARTING"
+    },
+    {
+      "Time": "2026-09-05T01:06:06.6153725-05:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-05T01:06:12.8451878-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Position": 2492,
+      "Time": "2026-09-05T01:06:50.7395527-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.65665187592478
+    },
+    {
+      "Position": 2457,
+      "Time": "2026-09-05T01:07:12.8931926-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.729585209398029
+    },
+    {
+      "Position": 2422,
+      "Time": "2026-09-05T01:07:34.8102222-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.705365782189137
+    },
+    {
+      "Position": 2387,
+      "Time": "2026-09-05T01:07:56.9660717-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.7793979915513467
+    },
+    {
+      "Position": 2352,
+      "Time": "2026-09-05T01:08:21.1246904-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.55229727412562
+    },
+    {
+      "Position": 2317,
+      "Time": "2026-09-05T01:08:44.9043373-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.6915236322456115
+    },
+    {
+      "Position": 2282,
+      "Time": "2026-09-05T01:09:08.8428405-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.931302237344836
+    },
+    {
+      "Position": 2247,
+      "Time": "2026-09-05T01:09:30.7527933-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.851116817456493
+    },
+    {
+      "Position": 2212,
+      "Time": "2026-09-05T01:09:52.7286539-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.767517920907358
+    },
+    {
+      "Time": "2026-09-05T01:10:14.8794713-05:00",
+      "Event": "AUTOFOCUS-FINISHED"
+    },
+    {
+      "Event": "FILTERWHEEL-CHANGED",
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-05T01:10:18.9079403-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      }
+    },
+    {
+      "Time": "2026-09-05T01:10:32.153585-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T01:20:45.4405694-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 12,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T01:20:46.6098894-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T06:20:48.4776616",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T01:20:59.6401774-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-05T01:20:59.6538688-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T01:31:11.3117237-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 13,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T01:31:12.4305536-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T06:31:13.6369326",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T01:31:13.6644047-05:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-05T01:41:27.6528459-05:00"
+    },
+    {
+      "Filter": "H",
+      "Target": "NGC 281",
+      "Event": "STACK-UPDATED",
+      "StackCount": 14,
+      "IsMonochrome": true,
+      "Time": "2026-09-05T01:41:28.5476341-05:00"
+    },
+    {
+      "TargetEndTime": "2026-09-05T06:22:01.6458097",
+      "Rotation": 165,
+      "Time": "2026-09-05T06:41:31.5832682",
+      "ProjectName": "Narrowband",
+      "Event": "TS-TARGETSTART",
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "NGC 281"
+    },
+    {
+      "Time": "2026-09-05T01:41:53.874605-05:00",
+      "Event": "GUIDER-DITHER"
+    },
+    {
+      "Time": "2026-09-05T01:41:53.9004399-05:00",
+      "Event": "GUIDER-START"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-05T06:43:39+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/event-history",
+    "params": {}
+  }
+}

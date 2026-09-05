@@ -33,11 +33,13 @@ from typing import Any
 REDACTED = "REDACTED"
 
 # Substring match on the lowercased key.
-_SECRET_KEYS = ("key", "token", "secret", "password", "credential", "username", "email")
+_SECRET_KEYS = ("key", "token", "secret", "password", "credential", "email")
 _LOCATION_KEYS = ("path", "folder", "directory", "host", "url", "address", "machinename")
 # Whole camel-case words only: "Focuser" and "PauseRequested" both contain
-# "user" as a substring, and a substring rule would zero the Focuser block.
-_WORD_KEYS = ("user",)
+# "user" as a substring, and "AutoFocuserName" spells "username" across the
+# seam between "AutoFocuser" and "Name" — a substring rule zeroes the Focuser
+# block and the autofocuser's name, neither of which is an account.
+_WORD_KEYS = ("user", "username")
 _CAMEL_WORDS = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
 
 _RENAMED = {"telescopename": "Telescope", "cameraname": "Camera"}
