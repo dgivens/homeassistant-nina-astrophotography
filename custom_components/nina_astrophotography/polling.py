@@ -19,10 +19,11 @@ class RestartDetector:
     """The restart signals, all observed across two restarts in one day.
 
     `/application-start` is authoritative; `/image-history?count=true` going
-    backwards is a free corroboration at the same resolution, and the only
-    signal left on a build that does not serve `/application-start`. A first
-    read has no baseline, so it is never a restart — treating it as one would
-    reseed on every startup and fire a false restart at every reload.
+    backwards is a free corroboration at the same resolution, and it is what
+    still reports a restart across a tick whose `/application-start` reads
+    null. A first read has no baseline, so it is never a restart — treating it
+    as one would reseed on every startup and fire a false restart at every
+    reload.
     """
 
     generation: str | None = None
@@ -36,8 +37,14 @@ class RestartDetector:
         return count < self.last_count
 
     def update(self, application_start: str | None, count: int) -> None:
-        """Record the baseline the next `observe` is measured against."""
-        self.generation = application_start
+        """Record the baseline the next `observe` is measured against.
+
+        An unreadable `/application-start` is missing information, not a new
+        process, so the last value seen is kept: erasing it would leave the
+        next tick with no baseline and so blind to the restart it reports.
+        """
+        if application_start is not None:
+            self.generation = application_start
         self.last_count = count
 
 
@@ -48,13 +55,24 @@ class ReseedGuard:
     are separate requests, so a frame saved between them fails the invariant
     transiently — and answering that immediately spends a 62 KB refetch every
     time it happens. A match resets the count, and so does firing.
+
+    A mismatch that SURVIVES a refetch is structural, not transient: the count
+    and the fold disagree about what a frame is — an item the mapper skips, or
+    two the fold's `(date, filename)` identity merges. No refetch can close
+    that, so `settle` latches the guard at that count and it stays quiet until
+    the count moves; otherwise the invariant check reseeds every two ticks for
+    the life of the process.
     """
 
     def __init__(self, consecutive: int = 2) -> None:
         self._consecutive = consecutive
         self._mismatches = 0
+        self.latched_count: int | None = None
 
     def check(self, fold_size: int, count: int) -> bool:
+        if count == self.latched_count:
+            return False
+        self.latched_count = None
         if fold_size == count:
             self._mismatches = 0
             return False
@@ -64,6 +82,12 @@ class ReseedGuard:
         self.reset()
         return True
 
+    def settle(self, fold_size: int, count: int) -> bool:
+        """Record what a reseed left behind; True when the gap survived it."""
+        self.reset()
+        self.latched_count = None if fold_size == count else count
+        return self.latched_count is not None
+
     def reset(self) -> None:
         self._mismatches = 0
 
@@ -72,10 +96,11 @@ class TierSchedule:
     """Per-tier due times, against an injected monotonic clock.
 
     Six tiers, one coordinator: a single 10 s tick with per-tier due-time
-    checks inside it, not three coordinators. B2 uses the fast tier and the
-    reseed hooks; the sequence, floor and event-driven tiers land in B3.
+    checks inside it, not three coordinators. The coordinator wires this up in
+    the tier task; the generation work only ships it.
     """
 
+    FAST = 10.0
     SEQUENCE_IMAGING = 30.0
     SEQUENCE_IDLE = 300.0
     FLOOR = 300.0
@@ -89,12 +114,19 @@ class TierSchedule:
         self.pending: set[str] = set()
 
     def _interval(self, tier: str) -> float:
-        return self.sequence_interval if tier == "sequence" else self.FLOOR
+        """`KeyError` on an unknown tier: a silent default would hand a
+        misspelled caller a cadence it never asked for."""
+        if tier == "sequence":
+            return self.sequence_interval
+        return {"fast": self.FAST, "floor": self.FLOOR}[tier]
 
     def due(self, tier: str, now: float | None = None) -> bool:
+        # Resolved before the never-run shortcut, so an unknown tier raises
+        # rather than reading as due.
+        interval = self._interval(tier)
         moment = self._clock() if now is None else now
         last = self._last.get(tier)
-        return last is None or moment - last >= self._interval(tier)
+        return last is None or moment - last >= interval
 
     def mark(self, tier: str, now: float | None = None) -> None:
         self._last[tier] = self._clock() if now is None else now

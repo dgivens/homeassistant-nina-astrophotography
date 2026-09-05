@@ -128,6 +128,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._restart = RestartDetector()
         self._reseed_guard = ReseedGuard()
         self._seeded = False
+        self._mismatch_logged = False
 
     async def _async_update_data(self) -> NinaData:
         try:
@@ -140,13 +141,17 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                     "N.I.N.A. restarted (%s); reseeding from /image-history?all=true",
                     application_start,
                 )
-            self._set_generation(application_start)
+            # Only a restart moves the generation on. A single unreadable
+            # /application-start is missing information, not a new process, and
+            # adopting its `None` would filter the whole session away for a tick.
+            if restarted or self.generation is None:
+                self._set_generation(application_start)
             # The frame set is never seeded from the bare path: it answers the
             # newest frame alone, which leaves the session count reading 1.
             if restarted or not self._seeded:
-                await self._reseed()
+                await self._reseed(count)
             elif self._reseed_guard.check(self._generation_frames(), count):
-                await self._reseed()
+                await self._reseed(count)
             self._restart.update(application_start, count)
         except (NinaRequestError, NinaEndpointError) as exc:
             # Neither becomes right by retrying. With a previous snapshot, log
@@ -185,7 +190,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         """
         return sum(1 for f in self.frames.values() if f.generation == self.generation)
 
-    async def _reseed(self) -> None:
+    async def _reseed(self, count: int) -> None:
         """Union `/image-history?all=true` into the frame set. Never clears.
 
         Clearing races a concurrent poll and loses what arrives during the
@@ -196,7 +201,16 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         ):
             self.frames[(frame.date, frame.filename)] = frame
         self._seeded = True
-        self._reseed_guard.reset()
+        held = self._generation_frames()
+        if not self._reseed_guard.settle(held, count):
+            self._mismatch_logged = False
+        elif not self._mismatch_logged:
+            _LOGGER.info(
+                "history count %s differs from %s mapped frames after a reseed; "
+                "will re-check when the count changes",
+                count, held,
+            )
+            self._mismatch_logged = True
 
     def _latch_observed(self, snapshot: EquipmentSnapshot) -> EquipmentSnapshot:
         """Record every slot carrying a `DeviceId`; blank the never-observed."""

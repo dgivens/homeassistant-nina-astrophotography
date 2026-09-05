@@ -67,6 +67,31 @@ async def test_a_count_mismatch_reseeds_only_once_it_persists(
     assert _reseeds(rig) == seeded + 1
 
 
+async def test_a_mismatch_the_refetch_cannot_close_stops_asking(
+    rig: FakeRig, loaded_entry: MockConfigEntry, advance
+) -> None:
+    """A count the fold can never match — an unmappable item, or two frames
+    sharing a `(date, filename)` — would otherwise refetch 62 KB every two
+    ticks for the life of the process."""
+    seeded = _reseeds(rig)
+    for _ in range(5):
+        await advance("imaging_count_ahead")
+    assert _reseeds(rig) == seeded + 1
+
+
+@pytest.mark.synthetic
+async def test_an_unreadable_application_start_does_not_blank_the_session(
+    loaded_entry: MockConfigEntry, advance
+) -> None:
+    """Adopting the null would filter every frame of the generation away for a
+    tick, and the session sensors would read zero and recover."""
+    before = loaded_entry.runtime_data.coordinator.data.generation
+    await advance("imaging_start_unreadable")
+    data = loaded_entry.runtime_data.coordinator.data
+    assert data.generation == before
+    assert data.session.image_count == 122
+
+
 async def test_an_empty_history_is_not_a_failure(
     loaded_entry: MockConfigEntry, advance
 ) -> None:
