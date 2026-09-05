@@ -88,12 +88,31 @@ async def test_the_form_recovers_after_an_error(hass: HomeAssistant) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
+@pytest.mark.parametrize("host", ["nina.local", "NINA.local", "  nina.local  "])
 async def test_the_same_host_and_port_cannot_be_added_twice(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, host: str
 ) -> None:
-    result = await _submit(hass, ROOFTOP, return_value=VERSIONS)
+    """Hostnames are case-insensitive, so all three name the configured rig.
+    The probe never runs: a duplicate costs no HTTP call."""
+    result = await _submit(
+        hass, ROOFTOP | {CONF_HOST: host}, side_effect=AssertionError("probed")
+    )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+async def test_a_second_rig_may_not_reuse_an_instance_name(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry
+) -> None:
+    """Two rigs called the same thing name their devices identically, and the
+    second set collides into `_2` entity ids. The configured entry is a 1.4.x
+    one, whose title is its instance name."""
+    result = await _submit(
+        hass,
+        {CONF_HOST: "other.local", CONF_PORT: 1888, CONF_INSTANCE_NAME: "N.I.N.A."},
+        return_value=VERSIONS,
+    )
+    assert result["errors"] == {CONF_INSTANCE_NAME: "name_in_use"}
 
 
 async def test_a_second_rig_on_a_different_host_is_allowed(
@@ -108,10 +127,14 @@ async def test_a_second_rig_on_a_different_host_is_allowed(
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
-async def test_an_empty_instance_name_is_refused(hass: HomeAssistant) -> None:
-    """It would title the entry "" and name every device " Camera"."""
+@pytest.mark.parametrize("name", ["", "   "], ids=["empty", "blank"])
+async def test_a_blank_instance_name_is_refused(hass: HomeAssistant, name: str) -> None:
+    """It would title the entry "" and name every device " Camera" — and a
+    length check alone accepts a string of spaces."""
     with pytest.raises(vol.Invalid):
-        await _submit(hass, ROOFTOP | {CONF_INSTANCE_NAME: ""}, return_value=VERSIONS)
+        await _submit(hass, ROOFTOP | {CONF_INSTANCE_NAME: name},
+                      return_value=VERSIONS)
+    assert not hass.config_entries.async_entries(DOMAIN)
 
 
 async def _set_option(hass: HomeAssistant, entry: MockConfigEntry, **options) -> dict:

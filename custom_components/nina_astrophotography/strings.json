@@ -15,6 +15,7 @@
     "error": {
       "cannot_connect": "Cannot connect to N.I.N.A. – check host/port and ensure the Advanced API plugin is running.",
       "unsupported_api": "Something answered, but not the N.I.N.A. Advanced API – check the port and update the plugin.",
+      "name_in_use": "Another N.I.N.A. instance already uses this name – its devices would be named the same.",
       "unknown": "Unexpected error – check the Home Assistant logs."
     },
     "abort": {
