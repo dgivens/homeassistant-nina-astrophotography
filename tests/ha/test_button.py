@@ -110,6 +110,37 @@ async def test_a_button_for_equipment_the_rig_has_never_had_is_absent(
     assert hass.states.get(DOME_OPEN) is None
 
 
+async def test_every_button_lands_on_the_device_its_entity_id_names(
+    hass: HomeAssistant, loaded_entry, advance
+) -> None:
+    """The device is half of the entity id (§5.1), and `docs/2.0-renames.md`
+    promises these ids — but `unique_id` is independent of both, so a descriptor
+    pointing at the wrong `kind` would move the entity and rename it silently.
+
+    The dome's four are absent: no capture observes a dome.
+    """
+    await advance("imaging_guiding")
+    assert sorted(state.entity_id for state in hass.states.async_all(BUTTON_DOMAIN)) == [
+        "button.n_i_n_a_camera_abort_exposure",
+        "button.n_i_n_a_focuser_auto_focus",
+        "button.n_i_n_a_guider_clear_calibration",
+        "button.n_i_n_a_mount_find_home",
+        "button.n_i_n_a_mount_park",
+        "button.n_i_n_a_mount_unpark",
+        "button.n_i_n_a_sequence_start",
+        "button.n_i_n_a_sequence_stop",
+    ]
+
+
+async def test_clearing_the_guider_calibration_ships_diagnostic(
+    hass: HomeAssistant, loaded_entry, advance, entity_registry
+) -> None:
+    """A remedy for a guider that will not lock, not a nightly control."""
+    await advance("imaging_guiding")
+    entry = entity_registry.async_get(CLEAR_CALIBRATION)
+    assert entry.entity_category is EntityCategory.DIAGNOSTIC
+
+
 @pytest.mark.parametrize(
     "suffix",
     [
