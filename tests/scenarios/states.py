@@ -125,6 +125,27 @@ def _replace_device(state: State, device: str, block: dict) -> State:
     return {**state, "/equipment/info": {**envelope, "Response": response}}
 
 
+def _with_readings(state: State, device: str, **readings: Any) -> State:
+    """A copy of `state` with some of one device block's readings replaced.
+
+    The key set stays the wire's — only values move — so the mapper still sees
+    the shape the driver sends. Every state built with it is synthetic in the
+    named readings alone, and a capture would replace it in place.
+    """
+    block = state["/equipment/info"]["Response"][device]
+    return _replace_device(state, device, {**block, **readings})
+
+
+def _dimmable(channel: dict) -> dict:
+    """A captured binary channel widened to a 0-100 range.
+
+    Max - Min == StepSize is what makes a channel binary (§5.3.5); a dew heater
+    reporting 0-100 is the case that has to stay off the `switch` platform, and
+    no rig in the corpus has one.
+    """
+    return {**channel, "Id": 2, "Name": "Dew Heater A", "Maximum": 100, "Value": 50}
+
+
 _IMAGING: State = {
     **_versions(),
     # No /application-start was captured beside the dawn corpus. The generation
@@ -157,6 +178,12 @@ _IMAGING_GUIDING: State = {
     "/profile/show?active=true": load_envelope("imaging_guiding_profile.json"),
     "/equipment/focuser/last-af": load_envelope("imaging_guiding_last_af.json"),
 }
+
+# The dawn rig's two writable switch channels, both binary (0-1 step 1): a
+# Home Assistant bridge exposing a flat panel outlet and the OTA power.
+_DAWN_CHANNELS: list[dict] = _IMAGING["/equipment/info"]["Response"]["Switch"][
+    "WritableSwitches"
+]
 
 _RESTARTED: State = {
     **_versions(),
@@ -295,6 +322,43 @@ STATES: dict[str, State] = {
     # holds no capture of a transiently empty endpoint.
     "imaging_start_unreadable": {**_IMAGING,
                                  "/application-start": {**ok(), "Response": None}},
+    # The guider connected but no longer locked on, and the guider stopped.
+    # `GuiderInfo.State` is Looping | LostLock | Guiding | Stopped | Calibrating
+    # and the corpus holds only `Guiding` — a guider that is down carries no
+    # `State` at all — so both are synthetic in that one string.
+    "guider_lost_lock": _with_readings(_IMAGING_GUIDING, "Guider", State="LostLock"),
+    "guider_stopped": _with_readings(_IMAGING_GUIDING, "Guider", State="Stopped"),
+    # A camera cooling to -10 °C, and one that reports no setpoint at all.
+    # Every camera capture reads `TargetTemp: 0`, which cannot tell a setpoint
+    # that was read from one that was hardcoded; `"NaN"` is how a camera with
+    # no cooling reports the field, and the cooler has nothing to send.
+    "camera_cooling_to_minus_ten": _with_readings(_IMAGING, "Camera", TargetTemp=-10),
+    "camera_without_a_cooling_setpoint": _with_readings(
+        _IMAGING, "Camera", TargetTemp="NaN"
+    ),
+    # A third channel spanning 0-100, which belongs on `number`, not `switch`.
+    "switch_hub_with_a_dimmable_channel": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[*_DAWN_CHANNELS, _dimmable(_DAWN_CHANNELS[0])],
+    ),
+    # The flat panel outlet commanded on and not yet switched: `Value` is the
+    # channel's state and `TargetValue` is what it was last asked for, and no
+    # capture caught them apart.
+    "switch_channel_commanded_not_yet_switched": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[{**_DAWN_CHANNELS[0], "Value": 0, "TargetValue": 1},
+                          _DAWN_CHANNELS[1]],
+    ),
+    # The same channel numbering its two states 1 and 2. An ASCOM switch is
+    # free to do that — 0-1 is a convention, not a rule — and every channel in
+    # the corpus follows the convention, so nothing else can show that the
+    # on/off values are read from the channel rather than assumed.
+    "switch_channel_with_a_shifted_range": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[{**_DAWN_CHANNELS[0], "Minimum": 1, "Maximum": 2,
+                           "Value": 1, "TargetValue": 1},
+                          _DAWN_CHANNELS[1]],
+    ),
     "camera_disconnected": disconnect(_IMAGING, "Camera"),
     "safety_monitor_disconnected": disconnect(_IMAGING, "SafetyMonitor"),
     # All eleven down: the seven the restart capture holds down, plus the four
@@ -323,7 +387,6 @@ SEQUENCES: dict[str, list[str]] = {
 #
 # - camera_warm_at_setup: CoolerPower "NaN" with the camera connected, proving
 #   a transiently-NaN field does not become a dynamic channel.
-# - guider_lost_lock: the guider connected and no longer guiding.
 #
 # No ENDPOINT awaits capture any more — `imaging_guiding` serves all of them.
-AWAITING_CAPTURE = frozenset({"camera_warm_at_setup", "guider_lost_lock"})
+AWAITING_CAPTURE = frozenset({"camera_warm_at_setup"})
