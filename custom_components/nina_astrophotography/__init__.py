@@ -16,6 +16,7 @@ from homeassistant.exceptions import (
 )
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.device_registry import DeviceEntry
 
 from .api.errors import (
     NinaCommandError,
@@ -57,6 +58,7 @@ from .const import (
     SERVICE_SEQUENCE_STOP,
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
+from .device import async_sync_devices, kind_of
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -172,6 +174,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     entry.async_on_unload(events.stop)
     await events.start()
 
+    # Before the platforms: an entity's `via_device` needs the hub to exist,
+    # and a child device created here rather than by an entity is what lets a
+    # piece of equipment carrying no entities still appear.
+    async_sync_devices(hass, entry, coordinator.data)
+    entry.async_on_unload(
+        coordinator.async_add_listener(
+            lambda: async_sync_devices(hass, entry, coordinator.data)
+        )
+    )
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _register_services(hass)
@@ -183,6 +195,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 async def async_unload_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
     """Unload a config entry. The socket stops via `async_on_unload`."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: NinaConfigEntry, device: DeviceEntry
+) -> bool:
+    """Allow deleting equipment the rig no longer reports (Gold stale-devices).
+
+    A device is created on first sight and never removed by a poll — equipment
+    is routinely down — so retiring a sold focuser is the user's call. The one
+    thing that is not their call is a device the rig still reports, or the hub:
+    both would come straight back.
+    """
+    try:
+        kind = kind_of(entry.entry_id, device)
+    except LookupError:
+        # An identifier scheme we no longer write. Nothing will ever claim it.
+        return True
+    if kind is None:
+        return False
+    if not hasattr(entry, "runtime_data"):
+        # The hook runs against a disabled or unloaded entry too, and Home
+        # Assistant drops `runtime_data` on unload. Nothing is polling, so
+        # nothing can recreate the device.
+        return True
+    return getattr(entry.runtime_data.coordinator.data.snapshot, kind) is None
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: NinaConfigEntry) -> None:

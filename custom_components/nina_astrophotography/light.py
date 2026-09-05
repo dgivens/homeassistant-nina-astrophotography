@@ -23,12 +23,10 @@ from typing import Any
 from homeassistant.components.light import ATTR_BRIGHTNESS, ColorMode, LightEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api.errors import NinaError
 from .api.models import FlatDeviceModel
-from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator
 from .entity import NinaEntity
 
@@ -52,16 +50,8 @@ class NinaFlatLight(NinaEntity, LightEntity):
     def __init__(
         self, coordinator: NinaCoordinator, entry: NinaConfigEntry, key: str
     ) -> None:
-        super().__init__(coordinator, entry, key)
+        super().__init__(coordinator, entry, key, kind="flat_device")
         self._remembered: int | None = None
-        panel = self._panel
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_flat_device")},
-            name=f"{entry.runtime_data.instance_name} Flat Panel",
-            manufacturer="N.I.N.A.",
-            model=panel.meta.name if panel else None,
-            sw_version=panel.meta.driver_version if panel else None,
-        )
 
     @property
     def _panel(self) -> FlatDeviceModel | None:
