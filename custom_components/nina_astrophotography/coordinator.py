@@ -110,6 +110,10 @@ class NinaData:
     profile: ProfileSettings
     generation: str | None
     version: VersionInfo
+    imaging: bool
+    """§6.2's activity heuristic, computed once per tick for the tier schedule
+    and published here so `binary_sensor.sequence_running` reads the same
+    value. Never `/sequence/json` node status."""
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
@@ -169,6 +173,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._tier_warned: set[str] = set()
         self._last_image_save: float | None = None
         self._last_count: int | None = None
+        self._imaging = False
         # The latched snapshot of the last successful poll. A push publishes
         # against it rather than reading /equipment/info of its own: an event
         # says nothing about the eleven devices, and a read would put an await
@@ -412,9 +417,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         # not a rise — the same first-read rule the restart detector applies.
         baseline = count if self._last_count is None else self._last_count
         self._last_count = count
-        schedule.set_imaging(
-            imaging(snapshot, count, baseline, self._since_last_image_save())
+        # One computation, one truth: the tier schedule and
+        # `binary_sensor.sequence_running` read the same value.
+        self._imaging = imaging(
+            snapshot, count, baseline, self._since_last_image_save()
         )
+        schedule.set_imaging(self._imaging)
         queued = schedule.take_pending()
         # Every /sequence/json read passes one debounce — the tier's own and
         # any an event queued — so ≤1 per 30 s is structural rather than a
@@ -608,6 +616,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             profile=self._profile,
             generation=self.generation,
             version=self._version,
+            imaging=self._imaging,
         )
 
 
