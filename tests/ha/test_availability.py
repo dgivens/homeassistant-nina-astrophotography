@@ -10,6 +10,7 @@ value concern of the sensor platforms and is pinned in phase C.
 """
 import logging
 
+import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -43,10 +44,14 @@ async def test_an_outage_is_logged_once_and_the_recovery_once(
     assert caplog.text.count("is back online") == 1
 
 
+@pytest.mark.synthetic
 async def test_a_device_disconnection_is_logged_once_and_the_reconnection_once(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, caplog
 ) -> None:
-    """Per device, under the label the device registry shows."""
+    """Per device, under the label the device registry shows.
+
+    No capture holds the flat panel down, so its disconnected block is derived
+    by the rule the corpus does show."""
     caplog.set_level(logging.INFO)
     await advance("equipment_disconnected")
     await advance("equipment_disconnected")
