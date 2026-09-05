@@ -31,6 +31,32 @@ async def test_the_light_goes_down_with_the_panel(hass, loaded_entry, advance):
 and lets Home Assistant settle. `FakeRig.advance()` is the other one: it walks
 an ordered `SEQUENCES` entry step by step.
 
+## Derived, not captured
+
+Four devices — **Camera, FlatDevice, SafetyMonitor and Switch** — are connected
+in every capture, so `disconnect()` derives their down-blocks by the rule the
+corpus does show: drop `DeviceId`, `Name`, `DisplayName`, `Description`,
+`DriverInfo`, `DriverVersion` and `SupportedActions`, and set `Connected` false
+(the focuser goes 15 keys to 8, the rotator 15 to 8, the weather station 22 to
+15, each losing exactly that set). The other seven are copied from the capture
+that holds them down. Tests exercising a derived block carry
+`@pytest.mark.synthetic`.
+
+Bare `/image-history` for the imaging family is likewise assembled: the newest
+frame of the captured `?all=true` list, in an envelope of our own, because no
+bare capture of a rig holding frames exists.
+
+## Awaiting capture
+
+Three **endpoints** have no capture at all — `/livestack/status`,
+`/profile/show?active=true` and `/equipment/focuser/last-af` — though the
+event-driven tier polls all three. No state registers them, so they answer 404
+and exercise the coordinator's not-served handling rather than a fake body.
+
+Three **states** are named in `AWAITING_CAPTURE` and skip the tests that ask for
+them: `camera_warm_at_setup`, `idle_with_stale_running_nodes`,
+`guider_lost_lock`.
+
 ## Adding one
 
 Build it from captured envelopes — `load_envelope`, `disconnect()`, a slice of
