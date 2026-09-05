@@ -15,9 +15,6 @@ from .device import device_identifiers
 class NinaEntity(CoordinatorEntity[NinaCoordinator]):
     """Base for every N.I.N.A. entity.
 
-    Takes the entry, not its id: the instance name lives on
-    `entry.runtime_data`, and device linking needs it.
-
     `kind` names the equipment this entity belongs to — an `EquipmentSnapshot`
     slot — and `None` puts it on the hub, which is where anything session- or
     rig-scoped belongs. Only the identifiers are claimed: the device itself is
@@ -37,7 +34,6 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
         kind: str | None = None,
     ) -> None:
         super().__init__(coordinator)
-        self.entry = entry
         self._attr_unique_id = f"{entry.entry_id}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers=device_identifiers(entry.entry_id, kind)

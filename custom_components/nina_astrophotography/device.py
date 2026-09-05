@@ -16,7 +16,10 @@ with it. `async_remove_config_entry_device` is the deliberate way out.
 `async_sync_devices` is the only writer of device metadata. Entities claim a
 device by its identifiers alone (`device_identifiers`), because the metadata is
 usually not available when an entity is constructed — equipment is still
-connecting — and a value frozen there would never be filled in.
+connecting — and a value frozen there would never be filled in. The price is
+that a platform MUST gate entity creation on its slot being non-`None`, as
+`light.py` does: an identifiers-only `DeviceInfo` naming a kind this module has
+not created leaves the entity platform to create a nameless device.
 """
 from __future__ import annotations
 

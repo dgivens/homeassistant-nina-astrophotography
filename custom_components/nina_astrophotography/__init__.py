@@ -214,6 +214,11 @@ async def async_remove_config_entry_device(
         return True
     if kind is None:
         return False
+    if not hasattr(entry, "runtime_data"):
+        # The hook runs against a disabled or unloaded entry too, and Home
+        # Assistant drops `runtime_data` on unload. Nothing is polling, so
+        # nothing can recreate the device.
+        return True
     return getattr(entry.runtime_data.coordinator.data.snapshot, kind) is None
 
 
