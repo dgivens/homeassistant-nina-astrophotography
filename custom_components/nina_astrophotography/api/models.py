@@ -137,8 +137,9 @@ class GuiderModel:
     meta: DeviceMeta
     state: str | None
     """Looping | LostLock | Guiding | Stopped | Calibrating. `switch.guider` is
-    `state == "Guiding"`, which is why `sensor.guider_status` is retained
-    (§5.2.3): during LostLock the switch reads off but guiding has not stopped.
+    on for every state but `Stopped` — the guider is running — which is why
+    `sensor.guider_status` is retained (§5.2.3): the switch cannot tell a lost
+    lock from a settled one.
     """
     rms_total: float | None
     rms_ra: float | None

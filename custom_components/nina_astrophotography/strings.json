@@ -199,6 +199,26 @@
       "wind_speed": {
         "name": "Wind speed"
       }
+    },
+    "switch": {
+      "camera_cooler": {
+        "name": "Cooler"
+      },
+      "camera_dew_heater": {
+        "name": "Dew heater"
+      },
+      "dome_following": {
+        "name": "Following"
+      },
+      "flat_panel_cover": {
+        "name": "Cover"
+      },
+      "livestack": {
+        "name": "Livestack"
+      },
+      "rotator_reverse": {
+        "name": "Reverse"
+      }
     }
   },
   "services": {
@@ -358,6 +378,9 @@
     }
   },
   "exceptions": {
+    "no_cooling_setpoint": {
+      "message": "The cooler cannot be started: the camera reports no target temperature."
+    },
     "no_driver_range": {
       "message": "{entity_id} cannot be set: the driver reports no usable range."
     },
