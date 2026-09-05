@@ -112,12 +112,14 @@ fixtures encode the spec's mistakes; captured ones encode reality.
 
 **Trust the rig over the spec wherever they disagree.**
 
-Capture with `scripts/capture_fixtures.py` (**not yet written** — phase 0).
+Capture with `scripts/capture_fixtures.py`.
 Two hard rules:
 
 **1. Read-only against a live rig.** Only `GET` endpoints that report state:
 `/version`, `/equipment/info`, `/equipment/*/info`, `/image-history`,
-`/sequence/json`, `/event-history`, `/flats/status`, `/equipment/focuser/last-af`.
+`/sequence/json`, `/sequence/state`, `/event-history`, `/flats/status`,
+`/equipment/focuser/last-af`, `/application-start`, `/livestack/status`, and
+`/profile/show` (as an allowlist projection only — see below).
 **Never** call anything that commands equipment — slew, capture, park, home,
 connect, disconnect, guider, filter change, focuser move, flat light, dome,
 sequence start/stop, profile switch — unless the operator has explicitly said
@@ -131,9 +133,10 @@ recoverable. If unsure whether a call mutates state, do not make it.
 | `*ApiKey`, `*Token`, `*Secret`, `*Password`, `*Credential` | `"REDACTED"` |
 | `*Path`, `*Folder`, `*Directory`, `*Host`, `*Url` | `"REDACTED"` |
 | any Windows path, bare IPv4, UUID or HA entity id in a value | `"REDACTED"` |
-| `DeviceId`, `EntityId` | stable pseudonym, preserving distinctness |
+| a site or facility identifier in `Name`, `DisplayName` or `Description` | `"REDACTED"` |
+| `DeviceId`, `EntityId` | stable pseudonym `device-<8 hex>`, preserving distinctness |
 | `TelescopeName`, `CameraName` | `"Telescope"`, `"Camera"` |
-| `Filename` | stable pseudonym `frame_NNNN.fits`, derived from the original |
+| `Filename` | stable pseudonym `frame_<8 hex>.fits`, derived from the original |
 | `TargetName` | keep — an astronomical object, not identifying |
 | `SiteLatitude`, `SiteLongitude`, `SiteElevation`, `Altitude`, `SiderealTime`, `SideOfPier` | **keep** — see below |
 
