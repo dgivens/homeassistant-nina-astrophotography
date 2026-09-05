@@ -63,6 +63,9 @@ class CameraModel:
     gain: int | None
     offset: int | None
     usb_limit: int | None
+    usb_limit_min: int | None
+    usb_limit_max: int | None
+    """Per-camera; `number.camera_usb_limit`'s range comes from here."""
     camera_state: str | None
     is_exposing: bool | None
     pixel_size: float | None
