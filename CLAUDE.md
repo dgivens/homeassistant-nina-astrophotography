@@ -43,7 +43,6 @@ custom_components/nina_astrophotography/
   entity.py           the shared entity base
   derive.py           pure maths; session.py — the pure session fold
   websocket.py        event socket; fires HA events
-  frame_statistics.py per-frame session store, fed by IMAGE-SAVE
   const.py            domain, config keys, service names, enums
   config_flow.py      UI setup
   light.py            the flat panel (migrated); the other platforms are

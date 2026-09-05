@@ -18,9 +18,9 @@ Polling runs in six tiers behind ONE 10 s tick, not three coordinators: the
 per-tier due-time checks live inside `_async_update_data`.
 
     fast       7,420 B @ 10 s  =  44,520 B/min
-    sequence   8,429 B @ 30 s  =  16,858 B/min
+    sequence   8,418 B @ 30 s  =  16,836 B/min
                                   ──────────
-                                  61,378 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
+                                  61,356 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
     before                        82,606 B x 6/min ~ 297 MB / night
 """
 from __future__ import annotations
@@ -50,12 +50,17 @@ from .api.models import (
     VersionInfo,
 )
 from .api.v2 import NinaClientV2
-from .polling import ReseedGuard, RestartDetector, TierSchedule, imaging
+from .polling import (
+    EventLedger,
+    ReseedGuard,
+    RestartDetector,
+    TierSchedule,
+    imaging,
+)
 from .session import fold
 
 if TYPE_CHECKING:
     from .api.v2.events import NinaEventStream
-    from .frame_statistics import NinaFrameStatisticsStore
     from .legacy_api import NinaApiClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -148,7 +153,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._rejection_logged = False
         self._restart = RestartDetector()
         self._reseed_guard = ReseedGuard()
+        self._ledger = EventLedger()
         self._seeded = False
+        self._replayed = False
         self._mismatch_logged = False
         self._schedule = TierSchedule()
         self._sequence: SequenceNode | None = None
@@ -159,6 +166,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._tier_warned: set[str] = set()
         self._last_image_save: float | None = None
         self._last_count: int | None = None
+        # The latched snapshot of the last successful poll. A push publishes
+        # against it rather than reading /equipment/info of its own: an event
+        # says nothing about the eleven devices, and a read would put an await
+        # between the fold and the publish.
+        self._last_snapshot: EquipmentSnapshot | None = None
 
     async def _async_update_data(self) -> NinaData:
         try:
@@ -200,12 +212,24 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._rejection_logged = False
         snapshot = self._latch_observed(snapshot)
         await self._run_tiers(snapshot, count)
+        self._last_snapshot = snapshot
+        if not self._replayed:
+            # Setup: fold what the socket could not deliver because it was not
+            # connected yet. Before `_assemble`, so the first published snapshot
+            # already carries it and no extra publish is needed.
+            await self._replay()
         return self._assemble(snapshot)
 
     def handle_event(self, event: NinaEvent) -> None:
-        """React to one pushed event on the tiers. The fold and the push
-        publish are B4's; nothing here touches the accumulated sets.
+        """Fold one pushed event into the accumulated sets and publish.
+
+        `async_set_updated_data`, never `async_request_refresh`: publishing the
+        fold directly is what makes the design push-first rather than
+        socket-as-a-hint (§6.3). The tier reactions below are the exceptions —
+        they ask for a value the event does not carry.
         """
+        if not self._take(event):
+            return
         name = event.name
         if name == "IMAGE-SAVE":
             # The imaging heuristic only — the frame itself rides the push path.
@@ -220,8 +244,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         elif name.startswith("PROFILE-"):
             self._schedule.add_pending("/profile/show")
         elif name == "STACK-STATUS":
-            # A bare {Event, Time}: it says THAT the status changed, never
-            # what to, so the status has to be read back.
+            # The payload's `Status` is the transition the plugin announced,
+            # not the server's own state, and only /livestack/status reports
+            # whether the stack is running — so it is read back.
             self._schedule.add_pending("/livestack/status")
         elif name == "SAFETY-CHANGED" or name.endswith(("-CONNECTED", "-DISCONNECTED")):
             # Nothing safety-related waits for a tier (§6.4), and a connection
@@ -237,6 +262,69 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         # no model until phase C. TS-* queue nothing by design — TS-TARGETSTART
         # fires once per exposure and its payload already carries TargetName,
         # ProjectName, Rotation and TargetEndTime (§6.1).
+        self._publish()
+
+    async def async_reconnected(self) -> None:
+        """The socket came back: recover what it could not deliver while down.
+
+        Both halves are needed. `/event-history` carries `{Event, Time}` only,
+        so it can never reconstruct the statistics a missed `IMAGE-SAVE` push
+        held; the frames come back from `?all=true` instead.
+        """
+        try:
+            await self._reseed(await self.client.get_image_history_count())
+        except NinaError as exc:
+            # The next poll reseeds anyway if the invariant is still broken.
+            _LOGGER.debug("Could not reseed after a socket reconnect: %s", exc)
+        await self._replay()
+        self._publish()
+
+    async def _replay(self) -> None:
+        """Fold `/event-history`. The caller publishes, once, afterwards."""
+        if self.event_stream is None:
+            return
+        try:
+            replayed = await self.event_stream.replay(self.client, self.generation)
+        except NinaEndpointError:
+            # A route this build does not serve cannot start working, and the
+            # setup replay would otherwise ask again on every 10 s tick.
+            _LOGGER.info("/event-history is not served by this N.I.N.A.; not replaying")
+            self._replayed = True
+            return
+        except NinaError as exc:
+            # An empty history is normal; an unreadable one is not worth failing
+            # setup over, and the next poll tries again.
+            _LOGGER.debug("Could not replay /event-history: %s", exc)
+            return
+        for event in replayed:
+            self._take(event)
+        self._replayed = True
+
+    def _take(self, event: NinaEvent) -> bool:
+        """Accept one event into the sets; False if it has been taken already.
+
+        One ledger serves the socket and the replay, so an event that arrives
+        by both paths is folded once. The mapper has already turned an
+        `IMAGE-SAVE` payload into a `Frame` — no wire dict reaches this module.
+        """
+        if self._ledger.seen(event):
+            return False
+        self._ledger.mark(event)
+        self.events.append(event)
+        if event.frame is not None:
+            self.frames[(event.frame.date, event.frame.filename)] = event.frame
+        return True
+
+    def _publish(self) -> None:
+        """Freeze the live sets and hand them to the entities, with no poll.
+
+        Silent before the first successful poll: there is no equipment snapshot
+        to publish beside the fold, and the refresh in flight will assemble
+        whatever has accumulated by the time it returns.
+        """
+        if self._last_snapshot is None:
+            return
+        self.async_set_updated_data(self._assemble(self._last_snapshot))
 
     async def _run_tiers(self, snapshot: EquipmentSnapshot, count: int) -> None:
         """The non-fast tiers, behind the fast tier's own tick.
@@ -258,9 +346,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         # Every /sequence/json read passes one debounce — the tier's own and
         # any an event queued — so ≤1 per 30 s is structural rather than a
         # property of whichever caller asked (§6.1).
-        wanted = "/sequence/json" in endpoints or schedule.due("sequence")
+        asked_for = "/sequence/json" in endpoints
+        wanted = asked_for or schedule.due("sequence")
         endpoints.discard("/sequence/json")
-        if wanted and schedule.request_sequence_refetch():
+        if wanted and schedule.request_sequence_refetch(
+            requeue="/sequence/json" if asked_for else None
+        ):
             endpoints.add("/sequence/json")
             schedule.mark("sequence")
         if schedule.due("floor"):
@@ -401,8 +492,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
 class NinaRuntimeData:
     """Everything setup builds, hung on `entry.runtime_data` (Bronze).
 
-    `service_client` and `frame_store` are the 1.4.x modules the unmigrated
-    services still call; phases B–D retire them.
+    `service_client` is the 1.4.x client the unmigrated services still call;
+    phase D retires it.
     """
 
     client: NinaClientV2
@@ -410,7 +501,6 @@ class NinaRuntimeData:
     service_client: NinaApiClient
     instance_name: str
     events: NinaEventStream
-    frame_store: NinaFrameStatisticsStore
 
 
 type NinaConfigEntry = ConfigEntry[NinaRuntimeData]
