@@ -18,8 +18,6 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-import pytest
-
 TESTS = Path(__file__).resolve().parents[1]
 FIXTURES = TESTS / "fixtures"
 DEVIATIONS = json.loads((TESTS / "spec_deviations.json").read_text(encoding="utf-8"))

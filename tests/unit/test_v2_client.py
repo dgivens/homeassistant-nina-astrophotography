@@ -1,13 +1,11 @@
 """The envelope, not the HTTP status, carries the outcome."""
 from __future__ import annotations
 
-import json
 from datetime import timedelta
-from pathlib import Path
 
 import aiohttp
 import pytest
-from helpers import FakeResponse, FakeSession, failure, ok
+from helpers import FakeResponse, FakeSession, failure, load_envelope, ok
 
 from nina_astrophotography.api.errors import (
     NinaCommandError,
@@ -18,15 +16,6 @@ from nina_astrophotography.api.errors import (
 )
 from nina_astrophotography.api.models import Frame, SequenceNode, VersionInfo
 from nina_astrophotography.api.v2.client import NinaClientV2
-
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-
-
-def envelope(name: str) -> dict:
-    """A captured envelope, as the wire sent it."""
-    document = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
-    document.pop("_meta", None)
-    return document
 
 
 def _client(session: FakeSession) -> NinaClientV2:
@@ -138,7 +127,8 @@ async def test_a_transport_failure_is_a_connection_error(exc) -> None:
 
 # ── reads return models ──────────────────────────────────────────────────────
 
-_NOT_SERVED = FakeResponse("<html>404</html>", status=404, content_type="text/html")
+# EmbedIO's own 404 page: a path this build does not route at all.
+NOT_ROUTED = FakeResponse("<html>404</html>", status=404, content_type="text/html")
 
 
 async def test_get_versions_yields_both_version_strings() -> None:
@@ -148,12 +138,12 @@ async def test_get_versions_yields_both_version_strings() -> None:
 
 async def test_a_build_without_version_nina_still_reports_the_api_version() -> None:
     """The N.I.N.A. version is diagnostic; its route's absence must not fail setup."""
-    session = FakeSession({"version/nina": _NOT_SERVED, "version": ok("2.2.15.2")})
+    session = FakeSession({"version/nina": NOT_ROUTED, "version": ok("2.2.15.2")})
     assert await _client(session).get_versions() == VersionInfo("2.2.15.2", None)
 
 
 async def test_a_build_without_version_is_an_endpoint_error() -> None:
-    session = FakeSession({"version/nina": ok("3.2.0.9001"), "version": _NOT_SERVED})
+    session = FakeSession({"version/nina": ok("3.2.0.9001"), "version": NOT_ROUTED})
     with pytest.raises(NinaEndpointError):
         await _client(session).get_versions()
 
@@ -171,7 +161,8 @@ async def test_a_bare_string_history_response_is_no_frames() -> None:
 
 
 async def test_application_start_is_the_timestamp_string() -> None:
-    client = _client(FakeSession({"application-start": envelope("restart_application_start.json")}))
+    session = FakeSession({"application-start": load_envelope("restart_application_start.json")})
+    client = _client(session)
     assert await client.get_application_start() == "2026-09-04T10:58:59.1429105-05:00"
 
 
@@ -195,7 +186,7 @@ async def test_empty_history_count_is_zero_not_none() -> None:
 
 
 async def test_frames_are_mapped_from_the_history_list() -> None:
-    wire = envelope("dawn_image_history_with_flats.json")
+    wire = load_envelope("dawn_image_history_with_flats.json")
     frames = await _client(FakeSession({"image-history": wire})).get_frames(include_all=True)
     assert len(frames) == len(wire["Response"])
     assert isinstance(frames[0], Frame)
@@ -207,7 +198,7 @@ async def test_a_history_item_without_an_identity_is_skipped_not_fatal(missing) 
     """Frame identity is (Date, Filename); an item lacking either cannot enter
     the fold, so it is dropped the way an unmappable event is. Every captured
     frame carries both, so one is stripped."""
-    wire = envelope("dawn_image_history_with_flats.json")
+    wire = load_envelope("dawn_image_history_with_flats.json")
     items = wire["Response"]
     items[0] = {k: v for k, v in items[0].items() if k != missing}
     frames = await _client(FakeSession({"image-history": wire})).get_frames(include_all=True)
@@ -216,21 +207,21 @@ async def test_a_history_item_without_an_identity_is_skipped_not_fatal(missing) 
 
 async def test_a_bare_history_dict_is_one_frame() -> None:
     """Bare /image-history answers the latest frame as a single object."""
-    latest = envelope("dawn_image_history_with_flats.json")["Response"][-1]
+    latest = load_envelope("dawn_image_history_with_flats.json")["Response"][-1]
     frames = await _client(FakeSession({"image-history": ok(latest)})).get_frames()
     assert [frame.filename for frame in frames] == [latest["Filename"]]
 
 
 async def test_the_sequence_tree_is_mapped() -> None:
-    client = _client(FakeSession({"sequence/json": envelope("dawn_sequence_complete.json")}))
+    client = _client(FakeSession({"sequence/json": load_envelope("dawn_sequence_complete.json")}))
     assert isinstance(await client.get_sequence(), SequenceNode)
 
 
 async def test_events_use_the_offset_cached_from_equipment() -> None:
     """The mount's clock is the only place the API states the rig's UTC offset,
     and the log-scraped ERROR-* times are naive in it (dawn fixture: -5 h)."""
-    session = FakeSession({"equipment/info": envelope("dawn_equipment_info.json"),
-                           "event-history": envelope("dawn_event_history.json")})
+    session = FakeSession({"equipment/info": load_envelope("dawn_equipment_info.json"),
+                           "event-history": load_envelope("dawn_event_history.json")})
     client = _client(session)
     await client.get_equipment()
     events = await client.get_events()
@@ -240,7 +231,7 @@ async def test_events_use_the_offset_cached_from_equipment() -> None:
 
 async def test_the_cached_rig_offset_is_readable() -> None:
     """The coordinator places the session's noon rollover in the rig's zone."""
-    client = _client(FakeSession({"equipment/info": envelope("dawn_equipment_info.json")}))
+    client = _client(FakeSession({"equipment/info": load_envelope("dawn_equipment_info.json")}))
     assert client.rig_offset is None
     await client.get_equipment()
     assert client.rig_offset == timedelta(hours=-5)
@@ -327,7 +318,7 @@ async def test_an_image_refusal_arrives_as_a_json_envelope() -> None:
     [
         (ok({}), NinaUnavailableError),  # a success envelope is still not an image
         (FakeResponse("<html>", content_type="text/html"), NinaUnavailableError),
-        (_NOT_SERVED, NinaEndpointError),
+        (NOT_ROUTED, NinaEndpointError),
         (TimeoutError(), NinaConnectionError),
         (aiohttp.ClientError("boom"), NinaConnectionError),
     ],

@@ -1,34 +1,26 @@
 """fold() is pure, idempotent, and order-independent."""
 from __future__ import annotations
 
-import json
 from dataclasses import replace
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pytest
+from helpers import load_fixture
 
 from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import fold
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-
-
-def _load(name: str) -> list[dict]:
-    document = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
-    document.pop("_meta", None)
-    return document["Response"]
-
 
 @pytest.fixture
 def night() -> list:
-    return [map_frame(f, generation="g1") for f in _load("dawn_image_history_with_flats.json")]
+    return [map_frame(f, generation="g1")
+            for f in load_fixture("dawn_image_history_with_flats.json")]
 
 
 @pytest.fixture
 def night_events() -> list:
-    return [map_event(e, "g1") for e in _load("dawn_event_history.json")]
+    return [map_event(e, "g1") for e in load_fixture("dawn_event_history.json")]
 
 
 def _light(**overrides) -> Frame:

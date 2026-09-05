@@ -18,10 +18,11 @@ Every wire quirk lives here and nowhere else:
     flipped"), and so is 24.08: a UseSideOfPier rig reads a few minutes over 24
     for up to MaxMinutesAfterMeridian after its flip. Neither "≥12" nor "≥24"
     is the rule.
-  - A `Connected: false` block maps with every reading None — only `connected`,
-    `meta` and the capability flags survive. A disconnected driver answers
-    Position 0, StepSize 0, ShutterNone: template defaults, not readings.
-    Guider PixelScale 0 is no reading even when connected.
+  - A `Connected: false` block maps with every reading None — `connected`,
+    `meta` and the capabilities survive, and a switch's channel list is a
+    capability, not a reading. A disconnected driver answers Position 0,
+    StepSize 0, ShutterNone: template defaults, not readings. Guider
+    PixelScale 0 is no reading even when connected.
   - Three timestamp classes, two of them naive and indistinguishable by shape,
     keyed by EVENT NAME through EVENT_TIMEZONES. Every NinaEvent.time is
     offset-aware: the fold sorts events, and one naive time among aware ones
@@ -130,14 +131,19 @@ def _dig(wire: Any, *path: str) -> Any:
     return nan_to_none(node)
 
 
+def _is_number(value: Any) -> bool:
+    """`bool` is an `int` in Python; a flag is never a reading."""
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
 def _number(wire: Any, *path: str) -> float | None:
     value = _dig(wire, *path)
-    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+    return float(value) if _is_number(value) else None
 
 
 def _integer(wire: Any, *path: str) -> int | None:
     value = _dig(wire, *path)
-    return int(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+    return int(value) if _is_number(value) else None
 
 
 def _flag(wire: Any, *path: str) -> bool | None:
@@ -212,8 +218,7 @@ def map_camera(wire: dict) -> CameraModel:
         has_battery=has_battery,
         battery=battery,
         can_set_temperature=_flag(wire, "CanSetTemperature"),
-        gains=tuple(int(gain) for gain in wire.get("Gains") or ()
-                    if isinstance(gain, (int, float)) and not isinstance(gain, bool)),
+        gains=tuple(int(gain) for gain in wire.get("Gains") or () if _is_number(gain)),
         binning_modes=_names(wire.get("BinningModes")),
         bin_x=_integer(readings, "BinX"),
     )
@@ -354,23 +359,27 @@ def map_safety_monitor(wire: dict) -> SafetyMonitorModel:
 
 
 def map_switch(wire: dict) -> SwitchDeviceModel:
-    readings = _readings(wire)
+    """The channel list is the device's capability, so it survives a disconnect
+    the way every other block's option lists and ranges do; only `value` is a
+    reading, and a disconnected device has none.
+    """
+    connected = _connected(wire)
     channels: list[SwitchChannelModel] = []
     for key, writable in (("WritableSwitches", True), ("ReadonlySwitches", False)):
-        for position, entry in enumerate(readings.get(key) or ()):
+        for position, entry in enumerate(wire.get(key) or ()):
             index = _integer(entry, "Id")
             channels.append(SwitchChannelModel(
                 index=index if index is not None else position,
                 name=_text(entry, "Name") or "",
                 description=_text(entry, "Description") or "",
-                value=_number(entry, "Value"),
+                value=_number(entry, "Value") if connected else None,
                 minimum=_number(entry, "Minimum"),
                 maximum=_number(entry, "Maximum"),
                 step_size=_number(entry, "StepSize"),
                 writable=writable,
             ))
     return SwitchDeviceModel(
-        connected=_connected(wire),
+        connected=connected,
         meta=_meta(wire),
         channels=tuple(channels),
     )
@@ -406,7 +415,7 @@ def map_equipment_info(wire: dict) -> EquipmentSnapshot:
                                 for field, key, mapper in _BLOCKS})
 
 
-def rig_offset(wire: dict) -> timedelta | None:
+def rig_utc_offset(wire: dict) -> timedelta | None:
     """The rig's UTC offset, from the mount's own clock in /equipment/info.
 
     Naive log-scraped event times are in this offset, and it is the only place
@@ -564,17 +573,19 @@ def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
     )
 
 
+def _iterations(wire: dict, key: str) -> int | None:
+    count = _integer(wire, key)
+    return None if count == _IDLE_ITERATIONS_SENTINEL else count
+
+
 def map_flats_status(wire: dict) -> FlatsStatus:
     """Only flats started through the API are counted; a Target Scheduler flat
     run leaves -1 iterations behind, which is no count at all.
     """
-    total = _integer(wire, "TotalIterations")
-    completed = _integer(wire, "CompletedIterations")
     return FlatsStatus(
         state=_text(wire, "State"),
-        total_iterations=None if total == _IDLE_ITERATIONS_SENTINEL else total,
-        completed_iterations=(None if completed == _IDLE_ITERATIONS_SENTINEL
-                              else completed),
+        total_iterations=_iterations(wire, "TotalIterations"),
+        completed_iterations=_iterations(wire, "CompletedIterations"),
     )
 
 

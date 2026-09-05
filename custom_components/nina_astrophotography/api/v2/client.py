@@ -48,7 +48,7 @@ from .mapper import (
     map_livestack_status,
     map_profile,
     map_sequence,
-    rig_offset,
+    rig_utc_offset,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -175,7 +175,7 @@ class NinaClientV2:
     async def get_equipment(self) -> EquipmentSnapshot:
         response = await self._get("/equipment/info")
         wire = response if isinstance(response, dict) else {}
-        offset = rig_offset(wire)
+        offset = rig_utc_offset(wire)
         if offset is not None:  # not `or`: UTC+0 is a real offset
             self._rig_offset = offset
         return map_equipment_info(wire)

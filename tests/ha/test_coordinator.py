@@ -7,7 +7,6 @@ coordinator's internals.
 import logging
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -17,7 +16,6 @@ from custom_components.nina_astrophotography.api.errors import (
     NinaRequestError,
 )
 
-CLIENT = "custom_components.nina_astrophotography.api.v2.client.NinaClientV2"
 LIGHT = "light.n_i_n_a_flat_panel_light"
 
 

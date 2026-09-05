@@ -55,28 +55,18 @@ def nina_responses(monkeypatch):
     setup-failure tests can patch it the same way. The socket is silenced:
     pytest-socket refuses the connection and the reconnect loop would otherwise
     outlive the test.
-    """
-    import json
-    from pathlib import Path
 
+    Returns the fixture loader, so a test that needs the same wire data can
+    read it without opening the file itself.
+    """
     import custom_components.nina_astrophotography as integration
     from custom_components.nina_astrophotography.api.models import VersionInfo
     from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
     from custom_components.nina_astrophotography.websocket import NinaWebSocketClient
-    from helpers import FakeSession, ok
-
-    fixtures = Path(__file__).resolve().parents[1] / "fixtures"
-
-    def _envelope(name: str) -> dict:
-        document = json.loads((fixtures / name).read_text(encoding="utf-8"))
-        document.pop("_meta", None)
-        return document
-
-    def _response(name: str):
-        return _envelope(name)["Response"]
+    from helpers import FakeSession, load_envelope, load_fixture, ok
 
     session = FakeSession({
-        "/equipment/info": _envelope("dawn_equipment_info.json"),
+        "/equipment/info": load_envelope("dawn_equipment_info.json"),
         "/application-start": ok("2026-09-04T10:58:59"),
         "/image-history": ok(122),
     })
@@ -87,7 +77,7 @@ def nina_responses(monkeypatch):
     )
     monkeypatch.setattr(NinaWebSocketClient, "start", lambda self: _async(None))
     monkeypatch.setattr(NinaWebSocketClient, "stop", lambda self: _async(None))
-    return _response
+    return load_fixture
 
 
 async def _async(value):
