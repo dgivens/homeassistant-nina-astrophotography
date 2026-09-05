@@ -1,7 +1,6 @@
 """The envelope, not the HTTP status, carries the outcome."""
 from __future__ import annotations
 
-import asyncio
 import json
 from datetime import timedelta
 from pathlib import Path
@@ -53,6 +52,21 @@ async def test_uninitialised_sequencer_is_recognised_at_400_too() -> None:
     """Ten guards, two codes for one condition — match on the message (§7.1)."""
     client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", 400)}))
     assert await client.get_sequence() is None
+
+
+async def test_a_5xx_carrying_the_no_data_text_is_still_unavailable() -> None:
+    """The code outranks the message: a handler exception is not "no data yet"."""
+    client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", 500)}))
+    with pytest.raises(NinaUnavailableError):
+        await client.get_sequence()
+
+
+async def test_a_device_refusal_worded_not_initialized_is_a_command_error() -> None:
+    """Only the sequencer's message means "no data"; a refusal on a command path
+    keeps raising."""
+    client = _client(FakeSession({"set-light": failure("Flat device is not initialized", 409)}))
+    with pytest.raises(NinaCommandError):
+        await client.set_flat_light(True)
 
 
 async def test_a_real_envelope_failure_raises_a_command_error() -> None:
@@ -133,17 +147,41 @@ async def test_a_dropped_connection_is_a_connection_error() -> None:
 
 
 async def test_a_timeout_is_a_connection_error() -> None:
-    session = FakeSession({"version": asyncio.TimeoutError()})
+    session = FakeSession({"version": TimeoutError()})
     with pytest.raises(NinaConnectionError):
         await _client(session).get_versions()
 
 
 # ── reads return models ──────────────────────────────────────────────────────
 
+_NOT_SERVED = FakeResponse("<html>404</html>", status=404, content_type="text/html")
+
 
 async def test_get_versions_yields_both_version_strings() -> None:
     session = FakeSession({"version/nina": ok("3.2.0.9001"), "version": ok("2.2.15.2")})
     assert await _client(session).get_versions() == VersionInfo("2.2.15.2", "3.2.0.9001")
+
+
+async def test_a_build_without_version_nina_still_reports_the_api_version() -> None:
+    """The N.I.N.A. version is diagnostic; its route's absence must not fail setup."""
+    session = FakeSession({"version/nina": _NOT_SERVED, "version": ok("2.2.15.2")})
+    assert await _client(session).get_versions() == VersionInfo("2.2.15.2", None)
+
+
+async def test_a_build_without_version_is_an_endpoint_error() -> None:
+    session = FakeSession({"version/nina": ok("3.2.0.9001"), "version": _NOT_SERVED})
+    with pytest.raises(NinaEndpointError):
+        await _client(session).get_versions()
+
+
+async def test_a_bare_string_equipment_response_is_no_data() -> None:
+    client = _client(FakeSession({"equipment/info": ok("")}))
+    assert (await client.get_equipment()).camera is None
+
+
+async def test_a_bare_string_history_response_is_no_frames() -> None:
+    client = _client(FakeSession({"image-history": ok("")}))
+    assert await client.get_frames() == []
 
 
 async def test_application_start_is_the_timestamp_string() -> None:
@@ -158,14 +196,16 @@ async def test_profile_is_mapped_from_the_active_profile() -> None:
 
 
 async def test_image_history_count_returns_the_scalar() -> None:
-    client = _client(FakeSession({"image-history": ok(122)}))
-    assert await client.get_image_history_count() == 122
+    session = FakeSession({"image-history": ok(122)})
+    assert await _client(session).get_image_history_count() == 122
+    assert session.requests[-1][1] == {"count": "true"}
 
 
 async def test_empty_history_count_is_zero_not_none() -> None:
     """?count=true answers 0 where bare /image-history says Index out of range."""
-    client = _client(FakeSession({"image-history": ok(0)}))
-    assert await client.get_image_history_count() == 0
+    session = FakeSession({"image-history": ok(0)})
+    assert await _client(session).get_image_history_count() == 0
+    assert session.requests[-1][1] == {"count": "true"}
 
 
 async def test_frames_are_mapped_from_the_history_list() -> None:
@@ -197,6 +237,23 @@ async def test_events_use_the_offset_cached_from_equipment() -> None:
     events = await client.get_events()
     error = next(event for event in events if event.name == "ERROR-PLATESOLVE")
     assert error.time.utcoffset() == timedelta(hours=-5)
+
+
+async def test_a_zero_offset_replaces_a_stale_one() -> None:
+    """UTC+0 is a real offset, not an absent one — a rig leaving summer time
+    must not keep +1 h for the life of the process."""
+    def clock(now: str) -> dict:
+        return ok({"Mount": {"Coordinates": {"DateTime": {"Now": now}}}})
+
+    session = FakeSession({"equipment/info": clock("2026-09-04T08:11:22-05:00"),
+                           "event-history": ok([{"Event": "ERROR-PLATESOLVE",
+                                                 "Time": "2026-09-03T21:54:26.93"}])})
+    client = _client(session)
+    await client.get_equipment()
+    session.responses["equipment/info"] = clock("2026-09-04T13:11:22+00:00")
+    await client.get_equipment()
+    (event,) = await client.get_events()
+    assert event.time.utcoffset() == timedelta(0)
 
 
 async def test_an_unmappable_event_is_skipped_not_fatal() -> None:
@@ -243,8 +300,7 @@ async def test_the_image_endpoint_sends_autoPrepare_not_useAutoStretch() -> None
     session = FakeSession({"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")})
     await _client(session).get_image_bytes(0)
     _, params = session.requests[-1]
-    assert params["autoPrepare"] == "true"
-    assert "useAutoStretch" not in params
+    assert params == {"stream": "true", "quality": 85, "autoPrepare": "true"}
 
 
 async def test_an_image_arrives_as_bytes() -> None:
@@ -263,12 +319,12 @@ async def test_an_image_refusal_arrives_as_a_json_envelope() -> None:
     ("response", "error"),
     [
         (ok({}), NinaUnavailableError),  # a success envelope is still not an image
-        (FakeResponse("<html>404</html>", status=404, content_type="text/html"),
-         NinaEndpointError),
-        (asyncio.TimeoutError(), NinaConnectionError),
+        (FakeResponse("<html>", content_type="text/html"), NinaUnavailableError),
+        (_NOT_SERVED, NinaEndpointError),
+        (TimeoutError(), NinaConnectionError),
         (aiohttp.ClientError("boom"), NinaConnectionError),
     ],
-    ids=["no-image", "pre-handler-404", "timeout", "dropped"],
+    ids=["no-image", "html-at-200", "pre-handler-404", "timeout", "dropped"],
 )
 async def test_the_image_endpoint_classifies_its_own_failures(response, error) -> None:
     """Images bypass _get for the byte stream, so the same taxonomy is pinned again."""
