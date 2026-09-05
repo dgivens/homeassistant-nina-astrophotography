@@ -227,7 +227,8 @@ class NinaClientV2:
         return map_flats_status(await self._get("/flats/status") or {})
 
     async def get_livestack(self) -> LivestackStatus:
-        return map_livestack_status(await self._get("/livestack/status") or {})
+        # No `or {}`: the Response is a bare string, and "" is falsy.
+        return map_livestack_status(await self._get("/livestack/status") or "")
 
     async def get_profile(self) -> ProfileSettings:
         return map_profile(await self._get("/profile/show", {"active": "true"}) or {})
