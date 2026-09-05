@@ -100,10 +100,10 @@ class TierSchedule:
     Six tiers, one coordinator: a single 10 s tick with per-tier due-time
     checks inside it, not three coordinators.
 
-        fast       7,442 B @ 10 s  =  44,652 B/min
+        fast       7,420 B @ 10 s  =  44,520 B/min
         sequence   8,429 B @ 30 s  =  16,858 B/min
                                       ──────────
-                                      61,510 B/min ~ 3.7 MB/h ~ 37 MB / night
+                                      61,378 B/min ~ 3.7 MB/h ~ 37 MB / night
         before                        82,606 B x 6/min ~ 297 MB / night
     """
 

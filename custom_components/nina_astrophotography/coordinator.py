@@ -17,10 +17,10 @@ I/O and the ownership.
 Polling runs in six tiers behind ONE 10 s tick, not three coordinators: the
 per-tier due-time checks live inside `_async_update_data`.
 
-    fast       7,442 B @ 10 s  =  44,652 B/min
+    fast       7,420 B @ 10 s  =  44,520 B/min
     sequence   8,429 B @ 30 s  =  16,858 B/min
                                   ──────────
-                                  61,510 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
+                                  61,378 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
     before                        82,606 B x 6/min ~ 297 MB / night
 """
 from __future__ import annotations
@@ -156,6 +156,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._livestack = _NO_LIVESTACK
         self._profile = _NO_PROFILE
         self._not_served: set[str] = set()
+        self._tier_warned: set[str] = set()
         self._last_image_save: float | None = None
         self._last_count: int | None = None
 
@@ -252,7 +253,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         schedule.set_imaging(
             imaging(snapshot, count, baseline, self._since_last_image_save())
         )
-        endpoints = schedule.take_pending()
+        queued = schedule.take_pending()
+        endpoints = set(queued)
         # Every /sequence/json read passes one debounce — the tier's own and
         # any an event queued — so ≤1 per 30 s is structural rather than a
         # property of whichever caller asked (§6.1).
@@ -265,14 +267,20 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             endpoints.update(_FLOOR_ENDPOINTS)
             schedule.mark("floor")
         for endpoint in sorted(endpoints):
-            await self._read_tier(endpoint)
+            await self._read_tier(endpoint, queued=endpoint in queued)
 
-    async def _read_tier(self, endpoint: str) -> None:
+    async def _read_tier(self, endpoint: str, *, queued: bool) -> None:
+        """One tier read, which cannot fail the poll by any route.
+
+        `queued` says the read was asked for by an event rather than by a
+        cadence: a transient failure re-queues it, because the alternative is
+        losing the event's request until the five-minute floor comes round.
+        """
         if endpoint in self._not_served:
             return
         attribute, getter = _TIER_READS[endpoint]
         try:
-            setattr(self, attribute, await getattr(self.client, getter)())
+            model = await getattr(self.client, getter)()
         except NinaEndpointError:
             # A build without the livestack plugin, or a route this API version
             # does not carry. It cannot start working, so stop asking and leave
@@ -281,10 +289,27 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._not_served.add(endpoint)
             _LOGGER.info("%s is not served by this N.I.N.A.; not polling it again",
                          endpoint)
+            return
         except NinaError as exc:
             # Transient. Keep what the last successful read left and try again
             # when the tier is next due.
             _LOGGER.debug("%s failed this tick: %s", endpoint, exc)
+            if queued:
+                self._schedule.add_pending(endpoint)
+            return
+        except Exception:                                          # noqa: BLE001
+            # A wire shape no mapper anticipated. Broad on purpose: this runs
+            # outside the fast tier's own guard, so anything escaping here
+            # fails the poll and takes eleven devices unavailable over one
+            # five-minute endpoint. Warned once per endpoint, and again if it
+            # recovers and breaks anew.
+            if endpoint not in self._tier_warned:
+                self._tier_warned.add(endpoint)
+                _LOGGER.warning("Could not read %s; keeping the last value",
+                                endpoint, exc_info=True)
+            return
+        setattr(self, attribute, model)
+        self._tier_warned.discard(endpoint)
 
     def _since_last_image_save(self) -> float:
         """Seconds since the last IMAGE-SAVE; infinite before the first."""

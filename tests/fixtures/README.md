@@ -72,8 +72,8 @@ predates the keep-the-coordinates rule and carries them zeroed).
 | `imaging_guiding_image_history_count.json` | `?count=true` → `27` |
 | `imaging_guiding_image_history_latest.json` | Bare `/image-history` on a rig holding frames: a **single-element list**, not a bare object |
 | `imaging_guiding_event_history.json` | 246 events, 37 distinct types, 17:28 → 01:41 — one process, no restart inside it |
-| `imaging_guiding_sequence_json.json` | `/sequence/json` mid-run, 8.4 KB |
-| `imaging_guiding_sequence_state.json` | `/sequence/state` mid-run, **118 KB** — with `SchedulerProgress.{CurrentRow, ItemsView, ProgressItemList}` populated, which `restart_sequence_state_no_progress.json` shows empty |
+| `imaging_guiding_sequence_json.json` | `/sequence/json` mid-run — **8,418 B on the wire** |
+| `imaging_guiding_sequence_state.json` | `/sequence/state` mid-run — **53,792 B on the wire**, 6.4× `/sequence/json`, and that is what the tiers avoid. With `SchedulerProgress.{CurrentRow, ItemsView, ProgressItemList}` populated, which `restart_sequence_state_no_progress.json` shows empty |
 | `imaging_guiding_flats_status.json` | `{State: "Finished", TotalIterations: -1, CompletedIterations: -1}` — the idle sentinels persist mid-session |
 | `imaging_guiding_livestack_status.json` | `Response: "Running"` — a **bare string**, where the spec documents an object with a `Status` field |
 | `imaging_guiding_last_af.json` | A real autofocus run (01:10, filter `L`, `Version 2`, `STARHFR`/`TRENDPARABOLIC`, 13 measure points, `RSquares.Hyperbolic: "NaN"`) |

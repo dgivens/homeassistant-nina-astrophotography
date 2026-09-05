@@ -10,17 +10,29 @@ first tick fires twice.
 """
 from __future__ import annotations
 
+import logging
+
 import pytest
 from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
+from helpers import load_fixture
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 from scenarios.fake_rig import FakeRig
 
+from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.polling import TierSchedule
+
+LIGHT = "light.n_i_n_a_flat_panel_light"
 
 # What the dawn states leave unregistered, so the build answers 404 for them.
 NOT_SERVED = ("/livestack/status", "/profile/show", "/equipment/focuser/last-af")
 AT = "2026-09-05T01:41:53.9-05:00"
+
+
+def captured(name: str) -> dict:
+    """The first `name` event of the dawn history, as the socket sends it."""
+    return next(event for event in load_fixture("dawn_event_history.json")
+                if event["Event"] == name)
 
 
 def reads(rig: FakeRig, path: str) -> int:
@@ -59,8 +71,8 @@ async def tiers(hass, freezer, rig, config_entry):
 @pytest.fixture
 async def push_to(tiers, config_entry):
     """`tiers`, plus the socket-push callable bound to the same entry."""
-    async def _load(state: str = "imaging"):
-        rig = await tiers(state)
+    async def _load(state: str = "imaging", *, clear: bool = True):
+        rig = await tiers(state, clear=clear)
         runtime = config_entry.runtime_data
 
         def _push(payload: dict) -> None:
@@ -143,17 +155,29 @@ async def test_ts_targetstart_never_refetches_the_sequence(
 async def test_a_stack_status_event_reads_the_livestack_status_back(
     hass, push_to, config_entry
 ) -> None:
-    """STACK-STATUS is a bare {Event, Time}: it says THAT the status changed,
-    never what to.
+    """The event announces THAT the status changed; the status is read back from
+    the endpoint rather than taken from the push.
 
     Polled by hand rather than by the clock: this state's flat panel is
     disconnected, so no entity exists to hold a listener and the coordinator
     schedules no tick of its own.
     """
     rig, push = await push_to("imaging_guiding")
-    push({"Event": "STACK-STATUS", "Time": AT})
+    push(captured("STACK-STATUS"))
     await config_entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
+    assert reads(rig, "/livestack/status") == 1
+
+
+async def test_an_event_cannot_re_arm_an_endpoint_the_build_does_not_serve(
+    hass, push_to, freezer
+) -> None:
+    """The latch outranks the event queue. Without that, every STACK-STATUS on
+    a build with no livestack plugin buys another 404."""
+    rig, push = await push_to(clear=False)
+    assert reads(rig, "/livestack/status") == 1          # the setup attempt
+    push(captured("STACK-STATUS"))
+    await tick(hass, freezer, TierSchedule.FAST)
     assert reads(rig, "/livestack/status") == 1
 
 
@@ -170,6 +194,61 @@ async def test_sequence_finished_drops_the_cadence_to_idle(
     push({"Event": "SEQUENCE-FINISHED", "Time": AT})
     await tick(hass, freezer, TierSchedule.SEQUENCE_IMAGING)
     assert reads(rig, "/sequence/json") == 1
+
+
+async def test_an_event_driven_read_that_fails_transiently_is_asked_again(
+    hass, push_to, freezer, monkeypatch
+) -> None:
+    """A queued endpoint dropped on a timeout would wait out the five-minute
+    floor — the event's whole point was not to."""
+    from custom_components.nina_astrophotography.api.errors import NinaConnectionError
+    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+
+    rig, push = await push_to("imaging_guiding")
+    coordinator = hass.config_entries.async_entries(DOMAIN)[0].runtime_data.coordinator
+
+    async def timing_out(self):
+        raise NinaConnectionError("timeout")
+
+    # Restored by hand, not with monkeypatch.undo(): the same monkeypatch
+    # instance installed the fake transport, and undo() would take that too.
+    working = NinaClientV2.get_livestack
+    monkeypatch.setattr(NinaClientV2, "get_livestack", timing_out)
+    push(captured("STACK-STATUS"))
+    await coordinator.async_refresh()
+    monkeypatch.setattr(NinaClientV2, "get_livestack", working)
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert reads(rig, "/livestack/status") == 1
+
+
+@pytest.mark.synthetic
+async def test_a_tier_read_that_raises_anything_does_not_fail_the_poll(
+    hass, tiers, freezer, monkeypatch, caplog
+) -> None:
+    """The tiers run outside the fast tier's own guard, so one unanticipated
+    wire shape would otherwise take eleven devices unavailable over a
+    five-minute endpoint — and say so once per poll while it did.
+
+    Injected rather than served from a rig state: every mapper is
+    scalar-defensive, so no captured or malformed `/sequence/json` document can
+    produce the raise this guards against.
+    """
+    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+
+    async def get_sequence(self):
+        raise TypeError("a shape no mapper anticipated")
+
+    await tiers()
+    monkeypatch.setattr(NinaClientV2, "get_sequence", get_sequence)
+    with caplog.at_level(logging.WARNING):
+        for _ in range(2):
+            await tick(hass, freezer, TierSchedule.SEQUENCE_IDLE)
+    warnings = [r for r in caplog.records
+                if r.levelno == logging.WARNING
+                and r.name.startswith("custom_components.nina_astrophotography")]
+    assert hass.states.get(LIGHT).state != "unavailable"
+    assert len(warnings) == 1
 
 
 async def test_a_rig_that_serves_every_endpoint_publishes_all_four_models(
