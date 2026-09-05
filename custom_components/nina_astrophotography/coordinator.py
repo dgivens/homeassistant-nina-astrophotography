@@ -50,6 +50,8 @@ from .api.models import (
     VersionInfo,
 )
 from .api.v2 import NinaClientV2
+from .const import CONF_HOST
+from .device import KINDS
 from .polling import (
     EventLedger,
     ReseedGuard,
@@ -151,6 +153,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._version = version
         self._observed: set[str] = set()
         self._rejection_logged = False
+        self._unavailable_logged = False
         self._restart = RestartDetector()
         self._reseed_guard = ReseedGuard()
         self._ledger = EventLedger()
@@ -205,12 +208,24 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             if not self._rejection_logged:
                 _LOGGER.error("N.I.N.A. rejected a request: %s", exc)
                 self._rejection_logged = True
+            # A refused request is an answer, so the rig is up and the entities
+            # are available again on the retained data.
+            self._note_reachable()
             return self.data
         except NinaError as exc:
+            # log-when-unavailable (§7.3). Home Assistant logs its own "Error
+            # fetching …" for the UpdateFailed; this one is the ENTITY-visible
+            # transition, and it is logged once per outage rather than once per
+            # ten-second tick.
+            if not self._unavailable_logged:
+                _LOGGER.warning("N.I.N.A. at %s is unavailable: %s", self._host, exc)
+                self._unavailable_logged = True
             raise UpdateFailed(str(exc)) from exc
 
         self._rejection_logged = False
+        self._note_reachable()
         snapshot = self._latch_observed(snapshot)
+        self._log_connection_changes(snapshot)
         await self._run_tiers(snapshot, count)
         self._last_snapshot = snapshot
         if not self._replayed:
@@ -418,6 +433,37 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             return
         setattr(self, attribute, model)
         self._tier_warned.discard(endpoint)
+
+    @property
+    def _host(self) -> str:
+        """What the logs name this rig by; two entries share a logger."""
+        return self.config_entry.data[CONF_HOST]
+
+    def _note_reachable(self) -> None:
+        """Announce the recovery once, and only after an outage was announced."""
+        if self._unavailable_logged:
+            _LOGGER.info("N.I.N.A. at %s is back online", self._host)
+            self._unavailable_logged = False
+
+    def _log_connection_changes(self, snapshot: EquipmentSnapshot) -> None:
+        """Level 2's transitions: one line when a device drops, one when it returns.
+
+        A slot that has never been observed connected has not "come back" —
+        equipment is routinely down when Home Assistant starts, and treating
+        first sight as a recovery would log a line per device at every startup.
+        """
+        previous = self._last_snapshot
+        if previous is None:
+            return
+        for slot, label in KINDS.items():
+            before = getattr(previous, slot)
+            after = getattr(snapshot, slot)
+            if before is None or after is None or before.connected == after.connected:
+                continue
+            if after.connected:
+                _LOGGER.info("%s reconnected on %s", label, self._host)
+            else:
+                _LOGGER.warning("%s disconnected on %s", label, self._host)
 
     def _since_last_image_save(self) -> float:
         """Seconds since the last IMAGE-SAVE; infinite before the first."""
