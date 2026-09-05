@@ -7,7 +7,9 @@ directions.
 
 turn_on always sends a brightness. A bare set-light?on=true jumps to
 MaxBrightness, and a light that comes on at full output is a hazard in a shared
-observatory.
+observatory. Sending the brightness before the light is the design's anti-flash
+intent; whether this driver honours a brightness set while the light is off is
+unverified until the idle-rig probe runs.
 
 Do not verify by readback: the API's commands are asynchronous and answer
 Success: true before the state changes. FLAT-LIGHT-TOGGLED carries an empty
@@ -55,7 +57,7 @@ class NinaFlatLight(NinaEntity, LightEntity):
         panel = self._panel
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_flat_device")},
-            name=f"{entry.title} Flat Panel",
+            name=f"{entry.runtime_data.instance_name} Flat Panel",
             manufacturer="N.I.N.A.",
             model=panel.meta.name if panel else None,
             sw_version=panel.meta.driver_version if panel else None,

@@ -19,7 +19,7 @@ exists, and loses events arriving during the refetch.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from math import fsum
 from statistics import fmean
 
@@ -29,12 +29,16 @@ from .derive import session_start
 _LIGHT = "LIGHT"
 _AUTOFOCUS_STARTING = "AUTOFOCUS-STARTING"
 _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
+# Events that cancel a running autofocus without it reporting: the sequence
+# ending, a park, any device dropping, or the sequencer moving on to the next
+# exposure. SAFETY-CHANGED counts only when it reports unsafe.
+_INTERRUPTIONS = frozenset({"SEQUENCE-FINISHED", "MOUNT-PARKED", "IMAGE-SAVE"})
 
 _NOTHING = SessionStats(
     session_start=None, image_count=0, light_count=0, integration_seconds=0.0,
     hfr_mean=None, hfr_best=None, hfr_worst=None, star_count_mean=None,
     last_frame=None, by_target=(), by_filter=(),
-    autofocus=AutoFocusState(last_success_at=None, running_since=None, failed=False),
+    autofocus=AutoFocusState(last_finished_at=None, running_since=None, failed=False),
 )
 
 
@@ -71,17 +75,36 @@ def _breakdown(lights: Sequence[Frame],
     )
 
 
+def _interrupts(event: NinaEvent) -> bool:
+    if event.name == "SAFETY-CHANGED":
+        return event.data.get("IsSafe") is False
+    return event.name in _INTERRUPTIONS or event.name.endswith("-DISCONNECTED")
+
+
 def _autofocus(events: Iterable[NinaEvent], moment: datetime,
                timeout_seconds: float) -> AutoFocusState:
-    """There is no autofocus-failed event; a failure is an unanswered start."""
-    times = [(e.name, e.time) for e in events]
-    finished = max((t for name, t in times if name == _AUTOFOCUS_FINISHED), default=None)
-    started = max((t for name, t in times if name == _AUTOFOCUS_STARTING), default=None)
-    running = started if started is not None and (finished is None
-                                                  or started > finished) else None
-    failed = (running is not None
-              and (moment - running).total_seconds() > timeout_seconds)
-    return AutoFocusState(last_success_at=finished, running_since=running, failed=failed)
+    """There is no autofocus-failed event; a failure is an unanswered start.
+
+    An interruption landing inside the timeout window aborts the run — nothing
+    was wrong with the focuser. One landing after the window has closed shows
+    the sequencer carried on past a hung run: it clears `running_since` but the
+    failure verdict stands.
+    """
+    events = list(events)
+    finished = max((e.time for e in events if e.name == _AUTOFOCUS_FINISHED), default=None)
+    started = max((e.time for e in events if e.name == _AUTOFOCUS_STARTING), default=None)
+    if started is None or (finished is not None and started <= finished):
+        return AutoFocusState(last_finished_at=finished, running_since=None, failed=False)
+
+    deadline = started + timedelta(seconds=timeout_seconds)
+    interruptions = [e.time for e in events if e.time > started and _interrupts(e)]
+    if any(t <= deadline for t in interruptions):
+        return AutoFocusState(last_finished_at=finished, running_since=None, failed=False)
+    return AutoFocusState(
+        last_finished_at=finished,
+        running_since=None if interruptions else started,
+        failed=moment > deadline,
+    )
 
 
 def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],

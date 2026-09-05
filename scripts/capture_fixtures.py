@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
-from redaction import PROFILE_ALLOWLIST, redact, scan  # noqa: E402
+from redaction import PROFILE_ALLOWLIST, project, redact, scan  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 
@@ -46,41 +46,54 @@ ENDPOINTS: tuple[tuple[str, str, dict[str, str]], ...] = (
 )
 
 
-def _project(document: object, allowlist: tuple[str, ...]) -> dict:
-    """Keep only allowlisted dotted paths. Used for /profile/show only."""
-    kept: dict = {}
-    for dotted in allowlist:
-        node, target = document, kept
-        parts = dotted.split(".")
-        for part in parts[:-1]:
-            if not isinstance(node, dict) or part not in node:
-                node = None
-                break
-            node = node[part]
-            target = target.setdefault(part, {})
-        leaf = parts[-1]
-        if isinstance(node, dict) and leaf in node:
-            target[leaf] = node[leaf]
-    return kept
+def _as_envelope(slug: str, body: str) -> dict:
+    """The decoded envelope, or the raw body recorded as one.
+
+    The sequence-serialization failure answers an empty body with no envelope.
+    That is a state worth keeping, not a reason to abandon the other endpoints.
+    """
+    try:
+        envelope = json.loads(body)
+    except ValueError:
+        envelope = None
+    if isinstance(envelope, dict):
+        return envelope
+    print(f"warning: {slug} answered no JSON envelope ({len(body)} B); "
+          "recording the raw body", file=sys.stderr)
+    return {"_raw": body}
+
+
+def _serialize(envelope: dict, target: Path) -> str:
+    """The file body, keeping the existing `_meta` when nothing else changed.
+
+    That is what makes a re-capture against an unchanged rig byte-identical, so
+    a capture run produces no diff of timestamps alone.
+    """
+    if target.exists():
+        previous = json.loads(target.read_text(encoding="utf-8"))
+        previous_meta = previous.pop("_meta", None)
+        if previous == {k: v for k, v in envelope.items() if k != "_meta"}:
+            envelope["_meta"] = previous_meta
+    return json.dumps(envelope, indent=2, sort_keys=False) + "\n"
 
 
 async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
     base = f"http://{host}:{port}/v2/api"
     written = 0
+    versions: dict[str, str] = {}
     async with aiohttp.ClientSession() as session:
-        versions = {}
         for slug, path, params in ENDPOINTS:
             async with session.get(base + path, params=params,
                                    timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                envelope = await resp.json(content_type=None)
+                envelope = _as_envelope(slug, await resp.text())
 
             if slug == "version":
                 versions["api_version"] = str(envelope.get("Response"))
             if slug == "nina_version":
                 versions["nina_version"] = str(envelope.get("Response"))
             if slug == "profile":
-                envelope["Response"] = _project(envelope.get("Response"),
-                                                PROFILE_ALLOWLIST)
+                envelope["Response"] = project(envelope.get("Response"),
+                                               PROFILE_ALLOWLIST)
 
             envelope = redact(envelope)
             leaks = scan(envelope)
@@ -96,12 +109,7 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
                 "params": params,
             }
             target = FIXTURES / f"{state}_{slug}.json"
-            if target.exists():
-                previous = json.loads(target.read_text(encoding="utf-8"))
-                previous_meta = previous.pop("_meta", None)
-                if previous == {k: v for k, v in envelope.items() if k != "_meta"}:
-                    envelope["_meta"] = previous_meta
-            body = json.dumps(envelope, indent=2, sort_keys=False) + "\n"
+            body = _serialize(envelope, target)
             if dry_run:
                 print(f"would write {target} ({len(body)} B)")
             else:

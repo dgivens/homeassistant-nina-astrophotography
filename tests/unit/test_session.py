@@ -1,34 +1,26 @@
 """fold() is pure, idempotent, and order-independent."""
 from __future__ import annotations
 
-import json
 from dataclasses import replace
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pytest
+from helpers import load_fixture
 
 from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import fold
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
-
-
-def _load(name: str) -> list[dict]:
-    document = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
-    document.pop("_meta", None)
-    return document["Response"]
-
 
 @pytest.fixture
 def night() -> list:
-    return [map_frame(f, generation="g1") for f in _load("dawn_image_history_with_flats.json")]
+    return [map_frame(f, generation="g1")
+            for f in load_fixture("dawn_image_history_with_flats.json")]
 
 
 @pytest.fixture
 def night_events() -> list:
-    return [map_event(e, "g1") for e in _load("dawn_event_history.json")]
+    return [map_event(e, "g1") for e in load_fixture("dawn_event_history.json")]
 
 
 def _light(**overrides) -> Frame:
@@ -45,7 +37,7 @@ def _light(**overrides) -> Frame:
         "mean": 548.6,
         "median": 540.0,
         "std_dev": 30.0,
-        "rms": 0.18,
+        "rms_arcsec": 0.29,
         "temperature": -10.0,
         "gain": 100,
         "offset": 50,
@@ -100,14 +92,63 @@ def test_image_count_counts_calibration_frames_too(night) -> None:
     assert fold(night, [], generation="g1").light_count == 55
 
 
+@pytest.mark.synthetic
 def test_an_unmatched_autofocus_start_past_the_timeout_is_a_failure() -> None:
-    """8 AUTOFOCUS-STARTING against 7 AUTOFOCUS-FINISHED on an ordinary night."""
+    """A start that nothing answers within the profile's timeout has hung. The
+    corpus has no such night — its one unanswered start was aborted — so the
+    hang is constructed."""
     start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
     events = [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")]
     stats = fold([], events, generation="g1",
                  autofocus_timeout_seconds=300,
                  now=start + timedelta(seconds=301))
     assert stats.autofocus.failed is True
+
+
+_START = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("name", "data"),
+    [
+        ("SAFETY-CHANGED", {"IsSafe": False}),
+        ("SEQUENCE-FINISHED", {}),
+        ("MOUNT-PARKED", {}),
+        ("CAMERA-DISCONNECTED", {}),
+        ("IMAGE-SAVE", {}),
+    ],
+)
+def test_a_start_interrupted_inside_its_timeout_is_aborted_not_failed(name, data) -> None:
+    """Unsafe conditions, the sequence ending, a park, a disconnect or the
+    sequencer simply moving on to the next exposure all cancel a running
+    autofocus; none of them is the focuser failing to find focus."""
+    events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
+              NinaEvent(name, _START + timedelta(seconds=37), data, "g1")]
+    stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
+                 now=_START + timedelta(seconds=600))
+    assert stats.autofocus == AutoFocusState(None, None, False)
+
+
+@pytest.mark.synthetic
+def test_a_safe_reading_does_not_abort_a_running_autofocus() -> None:
+    """Only IsSafe false is an interruption; SAFETY-CHANGED fires for both."""
+    events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
+              NinaEvent("SAFETY-CHANGED", _START + timedelta(seconds=37), {"IsSafe": True}, "g1")]
+    stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
+                 now=_START + timedelta(seconds=60))
+    assert stats.autofocus.running_since == _START
+
+
+@pytest.mark.synthetic
+def test_the_sequencer_moving_on_after_the_timeout_keeps_the_failure_verdict() -> None:
+    """An exposure saved only after the timeout has elapsed shows the sequence
+    carried on past a hung autofocus; it clears the run without excusing it."""
+    events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
+              NinaEvent("IMAGE-SAVE", _START + timedelta(seconds=400), {}, "g1")]
+    stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
+                 now=_START + timedelta(seconds=500))
+    assert (stats.autofocus.running_since, stats.autofocus.failed) == (None, True)
 
 
 def test_an_autofocus_still_inside_its_timeout_has_not_failed() -> None:
@@ -223,17 +264,21 @@ def test_frames_before_the_noon_rollover_are_outside_the_session(night) -> None:
     assert fold(night, [], generation="g1", now=tomorrow).image_count == 0
 
 
-def test_the_last_autofocus_to_finish_is_the_last_success(night_events) -> None:
+def test_the_last_autofocus_to_finish_is_reported(night_events) -> None:
+    """A FINISHED is the report, not a verdict; whether it found focus is a
+    question for /last-af."""
     stats = fold([], night_events, generation="g1")
-    assert stats.autofocus.last_success_at == datetime.fromisoformat(
+    assert stats.autofocus.last_finished_at == datetime.fromisoformat(
         "2026-09-04T03:21:11.414439-05:00")
 
 
-def test_an_autofocus_start_with_no_finish_after_it_is_still_running(night_events) -> None:
-    """The night's eighth AUTOFOCUS-STARTING never answered."""
-    stats = fold([], night_events, generation="g1")
-    assert stats.autofocus.running_since == datetime.fromisoformat(
-        "2026-09-04T04:26:09.812467-05:00")
+def test_the_nights_unanswered_start_was_an_abort_not_a_failure(night_events) -> None:
+    """The eighth AUTOFOCUS-STARTING (04:26:09) was followed 37 s later by
+    SAFETY-CHANGED IsSafe false — the sky closed on it. Read at 07:30 rig time,
+    long past any timeout, it is neither running nor failed."""
+    stats = fold([], night_events, generation="g1",
+                 now=datetime.fromisoformat("2026-09-04T07:30:00-05:00"))
+    assert (stats.autofocus.running_since, stats.autofocus.failed) == (None, False)
 
 
 def test_an_autofocus_that_finished_is_no_longer_running() -> None:

@@ -48,6 +48,9 @@ dev = [
     # the output is committed and a drift test diffs against it — an unpinned
     # generator turns a regeneration into a large unrelated diff.
     "datamodel-code-generator==0.76.1",
+    # Runs scripts/check_fixtures.py on every staged fixture: install the hook
+    # once with `uv run --group dev pre-commit install`.
+    "pre-commit>=4.0",
 ]
 
 [tool.pytest.ini_options]
@@ -60,6 +63,7 @@ pythonpath = ["tests", "."]
 # pytest11 entry point imports Home Assistant before collection.
 markers = [
     "slow: shells out to a generator; deselect with -m 'not slow'",
+    "synthetic: wire data constructed for a branch the corpus cannot show",
 ]
 
 [tool.coverage.run]

@@ -1,17 +1,23 @@
 """Setup and unload, through public interfaces only."""
+from datetime import timedelta
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import ATTR_RESTORED, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import (
+    NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
+    NinaUnavailableError,
 )
-from custom_components.nina_astrophotography.const import DOMAIN
+from custom_components.nina_astrophotography.const import CONF_POLL_INTERVAL, DOMAIN
 
 CLIENT = "custom_components.nina_astrophotography.api.v2.client.NinaClientV2"
+LIGHT = "light.n_i_n_a_flat_panel_light"
 
 
 async def test_setup_stores_state_on_runtime_data_not_hass_data(
@@ -25,11 +31,19 @@ async def test_setup_stores_state_on_runtime_data_not_hass_data(
     assert DOMAIN not in hass.data
 
 
-async def test_an_unreachable_rig_retries_rather_than_failing_the_entry(
-    hass: HomeAssistant, config_entry: MockConfigEntry
+@pytest.mark.parametrize(
+    "error",
+    [NinaConnectionError("refused"), NinaUnavailableError("500"),
+     NinaCommandError("Camera not connected")],
+    ids=["unreachable", "unavailable", "refusing"],
+)
+async def test_a_rig_that_is_not_ready_retries_rather_than_failing_the_entry(
+    hass: HomeAssistant, config_entry: MockConfigEntry, error
 ) -> None:
+    """All three are transient at startup: N.I.N.A. may still be booting, or
+    answering unhappily while its equipment connects."""
     config_entry.add_to_hass(hass)
-    with patch(f"{CLIENT}.get_versions", side_effect=NinaConnectionError("refused")):
+    with patch(f"{CLIENT}.get_versions", side_effect=error):
         await hass.config_entries.async_setup(config_entry.entry_id)
     assert config_entry.state is ConfigEntryState.SETUP_RETRY
 
@@ -64,12 +78,31 @@ async def test_the_services_still_reach_a_client_after_the_move_to_runtime_data(
 
 
 async def test_unload_leaves_no_state_behind(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry
+) -> None:
+    """After unload the registry leaves only its restored placeholder for the
+    light — unavailable, `restored: true` — not an entity of ours."""
+    assert await hass.config_entries.async_unload(loaded_entry.entry_id)
+    await hass.async_block_till_done()
+    assert loaded_entry.state is ConfigEntryState.NOT_LOADED
+    state = hass.states.get(LIGHT)
+    assert (state.state, state.attributes.get(ATTR_RESTORED)) == (STATE_UNAVAILABLE, True)
+
+
+async def test_the_configured_poll_interval_drives_the_coordinator(
     hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses
 ) -> None:
     config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(config_entry, options={CONF_POLL_INTERVAL: 15})
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    assert await hass.config_entries.async_unload(config_entry.entry_id)
-    # The claim is that nothing survives the unload — not that HA's own unload
-    # machinery works, which is Home Assistant's test to write.
-    assert DOMAIN not in hass.data
+    assert config_entry.runtime_data.coordinator.update_interval == timedelta(seconds=15)
+
+
+async def test_an_options_update_reloads_the_entry(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry
+) -> None:
+    """The interval is read once at setup, so a new value needs a reload."""
+    hass.config_entries.async_update_entry(loaded_entry, options={CONF_POLL_INTERVAL: 30})
+    await hass.async_block_till_done()
+    assert loaded_entry.runtime_data.coordinator.update_interval == timedelta(seconds=30)

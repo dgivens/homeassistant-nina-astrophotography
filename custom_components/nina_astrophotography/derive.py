@@ -40,7 +40,7 @@ def image_scale_arcsec_per_px(pixel_size_um: float, focal_length_mm: float,
     different bin is scaled wrongly and there is no wire field that would let us
     know. Say so wherever the derived value is surfaced.
     """
-    if not focal_length_mm:
+    if not focal_length_mm or not pixel_size_um:
         return None
     return _ARCSEC_PER_RADIAN_MICRON_MM * pixel_size_um * binning / focal_length_mm
 
@@ -56,7 +56,9 @@ def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) 
     """(RA_JNOW − LST) mod 12.
 
     RA here is the mount's own epoch and in hours, as MountInfo reports it —
-    never the J2000 degrees /equipment/mount/slew takes.
+    never the J2000 degrees /equipment/mount/slew takes. RA must be in the same
+    frame as the mount's apparent LST (JNOW here); `MountModel.epoch` tells you
+    which frame the mount reports in.
     """
     return (right_ascension_hours - sidereal_time_hours) % 12
 

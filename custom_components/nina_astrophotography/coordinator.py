@@ -17,11 +17,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, fields, replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -50,6 +51,20 @@ _LOGGER = logging.getLogger(__name__)
 FAST_INTERVAL = timedelta(seconds=10)
 
 _DEVICE_SLOTS = tuple(field.name for field in fields(EquipmentSnapshot))
+
+# Phase A polls the fast tier only, so these three publish as "nothing read yet"
+# until phase B adds their endpoints to the poll.
+_NO_FLATS = FlatsStatus(state=None, total_iterations=None, completed_iterations=None)
+_NO_LIVESTACK = LivestackStatus(running=False, raw_state="")
+_NO_PROFILE = ProfileSettings(
+    focal_length=None,
+    pixel_size=None,
+    autofocus_timeout_seconds=None,
+    r_squared_threshold=None,
+    min_minutes_after_meridian=None,
+    max_minutes_after_meridian=None,
+    use_side_of_pier=None,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,14 +125,16 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             # byte cost is real from the start.
             _ = await self.client.get_image_history_count()
         except (NinaRequestError, NinaEndpointError) as exc:
-            # Neither becomes right by retrying. Log once and keep the previous
-            # snapshot rather than making every entity unavailable.
+            # Neither becomes right by retrying. With a previous snapshot, log
+            # once and keep it rather than making every entity unavailable;
+            # with none, fail the entry — ConfigEntryNotReady would retry a
+            # permanent condition forever.
+            if self.data is None:
+                raise ConfigEntryError(f"N.I.N.A. rejected a request: {exc}") from exc
             if not self._rejection_logged:
                 _LOGGER.error("N.I.N.A. rejected a request: %s", exc)
                 self._rejection_logged = True
-            if self.data is not None:
-                return self.data
-            raise UpdateFailed(str(exc)) from exc
+            return self.data
         except NinaError as exc:
             raise UpdateFailed(str(exc)) from exc
 
@@ -134,6 +151,19 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         unseen = {slot: None for slot in _DEVICE_SLOTS if slot not in self._observed}
         return replace(snapshot, **unseen)
 
+    def _now(self) -> datetime:
+        """The clock the session's noon rollover is measured against.
+
+        Frame dates carry the RIG's offset, so the boundary must be rig-local:
+        12:00 UTC is 07:00 on a UTC-5 rig, inside its dawn flats. Home
+        Assistant's own zone is the fallback until the mount's clock has been
+        read, and the two differ on any rig not co-located with the server.
+        """
+        offset = self.client.rig_offset
+        if offset is None:
+            return dt_util.now()
+        return dt_util.utcnow().astimezone(timezone(offset))
+
     def _assemble(self, snapshot: EquipmentSnapshot) -> NinaData:
         """Freeze the live sets into one snapshot. Synchronous by design."""
         return NinaData(
@@ -142,22 +172,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 self.frames.values(),
                 self.events,
                 self.generation,
-                now=dt_util.utcnow(),
+                now=self._now(),
             ),
             sequence=None,
-            flats=FlatsStatus(
-                state=None, total_iterations=None, completed_iterations=None
-            ),
-            livestack=LivestackStatus(running=False, raw_state=""),
-            profile=ProfileSettings(
-                focal_length=None,
-                pixel_size=None,
-                autofocus_timeout_seconds=None,
-                r_squared_threshold=None,
-                min_minutes_after_meridian=None,
-                max_minutes_after_meridian=None,
-                use_side_of_pier=None,
-            ),
+            flats=_NO_FLATS,
+            livestack=_NO_LIVESTACK,
+            profile=_NO_PROFILE,
             generation=self.generation,
             version=self._version,
         )
