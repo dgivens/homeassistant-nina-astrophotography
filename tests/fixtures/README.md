@@ -57,6 +57,36 @@ is too large to redact confidently.
 | `dawn_flats_status_idle.json` | `{State: "Finished", TotalIterations: -1, CompletedIterations: -1}` after a real Target Scheduler flat run |
 | `dawn_sequence_complete.json` | `/sequence/json` with the night finished |
 
+### Imaging, guiding (mid-session)
+
+Captured 2026-09-05 01:45 rig-local, 4.2 h into a session that started with a
+N.I.N.A. restart at 17:27. The first capture of a **connected guider**, of
+`/livestack/status`, `/profile/show`, `/equipment/focuser/last-af` and
+`/version/nina`, and the first with **real site coordinates** (the dawn corpus
+predates the keep-the-coordinates rule and carries them zeroed).
+
+| File | Contents |
+|---|---|
+| `imaging_guiding_equipment_info.json` | 11 devices, 9 connected; Dome and FlatDevice down. Camera exposing at −5 °C, cooler 66 %; Guider `Guiding` with `PixelScale 1.65012` and a full `RMSError` tree; Mount tracking `pierWest`, `TimeToMeridianFlip 2.1036` h, `SiteLatitude 31.5478` |
+| `imaging_guiding_image_history_all.json` | 27 LIGHT frames, two targets (`NGC 281`, `Lobster & Bubble`), four narrowband filters. No calibration frames — the flats come at dawn |
+| `imaging_guiding_image_history_count.json` | `?count=true` → `27` |
+| `imaging_guiding_image_history_latest.json` | Bare `/image-history` on a rig holding frames: a **single-element list**, not a bare object |
+| `imaging_guiding_event_history.json` | 246 events, 37 distinct types, 17:28 → 01:41 — one process, no restart inside it |
+| `imaging_guiding_sequence_json.json` | `/sequence/json` mid-run, 8.4 KB |
+| `imaging_guiding_sequence_state.json` | `/sequence/state` mid-run, **118 KB** — with `SchedulerProgress.{CurrentRow, ItemsView, ProgressItemList}` populated, which `restart_sequence_state_no_progress.json` shows empty |
+| `imaging_guiding_flats_status.json` | `{State: "Finished", TotalIterations: -1, CompletedIterations: -1}` — the idle sentinels persist mid-session |
+| `imaging_guiding_livestack_status.json` | `Response: "Running"` — a **bare string**, where the spec documents an object with a `Status` field |
+| `imaging_guiding_last_af.json` | A real autofocus run (01:10, filter `L`, `Version 2`, `STARHFR`/`TRENDPARABOLIC`, 13 measure points, `RSquares.Hyperbolic: "NaN"`) |
+| `imaging_guiding_profile.json` | The `/profile/show` allowlist projection: `FocalLength 500`, `PixelSize 3.76`, `RSquaredThreshold 0.7`, `MeridianFlipSettings` whole (`MaxMinutesAfterMeridian 15`, `UseSideOfPier true`) |
+| `imaging_guiding_application_start.json` | `2026-09-04T17:27:55…-05:00` — the generation this whole state carries |
+| `imaging_guiding_version.json` / `imaging_guiding_nina_version.json` | `2.2.15.2` / `3.2.0.9001`. `/version`'s answer is `"REDACTED"` in the file: a four-part .NET version is shaped exactly like a bare IPv4 address, so the value pattern claims it. The real number survives in `_meta.api_version`, which the redactor keeps, and that is what `tests/scenarios/states.py` reads |
+
+`AutoFocuserName` in `imaging_guiding_last_af.json` reads `"Hocus Focus"`. The
+capture that produced this file redacted it: `"username"` was a substring rule
+and `autofocusername` contains it across the `AutoFocuser`/`Name` seam. The rule
+is now whole-camel-word, and this one field was restored from the verified raw
+read rather than being left wrong.
+
 ### After a N.I.N.A. restart (in-process state reset)
 
 | File | Contents |
