@@ -158,3 +158,31 @@ async def test_a_restart_replays_the_new_processs_event_history(
     rig.requests.clear()
     await advance("nina_restarted")
     assert _reads(rig, "/event-history") == 1
+
+
+async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig: FakeRig, monkeypatch
+) -> None:
+    """A 404 cannot start working, and the setup replay would otherwise ask
+    again on every 10 s tick.
+
+    Injected rather than served from a rig state: every state serves
+    `/event-history`, and dropping the route from one would rewrite a catalogue
+    entry other tests read.
+    """
+    from custom_components.nina_astrophotography.api.errors import NinaEndpointError
+    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+
+    asked = 0
+
+    async def not_served(self, generation=None):
+        nonlocal asked
+        asked += 1
+        raise NinaEndpointError("no /event-history")
+
+    monkeypatch.setattr(NinaClientV2, "get_events", not_served)
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert asked == 1

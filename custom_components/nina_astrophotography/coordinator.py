@@ -270,6 +270,13 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             # camera still exposing — still overrides both on the next tick.
             self._last_image_save = None
             self._schedule.sequence_finished()
+            self._schedule.add_pending("/sequence/json")
+        elif name == "SEQUENCE-STARTING":
+            # Both boundaries move every node's status at once, and the
+            # document is the only place that is reported. Queued rather than
+            # fetched: /sequence/json passes the same ≤1 per 30 s debounce
+            # whichever caller asked for it.
+            self._schedule.add_pending("/sequence/json")
         elif name.startswith("PROFILE-"):
             self._schedule.add_pending("/profile/show")
         elif name == "STACK-STATUS":
@@ -277,16 +284,25 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             # not the server's own state, and only /livestack/status reports
             # whether the stack is running — so it is read back.
             self._schedule.add_pending("/livestack/status")
-        elif name == "SAFETY-CHANGED" or name.endswith(("-CONNECTED", "-DISCONNECTED")):
+        elif (name == "SAFETY-CHANGED" or name.startswith("FLAT-")
+                or name.endswith(("-CONNECTED", "-DISCONNECTED"))):
             # Nothing safety-related waits for a tier (§6.4), and a connection
-            # change moves all eleven device blocks at once.
+            # change moves all eleven device blocks at once. The FLAT-* events
+            # are change hints and nothing more (§5.3.4) — FLAT-LIGHT-TOGGLED
+            # carries an empty payload and FLAT-BRIGHTNESS-CHANGED fires
+            # through a ramp with inconsistent `Previous` values — so the
+            # panel's state comes from /equipment/info.
             #
             # `async_request_refresh`, not `async_refresh`: its debouncer runs
             # the first call immediately and coalesces the rest. A N.I.N.A.
             # start emits eleven connection events in a few seconds, and eleven
             # bare refreshes would both spend eleven snapshots and interleave
             # their awaits over the frame set.
-            self.hass.async_create_task(self.async_request_refresh())
+            #
+            # On the entry, like the reconnect task, so unload cancels it.
+            self.config_entry.async_create_task(
+                self.hass, self.async_request_refresh(), "nina_event_refresh"
+            )
         # AUTOFOCUS-FINISHED queues nothing yet: /equipment/focuser/last-af has
         # no model until phase C. TS-* queue nothing by design — TS-TARGETSTART
         # fires once per exposure and its payload already carries TargetName,
