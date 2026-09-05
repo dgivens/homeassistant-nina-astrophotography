@@ -61,7 +61,8 @@ def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) 
     return (right_ascension_hours - sidereal_time_hours) % 12
 
 
-def time_to_meridian_flip(hours_to_meridian: float, max_minutes_after_meridian: float,
+def time_to_meridian_flip(hours_to_meridian_value: float,
+                          max_minutes_after_meridian: float,
                           *, flipped: bool = False) -> float:
     """Hours until the flip fires.
 
@@ -70,12 +71,15 @@ def time_to_meridian_flip(hours_to_meridian: float, max_minutes_after_meridian: 
     worse than not deriving one. This exists for the MeridianFlipSettings-aware
     secondary warning threshold only.
 
-    Wrapped mod 12 because `hours_to_meridian` is itself mod 12: just after
-    transit it reads ~11.99, and 11.99 + 0.25 + 12 = 24.24 would collide with
-    the 24-hour "tracking off" sentinel the mapper nulls.
+    Deliberately unwrapped. Just after a flip the value is ~24 hours, and that
+    is the truth: the next flip is a sidereal day away. Wrapping it to keep it
+    under 24 turns a mount that has just finished flipping into one reading
+    minutes from the next flip. The 24-hour "tracking off" sentinel is a wire
+    value on `MountInfo.TimeToMeridianFlip` that the mapper nulls; a derived
+    figure never passes through the mapper, so it cannot be confused with it.
     """
-    value = hours_to_meridian + max_minutes_after_meridian / 60
-    return (value + 12 if flipped else value) % 24
+    value = hours_to_meridian_value + max_minutes_after_meridian / 60
+    return value + 12 if flipped else value
 
 
 def flip_threshold_minutes(warning_minutes: float, min_minutes_after: float,
