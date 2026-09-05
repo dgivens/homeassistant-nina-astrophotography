@@ -141,9 +141,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         rig_offset=lambda: client.rig_offset,
         on_connection=_fire_connection_event,
     )
-    # B4 keeps this current from the poll; at setup the first refresh has
-    # already read /application-start.
+    # At setup the first refresh has already read /application-start; from
+    # here the coordinator keeps the socket's tag current across restarts.
     events.generation = coordinator.generation
+    coordinator.event_stream = events
     events.subscribe(coordinator.handle_event)
     events.subscribe(_fire_bus_event)
 
