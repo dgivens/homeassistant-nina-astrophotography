@@ -30,14 +30,21 @@ def test_the_restart_signals(before, after, restarted) -> None:
     assert detector.observe(*after) is restarted
 
 
-def test_an_unreadable_application_start_falls_back_to_the_counter() -> None:
-    """A build that does not serve /application-start still restarts, and the
-    count going backwards is the only signal left."""
+def test_a_generation_that_reads_null_is_corroborated_by_the_counter() -> None:
+    """A tick whose /application-start is unreadable still reports the restart,
+    because the counter is on the same tier."""
     detector = RestartDetector()
-    detector.update(None, 122)
-    assert detector.observe(None, 0) is False  # no baseline generation
     detector.update("2026-09-04T10:58:59", 122)
     assert detector.observe(None, 0) is True
+
+
+def test_an_unreadable_application_start_does_not_erase_the_baseline() -> None:
+    """Missing information, not a new process. Erasing it would leave the next
+    tick with no baseline, and so blind to the restart that tick reports."""
+    detector = RestartDetector()
+    detector.update("2026-09-04T10:58:59", 122)
+    detector.update(None, 122)
+    assert detector.observe("2026-09-04T13:54:50.907", 122) is True
 
 
 @pytest.mark.parametrize(
@@ -63,12 +70,33 @@ def test_a_reseed_guard_that_fired_starts_over() -> None:
     assert [guard.check(122, 123) for _ in range(4)] == [False, True, False, True]
 
 
+def test_a_mismatch_that_survives_a_reseed_latches_until_the_count_moves() -> None:
+    """A structural difference — an item the mapper skips, two the fold merges
+    — no refetch can close, so it must stop asking for one."""
+    guard = ReseedGuard()
+    assert [guard.check(122, 123), guard.check(122, 123)] == [False, True]
+    assert guard.settle(122, 123) is True
+    assert [guard.check(122, 123) for _ in range(3)] == [False, False, False]
+    assert [guard.check(122, 124), guard.check(122, 124)] == [False, True]
+
+
+def test_a_reseed_that_closes_the_gap_leaves_the_guard_armed() -> None:
+    guard = ReseedGuard()
+    assert guard.settle(122, 122) is False
+    assert [guard.check(122, 123), guard.check(122, 123)] == [False, True]
+
+
 def test_a_tier_is_due_when_it_has_never_run_and_not_again_until_its_interval() -> None:
     schedule = TierSchedule()
     assert schedule.due("sequence", 1000.0) is True
     schedule.mark("sequence", 1000.0)
     assert schedule.due("sequence", 1000.0 + TierSchedule.SEQUENCE_IDLE - 1) is False
     assert schedule.due("sequence", 1000.0 + TierSchedule.SEQUENCE_IDLE) is True
+
+
+def test_an_unknown_tier_is_an_error_rather_than_a_default_cadence() -> None:
+    with pytest.raises(KeyError):
+        TierSchedule().due("frobnicate", 1000.0)
 
 
 def test_the_sequence_interval_drops_back_to_idle_on_demand() -> None:

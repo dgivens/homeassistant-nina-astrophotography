@@ -13,6 +13,7 @@ from pathlib import Path
 
 FLOORS: dict[str, int] = {
     "derive.py": 95,
+    "polling.py": 95,
     "session.py": 95,
     "api/v2/mapper.py": 90,
 }

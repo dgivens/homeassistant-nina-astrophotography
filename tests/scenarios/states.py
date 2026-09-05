@@ -191,6 +191,11 @@ STATES: dict[str, State] = {
             "Response": 123,
         },
     },
+    # The same rig answering /application-start with a null Response — the
+    # generation unreadable for one tick. Also a scalar variant: the corpus
+    # holds no capture of a transiently empty endpoint.
+    "imaging_start_unreadable": {**_IMAGING,
+                                 "/application-start": {**ok(), "Response": None}},
     "camera_disconnected": disconnect(_IMAGING, "Camera"),
     "safety_monitor_disconnected": disconnect(_IMAGING, "SafetyMonitor"),
     # All eleven down: the seven the restart capture holds down, plus the four
