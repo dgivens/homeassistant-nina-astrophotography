@@ -83,6 +83,12 @@ disk proves nothing.
   `unique_id_suffix`; only names and translation keys change. An orphaned
   registry row silently breaks the automation pointing at it — which for the
   safety monitor means a roof that does not close.
+- **A destructive control ships enabled, and the card confirms it.** Home
+  Assistant has no per-entity press confirmation, but a Lovelace `tap_action`
+  takes a `confirmation:` block. Shipping the entity disabled instead only hides
+  it from new installs while leaving upgraded registry rows enabled — and abort
+  exposure is the emergency stop. Applies to abort exposure, clear guider
+  calibration, park, dome close, sequence stop and the flat panel.
 - **Every platform PR appends its renames to `docs/2.0-renames.md`.**
 
 ## Branches
