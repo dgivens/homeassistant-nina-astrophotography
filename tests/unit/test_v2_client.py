@@ -205,8 +205,10 @@ async def test_a_history_item_without_an_identity_is_skipped_not_fatal(missing) 
     assert len(frames) == len(items) - 1
 
 
+@pytest.mark.synthetic
 async def test_a_bare_history_dict_is_one_frame() -> None:
-    """Bare /image-history answers the latest frame as a single object."""
+    """The rig answers bare /image-history with a one-element list; a single
+    object is the shape the spec documents, and the client takes either."""
     latest = load_envelope("dawn_image_history_with_flats.json")["Response"][-1]
     frames = await _client(FakeSession({"image-history": ok(latest)})).get_frames()
     assert [frame.filename for frame in frames] == [latest["Filename"]]

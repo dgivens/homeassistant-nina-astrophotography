@@ -48,7 +48,7 @@ _PSEUDONYM_KEYS = ("deviceid", "entityid")
 # Kept deliberately, and asserted by test so a later "tightening" cannot quietly
 # break the maths that depends on them:
 #   TargetName    an astronomical object, not identifying
-#   SideOfPier    not identifying; §11's already-flipped branch needs it
+#   SideOfPier    not identifying; §11's +12 h windows turn on it
 #   site + pointing fields   the site is a public hosting facility, and
 #                            SiderealTime is §11's LST input
 #   api_version, nina_version   four-part dotted version numbers (.NET's
@@ -77,16 +77,19 @@ _VALUE_PATTERNS = (
                r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"),  # HA entity id
 )
 
-# Site or facility identifiers seen in device Name/DisplayName/Description.
-# Distinctive stems are left unbounded so camel-cased compounds still match
-# ("StarfrontObservatory"); short, generic words are word-bounded so they
-# don't match as substrings of something else — unbounded "rack" matches the
-# sequence node named "Set Tracking", and unbounded "colo" matches
-# "Color"/"Colour" (an OSC camera's Name). "coloc" (colocation), not "colo".
+# Site or facility identifiers seen in device Name/DisplayName/Description and
+# in a Target Scheduler ProjectName. Distinctive stems are left unbounded so
+# camel-cased compounds still match ("StarfrontObservatory"); short, generic
+# words and acronyms are word-bounded so they don't match as substrings of
+# something else — unbounded "rack" matches the sequence node named "Set
+# Tracking", and unbounded "colo" matches "Color"/"Colour" (an OSC camera's
+# Name). "coloc" (colocation), not "colo".
 _FACILITY = re.compile(
-    r"observator|data ?cent|\b(?:building|suite|rack|coloc)\b", re.I
+    r"observator|data ?cent|\b(?:building|suite|rack|coloc|sfro)\b", re.I
 )
-_NAME_KEYS = ("name", "displayname", "description")
+# `ProjectName` is a Target Scheduler project, which is routinely named after
+# the site hosting the rig; `TargetName` stays, being an astronomical object.
+_NAME_KEYS = ("name", "displayname", "description", "projectname")
 
 # /profile/show is captured as an allowlist PROJECTION, not a redaction — its
 # secret surface is too large to redact confidently. §8.3.

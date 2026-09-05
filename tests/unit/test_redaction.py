@@ -48,6 +48,11 @@ from redaction import PROFILE_ALLOWLIST, project, redact, scan
         # word boundary still matches.
         ({"Name": "StarfrontObservatory"}, {"Name": "REDACTED"}),
         ({"DisplayName": "Rack 4"}, {"DisplayName": "REDACTED"}),
+        # The facility's acronym, word-bounded like any short one, and a
+        # Target Scheduler project named after the site that hosts the rig.
+        ({"Name": "SFRO Weather Station"}, {"Name": "REDACTED"}),
+        ({"ProjectName": "SFRO"}, {"ProjectName": "REDACTED"}),
+        ({"ProjectName": "Lobster & Bubble"}, {"ProjectName": "Lobster & Bubble"}),
         # A four-part .NET version string is shaped exactly like a bare IPv4
         # address when every segment is 1-3 digits.
         ({"api_version": "2.2.15.2"}, {"api_version": "2.2.15.2"}),

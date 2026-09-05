@@ -76,13 +76,15 @@ def _truncated_after_the_last_autofocus_start(name: str) -> dict:
 def _newest_frame(name: str) -> dict:
     """Bare `/image-history`: the newest frame of a captured `?all=true` list.
 
-    The bytes are captured; only the envelope around them is assembled, because
-    no bare capture of a rig holding frames exists. The frame is the wire's own
-    newest by `Date`, and it is a single object rather than a list — reseeding
-    the session from it is what leaves `Session Image Count` reading 1.
+    The bytes are captured; only the envelope around them is assembled, for a
+    rig state whose own bare path was never captured. The frame is the wire's
+    own newest by `Date`, wrapped in a ONE-ELEMENT LIST — which is what the
+    captured `imaging_guiding_image_history_latest.json` holds, so that is the
+    shape. One frame is one frame either way: reseeding the session from this
+    path is what leaves `Session Image Count` reading 1.
     """
     frames = load_envelope(name)["Response"]
-    return ok(max(frames, key=lambda frame: frame["Date"]))
+    return ok([max(frames, key=lambda frame: frame["Date"])])
 
 
 def _replace_device(state: State, device: str, block: dict) -> State:

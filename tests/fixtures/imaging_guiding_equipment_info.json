@@ -382,9 +382,9 @@
       "WindSpeed": 0.7,
       "SupportedActions": [],
       "Connected": true,
-      "Name": "SFRO Weather Station",
-      "DisplayName": "SFRO Weather Station (ASCOM)",
-      "Description": "SFRO Weather Station",
+      "Name": "REDACTED",
+      "DisplayName": "REDACTED",
+      "Description": "REDACTED",
       "DriverInfo": "Observing Conditions Driver",
       "DriverVersion": "0.5.0",
       "DeviceId": "device-2ff3148a"
