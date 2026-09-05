@@ -23,7 +23,7 @@ from pathlib import Path
 import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
-from redaction import PROFILE_ALLOWLIST, redact, scan  # noqa: E402
+from redaction import PROFILE_ALLOWLIST, project, redact, scan  # noqa: E402
 
 FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 
@@ -46,24 +46,6 @@ ENDPOINTS: tuple[tuple[str, str, dict[str, str]], ...] = (
 )
 
 
-def _project(document: object, allowlist: tuple[str, ...]) -> dict:
-    """Keep only allowlisted dotted paths. Used for /profile/show only."""
-    kept: dict = {}
-    for dotted in allowlist:
-        node, target = document, kept
-        parts = dotted.split(".")
-        for part in parts[:-1]:
-            if not isinstance(node, dict) or part not in node:
-                node = None
-                break
-            node = node[part]
-            target = target.setdefault(part, {})
-        leaf = parts[-1]
-        if isinstance(node, dict) and leaf in node:
-            target[leaf] = node[leaf]
-    return kept
-
-
 async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
     base = f"http://{host}:{port}/v2/api"
     written = 0
@@ -79,8 +61,8 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
             if slug == "nina_version":
                 versions["nina_version"] = str(envelope.get("Response"))
             if slug == "profile":
-                envelope["Response"] = _project(envelope.get("Response"),
-                                                PROFILE_ALLOWLIST)
+                envelope["Response"] = project(envelope.get("Response"),
+                                               PROFILE_ALLOWLIST)
 
             envelope = redact(envelope)
             leaks = scan(envelope)

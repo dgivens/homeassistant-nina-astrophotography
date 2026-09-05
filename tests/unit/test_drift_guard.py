@@ -193,6 +193,18 @@ def test_no_waiver_is_stale() -> None:
     assert not stale, f"waivers that no longer describe the corpus: {stale}"
 
 
+def test_waivers_state_the_observed_wire_type() -> None:
+    """The "deviate only where recorded" check: a waiver's `wire` is exactly the
+    type set the corpus shows at that path, so a waiver can neither under- nor
+    over-describe the deviation it excuses."""
+    observed = _corpus()
+    wrong = {dotted: ("|".join(sorted(observed[dotted])), entry["wire"])
+             for dotted, entry in DEVIATIONS.items()
+             if entry["wire"] != "absent"
+             and "|".join(sorted(observed[dotted])) != entry["wire"]}
+    assert not wrong, f"waivers whose wire type is not what the corpus shows: {wrong}"
+
+
 def test_no_field_waived_as_absent_is_present() -> None:
     """ImageStatistics.Index is documented by the spec and on neither path.
     If it ever appears, the waiver must go."""

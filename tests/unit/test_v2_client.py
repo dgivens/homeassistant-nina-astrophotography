@@ -42,15 +42,12 @@ async def test_empty_history_is_no_data_not_an_error() -> None:
     assert await client.get_frames() == []
 
 
-async def test_uninitialised_sequencer_is_no_data_not_an_error() -> None:
-    """A ~7.5 s window at N.I.N.A. startup, on the ordinary startup path."""
-    client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", 409)}))
-    assert await client.get_sequence() is None
-
-
-async def test_uninitialised_sequencer_is_recognised_at_400_too() -> None:
-    """Ten guards, two codes for one condition — match on the message (§7.1)."""
-    client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", 400)}))
+@pytest.mark.parametrize("status", [409, 400])
+async def test_uninitialised_sequencer_is_no_data_not_an_error(status) -> None:
+    """A ~7.5 s window at N.I.N.A. startup, on the ordinary startup path. Ten
+    guards raise it, with 409 on some paths and 400 on others — match on the
+    message, not the code (§7.1)."""
+    client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", status)}))
     assert await client.get_sequence() is None
 
 
@@ -69,20 +66,18 @@ async def test_a_device_refusal_worded_not_initialized_is_a_command_error() -> N
         await client.set_flat_light(True)
 
 
-async def test_a_real_envelope_failure_raises_a_command_error() -> None:
+@pytest.mark.parametrize(
+    ("attribute", "expected"),
+    [("status_code", 409), ("api_error", "Camera not connected")],
+)
+async def test_a_command_error_carries_the_envelopes_code_and_message(attribute, expected) -> None:
     client = _client(FakeSession({"equipment/info": failure("Camera not connected", 409)}))
     with pytest.raises(NinaCommandError) as caught:
         await client.get_equipment()
-    assert caught.value.status_code == 409
+    assert getattr(caught.value, attribute) == expected
 
 
-async def test_a_command_error_carries_the_envelopes_message() -> None:
-    client = _client(FakeSession({"equipment/info": failure("Camera not connected", 409)}))
-    with pytest.raises(NinaCommandError) as caught:
-        await client.get_equipment()
-    assert caught.value.api_error == "Camera not connected"
-
-
+@pytest.mark.synthetic
 async def test_success_false_with_no_error_and_200_is_success() -> None:
     """Seven handlers assign Success from a driver boolean (§3.5)."""
     body = {"Response": {"Camera": {"Connected": True}}, "Error": "",
@@ -111,25 +106,18 @@ async def test_json_without_an_envelope_is_unavailable() -> None:
         await client.get_equipment()
 
 
-async def test_pre_handler_html_404_is_an_endpoint_error() -> None:
-    session = FakeSession({"livestack": FakeResponse("<html>404</html>", status=404,
-                                                     content_type="text/html")})
-    with pytest.raises(NinaEndpointError):
-        await _client(session).get_livestack()
-
-
-async def test_pre_handler_html_400_is_a_request_error_not_a_transient_one() -> None:
-    """A pre-handler 400 is permanent; an envelope 400 may be transient (§7.1)."""
-    session = FakeSession({"image-history": FakeResponse("<html>400</html>", status=400,
-                                                         content_type="text/html")})
-    with pytest.raises(NinaRequestError):
-        await _client(session).get_frames()
-
-
-async def test_pre_handler_5xx_is_unavailable() -> None:
-    session = FakeSession({"flats/status": FakeResponse("<html>500</html>", status=500,
-                                                        content_type="text/html")})
-    with pytest.raises(NinaUnavailableError):
+@pytest.mark.parametrize(
+    ("status", "error"),
+    [(404, NinaEndpointError), (400, NinaRequestError), (500, NinaUnavailableError)],
+    ids=["not-served", "bad-request", "server-error"],
+)
+async def test_a_pre_handler_html_status_is_classified_by_its_code(status, error) -> None:
+    """EmbedIO answers routing and binding failures itself, with HTML and a
+    real status. A pre-handler 400 is permanent where an envelope 400 may be
+    transient (§7.1); a 404 says the path is not served by this build."""
+    session = FakeSession({"flats/status": FakeResponse(f"<html>{status}</html>",
+                                                        status=status, content_type="text/html")})
+    with pytest.raises(error):
         await _client(session).get_flats()
 
 
@@ -140,14 +128,10 @@ async def test_envelope_5xx_is_unavailable_and_retryable() -> None:
     assert caught.value.retryable is True
 
 
-async def test_a_dropped_connection_is_a_connection_error() -> None:
-    session = FakeSession({"version": aiohttp.ClientError("boom")})
-    with pytest.raises(NinaConnectionError):
-        await _client(session).get_versions()
-
-
-async def test_a_timeout_is_a_connection_error() -> None:
-    session = FakeSession({"version": TimeoutError()})
+@pytest.mark.parametrize("exc", [aiohttp.ClientError("boom"), TimeoutError()],
+                         ids=["dropped", "timeout"])
+async def test_a_transport_failure_is_a_connection_error(exc) -> None:
+    session = FakeSession({"version": exc})
     with pytest.raises(NinaConnectionError):
         await _client(session).get_versions()
 
@@ -174,11 +158,13 @@ async def test_a_build_without_version_is_an_endpoint_error() -> None:
         await _client(session).get_versions()
 
 
+@pytest.mark.synthetic
 async def test_a_bare_string_equipment_response_is_no_data() -> None:
     client = _client(FakeSession({"equipment/info": ok("")}))
     assert (await client.get_equipment()).camera is None
 
 
+@pytest.mark.synthetic
 async def test_a_bare_string_history_response_is_no_frames() -> None:
     client = _client(FakeSession({"image-history": ok("")}))
     assert await client.get_frames() == []

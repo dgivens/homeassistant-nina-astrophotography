@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from redaction import PROFILE_ALLOWLIST, redact, scan
+from redaction import PROFILE_ALLOWLIST, project, redact, scan
 
 
 @pytest.mark.parametrize(
@@ -57,11 +57,16 @@ def test_device_ids_become_stable_distinct_pseudonyms() -> None:
     assert out["a"]["DeviceId"].startswith("device-")
 
 
-def test_filenames_become_stable_pseudonyms_not_positions() -> None:
-    frames = [{"Filename": "D:\\a\\M31_001.fits"}, {"Filename": "D:\\a\\M31_002.fits"}]
-    out = [f["Filename"] for f in redact(frames)]
-    assert out[0] != out[1]
-    assert all(name.startswith("frame_") and name.endswith(".fits") for name in out)
+def test_filenames_become_stable_pseudonyms_derived_from_the_name() -> None:
+    """Frame identity is (Date, Filename) and the fold spans fixtures, so a
+    per-file counter would both collide distinct frames and split identical
+    ones. The pseudonym is a digest of the name: the same name in two files
+    is one frame, and two names are two."""
+    a = redact({"Filename": "D:\\astro\\M31_014.fits"})["Filename"]
+    b = redact({"Other": 1, "Filename": "D:\\astro\\M31_014.fits"})["Filename"]
+    c = redact({"Filename": "D:\\astro\\M31_015.fits"})["Filename"]
+    assert a == b != c
+    assert a.startswith("frame_") and a.endswith(".fits")
 
 
 def test_legacy_pseudonyms_pass_through_unchanged() -> None:
@@ -100,17 +105,24 @@ def test_the_meridian_flip_inputs_survive_redaction() -> None:
     assert redact(mount) == mount
 
 
-def test_a_frame_keeps_one_identity_across_files() -> None:
-    """Frame identity is (Date, Filename) and the fold spans fixtures, so a
-    per-file counter both collides distinct frames and splits identical ones."""
-    a = redact({"Filename": "D:\\astro\\M31_014.fits"})
-    b = redact({"Other": 1, "Filename": "D:\\astro\\M31_014.fits"})
-    c = redact({"Filename": "D:\\astro\\M31_015.fits"})
-    assert a["Filename"] == b["Filename"] != c["Filename"]
-
-
-def test_profile_allowlist_is_the_projection_not_a_denylist() -> None:
-    """/profile/show is captured as a projection — its secret surface is too
-    large to redact confidently."""
-    assert "TelescopeSettings.FocalLength" in PROFILE_ALLOWLIST
-    assert "CameraSettings.PixelSize" in PROFILE_ALLOWLIST
+def test_profile_projection_keeps_only_the_allowlist() -> None:
+    """/profile/show is captured as a projection, never a redaction — its
+    secret surface is too large to redact confidently. A leaf keeps its value,
+    a listed section comes through whole, and an unlisted sibling — here the
+    key that leaked on a trial capture — is simply not there."""
+    profile = {
+        "TelescopeSettings": {"FocalLength": 500, "Name": "Esprit 100"},
+        "CameraSettings": {"PixelSize": 3.76, "Gain": 100},
+        "FocuserSettings": {"AutoFocusTimeoutSeconds": 600, "RSquaredThreshold": 0.9,
+                            "AutoFocusStepSize": 50},
+        "MeridianFlipSettings": {"MinutesAfterMeridian": 5, "MaxMinutesAfterMeridian": 15,
+                                 "UseSideOfPier": True},
+        "WeatherSettings": {"WeatherUndergroundAPIKey": "live"},
+    }
+    assert project(profile, PROFILE_ALLOWLIST) == {
+        "TelescopeSettings": {"FocalLength": 500},
+        "CameraSettings": {"PixelSize": 3.76},
+        "FocuserSettings": {"AutoFocusTimeoutSeconds": 600, "RSquaredThreshold": 0.9},
+        "MeridianFlipSettings": {"MinutesAfterMeridian": 5, "MaxMinutesAfterMeridian": 15,
+                                 "UseSideOfPier": True},
+    }
