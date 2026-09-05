@@ -17,7 +17,7 @@ COMPONENT = (
     / "nina_astrophotography"
 )
 
-SEAM_ROOTS = ("api", "derive.py", "session.py", "const.py")
+SEAM_ROOTS = ("api", "derive.py", "polling.py", "session.py", "const.py")
 
 
 def _seam_files() -> set[Path]:
