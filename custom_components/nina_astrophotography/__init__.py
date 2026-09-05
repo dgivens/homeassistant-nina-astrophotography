@@ -27,7 +27,6 @@ from .api.errors import (
 )
 from .api.models import NinaEvent
 from .api.v2 import NinaClientV2, NinaEventStream
-from .legacy_api import NinaApiClient
 from .const import (
     CONF_API_VERSION,
     CONF_HOST,
@@ -62,6 +61,7 @@ from .const import (
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 from .device import async_sync_devices, kind_of
+from .legacy_api import NinaApiClient
 
 _LOGGER = logging.getLogger(__name__)
 
