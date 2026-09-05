@@ -333,9 +333,12 @@ async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) 
         # rotator
         (lambda c: c.move_rotator(90.0), "/equipment/rotator/move",
          {"position": 90.0}),
+        (lambda c: c.move_rotator_mechanical(90.0),
+         "/equipment/rotator/move-mechanical", {"position": 90.0}),
         (lambda c: c.set_rotator_reverse(True), "/equipment/rotator/reverse",
          {"reverseDirection": "true"}),
         # dome
+        (lambda c: c.slew_dome(180.0), "/equipment/dome/slew", {"azimuth": 180.0}),
         (lambda c: c.open_dome(), "/equipment/dome/open", None),
         (lambda c: c.close_dome(), "/equipment/dome/close", None),
         (lambda c: c.park_dome(), "/equipment/dome/park", None),
