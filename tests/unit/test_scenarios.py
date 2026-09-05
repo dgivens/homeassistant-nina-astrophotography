@@ -60,8 +60,8 @@ async def test_the_history_parameters_dispatch_to_different_answers() -> None:
 
 @pytest.mark.parametrize(
     ("state", "frames"),
-    [("imaging", 1), ("nina_restarted", 0)],
-    ids=["newest frame only", "index out of range"],
+    [("imaging", 1), ("imaging_guiding", 1), ("nina_restarted", 0)],
+    ids=["newest frame only", "captured as a one-item list", "index out of range"],
 )
 async def test_the_bare_history_path_is_served_by_every_state(
     state: str, frames: int
@@ -72,8 +72,11 @@ async def test_the_bare_history_path_is_served_by_every_state(
 
 
 async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> None:
-    """404 with EmbedIO's HTML, so a missing endpoint fails loud. The corpus
-    holds no /livestack/status, and inventing one would be a written fixture."""
+    """404 with EmbedIO's HTML, so a missing endpoint fails loud.
+
+    The dawn states leave /livestack/status unregistered on purpose — that is
+    what a build without the plugin sends, and it keeps the coordinator's
+    not-served latch exercised. `imaging_guiding` serves the real capture."""
     client = _client(FakeRig(STATES, start="imaging"))
     with pytest.raises(NinaEndpointError):
         await client.get_livestack()

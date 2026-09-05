@@ -5,9 +5,19 @@ tested as functions of their arguments rather than through a config entry.
 """
 from __future__ import annotations
 
-import pytest
+from dataclasses import fields, replace
 
-from nina_astrophotography.polling import ReseedGuard, RestartDetector, TierSchedule
+import pytest
+from helpers import load_fixture as load
+
+from nina_astrophotography.api.models import EquipmentSnapshot
+from nina_astrophotography.api.v2.mapper import map_equipment_info
+from nina_astrophotography.polling import (
+    ReseedGuard,
+    RestartDetector,
+    TierSchedule,
+    imaging,
+)
 
 
 @pytest.mark.parametrize(
@@ -99,17 +109,6 @@ def test_an_unknown_tier_is_an_error_rather_than_a_default_cadence() -> None:
         TierSchedule().due("frobnicate", 1000.0)
 
 
-def test_the_sequence_interval_drops_back_to_idle_on_demand() -> None:
-    """SEQUENCE-FINISHED fires once at session end, so the cadence can fall
-    immediately rather than waiting for the activity heuristic to go quiet."""
-    schedule = TierSchedule()
-    schedule.sequence_interval = TierSchedule.SEQUENCE_IMAGING
-    schedule.mark("sequence", 1000.0)
-    assert schedule.due("sequence", 1040.0) is True
-    schedule.drop_sequence_cadence()
-    assert schedule.due("sequence", 1040.0) is False
-
-
 def test_a_sequence_refetch_is_debounced() -> None:
     """TS-TARGETSTART fires once per exposure — 27 in 3.8 h — and its payload
     already carries everything a refetch would fetch."""
@@ -119,8 +118,87 @@ def test_a_sequence_refetch_is_debounced() -> None:
     assert schedule.request_sequence_refetch(1000.0 + TierSchedule.SEQUENCE_DEBOUNCE) is True
 
 
-def test_events_queue_endpoints_for_the_next_tick() -> None:
+def test_events_queue_endpoints_once_and_taking_them_drains_the_queue() -> None:
+    """Two events naming the same endpoint are one refetch, and the tick that
+    performs it must clear the queue or it re-reads on every tick after."""
     schedule = TierSchedule()
     schedule.add_pending("/profile/show")
     schedule.add_pending("/profile/show")
-    assert schedule.pending == {"/profile/show"}
+    assert schedule.take_pending() == {"/profile/show"}
+    assert schedule.take_pending() == set()
+
+
+@pytest.mark.parametrize(
+    ("imaging", "elapsed", "due"),
+    [
+        (True, TierSchedule.SEQUENCE_IMAGING - 1, False),
+        (True, TierSchedule.SEQUENCE_IMAGING, True),
+        (False, TierSchedule.SEQUENCE_IMAGING, False),
+        (False, TierSchedule.SEQUENCE_IDLE, True),
+    ],
+    ids=["imaging, early", "imaging, 30 s", "idle, 30 s", "idle, 5 min"],
+)
+def test_the_sequence_cadence_follows_the_imaging_flag(imaging, elapsed, due) -> None:
+    schedule = TierSchedule()
+    schedule.set_imaging(imaging)
+    schedule.mark("sequence", 1000.0)
+    assert schedule.due("sequence", 1000.0 + elapsed) is due
+
+
+def test_sequence_finished_drops_the_cadence_without_waiting_for_the_heuristic() -> None:
+    """SEQUENCE-FINISHED fires once at session end; the activity heuristic
+    would keep the tier at 30 s for another five minutes after the last frame."""
+    schedule = TierSchedule()
+    schedule.set_imaging(True)
+    schedule.mark("sequence", 1000.0)
+    assert schedule.due("sequence", 1040.0) is True
+    schedule.sequence_finished()
+    assert schedule.due("sequence", 1040.0) is False
+
+
+def test_set_imaging_cannot_undo_sequence_finished_until_activity_returns() -> None:
+    """The heuristic is still the authority: a rising count after the event
+    puts the tier back at 30 s, so the drop is a cadence change and not a latch."""
+    schedule = TierSchedule()
+    schedule.sequence_finished()
+    schedule.set_imaging(True)
+    schedule.mark("sequence", 1000.0)
+    assert schedule.due("sequence", 1030.0) is True
+
+
+@pytest.mark.parametrize(
+    ("count", "last_count", "exposing", "since_save", "expected"),
+    [
+        (28, 27, False, 9999.0, True),
+        (27, 27, True, 9999.0, True),
+        (27, 27, False, 299.0, True),
+        (27, 27, False, 300.0, False),
+        (27, 27, None, 9999.0, False),
+    ],
+    ids=["count rose", "camera exposing", "a recent IMAGE-SAVE",
+         "the last save aged out", "nothing happening"],
+)
+def test_imaging_is_inferred_from_activity(
+    count, last_count, exposing, since_save, expected
+) -> None:
+    """Never from /sequence/json node status: three nodes read RUNNING on the
+    idle rig with zero frames captured, which would pin the tier at 30 s."""
+    snapshot = _snapshot_with_camera(is_exposing=exposing)
+    assert imaging(snapshot, count, last_count, since_save) is expected
+
+
+def test_imaging_survives_a_camera_that_has_never_been_observed() -> None:
+    """Every device slot is None until it has carried a DeviceId, and the
+    heuristic runs on the first tick."""
+    snapshot = EquipmentSnapshot(*[None] * len(fields(EquipmentSnapshot)))
+    assert imaging(snapshot, 28, 27, 9999.0) is True
+    assert imaging(snapshot, 27, 27, 9999.0) is False
+
+
+def _snapshot_with_camera(*, is_exposing: bool | None) -> EquipmentSnapshot:
+    """The captured snapshot with one field varied — the corpus holds the
+    camera exposing, and no capture can hold both branches."""
+    camera = map_equipment_info(load("imaging_guiding_equipment_info.json")).camera
+    blanks = {f.name: None for f in fields(EquipmentSnapshot)}
+    return EquipmentSnapshot(**{**blanks,
+                                "camera": replace(camera, is_exposing=is_exposing)})
