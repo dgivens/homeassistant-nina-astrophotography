@@ -163,10 +163,10 @@ for longitude — so the coordinates were derivable from fixtures whose named
 fields were all correctly zeroed.
 
 Keeping them is what makes §11's meridian-flip maths testable:
-`(RA_JNOW − LST) mod 12` needs a real `SiderealTime`, and the pier-side
-windows that add 12 h need a real `SideOfPier`. The alternative is a
-hand-written synthetic `(LST, RA, longitude)` triple, and hand-written fixtures encode the spec's
-mistakes rather than reality.
+`(RA_JNOW − LST) mod 12` needs a real `SiderealTime`, and the pier-side windows
+that add 12 h need a real `SideOfPier`. The alternative is a hand-written
+synthetic `(LST, RA, longitude)` triple, and hand-written fixtures encode the
+spec's mistakes rather than reality.
 
 **`Filename` is pseudonymised by hashing the original, never numbered by
 position.** Frame identity is `(Date, Filename)` and the fold spans fixtures, so

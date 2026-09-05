@@ -90,6 +90,17 @@ async def test_a_count_mismatch_reseeds_once_it_persists_and_never_again(
 
 
 @pytest.mark.synthetic
+async def test_a_count_going_backwards_under_an_unchanged_start_reseeds(
+    rig: FakeRig, loaded_entry: MockConfigEntry, advance
+) -> None:
+    """`/application-start` is not the only restart signal, and when the tag
+    does not move it is the only one that fires — so the reseed cannot rest on
+    the generation having changed."""
+    await advance("imaging_count_behind")
+    assert _reseeds(rig) == 2                  # setup, then the shrunk history
+
+
+@pytest.mark.synthetic
 async def test_an_unreadable_application_start_does_not_blank_the_session(
     loaded_entry: MockConfigEntry, advance
 ) -> None:

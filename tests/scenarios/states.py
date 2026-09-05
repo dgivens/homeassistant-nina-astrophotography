@@ -87,6 +87,18 @@ def _newest_frame(name: str) -> dict:
     return ok([max(frames, key=lambda frame: frame["Date"])])
 
 
+def _shorter_history(name: str, keep: int) -> dict:
+    """The captured `?all=true` list cut to its newest `keep` frames.
+
+    A history that shrinks is the other restart signal, and the only one when
+    `/application-start` reads unchanged. No capture holds a cleared history
+    beside an unchanged start time, so the list is a slice of a captured one.
+    """
+    envelope = load_envelope(name)
+    frames = sorted(envelope["Response"], key=lambda frame: frame["Date"])
+    return {**envelope, "Response": frames[-keep:]}
+
+
 def _replace_device(state: State, device: str, block: dict) -> State:
     """A copy of `state` with one `/equipment/info` device block swapped."""
     envelope = state["/equipment/info"]
@@ -220,6 +232,21 @@ STATES: dict[str, State] = {
             **load_envelope("dawn_image_history_count.json"),
             "Response": 123,
         },
+    },
+    # The same rig with a SHORTER history under an UNCHANGED
+    # /application-start: `?count=true` going backwards is a restart signal in
+    # its own right, and the generation tag does not move with it. Slice and
+    # scalar variants of captured envelopes, for the same reason
+    # `imaging_count_ahead` is one.
+    "imaging_count_behind": {
+        **_IMAGING,
+        "/image-history?count=true": {
+            **load_envelope("dawn_image_history_count.json"),
+            "Response": 100,
+        },
+        "/image-history?all=true": _shorter_history(
+            "dawn_image_history_with_flats.json", 100
+        ),
     },
     # The same rig answering /application-start with a null Response — the
     # generation unreadable for one tick. Also a scalar variant: the corpus
