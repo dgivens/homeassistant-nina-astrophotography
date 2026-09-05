@@ -1,5 +1,5 @@
 """Pure, version-independent maths. No wire vocabulary reaches this module."""
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -26,6 +26,13 @@ from nina_astrophotography.derive import (
 )
 def test_the_session_boundary_is_the_most_recent_local_noon(moment, expected) -> None:
     assert session_start(datetime.fromisoformat(moment)) == datetime.fromisoformat(expected)
+
+
+def test_the_boundary_is_noon_in_the_moments_own_offset() -> None:
+    """12:30 UTC is 07:30 on a UTC-5 rig, mid-way through its dawn flats: the
+    session is still last night's, and the boundary is expressed at -05:00."""
+    moment = datetime(2026, 9, 4, 12, 30, tzinfo=UTC).astimezone(timezone(timedelta(hours=-5)))
+    assert session_start(moment) == datetime.fromisoformat("2026-09-03T12:00:00-05:00")
 
 
 def test_the_rollover_hour_is_configurable() -> None:

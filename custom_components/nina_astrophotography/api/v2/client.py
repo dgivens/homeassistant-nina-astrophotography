@@ -77,6 +77,15 @@ class NinaClientV2:
         # across a mount disconnect, which drops the clock from the wire.
         self._rig_offset: timedelta | None = None
 
+    @property
+    def rig_offset(self) -> timedelta | None:
+        """The rig's UTC offset as last read from the mount's clock; `None`
+        until the first `/equipment/info` with a connected mount. Frame dates
+        carry this offset, so anything placing a local-time boundary — the
+        session's noon rollover — must use it rather than Home Assistant's zone.
+        """
+        return self._rig_offset
+
     # ── transport ────────────────────────────────────────────────────────────
 
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
