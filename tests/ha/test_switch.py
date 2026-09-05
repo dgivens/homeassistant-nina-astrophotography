@@ -45,9 +45,10 @@ async def _call(hass: HomeAssistant, service: str, entity_id: str) -> None:
 async def _set_up_at(hass: HomeAssistant, entry: MockConfigEntry, rig, state: str):
     """Set the entry up with the rig already in `state`.
 
-    A route that 404s is latched not-served for the coordinator's lifetime — a
-    build without the livestack plugin cannot grow one — so a state that serves
-    `/livestack/status` has to be in force before the entry loads.
+    A route that 404s is latched not-served until N.I.N.A. restarts
+    (`coordinator.py:243` clears the latch there, since a restart is exactly
+    when a plugin can appear), so a state that serves `/livestack/status` has
+    to be in force before the entry loads rather than advanced on to.
     """
     rig.goto(state)
     entry.add_to_hass(hass)
@@ -144,12 +145,26 @@ async def test_a_switch_channel_reads_its_value_not_its_target_value(
     assert hass.states.get(OUTLET).state == "off"
 
 
-async def test_a_switch_channel_sends_the_channels_own_index(
-    hass: HomeAssistant, loaded_entry, rig
+@pytest.mark.synthetic
+async def test_a_switch_channel_sends_its_own_id_not_its_position(
+    hass: HomeAssistant, config_entry, rig
 ) -> None:
-    """`index` is the channel's `Id`, not its position in the wire's list."""
+    """`index` is the channel's `Id`. Every capture numbers from 0 in list
+    order, so a channel list starting at 5 is what tells them apart."""
+    await _set_up_at(hass, config_entry, rig, "switch_channels_numbered_from_five")
     await _call(hass, SERVICE_TURN_OFF, OUTLET)
-    assert rig.sent == [("/equipment/switch/set", {"index": 0, "value": 0.0})]
+    assert rig.sent == [("/equipment/switch/set", {"index": 5, "value": 0.0})]
+
+
+@pytest.mark.synthetic
+async def test_channels_the_driver_leaves_unnamed_do_not_collide(
+    hass: HomeAssistant, config_entry, rig
+) -> None:
+    """An empty entity name resolves to the device's own under
+    `has_entity_name`, so two unnamed channels would be one entity id."""
+    await _set_up_at(hass, config_entry, rig, "switch_channels_with_no_names")
+    numbered = ["switch.n_i_n_a_switch_channel_0", "switch.n_i_n_a_switch_channel_1"]
+    assert [name for name in numbered if hass.states.get(name)] == numbered
 
 
 @pytest.mark.synthetic

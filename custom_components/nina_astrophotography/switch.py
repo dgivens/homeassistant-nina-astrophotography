@@ -284,8 +284,11 @@ class NinaSwitchChannel(NinaEntity, SwitchEntity):
         self._index = channel.index
         self._off_value = channel.minimum
         self._on_value = channel.maximum
-        # Named by the driver, so there is no translation key to name it by.
-        self._attr_name = channel.name
+        # Named by the driver, so there is no translation key to name it by —
+        # and a driver need not name a channel at all. An empty name resolves
+        # to the device's own under `has_entity_name`, which would collapse
+        # every unnamed channel onto one entity id.
+        self._attr_name = channel.name or f"Channel {channel.index}"
 
     @property
     def _channel(self) -> SwitchChannelModel | None:
