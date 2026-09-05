@@ -92,16 +92,26 @@ def failure(error="Camera not connected", status=409):
     }
 
 
-def load_envelope(name: str) -> dict:
-    """A captured envelope as the wire sent it, less our own `_meta` block.
+def _read(name: str) -> Any:
+    """A captured document, re-read on every call so a caller may edit it."""
+    return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
-    Re-read from disk on every call, so a test may edit what it gets back.
-    """
-    document = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+
+def load_envelope(name: str) -> dict:
+    """A captured envelope as the wire sent it, less our own `_meta` block."""
+    document = _read(name)
     document.pop("_meta", None)
     return document
 
 
 def load_fixture(name: str) -> Any:
-    """The `Response` of a captured envelope — the payload the mappers take."""
-    return load_envelope(name)["Response"]
+    """The `Response` of a captured envelope — the payload the mappers take.
+
+    A capture with no envelope around it (`image_history_session.json` is a
+    bare list) is returned as it stands, as is a document with no `Response`.
+    """
+    document = _read(name)
+    if not isinstance(document, dict):
+        return document
+    document.pop("_meta", None)
+    return document.get("Response", document)
