@@ -165,5 +165,6 @@ def test_every_weather_channel_keeps_a_1_4_5_unique_id() -> None:
     from custom_components.nina_astrophotography.sensor import WEATHER_CHANNELS
 
     shipped = {d.unique_id_suffix or d.key for d in WEATHER_CHANNELS}
-    assert shipped <= LEGACY_WEATHER_KEYS
-    assert "weather_seeing" in shipped
+    # `weather_name` is the fourteenth 1.4.5 key and ships as `weather_source`
+    # on the session table, so the channels are the other thirteen exactly.
+    assert shipped == LEGACY_WEATHER_KEYS - {"weather_name"}
