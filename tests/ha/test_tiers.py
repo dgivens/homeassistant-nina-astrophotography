@@ -270,3 +270,18 @@ async def test_a_rig_that_serves_every_endpoint_publishes_all_four_models(
     # An idle flat wizard reports -1 iterations; that is not a count.
     assert data.flats.total_iterations is None
     assert data.sequence is not None
+
+
+async def test_a_restart_re_asks_an_endpoint_the_old_process_did_not_serve(
+    hass, tiers, freezer
+) -> None:
+    """The not-served latch cannot outlive the process it was learned from: a
+    restart is exactly when a plugin gets enabled or the API updated.
+
+    The dawn states serve no `/livestack/status`; `imaging_guiding` is both a
+    new `/application-start` and a build that serves it."""
+    rig = await tiers(clear=False)
+    assert reads(rig, "/livestack/status") == 1          # the setup 404
+    rig.goto("imaging_guiding")
+    await tick(hass, freezer, TierSchedule.FLOOR)
+    assert reads(rig, "/livestack/status") == 2

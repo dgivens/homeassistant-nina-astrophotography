@@ -188,6 +188,13 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                     "N.I.N.A. restarted (%s); reseeding from /image-history?all=true",
                     application_start,
                 )
+                # A restart is exactly when the served routes change — a plugin
+                # enabled, the API updated — so what the old process refused
+                # says nothing about the new one. `/event-history` is replayed
+                # again for the same reason, under the new generation.
+                self._not_served.clear()
+                self._tier_warned.clear()
+                self._replayed = False
             # Only a restart moves the generation on. A single unreadable
             # /application-start is missing information, not a new process, and
             # adopting its `None` would filter the whole session away for a tick.
