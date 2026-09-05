@@ -497,7 +497,16 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return time.monotonic() - self._last_image_save
 
     def _set_generation(self, generation: str | None) -> None:
-        """Publish the process tag everything the fold keeps is stamped with."""
+        """Publish the process tag everything the fold keeps is stamped with.
+
+        A change unseeds the frame set. Everything held was stamped with the
+        old tag and the fold filters on the new one, so without this the
+        session reads zero until the reseed guard's two-tick rule restores it —
+        which is what an `/application-start` unreadable on the first poll then
+        readable on the second does.
+        """
+        if generation != self.generation:
+            self._seeded = False
         self.generation = generation
         if self.event_stream is not None:
             self.event_stream.generation = generation
