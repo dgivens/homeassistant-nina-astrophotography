@@ -62,10 +62,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # A platform is registered only once it reads NinaData: Home Assistant imports
 # every listed platform module during entry setup, so listing one that still
-# speaks the 1.4.x coordinator fails the entry. `light.py` joins when it moves
-# onto the seam (phase A); each remaining platform is re-added by the phase-C PR
-# that migrates it. Until then the modules stay on disk, unregistered.
-PLATFORMS: list[Platform] = []
+# speaks the 1.4.x coordinator fails the entry. Each remaining platform is
+# re-added by the phase-C PR that migrates it; until then it stays on disk,
+# unregistered.
+PLATFORMS: list[Platform] = [Platform.LIGHT]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
@@ -149,7 +149,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    _register_services(hass, service_client)
+    _register_services(hass)
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
@@ -179,7 +179,7 @@ def _get_client(hass: HomeAssistant) -> NinaApiClient:
     raise ServiceValidationError("No N.I.N.A. instance is configured")
 
 
-def _register_services(hass: HomeAssistant, client: NinaApiClient) -> None:
+def _register_services(hass: HomeAssistant) -> None:
     """Register all HA services for N.I.N.A. control."""
 
     # ── Camera ──────────────────────────────────────────────────────────────

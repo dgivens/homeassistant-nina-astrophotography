@@ -42,6 +42,7 @@ async def test_a_build_that_does_not_serve_the_api_fails_the_entry(
     with patch(f"{CLIENT}.get_versions", side_effect=NinaEndpointError("no /version")):
         await hass.config_entries.async_setup(config_entry.entry_id)
     assert config_entry.state is ConfigEntryState.SETUP_ERROR
+    assert "API" in config_entry.reason
 
 
 async def test_the_services_still_reach_a_client_after_the_move_to_runtime_data(
