@@ -76,6 +76,14 @@ class FakeRig(FakeSession):
         self.goto(self._sequence[self._step])
         return self.state_name
 
+    def reads(self, path: str, params: dict | None = None) -> int:
+        """How many requests reached `path`; with `params`, only those.
+
+        What left the integration, rather than any coordinator internal.
+        """
+        return sum(1 for url, sent in self.requests
+                   if url.endswith(path) and (params is None or sent == params))
+
     def _lookup(self, path: str, params: dict | None):
         state = self.states[self.state_name]
         if params is not None and len(params) == 1:

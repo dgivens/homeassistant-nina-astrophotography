@@ -15,25 +15,16 @@ from scenarios.fake_rig import FakeRig
 LIGHT = "light.n_i_n_a_flat_panel_light"
 AT = "2026-09-05T01:41:53.9-05:00"
 
-
-@pytest.fixture(autouse=True)
-def _inside_the_dawn_session(freezer):
-    """07:30 on the rig — after its dawn flats, before its noon rollover — so
-    the 122 captured frames and the pushed one are all the same session."""
-    freezer.move_to("2026-09-04T12:30:00+00:00")
+pytestmark = pytest.mark.usefixtures("inside_the_dawn_session")
 
 
 def _count(entry: MockConfigEntry) -> int:
     return entry.runtime_data.coordinator.data.session.image_count
 
 
-def _reads(rig: FakeRig, path: str) -> int:
-    return sum(1 for url, _ in rig.requests if url.endswith(path))
-
-
 def _reseeds(rig: FakeRig) -> int:
     """How many times the rig has been asked for /image-history?all=true."""
-    return sum(1 for _, params in rig.requests if params == {"all": "true"})
+    return rig.reads("/image-history", {"all": "true"})
 
 
 async def test_a_pushed_frame_is_published_without_waiting_for_the_poll(
@@ -71,7 +62,7 @@ async def test_a_disconnect_event_refetches_the_snapshot_before_the_next_tick(
     rig.goto("equipment_disconnected")
     push({"Event": "FLAT-DISCONNECTED", "Time": AT})
     await hass.async_block_till_done()
-    assert _reads(rig, "/equipment/info") == 1
+    assert rig.reads("/equipment/info") == 1
     assert hass.states.get(LIGHT).state == "unavailable"
 
 
@@ -147,12 +138,12 @@ async def test_only_a_socket_reconnect_reseeds_and_replays(
 
     connect(True)
     await hass.async_block_till_done()
-    first = (_reseeds(rig), _reads(rig, "/event-history"))
+    first = (_reseeds(rig), rig.reads("/event-history"))
     connect(False)
     connect(True)
     await hass.async_block_till_done()
 
-    assert (first, (_reseeds(rig), _reads(rig, "/event-history"))) == ((0, 0), (1, 1))
+    assert (first, (_reseeds(rig), rig.reads("/event-history"))) == ((0, 0), (1, 1))
 
 
 async def test_a_restart_replays_the_new_processs_event_history(
@@ -162,7 +153,7 @@ async def test_a_restart_replays_the_new_processs_event_history(
     scoped to the process it replayed."""
     rig.requests.clear()
     await advance("nina_restarted")
-    assert _reads(rig, "/event-history") == 1
+    assert rig.reads("/event-history") == 1
 
 
 async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
@@ -194,7 +185,7 @@ async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
 
 
 async def test_the_rigs_own_autofocus_timeout_bounds_a_running_run(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig: FakeRig, freezer
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig: FakeRig, push, freezer
 ) -> None:
     """`FocuserSettings.AutoFocusTimeoutSeconds` is polled from /profile/show
     and reads 600 on this rig, so folding against the 300 s fallback would
@@ -209,10 +200,7 @@ async def test_the_rigs_own_autofocus_timeout_bounds_a_running_run(
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
 
-    runtime = config_entry.runtime_data
-    runtime.events._dispatch(
-        {"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-05T02:22:00-05:00"},
-        runtime.coordinator.generation,
-    )
+    push({"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-05T02:22:00-05:00"})
     await hass.async_block_till_done()
-    assert runtime.coordinator.data.session.autofocus.failed is False
+    autofocus = config_entry.runtime_data.coordinator.data.session.autofocus
+    assert autofocus.failed is False
