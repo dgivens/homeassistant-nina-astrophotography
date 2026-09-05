@@ -31,11 +31,14 @@ from .legacy_api import NinaApiClient
 from .const import (
     CONF_API_VERSION,
     CONF_HOST,
+    CONF_INSTANCE_NAME,
     CONF_POLL_INTERVAL,
     CONF_PORT,
+    CONF_ROLLOVER_HOUR,
     DEFAULT_API_VERSION,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
+    DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
     SERVICE_CAMERA_ABORT_CAPTURE,
     SERVICE_CAMERA_CAPTURE,
@@ -79,6 +82,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         CONF_POLL_INTERVAL,
         entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
     )
+    rollover_hour = entry.options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR)
+    # Entries created before 2.0 carry no instance name; their title is the one
+    # thing they have, and it is what the flow now writes into both.
+    instance_name = entry.data.get(CONF_INSTANCE_NAME, entry.title)
 
     session = async_get_clientsession(hass)
     client = NinaClientV2(host, port, session)
@@ -110,6 +117,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         config_entry=entry,
         update_interval=timedelta(seconds=poll_interval),
         version=version,
+        rollover_hour=rollover_hour,
     )
 
     # ── The event socket: real-time push ─────────────────────────────────────
@@ -165,7 +173,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         client=client,
         coordinator=coordinator,
         service_client=service_client,
-        instance_name=entry.title,
+        instance_name=instance_name,
         events=events,
     )
     # Registered before the socket starts: on_unload callbacks also run when a
