@@ -374,9 +374,9 @@ class NinaClientV2:
         await self._get("/equipment/mount/home")
 
     async def set_tracking_mode(self, mode: int) -> None:
-        """`mode` is the index 0 Sidereal, 1 Lunar, 2 Solar, 3 King, 4 Stopped.
-        Which of them a mount actually offers comes from its `TrackingModes`;
-        the full range is not universally available."""
+        """`mode` is the API's enum value — 0 Sidereal, 1 Lunar, 2 Solar,
+        3 King, 4 Stopped — and **not** the position in `TrackingModes`, which
+        omits modes a mount does not offer."""
         await self._get("/equipment/mount/tracking", {"mode": mode})
 
     # focuser
