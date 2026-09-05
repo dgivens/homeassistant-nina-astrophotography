@@ -4,6 +4,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [2.0.0] - unreleased
+
+### Changed
+
+- Home Assistant bus events keep their names (`nina_<event>` and the catch-all
+  `nina_event`) but the payload is now `event` / `time` / `data` / `frame`
+  instead of the raw `response` dict: the event socket emits models, and a wire
+  dict must not cross the API seam. An automation reading
+  `trigger.event.data.response.*` needs updating; `trigger.event.data.event` is
+  unchanged.
+
+---
+
 ## [1.4.5] - 2026-09-03
 
 Endpoint corrections. Seven commands in `api.py` asked for paths the Advanced

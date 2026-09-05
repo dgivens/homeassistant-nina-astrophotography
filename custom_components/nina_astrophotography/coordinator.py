@@ -42,9 +42,9 @@ from .api.v2 import NinaClientV2
 from .session import fold
 
 if TYPE_CHECKING:
+    from .api.v2.events import NinaEventStream
     from .frame_statistics import NinaFrameStatisticsStore
     from .legacy_api import NinaApiClient
-    from .websocket import NinaWebSocketClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -142,6 +142,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self.generation = generation
         return self._assemble(self._latch_observed(snapshot))
 
+    def handle_event(self, event: NinaEvent) -> None:
+        """Take one pushed event. A no-op until B4 gives it the fold."""
+
     def _latch_observed(self, snapshot: EquipmentSnapshot) -> EquipmentSnapshot:
         """Record every slot carrying a `DeviceId`; blank the never-observed."""
         for slot in _DEVICE_SLOTS:
@@ -187,15 +190,15 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
 class NinaRuntimeData:
     """Everything setup builds, hung on `entry.runtime_data` (Bronze).
 
-    `service_client`, `ws_client` and `frame_store` are the 1.4.x modules the
-    unmigrated services still call; phases B–D retire them.
+    `service_client` and `frame_store` are the 1.4.x modules the unmigrated
+    services still call; phases B–D retire them.
     """
 
     client: NinaClientV2
     coordinator: NinaCoordinator
     service_client: NinaApiClient
     instance_name: str
-    ws_client: NinaWebSocketClient
+    events: NinaEventStream
     frame_store: NinaFrameStatisticsStore
 
 

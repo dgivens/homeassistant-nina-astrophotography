@@ -49,14 +49,14 @@ def config_entry() -> MockConfigEntry:
 
 def _serve(monkeypatch, session) -> None:
     """Give the integration `session` as its HTTP transport, and silence the
-    1.4.x socket: pytest-socket refuses the connection and the reconnect loop
-    would otherwise outlive the test. Phase B1 retires that socket."""
+    event socket: pytest-socket refuses the connection and the reconnect loop
+    would otherwise outlive the test. Tests push through the `push` fixture."""
     import custom_components.nina_astrophotography as integration
-    from custom_components.nina_astrophotography.websocket import NinaWebSocketClient
+    from custom_components.nina_astrophotography.api.v2 import NinaEventStream
 
     monkeypatch.setattr(integration, "async_get_clientsession", lambda hass: session)
-    monkeypatch.setattr(NinaWebSocketClient, "start", lambda self: _async(None))
-    monkeypatch.setattr(NinaWebSocketClient, "stop", lambda self: _async(None))
+    monkeypatch.setattr(NinaEventStream, "start", lambda self: _async(None))
+    monkeypatch.setattr(NinaEventStream, "stop", lambda self: _async(None))
 
 
 @pytest.fixture
@@ -147,8 +147,21 @@ async def two_rigs(hass, monkeypatch) -> TwoRigs:
     return TwoRigs(tuple(entries), tuple(rigs.values()))
 
 
-# `push` is deliberately absent: firing an event needs phase B1's event stream,
-# so B4 defines it here once that exists.
+@pytest.fixture
+def push(loaded_entry):
+    """Deliver one socket payload — the `Response` of a captured push — as the
+    live receive loop would.
+
+    `_dispatch` is the one private call test code makes: the socket itself is
+    silenced, and driving the stream from outside is the only way to exercise
+    the push path. Everything above it is public.
+    """
+    runtime = loaded_entry.runtime_data
+
+    def _push(payload: dict) -> None:
+        runtime.events._dispatch(payload, runtime.coordinator.generation)
+
+    return _push
 
 
 async def _async(value):
