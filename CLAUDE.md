@@ -35,6 +35,7 @@ redaction, hassfest, HACS); no linter or formatter is configured.
 
 ```
 custom_components/nina_astrophotography/
+  __init__.py         entry setup and unload, the socket wiring, the services
   api/                the version-independent seam: errors.py, models.py (THE CONTRACT)
   api/v2/             client.py (the only module that talks to N.I.N.A.), mapper.py
                       (wire → models; every sentinel dies here), schema.py (generated),

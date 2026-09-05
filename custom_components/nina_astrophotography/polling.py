@@ -132,13 +132,8 @@ class TierSchedule:
     """Per-tier due times, against an injected monotonic clock.
 
     Six tiers, one coordinator: a single 10 s tick with per-tier due-time
-    checks inside it, not three coordinators.
-
-        fast       7,420 B @ 10 s  =  44,520 B/min
-        sequence   8,418 B @ 30 s  =  16,836 B/min
-                                      ──────────
-                                      61,356 B/min ~ 3.7 MB/h ~ 37 MB / night
-        before                        82,606 B x 6/min ~ 297 MB / night
+    checks inside it, not three coordinators. The measured byte budget these
+    cadences buy is in design §3.3 and in `coordinator.py`'s module docstring.
     """
 
     FAST = 10.0
