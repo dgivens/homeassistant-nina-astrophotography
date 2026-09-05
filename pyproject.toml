@@ -27,6 +27,10 @@ test = [
     "PyYAML>=6.0",
     "coverage>=7.6",
     "syrupy==6.0.0",
+    # The session fold's properties (idempotence, order-independence) live in
+    # tests/unit, so hypothesis belongs to the group that suite installs. It is
+    # pure Python and pulls in no Home Assistant.
+    "hypothesis>=6.100",
 ]
 
 # The Home-Assistant-dependent suite, added in v2.0 phase A. Pinned exactly:
@@ -44,8 +48,6 @@ dev = [
     # the output is committed and a drift test diffs against it — an unpinned
     # generator turns a regeneration into a large unrelated diff.
     "datamodel-code-generator==0.76.1",
-    # Property-based tests for the session fold (idempotence, order-independence).
-    "hypothesis>=6.100",
 ]
 
 [tool.pytest.ini_options]
