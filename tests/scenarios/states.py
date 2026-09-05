@@ -99,6 +99,25 @@ def _shorter_history(name: str, keep: int) -> dict:
     return {**envelope, "Response": frames[-keep:]}
 
 
+def _all_nodes_running(envelope: dict) -> dict:
+    """Every `Status` in a `/sequence/json` document set to RUNNING.
+
+    Node status persists from the loaded sequence file and from prior runs, so
+    an idle rig reports RUNNING nodes with nothing happening (§6.2). Synthetic:
+    the corpus has the completed tree and the running tree, never a running one
+    on an idle rig, and that state is what the imaging heuristic must ignore.
+    """
+    def walk(value):
+        if isinstance(value, dict):
+            return {k: "RUNNING" if k == "Status" else walk(v)
+                    for k, v in value.items()}
+        if isinstance(value, list):
+            return [walk(item) for item in value]
+        return value
+
+    return walk(envelope)
+
+
 def _replace_device(state: State, device: str, block: dict) -> State:
     """A copy of `state` with one `/equipment/info` device block swapped."""
     envelope = state["/equipment/info"]
@@ -205,6 +224,18 @@ STATES: dict[str, State] = {
     "sequence_complete_tracking_off": _replace_device(
         _IMAGING, "Mount", load_envelope("dawn_mount_tracking_off.json")["Response"]
     ),
+    # The same idle rig with every sequence node reading RUNNING: node status
+    # is what §6.2 refuses to infer imaging from. Synthetic in its
+    # /sequence/json alone — a real capture of it is on the soak list.
+    "idle_with_stale_running_nodes": {
+        **_replace_device(
+            _IMAGING, "Mount",
+            load_envelope("dawn_mount_tracking_off.json")["Response"],
+        ),
+        "/sequence/json": _all_nodes_running(
+            load_envelope("dawn_sequence_complete.json")
+        ),
+    },
     # Four of eleven devices connected, mid-reconnect.
     "partial_equipment_connection": dict(_RESTARTED),
     "nina_restarted": dict(_RESTARTED),
@@ -281,11 +312,7 @@ SEQUENCES: dict[str, list[str]] = {
 #
 # - camera_warm_at_setup: CoolerPower "NaN" with the camera connected, proving
 #   a transiently-NaN field does not become a dynamic channel.
-# - idle_with_stale_running_nodes: /sequence/json reading RUNNING with no
-#   frames captured.
 # - guider_lost_lock: the guider connected and no longer guiding.
 #
 # No ENDPOINT awaits capture any more — `imaging_guiding` serves all of them.
-AWAITING_CAPTURE = frozenset(
-    {"camera_warm_at_setup", "idle_with_stale_running_nodes", "guider_lost_lock"}
-)
+AWAITING_CAPTURE = frozenset({"camera_warm_at_setup", "guider_lost_lock"})
