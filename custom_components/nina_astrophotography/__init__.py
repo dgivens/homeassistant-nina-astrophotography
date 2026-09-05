@@ -70,7 +70,7 @@ _LOGGER = logging.getLogger(__name__)
 # speaks the 1.4.x coordinator fails the entry. Each remaining platform is
 # re-added by the phase-C PR that migrates it; until then it stays on disk,
 # unregistered.
-PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.LIGHT]
+PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.LIGHT, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:

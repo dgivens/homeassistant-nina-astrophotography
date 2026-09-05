@@ -253,6 +253,17 @@ STATES: dict[str, State] = {
         **_IMAGING,
         "/equipment/info": load_envelope("weather_source_openmeteo.json"),
     },
+    # The PHYSICAL station — device-09, the one that established SkyBrightness
+    # — reading "NaN" for it this poll. Absence is only permanent when the
+    # ACTIVE source cannot report the channel at all; this is the other case,
+    # and it must not take the entity unavailable. Synthetic in one reading: a
+    # capture would replace it in place.
+    "weather_station_channel_nan": _replace_device(
+        _IMAGING,
+        "WeatherData",
+        {**_IMAGING["/equipment/info"]["Response"]["WeatherData"],
+         "SkyBrightness": "NaN"},
+    ),
     # The same rig with `?count=true` one frame ahead of `?all=true`, which is
     # what a frame saved between the two reads looks like. The count is a
     # scalar, so this varies the captured envelope's one number rather than
