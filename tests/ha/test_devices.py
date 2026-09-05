@@ -36,7 +36,9 @@ async def test_children_hang_off_the_hub(hass: HomeAssistant, loaded_entry) -> N
     registry = dr.async_get(hass)
     devices = dr.async_entries_for_config_entry(registry, loaded_entry.entry_id)
     hub = _device(hass, loaded_entry)
-    assert {device.via_device_id for device in devices if device is not hub} == {hub.id}
+    assert {
+        device.via_device_id for device in devices if device.id != hub.id
+    } == {hub.id}
 
 
 async def test_the_hub_carries_the_nina_version(
@@ -107,3 +109,12 @@ async def test_only_equipment_the_rig_no_longer_reports_can_be_deleted(
         identifiers={(DOMAIN, f"{loaded_entry.entry_id}{suffix}")},
     )
     assert await async_remove_config_entry_device(hass, loaded_entry, device) is removable
+
+
+async def test_a_device_can_be_deleted_after_its_entry_is_unloaded(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    """The registry offers deletion on a disabled entry, which holds no snapshot."""
+    camera = _device(hass, loaded_entry, "camera")
+    assert await hass.config_entries.async_unload(loaded_entry.entry_id)
+    assert await async_remove_config_entry_device(hass, loaded_entry, camera) is True
