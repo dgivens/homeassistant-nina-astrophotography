@@ -78,6 +78,44 @@
         "name": "Sequence running"
       }
     },
+    "button": {
+      "camera_abort_exposure": {
+        "name": "Abort exposure"
+      },
+      "dome_close": {
+        "name": "Close"
+      },
+      "dome_home": {
+        "name": "Home"
+      },
+      "dome_open": {
+        "name": "Open"
+      },
+      "dome_park": {
+        "name": "Park"
+      },
+      "focuser_auto_focus": {
+        "name": "Auto focus"
+      },
+      "guider_clear_calibration": {
+        "name": "Clear calibration"
+      },
+      "mount_find_home": {
+        "name": "Find home"
+      },
+      "mount_park": {
+        "name": "Park"
+      },
+      "mount_unpark": {
+        "name": "Unpark"
+      },
+      "sequence_start": {
+        "name": "Sequence start"
+      },
+      "sequence_stop": {
+        "name": "Sequence stop"
+      }
+    },
     "light": {
       "flat_panel_light": {
         "name": "Light"
@@ -378,6 +416,9 @@
     }
   },
   "exceptions": {
+    "command_failed": {
+      "message": "N.I.N.A. did not accept the command: {error}"
+    },
     "no_cooling_setpoint": {
       "message": "The cooler cannot be started: the camera reports no target temperature."
     },
