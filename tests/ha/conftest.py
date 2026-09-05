@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from scenarios.fake_rig import FakeRig
+from scenarios.states import AWAITING_CAPTURE, STATES
 
 from custom_components.nina_astrophotography.const import (
     CONF_HOST,
@@ -44,40 +47,108 @@ def config_entry() -> MockConfigEntry:
     )
 
 
-@pytest.fixture
-def nina_responses(monkeypatch):
-    """Serve the fast tier from captured fixtures, through a fake transport.
+def _serve(monkeypatch, session) -> None:
+    """Give the integration `session` as its HTTP transport, and silence the
+    1.4.x socket: pytest-socket refuses the connection and the reconnect loop
+    would otherwise outlive the test. Phase B1 retires that socket."""
+    import custom_components.nina_astrophotography as integration
+    from custom_components.nina_astrophotography.websocket import NinaWebSocketClient
 
-    The real client runs — envelope classification, the wire→model mapper and
-    the rig-offset cache — against the captured `/equipment/info` envelope, so
-    setup sees a snapshot shaped exactly as the rig produces it and knows the
-    rig's UTC offset. Only `get_versions` is stubbed as a method, so the
-    setup-failure tests can patch it the same way. The socket is silenced:
-    pytest-socket refuses the connection and the reconnect loop would otherwise
-    outlive the test.
+    monkeypatch.setattr(integration, "async_get_clientsession", lambda hass: session)
+    monkeypatch.setattr(NinaWebSocketClient, "start", lambda self: _async(None))
+    monkeypatch.setattr(NinaWebSocketClient, "stop", lambda self: _async(None))
+
+
+@pytest.fixture
+def rig(monkeypatch) -> FakeRig:
+    """The fake rig the entry polls, serving the `imaging` state.
+
+    A transport fake, not a client fake: the real client runs above it, so
+    setup exercises envelope classification, the wire→model mapper and the
+    rig-offset cache against captured bytes — including `/version`, which is
+    served rather than stubbed.
+    """
+    fake = FakeRig(STATES, start="imaging")
+    _serve(monkeypatch, fake)
+    return fake
+
+
+@pytest.fixture
+def nina_responses(rig):
+    """The rig, under the name the phase-A tests ask for.
 
     Returns the fixture loader, so a test that needs the same wire data can
     read it without opening the file itself.
     """
-    import custom_components.nina_astrophotography as integration
-    from custom_components.nina_astrophotography.api.models import VersionInfo
-    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-    from custom_components.nina_astrophotography.websocket import NinaWebSocketClient
-    from helpers import FakeSession, load_envelope, load_fixture, ok
+    from helpers import load_fixture
 
-    session = FakeSession({
-        "/equipment/info": load_envelope("dawn_equipment_info.json"),
-        "/application-start": ok("2026-09-04T10:58:59"),
-        "/image-history": ok(122),
-    })
-    monkeypatch.setattr(integration, "async_get_clientsession", lambda hass: session)
-    monkeypatch.setattr(
-        NinaClientV2, "get_versions",
-        lambda self: _async(VersionInfo("2.2.15.2", "3.2.0.9001")),
-    )
-    monkeypatch.setattr(NinaWebSocketClient, "start", lambda self: _async(None))
-    monkeypatch.setattr(NinaWebSocketClient, "stop", lambda self: _async(None))
     return load_fixture
+
+
+@pytest.fixture
+def advance(hass, loaded_entry, rig):
+    """Move the fake rig to a named state and let Home Assistant settle."""
+    async def _advance(name: str) -> None:
+        if name in AWAITING_CAPTURE:
+            pytest.skip(f"awaiting capture: {name}")
+        rig.goto(name)
+        await loaded_entry.runtime_data.coordinator.async_refresh()
+        await hass.async_block_till_done()
+
+    return _advance
+
+
+class _RigRouter:
+    """One transport in front of several rigs, dispatching on the URL's host."""
+
+    def __init__(self, rigs: dict[str, FakeRig]) -> None:
+        self.rigs = rigs
+
+    def _rig(self, url: str) -> FakeRig:
+        return self.rigs[url.split("//", 1)[1].split(":", 1)[0]]
+
+    def get(self, url, params=None, timeout=None):
+        return self._rig(url).get(url, params, timeout)
+
+    def post(self, url, json=None, params=None, timeout=None):
+        return self._rig(url).post(url, json, params, timeout)
+
+
+class TwoRigs(NamedTuple):
+    """Two loaded entries and the rig each one reads, in the same order."""
+
+    entries: tuple[MockConfigEntry, ...]
+    rigs: tuple[FakeRig, ...]
+
+
+@pytest.fixture
+async def two_rigs(hass, monkeypatch) -> TwoRigs:
+    """Two loaded instances, each reading its own rig.
+
+    The second rig starts restarted: two identical rigs cannot show that a
+    request reached the right one. The rigs come back too, so a test can move
+    one instance without touching the other.
+    """
+    instances = [("nina.local", "N.I.N.A.", "imaging"),
+                 ("other.local", "Dome", "nina_restarted")]
+    rigs = {host: FakeRig(STATES, start=state) for host, _, state in instances}
+    _serve(monkeypatch, _RigRouter(rigs))
+    entries = []
+    for index, (host, title, _) in enumerate(instances):
+        entry = MockConfigEntry(
+            domain=DOMAIN, title=title,
+            data={CONF_HOST: host, CONF_PORT: 1888},
+            entry_id=f"01JTESTENTRY000000000000{index}",
+        )
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        entries.append(entry)
+    await hass.async_block_till_done()
+    return TwoRigs(tuple(entries), tuple(rigs.values()))
+
+
+# `push` is deliberately absent: firing an event needs phase B1's event stream,
+# so B4 defines it here once that exists.
 
 
 async def _async(value):
