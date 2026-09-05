@@ -39,9 +39,10 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-        # An empty name would title the entry "" and name devices " Camera".
+        # An empty name would title the entry "" and name devices " Camera",
+        # and `vol.Length` alone accepts "   ".
         vol.Required(CONF_INSTANCE_NAME, default=DEFAULT_INSTANCE_NAME): vol.All(
-            str, vol.Length(min=1)
+            str, vol.Strip, vol.Length(min=1)
         ),
         vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): _POLL_INTERVAL,
     }
@@ -59,36 +60,59 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            client = NinaClientV2(
-                user_input[CONF_HOST],
-                user_input[CONF_PORT],
-                async_get_clientsession(self.hass),
+            # Hostnames are case-insensitive, so `NINA.local` and `nina.local`
+            # are one rig; normalising before the unique id is what makes the
+            # duplicate guard see that. The entry stores the normalised form.
+            user_input = {**user_input,
+                          CONF_HOST: user_input[CONF_HOST].strip().lower()}
+            # Host and port, not a rig-reported id: the API exposes nothing
+            # stable, and this is what a second instance must differ in. Set
+            # BEFORE the probe, so adding a rig twice costs no HTTP call.
+            await self.async_set_unique_id(
+                f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}"
             )
-            try:
-                await client.get_versions()
-            except (NinaConnectionError, NinaUnavailableError, NinaCommandError):
-                # Transient or equipment-level: the address is probably right.
-                errors["base"] = "cannot_connect"
-            except (NinaEndpointError, NinaRequestError):
-                # Something answers, but not the Advanced API this expects —
-                # a plugin too old, or another service on the port.
-                errors["base"] = "unsupported_api"
-            except Exception:  # noqa: BLE001
-                _LOGGER.exception("Unexpected error validating the N.I.N.A. connection")
-                errors["base"] = "unknown"
+            self._abort_if_unique_id_configured()
+            if self._name_in_use(user_input[CONF_INSTANCE_NAME]):
+                errors[CONF_INSTANCE_NAME] = "name_in_use"
             else:
-                # Host and port, not a rig-reported id: the API exposes nothing
-                # stable, and this is what a second instance must differ in.
-                await self.async_set_unique_id(
-                    f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}"
+                client = NinaClientV2(
+                    user_input[CONF_HOST],
+                    user_input[CONF_PORT],
+                    async_get_clientsession(self.hass),
                 )
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(
-                    title=user_input[CONF_INSTANCE_NAME], data=user_input
-                )
+                try:
+                    await client.get_versions()
+                except (NinaConnectionError, NinaUnavailableError, NinaCommandError):
+                    # Transient or equipment-level: the address is probably right.
+                    errors["base"] = "cannot_connect"
+                except (NinaEndpointError, NinaRequestError):
+                    # Something answers, but not the Advanced API this expects —
+                    # a plugin too old, or another service on the port.
+                    errors["base"] = "unsupported_api"
+                except Exception:  # noqa: BLE001
+                    _LOGGER.exception(
+                        "Unexpected error validating the N.I.N.A. connection"
+                    )
+                    errors["base"] = "unknown"
+                else:
+                    return self.async_create_entry(
+                        title=user_input[CONF_INSTANCE_NAME], data=user_input
+                    )
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
+        )
+
+    def _name_in_use(self, name: str) -> bool:
+        """Whether another entry already answers to this instance name.
+
+        Two rigs sharing one would name their devices identically and collide
+        into `_2` entity ids. An entry created before 2.0 carries no
+        `instance_name`, and its title is what names its devices.
+        """
+        return any(
+            entry.data.get(CONF_INSTANCE_NAME, entry.title) == name
+            for entry in self._async_current_entries()
         )
 
     @staticmethod
