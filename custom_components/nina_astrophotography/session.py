@@ -32,6 +32,12 @@ _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
 # Events that cancel a running autofocus without it reporting: the sequence
 # ending, a park, any device dropping, or the sequencer moving on to the next
 # exposure. SAFETY-CHANGED counts only when it reports unsafe.
+#
+# Read as signals, never counted. IMAGE-SAVE is the one event that cannot be
+# deduplicated across the live and replayed paths — the socket sends it with no
+# `Time`, `/event-history` with the rig's — so the set can hold two copies of
+# one save. Frames are what get counted; events only say that something
+# happened.
 _INTERRUPTIONS = frozenset({"SEQUENCE-FINISHED", "MOUNT-PARKED", "IMAGE-SAVE"})
 
 _NOTHING = SessionStats(

@@ -8,8 +8,8 @@ tempting wrong answer.
 
 A source check, because sensor.py imports Home Assistant and this suite
 deliberately does not. Its scope is sensor.py and calls that go through
-_latest_stat: frame_statistics.py reads the same vocabulary out of the
-WebSocket payload, which is a different shape and is covered behaviourally.
+_latest_stat; the push path reads the same vocabulary out of the WebSocket
+payload, which is a different shape and is covered behaviourally.
 """
 from __future__ import annotations
 
