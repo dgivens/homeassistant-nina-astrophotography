@@ -779,11 +779,20 @@ git commit -m "chore: add the payload measurement script referenced by the desig
 ## Task A5: Commit the OpenAPI spec and generate `schema.py`
 
 **Files:**
-- Create: `docs/v2.0/ninaapi-v2-openapi.json`, `scripts/generate_schema.sh`,
+- Create: `docs/v2.0/ninaapi-v2-openapi.yaml`, `scripts/generate_schema.sh`,
   `custom_components/nina_astrophotography/api/__init__.py`,
   `custom_components/nina_astrophotography/api/v2/__init__.py`,
   `custom_components/nina_astrophotography/api/v2/schema.py`
+- Rename first: `api.py` → `legacy_api.py`, repointing every `from .api import`
+  — a package named `api/` shadows a module named `api.py` the moment
+  `api/__init__.py` exists.
 - Test: `tests/unit/test_schema_is_regenerable.py`
+
+*Executed as:* the spec is the YAML from the ninaAPI **2.2.15.2** tag (blob
+sha `6c877086c42a644dbdb4acfea326ae4b75892267`), committed as
+`docs/v2.0/ninaapi-v2-openapi.yaml`, not a JSON dump from the running plugin.
+Both inits were docstring-only here; A8 added the error re-exports and A10
+`NinaClientV2`, so every PR stayed green.
 
 **Interfaces:**
 - Produces: `api/v2/schema.py` exporting one `TypedDict` per documented
@@ -799,8 +808,9 @@ Fetch the Advanced API's OpenAPI document from the running plugin and commit it
 verbatim. It is an input artifact, not documentation — do not reformat it.
 
 ```bash
-curl -sS "http://${NINA_HOST}:1888/swagger/v2/swagger.json" \
-  | python -m json.tool --sort-keys > docs/v2.0/ninaapi-v2-openapi.json
+# Executed as: the YAML from the ninaAPI 2.2.15.2 release tag, verbatim.
+curl -sSL "https://raw.githubusercontent.com/christian-photo/ninaAPI/2.2.15.2/ninaAPI/api_spec.yaml" \
+  > docs/v2.0/ninaapi-v2-openapi.yaml
 ```
 
 If the plugin does not serve the document, take it from the ninaAPI release
@@ -958,7 +968,7 @@ Expected: both PASS.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add docs/v2.0/ninaapi-v2-openapi.json scripts/generate_schema.sh \
+git add docs/v2.0/ninaapi-v2-openapi.yaml scripts/generate_schema.sh \
         custom_components/nina_astrophotography/api pyproject.toml \
         tests/unit/test_schema_is_regenerable.py
 git commit -m "feat: commit the ninaAPI v2 spec and generate the wire types from it"
@@ -982,9 +992,23 @@ git commit -m "feat: commit the ninaAPI v2 spec and generate the wire types from
   - `tests.redaction.scan(value: Any) -> list[str]` — dotted paths that still
     look sensitive. Empty means clean.
   - `tests.redaction.PROFILE_ALLOWLIST: tuple[str, ...]` — the dotted paths
-    `/profile/show` is projected down to.
+    `/profile/show` is projected down to, and
+    `tests.redaction.project(document, allowlist) -> dict` — the projection
+    itself, beside the rules so the script cannot drift from them.
   - Fixtures carrying `_meta: {captured_at, nina_version, api_version, endpoint,
     params}` (§8.7), stripped before type-checking.
+
+*Executed as:* `_FACILITY` is
+`observator|data ?cent|\b(?:building|suite|rack|coloc)\b` — the short words
+word-bounded, because unbounded `rack` matched the sequence node "Set Tracking"
+and `colo` an OSC camera's "Color". Pseudonyms are `frame_<8 hex>.fits` and
+`device-<8 hex>` (a 4-digit decimal collides at ~50% over one 122-frame night),
+with the legacy `frame_NNNN.fits` / `device-NN` forms passed through so the
+pre-script corpus stays idempotent. `nina_version` is captured from
+`/version/nina`, and the script also reads `/sequence/state` (read-only, §3.3).
+An endpoint answering no JSON envelope — the §3.5 sequence-serialization
+failure's empty body — is recorded as `{"_raw": …}` with a warning, not a
+reason to abandon the capture.
 
 - [ ] **Step 1: Write the failing redaction test**
 
@@ -1574,6 +1598,15 @@ git commit -m "feat: capture fixtures reproducibly and guard redaction before co
   types against the generated ones with a committed waiver file, one snapshotting
   the observed wire shape per dotted path.
 
+*Executed as:* `_observe` records `"list"` at every list's own path, empty or
+not, and a scalar list item (`Mount.TrackingModes`' strings) at a synthetic
+`<path>[]` leaf rather than dropping it. `_NAMESPACE` lookup fails loud on an
+endpoint it does not know — `.get(…, "")` would silently merge a new capture's
+leaves into the root namespace. The live socket payload is namespaced as
+`"socket"` → `""`, so its `ImageStatistics.*` merges into `/image-history`'s
+deliberately. The waiver check is `test_waivers_state_the_observed_wire_type`
+(§8.5).
+
 - [ ] **Step 1: Write `tests/spec_deviations.json`**
 
 One entry per §3.2 row, each with the wire truth and a reason. **Keys are the
@@ -1982,9 +2015,12 @@ Tasks A9 through A15 continue in this file; see the sections below.
   names below are the exact ones Tasks A11–A15 and all of phases B–D use:
 
   - `DeviceMeta(name: str | None, display_name: str | None, description: str | None, driver_version: str | None, device_id: str | None)`
-  - `CameraModel(connected, meta, temperature, target_temperature, cooler_on, cooler_power, dew_heater_on, gain, offset, usb_limit, camera_state, is_exposing, pixel_size, has_battery, battery, can_set_temperature, gains, binning_modes)`
+  - `CameraModel(connected, meta, temperature, target_temperature, cooler_on, cooler_power, dew_heater_on, gain, offset, usb_limit, camera_state, is_exposing, pixel_size, has_battery, battery, can_set_temperature, gains, binning_modes, bin_x)`
+    — `bin_x` is the current binning, for image scale; `/image-history` omits it.
   - `MountModel(connected, meta, right_ascension, declination, altitude, azimuth, sidereal_time, tracking_enabled, tracking_mode, tracking_modes, at_park, at_home, side_of_pier, time_to_meridian_flip, can_slew_alt_az, epoch)`
-  - `FocuserModel(connected, meta, position, temperature, is_moving, max_step, step_size, temp_comp_available, temp_comp)`
+  - `FocuserModel(connected, meta, position, temperature, is_moving, step_size, temp_comp_available, temp_comp)`
+    — no `max_step`: neither the wire nor the spec carries a travel limit; C2
+    takes the number entity's range from the driver when one exists.
   - `FilterWheelModel(connected, meta, selected_filter, available_filters, is_moving)`
   - `GuiderModel(connected, meta, state, rms_total, rms_ra, rms_dec, pixel_scale)`
   - `RotatorModel(connected, meta, position, mechanical_position, is_moving, reverse, synced)`
@@ -2000,8 +2036,12 @@ Tasks A9 through A15 continue in this file; see the sections below.
     with a `binary` property — `maximum - minimum == step_size` (§5.3.5).
   - `SwitchDeviceModel(connected, meta, channels: tuple[SwitchChannelModel, ...])`
   - `EquipmentSnapshot(camera, mount, focuser, filter_wheel, guider, rotator, dome, flat_device, weather, safety_monitor, switch_device)` — each `X | None`.
-  - `Frame(date, filename, target_name, filter_name, image_type, exposure_time, hfr, stars, mean, median, std_dev, rms, temperature, gain, offset, focal_length, generation)`
-  - `NinaEvent(name, time, payload, generation)`
+  - `Frame(date, filename, target_name, filter_name, image_type, exposure_time, hfr, stars, mean, median, std_dev, rms_arcsec, temperature, gain, offset, focal_length, generation)`
+    — `rms_arcsec` is the bracketed arcsecond total of `RmsText`, the
+    convention `GuiderModel.rms_total` uses; the leading figure is guide-camera
+    pixels.
+  - `NinaEvent(name, time, data: Mapping, generation, frame: Frame | None = None)`
+    — `frame` is set on `IMAGE-SAVE`; A13's positional `{}` binds to `data`.
   - `SessionStats(...)` — defined with `session.py` in Task A13.
   - `AutoFocusState(...)` — defined with `session.py` in Task A13.
   - `SequenceNode(name, status, iterations, children, attributes)`
@@ -2163,41 +2203,43 @@ git commit -m "feat: define the normalized model contract"
 - Consumes: `api/errors.py` (A8), `api/v2/schema.py` (A5), `tests/helpers.py`'s
   `FakeSession`, `ok()` and `failure()`.
 - Produces `NinaClientV2(host: str, port: int, session: aiohttp.ClientSession)` with:
-  - `async get_version() -> dict` / `async get_nina_version() -> dict`
+  - `async get_versions() -> VersionInfo` — tolerates a missing `/version/nina`
+    (diagnostic; `nina_version` is then `None`), never a missing `/version`
   - `async get_application_start() -> str | None`
   - `async get_equipment() -> EquipmentSnapshot`
   - `async get_frames(*, include_all: bool = False, generation: str | None = None) -> list[Frame]`
+    — an item without a `(Date, Filename)` identity is skipped with a debug log
   - `async get_image_history_count() -> int`
-  - `async get_sequence_json() -> list[dict] | None`
-  - `async get_event_history() -> list[dict]`
-  - `async get_profile() -> dict`
-  - `async get_last_autofocus() -> dict | None`
-  - `async get_flats_status() -> dict`
-  - `async get_livestack_status() -> dict`
-  - `async get_livestack_available() -> list[dict]`
-  - `async get_image_bytes(index: int, *, quality: int = 85, stretch: bool = True) -> bytes`
-  - `async set_flat_light(on: bool) -> None`
-  - `async set_flat_brightness(brightness: int) -> None`
-  - `base_url: str` — for the Lovelace cards' image URLs.
-
-  **The public getters return models, not wire data.** `_get()` and the
-  `_raw_*` helpers stay private to `api/v2/`, so `api/v2/mapper.py` has exactly
-  one consumer — the client itself — and the seam rule becomes enforceable
-  rather than aspirational. Concretely:
-
-  - `async get_equipment() -> EquipmentSnapshot`
-  - `async get_frames(*, include_all: bool = False) -> list[Frame]`
-  - `async get_events() -> list[NinaEvent]`
+  - `async get_events(generation: str | None = None) -> list[NinaEvent]`
   - `async get_sequence() -> SequenceNode | None`
   - `async get_flats() -> FlatsStatus`
   - `async get_livestack() -> LivestackStatus`
   - `async get_profile() -> ProfileSettings`
-  - `async get_versions() -> VersionInfo`
+  - `async get_image_bytes(index: int, *, quality: int = 85, auto_prepare: bool = True) -> bytes`
+  - `async set_flat_light(on: bool) -> None`
+  - `async set_flat_brightness(brightness: int) -> None`
+  - `base_url: str` — for the Lovelace cards' image URLs.
+  - `rig_offset: timedelta | None` — read-only; the cached offset below.
+
+  **The public getters return models, not wire data.** There are no
+  dict-returning getters. `_get()` and the `_raw_*` helpers stay private to
+  `api/v2/`, so `api/v2/mapper.py` has exactly one consumer — the client itself
+  — and the seam rule becomes enforceable rather than aspirational.
+  `get_livestack_available` and `get_last_autofocus` arrive in phase C with the
+  platforms that consume them. `_NO_DATA_MESSAGES` — the envelope errors that
+  mean "nothing yet" rather than a refusal — are `index out of range` and
+  `sequence is not initialized`, matched as substrings of the wire's text.
 
   The mapper needs the rig's UTC offset to stamp naive log-scraped timestamps,
   so the client caches it from each `/equipment/info`
   (`Mount.Coordinates.DateTime.{Now,UtcNow}`) and passes it down. That is the
-  one piece of state the client holds.
+  one piece of state the client holds; the coordinator reads it through
+  `rig_offset` to place the session's noon rollover in the rig's zone (§4.4).
+
+  *Executed as:* the plan's earlier dict-returning list (`get_version`,
+  `get_sequence_json`, `get_event_history`, `get_flats_status`,
+  `get_livestack_status`, `get_profile -> dict`) was self-contradictory with
+  the models rule and was never shipped.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2873,16 +2915,27 @@ def _event_time(name: str, raw: str) -> datetime:
 ```
 
 …plus one `map_*` function per Interfaces entry, each doing nothing but reading
-the wire and constructing a model. Two rules for the implementer:
+the wire and constructing a model. Three rules for the implementer:
 
-- **`map_frame` decides calibration on `HFR == 0`.** When it holds, both `hfr`
-  and `stars` are `None`; `mean`, `median` and the ADU statistics survive,
-  because they are real measurements of a real flat.
-- **`map_equipment_info` returns `None` for a device that has never carried a
-  `DeviceId`**, and a model with `connected=False` for one that has. It does
-  **not** key on the device block's presence: all eleven blocks are always
-  emitted. The latch lives in the coordinator, so a device that disconnects
-  mid-session stays present with `connected=False`.
+- **`map_frame` decides calibration on `ImageType`** — the explicit set
+  `FLAT`/`DARK`/`BIAS`/`DARKFLAT` — never on `HFR == 0`, which a clouded light
+  reports too. A calibration frame loses `hfr`, `stars` and `rms_arcsec`;
+  `mean`, `median` and the ADU statistics survive, because they are real
+  measurements of a real flat. On every other type `HFR 0`, `Stars -1` and a
+  zero RMS are secondary null-outs.
+- **`map_equipment_info` is stateless**: it maps every present block to a model
+  (`connected` from `Connected`; `meta` fields `None` when the wire dropped
+  them) and a block with `Connected: false` maps with every reading `None`.
+  The "has ever carried a `DeviceId`" latch that turns a never-observed slot
+  into `None` needs state across polls and lives in the coordinator (A14). The
+  mapper does **not** key on the device block's presence: all eleven blocks are
+  always emitted.
+- **`map_event(wire, generation, *, rig_offset=None)`** — every `NinaEvent.time`
+  is offset-aware. Naive `TS-*` times are UTC; other naive times take
+  `rig_offset`, or UTC until it is known, so ordering is always defined.
+
+*Executed as:* the snippet above leaves log-scraped times naive; the shipped
+`_event_time` takes the offset, as the Global Constraint requires.
 
 - [ ] **Step 4: Run, and check the floor**
 
@@ -2917,7 +2970,9 @@ git commit -m "feat: map the wire into models, normalizing every sentinel"
   - `image_scale_arcsec_per_px(pixel_size_um: float, focal_length_mm: float) -> float | None`
   - `hfr_arcsec(hfr_px: float, scale_arcsec_per_px: float) -> float | None`
   - `hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) -> float`
-  - `time_to_meridian_flip(hours_to_meridian: float, max_minutes_after_meridian: float, *, flipped: bool = False) -> float`
+  - `time_to_meridian_flip(hours_to_meridian_value: float, max_minutes_after_meridian: float, *, flipped: bool = False) -> float`
+    — unwrapped: ≈24 h just after a flip is the truth, and the 24 sentinel is
+    a wire-only concern the mapper handles.
   - `flip_threshold_minutes(warning_minutes: float, min_minutes_after: float, max_minutes_after: float) -> float`
 
 `sequence_progress` is deliberately **not** here: the `/sequence/json` walk is
@@ -3081,7 +3136,8 @@ def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) 
     return (right_ascension_hours - sidereal_time_hours) % 12
 
 
-def time_to_meridian_flip(hours_to_meridian: float, max_minutes_after_meridian: float,
+def time_to_meridian_flip(hours_to_meridian_value: float,
+                          max_minutes_after_meridian: float,
                           *, flipped: bool = False) -> float:
     """Hours until the flip fires.
 
@@ -3090,12 +3146,15 @@ def time_to_meridian_flip(hours_to_meridian: float, max_minutes_after_meridian: 
     worse than not deriving one. This exists for the MeridianFlipSettings-aware
     secondary warning threshold only.
 
-    Wrapped mod 12 because `hours_to_meridian` is itself mod 12: just after
-    transit it reads ~11.99, and 11.99 + 0.25 + 12 = 24.24 would collide with
-    the 24-hour "tracking off" sentinel the mapper nulls.
+    Deliberately unwrapped. Just after a flip the value is ~24 hours, and that
+    is the truth: the next flip is a sidereal day away. Wrapping it to keep it
+    under 24 turns a mount that has just finished flipping into one reading
+    minutes from the next flip. The 24-hour "tracking off" sentinel is a wire
+    value on `MountInfo.TimeToMeridianFlip` that the mapper nulls; a derived
+    figure never passes through the mapper, so it cannot be confused with it.
     """
-    value = hours_to_meridian + max_minutes_after_meridian / 60
-    return (value + 12 if flipped else value) % 24
+    value = hours_to_meridian_value + max_minutes_after_meridian / 60
+    return value + 12 if flipped else value
 
 
 def flip_threshold_minutes(warning_minutes: float, min_minutes_after: float,
@@ -3143,7 +3202,9 @@ git commit -m "feat: add the pure derivation maths"
   - `SessionStats(session_start, image_count, light_count, integration_seconds,
     hfr_mean, hfr_best, hfr_worst, star_count_mean, last_frame, by_target,
     by_filter, autofocus)`
-  - `AutoFocusState(last_success_at, running_since, failed)`
+  - `AutoFocusState(last_finished_at, running_since, failed)` — a FINISHED is
+    the report, not a verdict; an interruption inside the timeout window
+    (§4.4) aborts a run rather than failing it.
   - `TargetBreakdown(name, count, integration_seconds, hfr_mean)`
 
 - [ ] **Step 1: Write the failing example tests**
@@ -3386,8 +3447,10 @@ git commit -m "feat: fold frames and events into session statistics, purely"
   - `NinaCoordinator(DataUpdateCoordinator[NinaData])` with
     `.client: NinaClientV2`, `.frames: dict[tuple[datetime, str], Frame]`,
     `.events: list[NinaEvent]`, `.generation: str | None`.
-  - `NinaRuntimeData(client: NinaClientV2, coordinator: NinaCoordinator, service_client: NinaApiClient, instance_name: str)`;
-    `type NinaConfigEntry = ConfigEntry[NinaRuntimeData]`.
+  - `NinaRuntimeData(client: NinaClientV2, coordinator: NinaCoordinator, service_client: NinaApiClient, instance_name: str, ws_client: NinaWebSocketClient, frame_store: NinaFrameStatisticsStore)`;
+    `type NinaConfigEntry = ConfigEntry[NinaRuntimeData]`. The 1.4.x socket and
+    frame store ride along untouched so nothing is left in `hass.data`; the
+    socket's `stop` is registered with `entry.async_on_unload` before it starts.
   - `NinaEntity(CoordinatorEntity[NinaCoordinator])` with
     `_attr_has_entity_name = True` and
     `__init__(coordinator: NinaCoordinator, entry: NinaConfigEntry, key: str)`
@@ -3662,7 +3725,10 @@ Device linking arrives in phase B with `device.py`; in phase A `light.py` sets
 Four changes, and only four:
 
 1. `PLATFORMS = [Platform.LIGHT]`, with a comment naming the phase-C PR that
-   re-adds each platform.
+   re-adds each platform. *Executed as:* `PLATFORMS = []` in this task and
+   `[Platform.LIGHT]` in A15 — Home Assistant imports every listed platform
+   at setup, and the unmigrated `light.py` still imported the deleted 1.4.x
+   coordinator, so listing it here would have failed the entry.
 2. Construct `NinaClientV2` and use `client.get_version()` for the
    test-before-setup probe, mapping `NinaEndpointError` → `ConfigEntryError` and
    `NinaConnectionError`/`NinaUnavailableError` → `ConfigEntryNotReady`.
@@ -3721,7 +3787,16 @@ git commit -m "feat: coordinate on NinaData and move state to runtime_data"
 **Interfaces:**
 - Consumes: `NinaEntity` (A14), `NinaData.snapshot.flat_device` (A9/A11),
   `NinaClientV2.set_flat_light` / `.set_flat_brightness` (A10).
-- Produces: `light.nina_flat_panel_light`, gated on `SupportsOnOff`.
+- Produces: `light.n_i_n_a_flat_panel_light` — "Light" on a device named
+  `f"{instance_name} Flat Panel"` ("N.I.N.A. Flat Panel"), so the id matches
+  phases B/C's child-device scheme — gated on the panel having been *observed*
+  (§5.2.2), with `available` carrying the disconnected and cover-only states.
+  Requires `translations/en.json` mirroring `strings.json`: Home Assistant
+  reads a custom integration's entity names from `translations/` only.
+
+*Executed as:* the plan's `light.nina_flat_panel_light` and the test's
+`light.n_i_n_a_astrophotography_flat_panel_light` both implied a device named
+after the integration; the child-device name was ruled instead.
 
 `light.py` closes phase A deliberately: it is the vertical slice **and** it
 carries §5.3.4's three fixes, so per-device range scaling and
@@ -3738,7 +3813,7 @@ from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 
-ENTITY = "light.n_i_n_a_astrophotography_flat_panel_light"
+ENTITY = "light.n_i_n_a_flat_panel_light"
 
 
 async def test_brightness_scales_into_the_drivers_own_range(
