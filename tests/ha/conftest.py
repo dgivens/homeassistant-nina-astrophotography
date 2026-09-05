@@ -42,3 +42,48 @@ def config_entry() -> MockConfigEntry:
         data={CONF_HOST: "nina.local", CONF_PORT: 1888},
         entry_id="01JTESTENTRY0000000000000",
     )
+
+
+@pytest.fixture
+def nina_responses(monkeypatch):
+    """Stub the client's fast-tier reads with captured fixtures.
+
+    `get_equipment` runs the captured `/equipment/info` response through the
+    real wire→model mapper, so setup sees a snapshot shaped exactly as the rig
+    produces it. The socket is silenced: pytest-socket refuses the connection
+    and the reconnect loop would otherwise outlive the test.
+    """
+    import json
+    from pathlib import Path
+
+    from custom_components.nina_astrophotography.api.models import VersionInfo
+    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+    from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
+    from custom_components.nina_astrophotography.websocket import NinaWebSocketClient
+
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures"
+
+    def _response(name: str):
+        document = json.loads((fixtures / name).read_text(encoding="utf-8"))
+        document.pop("_meta", None)
+        return document["Response"]
+
+    monkeypatch.setattr(
+        NinaClientV2, "get_versions",
+        lambda self: _async(VersionInfo("2.2.15.2", "3.2.0.9001")),
+    )
+    monkeypatch.setattr(
+        NinaClientV2, "get_equipment",
+        lambda self: _async(map_equipment_info(_response("dawn_equipment_info.json"))),
+    )
+    monkeypatch.setattr(NinaClientV2, "get_image_history_count", lambda self: _async(122))
+    monkeypatch.setattr(
+        NinaClientV2, "get_application_start", lambda self: _async("2026-09-04T10:58:59"),
+    )
+    monkeypatch.setattr(NinaWebSocketClient, "start", lambda self: _async(None))
+    monkeypatch.setattr(NinaWebSocketClient, "stop", lambda self: _async(None))
+    return _response
+
+
+async def _async(value):
+    return value
