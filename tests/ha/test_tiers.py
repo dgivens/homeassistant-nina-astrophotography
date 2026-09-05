@@ -192,14 +192,18 @@ async def test_sequence_finished_drops_the_cadence_to_idle(
 ) -> None:
     """A recent IMAGE-SAVE holds the tier at 30 s for five minutes after the
     last frame; SEQUENCE-FINISHED is the signal that ends the session, so it
-    must not have to wait those five minutes out."""
+    must not have to wait those five minutes out.
+
+    The event buys its own final read of the tree; the tick after it is the one
+    that would come round again at 30 s and must not."""
     rig, push = await push_to()
     push({"Event": "IMAGE-SAVE", "Time": AT})
     await tick(hass, freezer, TierSchedule.SEQUENCE_IMAGING)
     assert reads(rig, "/sequence/json") == 1
     push({"Event": "SEQUENCE-FINISHED", "Time": AT})
-    await tick(hass, freezer, TierSchedule.SEQUENCE_IMAGING)
-    assert reads(rig, "/sequence/json") == 1
+    for _ in range(2):
+        await tick(hass, freezer, TierSchedule.SEQUENCE_IMAGING)
+    assert reads(rig, "/sequence/json") == 2
 
 
 async def test_an_event_driven_read_that_fails_transiently_is_asked_again(
@@ -285,3 +289,44 @@ async def test_a_restart_re_asks_an_endpoint_the_old_process_did_not_serve(
     rig.goto("imaging_guiding")
     await tick(hass, freezer, TierSchedule.FLOOR)
     assert reads(rig, "/livestack/status") == 2
+
+
+async def test_a_profile_change_reads_the_profile_back(
+    hass, push_to, config_entry
+) -> None:
+    """`ProfileService.ProfileChanged` fires on a profile SWITCH, and the new
+    profile's focal length and meridian limits are only on /profile/show.
+
+    Polled by hand rather than by the clock, as the livestack test is: this
+    state's flat panel is disconnected, so no entity holds a listener and the
+    coordinator schedules no tick of its own.
+    """
+    rig, push = await push_to("imaging_guiding")
+    push({"Event": "PROFILE-CHANGED", "Time": AT})
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert reads(rig, "/profile/show") == 1
+
+
+@pytest.mark.parametrize("event", ["SEQUENCE-STARTING", "SEQUENCE-FINISHED"])
+async def test_a_sequence_boundary_refetches_the_sequence(
+    hass, push_to, freezer, event
+) -> None:
+    """Both boundaries move every node's status at once, and only the document
+    reports it. The tier is at its 5-minute idle cadence here, so the read can
+    only have come from the event — after the 30 s debounce every
+    /sequence/json read passes."""
+    rig, push = await push_to()
+    push({"Event": event, "Time": AT})
+    await tick(hass, freezer, TierSchedule.SEQUENCE_DEBOUNCE)
+    assert reads(rig, "/sequence/json") == 1
+
+
+async def test_a_flat_panel_event_re_reads_the_panel(hass, push_to) -> None:
+    """FLAT-LIGHT-TOGGLED carries an empty payload and FLAT-BRIGHTNESS-CHANGED
+    fires through a ramp with inconsistent `Previous` values (§5.3.4), so the
+    panel's state is re-read rather than taken from the event."""
+    rig, push = await push_to()
+    push({"Event": "FLAT-LIGHT-TOGGLED", "Time": AT})
+    await hass.async_block_till_done()
+    assert reads(rig, "/equipment/info") == 1
