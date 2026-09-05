@@ -83,12 +83,11 @@ _VALUE_PATTERNS = (
 # substitutes rather than replacing the value, because the rest of a sequence
 # node's text is the structure the fixtures exist to record.
 #
-# Distinctive stems are left unbounded so
-# camel-cased compounds still match ("StarfrontObservatory"); short, generic
-# words and acronyms are word-bounded so they don't match as substrings of
-# something else — unbounded "rack" matches the sequence node named "Set
-# Tracking", and unbounded "colo" matches "Color"/"Colour" (an OSC camera's
-# Name). "coloc" (colocation), not "colo".
+# Distinctive stems are left unbounded so camel-cased compounds still match
+# ("StarfrontObservatory"); short, generic words and acronyms are word-bounded
+# so they don't match as substrings of something else — unbounded "rack"
+# matches the sequence node named "Set Tracking", and unbounded "colo" matches
+# "Color"/"Colour" (an OSC camera's Name). "coloc" (colocation), not "colo".
 _FACILITY = re.compile(
     r"observator|data ?cent|\b(?:building|suite|rack|coloc|sfro)\b", re.I
 )

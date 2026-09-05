@@ -15,17 +15,12 @@ from scenarios.fake_rig import FakeRig
 # The /application-start the restart capture carries.
 RESTART_GENERATION = "2026-09-04T10:58:59.1429105-05:00"
 
-
-@pytest.fixture(autouse=True)
-def _inside_the_dawn_session(freezer):
-    """07:30 on the rig — after its dawn flats, before its noon rollover — so
-    the 122 captured frames are all one session."""
-    freezer.move_to("2026-09-04T12:30:00+00:00")
+pytestmark = pytest.mark.usefixtures("inside_the_dawn_session")
 
 
 def _reseeds(rig: FakeRig) -> int:
     """How many times the rig has been asked for /image-history?all=true."""
-    return sum(1 for _, params in rig.requests if params == {"all": "true"})
+    return rig.reads("/image-history", {"all": "true"})
 
 
 async def test_setup_seeds_the_session_from_the_full_history(
