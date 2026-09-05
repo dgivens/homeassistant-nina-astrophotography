@@ -374,9 +374,9 @@ class NinaClientV2:
         await self._get("/equipment/mount/home")
 
     async def set_tracking_mode(self, mode: int) -> None:
-        """`mode` is the index 0 Sidereal, 1 Lunar, 2 Solar, 3 King, 4 Stopped.
-        Which of them a mount actually offers comes from its `TrackingModes`;
-        the full range is not universally available."""
+        """`mode` is the API's enum value — 0 Sidereal, 1 Lunar, 2 Solar,
+        3 King, 4 Stopped — and **not** the position in `TrackingModes`, which
+        omits modes a mount does not offer."""
         await self._get("/equipment/mount/tracking", {"mode": mode})
 
     # focuser
@@ -412,11 +412,28 @@ class NinaClientV2:
         different endpoint, /equipment/rotator/move-mechanical."""
         await self._get("/equipment/rotator/move", {"position": position})
 
+    async def move_rotator_mechanical(self, position: float) -> None:
+        """`position` is the MECHANICAL angle in degrees, which is what the
+        rotator reports as `MechanicalPosition`; /move takes the sky angle.
+
+        Parameter name taken from the spec and not confirmed against hardware.
+        """
+        await self._get("/equipment/rotator/move-mechanical", {"position": position})
+
     async def set_rotator_reverse(self, on: bool) -> None:
         """The parameter is `reverseDirection`."""
         await self._get("/equipment/rotator/reverse", {"reverseDirection": _boolean(on)})
 
     # dome
+
+    async def slew_dome(self, azimuth: float) -> None:
+        """Degrees. The spec also declares `waitToFinish`; it is omitted, since
+        a command that blocks until the dome arrives would hold the poll.
+
+        Parameter name taken from the spec and not confirmed against hardware —
+        there is no dome to confirm it against (§5.3.1).
+        """
+        await self._get("/equipment/dome/slew", {"azimuth": azimuth})
 
     async def open_dome(self) -> None:
         await self._get("/equipment/dome/open")
