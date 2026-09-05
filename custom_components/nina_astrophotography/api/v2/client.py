@@ -215,10 +215,10 @@ class NinaClientV2:
         and the socket's own dispatch.
         """
         raw = await self._raw_event_history()
+        if not isinstance(raw, list):
+            return []
         events: list[NinaEvent] = []
-        for item in raw if isinstance(raw, list) else ():
-            if not isinstance(item, dict):
-                continue
+        for item in raw:
             try:
                 events.append(map_event(item, generation, rig_offset=self._rig_offset))
             except (AttributeError, KeyError, TypeError, ValueError) as exc:

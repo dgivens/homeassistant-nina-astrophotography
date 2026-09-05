@@ -1,10 +1,14 @@
 """The device model: a hub, one child per equipment type, metadata in the registry."""
+from dataclasses import fields
+
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.nina_astrophotography import async_remove_config_entry_device
+from custom_components.nina_astrophotography.api.models import EquipmentSnapshot
 from custom_components.nina_astrophotography.const import DOMAIN
+from custom_components.nina_astrophotography.device import KINDS
 
 
 def _device(hass: HomeAssistant, entry, kind: str | None = None):
@@ -13,6 +17,12 @@ def _device(hass: HomeAssistant, entry, kind: str | None = None):
     return dr.async_get(hass).async_get_device_by_identifier(
         (DOMAIN, f"{entry.entry_id}{suffix}"), entry.entry_id
     )
+
+
+def test_every_kind_is_an_equipment_snapshot_field() -> None:
+    """One list, not two: `getattr(snapshot, kind)` is how the coordinator's
+    first-sight latch and an entity's availability both read a device."""
+    assert set(KINDS) == {field.name for field in fields(EquipmentSnapshot)}
 
 
 async def test_each_equipment_type_is_its_own_device(

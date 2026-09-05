@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
@@ -69,8 +69,6 @@ _LOGGER = logging.getLogger(__name__)
 
 FAST_INTERVAL = timedelta(seconds=10)
 
-_DEVICE_SLOTS = tuple(field.name for field in fields(EquipmentSnapshot))
-
 # endpoint -> (the attribute the model is stored on, the client getter).
 # `/equipment/focuser/last-af` is deliberately absent: phase C adds its model,
 # and there is nothing to store until then.
@@ -85,8 +83,8 @@ _TIER_READS: dict[str, tuple[str, str]] = {
 # all — the FLAT-* events are panel hardware, not the flat wizard.
 _FLOOR_ENDPOINTS = ("/flats/status", "/livestack/status", "/profile/show")
 
-# What a slot reads before its endpoint has ever answered, and what it goes on
-# reading if the build does not serve it.
+# What a tier publishes before its endpoint has ever answered, and what it goes
+# on publishing if the build does not serve it.
 _NO_FLATS = FlatsStatus(state=None, total_iterations=None, completed_iterations=None)
 _NO_LIVESTACK = LivestackStatus(running=False, raw_state="")
 _NO_PROFILE = ProfileSettings(
@@ -122,7 +120,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     presence proves nothing. A device is *observed* once it has carried a
     `DeviceId`, and the observation is latched for the coordinator's lifetime —
     disconnection drops the `DeviceId`, so evaluating it per poll would delete
-    the device the moment it went down. A never-observed slot publishes as
+    the device the moment it went down. A never-observed kind publishes as
     `None`; an observed one that is down publishes with `connected=False`.
     """
 
@@ -182,31 +180,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             snapshot = await self.client.get_equipment()
             application_start = await self.client.get_application_start()
             count = await self.client.get_image_history_count()
-            restarted = self._restart.observe(application_start, count)
-            if restarted:
-                _LOGGER.info(
-                    "N.I.N.A. restarted (%s); reseeding from /image-history?all=true",
-                    application_start,
-                )
-                # A restart is exactly when the served routes change — a plugin
-                # enabled, the API updated — so what the old process refused
-                # says nothing about the new one. `/event-history` is replayed
-                # again for the same reason, under the new generation.
-                self._not_served.clear()
-                self._tier_warned.clear()
-                self._replayed = False
-            # Only a restart moves the generation on. A single unreadable
-            # /application-start is missing information, not a new process, and
-            # adopting its `None` would filter the whole session away for a tick.
-            if restarted or self.generation is None:
-                self._set_generation(application_start)
-            # The frame set is never seeded from the bare path: it answers the
-            # newest frame alone, which leaves the session count reading 1.
-            if restarted or not self._seeded:
-                await self._reseed(count)
-            elif self._reseed_guard.check(self._generation_frames(), count):
-                await self._reseed(count)
-            self._restart.update(application_start, count)
+            await self._track_process(application_start, count)
         except (NinaRequestError, NinaEndpointError) as exc:
             # Neither becomes right by retrying. With a previous snapshot, log
             # once and keep it rather than making every entity unavailable;
@@ -244,21 +218,68 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             await self._replay()
         return self._assemble(snapshot)
 
+    async def _track_process(self, application_start: str | None, count: int) -> None:
+        """Apply the process boundary, and keep the frame set whole across it.
+
+        Runs inside the poll's own error handling: every call it makes can
+        raise, and a failure here is a failed poll rather than a silent gap in
+        the fold.
+        """
+        restarted = self._restart.observe(application_start, count)
+        if restarted:
+            _LOGGER.info(
+                "N.I.N.A. restarted (%s); reseeding from /image-history?all=true",
+                application_start,
+            )
+            # A restart is exactly when the served routes change — a plugin
+            # enabled, the API updated — so what the old process refused says
+            # nothing about the new one. `/event-history` is replayed again for
+            # the same reason, under the new generation.
+            self._not_served.clear()
+            self._tier_warned.clear()
+            self._replayed = False
+        # Only a restart moves the generation on. A single unreadable
+        # /application-start is missing information, not a new process, and
+        # adopting its `None` would filter the whole session away for a tick.
+        if restarted or self.generation is None:
+            self._set_generation(application_start)
+        # The frame set is never seeded from the bare path: it answers the
+        # newest frame alone, which leaves the session count reading 1. The
+        # guard is consulted only when nothing else has already asked for a
+        # reseed — a tick that reseeds anyway must not spend one of its two
+        # strikes.
+        if restarted or not self._seeded:
+            await self._reseed(count)
+        elif self._reseed_guard.check(self._generation_frames(), count):
+            await self._reseed(count)
+        self._restart.update(application_start, count)
+
     def handle_event(self, event: NinaEvent) -> None:
         """Fold one pushed event into the accumulated sets and publish.
 
         `async_set_updated_data`, never `async_request_refresh`: publishing the
         fold directly is what makes the design push-first rather than
-        socket-as-a-hint (§6.3). The tier reactions below are the exceptions —
-        they ask for a value the event does not carry.
+        socket-as-a-hint (§6.3). `_react_to` holds the exceptions — the events
+        that ask for a value the event itself does not carry.
+
+        The publish comes FIRST, and the order is load-bearing:
+        `async_set_updated_data` cancels the debouncer, so a publish after
+        §6.4's `async_request_refresh` would eat the very refetch that branch
+        had just asked for.
         """
         if not self._take(event):
             return
-        # Published BEFORE the tier reactions below, and the order is
-        # load-bearing: `async_set_updated_data` cancels the debouncer, so a
-        # publish after §6.4's `async_request_refresh` would eat the very
-        # refetch that branch had just asked for.
         self._publish()
+        self._react_to(event)
+
+    def _react_to(self, event: NinaEvent) -> None:
+        """Queue what one event's own payload cannot answer.
+
+        AUTOFOCUS-FINISHED queues nothing yet: /equipment/focuser/last-af has
+        no model until phase C. TS-* queue nothing by design — TS-TARGETSTART
+        fires once per exposure and its payload already carries TargetName,
+        ProjectName, Rotation and TargetEndTime (§6.1).
+        """
         name = event.name
         if name == "IMAGE-SAVE":
             # The imaging heuristic only — the frame itself rides the push path.
@@ -303,10 +324,6 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self.config_entry.async_create_task(
                 self.hass, self.async_request_refresh(), "nina_event_refresh"
             )
-        # AUTOFOCUS-FINISHED queues nothing yet: /equipment/focuser/last-af has
-        # no model until phase C. TS-* queue nothing by design — TS-TARGETSTART
-        # fires once per exposure and its payload already carries TargetName,
-        # ProjectName, Rotation and TargetEndTime (§6.1).
 
     def schedule_reconnect(self) -> None:
         """Run the reconnect recovery on the entry, so unload cancels it."""
@@ -399,13 +416,13 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             imaging(snapshot, count, baseline, self._since_last_image_save())
         )
         queued = schedule.take_pending()
-        endpoints = set(queued)
         # Every /sequence/json read passes one debounce — the tier's own and
         # any an event queued — so ≤1 per 30 s is structural rather than a
-        # property of whichever caller asked (§6.1).
-        asked_for = "/sequence/json" in endpoints
+        # property of whichever caller asked (§6.1). It re-enters `endpoints`
+        # only through that debounce.
+        endpoints = queued - {"/sequence/json"}
+        asked_for = "/sequence/json" in queued
         wanted = asked_for or schedule.due("sequence")
-        endpoints.discard("/sequence/json")
         if wanted and schedule.request_sequence_refetch(
             requeue="/sequence/json" if asked_for else None
         ):
@@ -473,16 +490,16 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def _log_connection_changes(self, snapshot: EquipmentSnapshot) -> None:
         """Level 2's transitions: one line when a device drops, one when it returns.
 
-        A slot that has never been observed connected has not "come back" —
+        A kind that has never been observed connected has not "come back" —
         equipment is routinely down when Home Assistant starts, and treating
         first sight as a recovery would log a line per device at every startup.
         """
         previous = self._last_snapshot
         if previous is None:
             return
-        for slot, label in KINDS.items():
-            before = getattr(previous, slot)
-            after = getattr(snapshot, slot)
+        for kind, label in KINDS.items():
+            before = getattr(previous, kind)
+            after = getattr(snapshot, kind)
             if before is None or after is None or before.connected == after.connected:
                 continue
             if after.connected:
@@ -545,12 +562,16 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._mismatch_logged = True
 
     def _latch_observed(self, snapshot: EquipmentSnapshot) -> EquipmentSnapshot:
-        """Record every slot carrying a `DeviceId`; blank the never-observed."""
-        for slot in _DEVICE_SLOTS:
-            device = getattr(snapshot, slot)
+        """Record every kind carrying a `DeviceId`; blank the never-observed.
+
+        `KINDS` and the `EquipmentSnapshot` field names are one list — a kind
+        indexes the snapshot directly.
+        """
+        for kind in KINDS:
+            device = getattr(snapshot, kind)
             if device is not None and device.meta.device_id is not None:
-                self._observed.add(slot)
-        unseen = {slot: None for slot in _DEVICE_SLOTS if slot not in self._observed}
+                self._observed.add(kind)
+        unseen = {kind: None for kind in KINDS if kind not in self._observed}
         return replace(snapshot, **unseen)
 
     def _now(self) -> datetime:
