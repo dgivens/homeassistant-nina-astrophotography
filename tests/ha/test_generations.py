@@ -45,6 +45,22 @@ async def test_a_restart_empties_the_session_without_clearing_the_set(
     assert data.session.image_count == 0
 
 
+async def test_a_restart_reseeds_the_new_generations_frames(
+    rig: FakeRig, loaded_entry: MockConfigEntry, advance, freezer
+) -> None:
+    """N.I.N.A. restarts at dusk and saves subs before Home Assistant's next
+    poll, so a restart that only moved the generation would read 0 frames until
+    the double-mismatch guard fired two ticks later.
+
+    `imaging_guiding` IS such a restart: a new `/application-start` with 27
+    frames already down. The clock moves into that state's own session.
+    """
+    freezer.move_to("2026-09-05T07:30:00+00:00")
+    await advance("imaging_guiding")
+    assert loaded_entry.runtime_data.coordinator.data.session.image_count == 27
+    assert _reseeds(rig) == 2                  # setup, then the restart
+
+
 async def test_the_event_stream_follows_the_new_generation(
     loaded_entry: MockConfigEntry, advance
 ) -> None:
