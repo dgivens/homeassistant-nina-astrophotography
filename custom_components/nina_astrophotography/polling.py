@@ -12,8 +12,36 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 
-from .api.models import EquipmentSnapshot
+from .api.models import EquipmentSnapshot, NinaEvent
+
+
+class EventLedger:
+    """Which events the fold has already taken.
+
+    The key is `(generation, name, time)` — all the identity a replayed event
+    has, since `/event-history` stores exactly `{Event, Time}` even for the
+    `IMAGE-SAVE` the socket sent with statistics attached.
+
+    The mark is scoped to the GENERATION. A restart resets `/event-history`
+    with fresh timestamps that can be EARLIER than a retained mark — a
+    next-evening restart emits 21:00 events against an 05:30 one — so a mark
+    spanning generations would filter a whole replay away as already-seen.
+    """
+
+    def __init__(self) -> None:
+        self._taken: set[tuple[str | None, str, datetime]] = set()
+
+    @staticmethod
+    def _key(event: NinaEvent) -> tuple[str | None, str, datetime]:
+        return (event.generation, event.name, event.time)
+
+    def seen(self, event: NinaEvent) -> bool:
+        return self._key(event) in self._taken
+
+    def mark(self, event: NinaEvent) -> None:
+        self._taken.add(self._key(event))
 
 
 @dataclass
@@ -101,9 +129,9 @@ class TierSchedule:
     checks inside it, not three coordinators.
 
         fast       7,420 B @ 10 s  =  44,520 B/min
-        sequence   8,429 B @ 30 s  =  16,858 B/min
+        sequence   8,418 B @ 30 s  =  16,836 B/min
                                       ──────────
-                                      61,378 B/min ~ 3.7 MB/h ~ 37 MB / night
+                                      61,356 B/min ~ 3.7 MB/h ~ 37 MB / night
         before                        82,606 B x 6/min ~ 297 MB / night
     """
 
@@ -157,16 +185,23 @@ class TierSchedule:
         afterwards puts the tier back at 30 s through `set_imaging`."""
         self.sequence_interval = self.SEQUENCE_IDLE
 
-    def request_sequence_refetch(self, now: float | None = None) -> bool:
+    def request_sequence_refetch(self, now: float | None = None, *,
+                                 requeue: str | None = None) -> bool:
         """True at most once per 30 s.
 
         `TS-TARGETSTART` fires once per exposure and its payload already
         carries what a refetch would fetch, so an undebounced refetch turns the
         sequence tier's budget into a per-exposure cost.
+
+        `requeue` names the endpoint to hold pending when the debounce refuses:
+        the debounce is a rate limit, not a veto, and dropping a request an
+        event made loses it until the five-minute floor comes round.
         """
         moment = self._now() if now is None else now
         if (self._requested is not None
                 and moment - self._requested < self.SEQUENCE_DEBOUNCE):
+            if requeue is not None:
+                self._pending.add(requeue)
             return False
         self._requested = moment
         return True

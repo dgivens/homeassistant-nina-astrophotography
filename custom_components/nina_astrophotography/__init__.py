@@ -27,7 +27,6 @@ from .api.errors import (
 from .api.models import NinaEvent
 from .api.v2 import NinaClientV2, NinaEventStream
 from .legacy_api import NinaApiClient
-from .frame_statistics import NinaFrameStatisticsStore
 from .const import (
     CONF_API_VERSION,
     CONF_HOST,
@@ -110,7 +109,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         update_interval=timedelta(seconds=poll_interval),
         version=version,
     )
-    await coordinator.async_config_entry_first_refresh()
 
     # ── The event socket: real-time push ─────────────────────────────────────
     def _fire_bus_event(event: NinaEvent) -> None:
@@ -128,11 +126,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         hass.bus.async_fire(f"nina_{event.name.lower().replace('-', '_')}", payload)
         hass.bus.async_fire("nina_event", payload)
 
+    connected_before = False
+
     def _fire_connection_event(connected: bool) -> None:
+        nonlocal connected_before
         hass.bus.async_fire(
             "nina_websocket_connected" if connected else "nina_websocket_disconnected",
             {},
         )
+        if not connected:
+            return
+        if connected_before:
+            # A RECONNECT, so the socket has been silent for a while: the frame
+            # set is reseeded and /event-history replayed for what it missed.
+            # The first connection needs neither — setup has just done both.
+            hass.async_create_task(coordinator.async_reconnected())
+        connected_before = True
 
     events = NinaEventStream(
         host=host,
@@ -141,16 +150,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         rig_offset=lambda: client.rig_offset,
         on_connection=_fire_connection_event,
     )
-    # At setup the first refresh has already read /application-start; from
-    # here the coordinator keeps the socket's tag current across restarts.
-    events.generation = coordinator.generation
+    # Wired BEFORE the first refresh: that refresh replays /event-history
+    # through the stream, and it is what first sets the generation the stream
+    # stamps on every event it dispatches.
     coordinator.event_stream = events
     events.subscribe(coordinator.handle_event)
     events.subscribe(_fire_bus_event)
 
-    # No longer fed: its only consumer, frame_stats_sensor.py, is unregistered
-    # and B4 deletes both.
-    frame_store = NinaFrameStatisticsStore()
+    await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = NinaRuntimeData(
         client=client,
@@ -158,7 +165,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         service_client=service_client,
         instance_name=entry.title,
         events=events,
-        frame_store=frame_store,
     )
     # Registered before the socket starts: on_unload callbacks also run when a
     # later setup step fails, which is what keeps the reconnect task from
