@@ -57,9 +57,9 @@ class NinaSelectDescription(SelectEntityDescription):
     `{entry_id}_{unique_id_suffix or key}`."""
 
 
-def _read(kind: str, field: str):
-    """One field off one equipment model, empty while the device is absent."""
-    def value(data: NinaData):
+def _read(kind: str, field: str) -> Callable[[NinaData], str | None]:
+    """One field off one equipment model, `None` while the device is absent."""
+    def value(data: NinaData) -> str | None:
         device = getattr(data.snapshot, kind)
         return None if device is None else getattr(device, field)
 
