@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+from typing import NamedTuple
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -113,18 +114,25 @@ class _RigRouter:
         return self._rig(url).post(url, json, params, timeout)
 
 
+class TwoRigs(NamedTuple):
+    """Two loaded entries and the rig each one reads, in the same order."""
+
+    entries: tuple[MockConfigEntry, ...]
+    rigs: tuple[FakeRig, ...]
+
+
 @pytest.fixture
-async def two_rigs(hass, monkeypatch) -> tuple[MockConfigEntry, MockConfigEntry]:
+async def two_rigs(hass, monkeypatch) -> TwoRigs:
     """Two loaded instances, each reading its own rig.
 
     The second rig starts restarted: two identical rigs cannot show that a
-    request reached the right one.
+    request reached the right one. The rigs come back too, so a test can move
+    one instance without touching the other.
     """
     instances = [("nina.local", "N.I.N.A.", "imaging"),
                  ("other.local", "Dome", "nina_restarted")]
-    _serve(monkeypatch, _RigRouter(
-        {host: FakeRig(STATES, start=state) for host, _, state in instances}
-    ))
+    rigs = {host: FakeRig(STATES, start=state) for host, _, state in instances}
+    _serve(monkeypatch, _RigRouter(rigs))
     entries = []
     for index, (host, title, _) in enumerate(instances):
         entry = MockConfigEntry(
@@ -136,7 +144,7 @@ async def two_rigs(hass, monkeypatch) -> tuple[MockConfigEntry, MockConfigEntry]
         assert await hass.config_entries.async_setup(entry.entry_id)
         entries.append(entry)
     await hass.async_block_till_done()
-    return tuple(entries)
+    return TwoRigs(tuple(entries), tuple(rigs.values()))
 
 
 # `push` is deliberately absent: firing an event needs phase B1's event stream,

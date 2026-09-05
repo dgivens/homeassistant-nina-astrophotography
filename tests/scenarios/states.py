@@ -8,9 +8,13 @@ not name.
 
 Every state carries the same endpoints, so advancing never changes which routes
 exist — an endpoint one state serves and another does not reads to the client
-as a build that dropped a route. `/livestack/status` is in no state: the corpus
-holds no capture of it, so it answers 404 and the client raises
-`NinaEndpointError`, which is the truthful "this build does not serve it".
+as a build that dropped a route.
+
+No capture exists yet for `/livestack/status`, `/profile/show?active=true` or
+`/equipment/focuser/last-af`, all three of which the event-driven tier polls
+(§11's meridian flip needs `MeridianFlipSettings`; the autofocus R² check needs
+`/last-af`). They are in no state: an unregistered path answers 404 so the
+coordinator's not-served handling is exercised, never a fake body.
 
 Adding a state: build it from captured envelopes, never from a hand-written
 document. A state the corpus cannot show belongs in `AWAITING_CAPTURE`.
@@ -25,7 +29,9 @@ from helpers import FIXTURES, load_envelope, ok
 
 State = dict[str, Any]
 
-# Identity keys the wire DROPS when a device disconnects. A disconnected device
+# Keys the wire DROPS when a device disconnects — exactly these seven, read off
+# the corpus: the focuser goes 15 keys to 8, the rotator 15 to 8 and the weather
+# station 22 to 15, each losing this set and nothing else. A disconnected device
 # does not null its fields; deriving one by setting Connected=False on a full
 # block would produce a shape the wire never sends, and the coordinator's
 # first-sight latch keys on DeviceId.
@@ -36,6 +42,7 @@ _IDENTITY_KEYS = (
     "Description",
     "DriverInfo",
     "DriverVersion",
+    "SupportedActions",
 )
 
 
@@ -63,6 +70,18 @@ def _truncated_after_the_last_autofocus_start(name: str) -> dict:
     return {**envelope, "Response": events[: starts[-1] + 1]}
 
 
+def _newest_frame(name: str) -> dict:
+    """Bare `/image-history`: the newest frame of a captured `?all=true` list.
+
+    The bytes are captured; only the envelope around them is assembled, because
+    no bare capture of a rig holding frames exists. The frame is the wire's own
+    newest by `Date`, and it is a single object rather than a list — reseeding
+    the session from it is what leaves `Session Image Count` reading 1.
+    """
+    frames = load_envelope(name)["Response"]
+    return ok(max(frames, key=lambda frame: frame["Date"]))
+
+
 def _replace_device(state: State, device: str, block: dict) -> State:
     """A copy of `state` with one `/equipment/info` device block swapped."""
     envelope = state["/equipment/info"]
@@ -78,6 +97,7 @@ _IMAGING: State = {
     "/equipment/info": load_envelope("dawn_equipment_info.json"),
     "/image-history?count=true": load_envelope("dawn_image_history_count.json"),
     "/image-history?all=true": load_envelope("dawn_image_history_with_flats.json"),
+    "/image-history": _newest_frame("dawn_image_history_with_flats.json"),
     "/event-history": load_envelope("dawn_event_history.json"),
     "/sequence/json": load_envelope("dawn_sequence_complete.json"),
     "/flats/status": load_envelope("dawn_flats_status_idle.json"),
@@ -130,9 +150,11 @@ def disconnect(state: State, *devices: str) -> State:
     return state
 
 
+# Each name gets its own dict even where two are content-equal, so an in-place
+# edit in one test cannot leak into a state of another name.
 STATES: dict[str, State] = {
     # Mid-session: eleven devices, 122 frames, the sequence running.
-    "imaging": _IMAGING,
+    "imaging": dict(_IMAGING),
     # The 67 flats are in the same history — dawn flats are a phase of the
     # night, not a different snapshot.
     "dawn_flats": dict(_IMAGING),
@@ -143,7 +165,7 @@ STATES: dict[str, State] = {
         _IMAGING, "Mount", load_envelope("dawn_mount_tracking_off.json")["Response"]
     ),
     # Four of eleven devices connected, mid-reconnect.
-    "partial_equipment_connection": _RESTARTED,
+    "partial_equipment_connection": dict(_RESTARTED),
     "nina_restarted": dict(_RESTARTED),
     "sequencer_not_initialized": {
         **_IMAGING,

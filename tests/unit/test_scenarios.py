@@ -15,12 +15,19 @@ from scenarios.states import AWAITING_CAPTURE, SEQUENCES, STATES, disconnect
 from nina_astrophotography.api.errors import NinaConnectionError, NinaEndpointError
 from nina_astrophotography.api.v2.client import NinaClientV2
 
-FAST_TIER = {
+# Every state serves all of these. A state missing one reads to the client as a
+# build that dropped a route, which is a different thing from the state's data.
+COMMON_ENDPOINTS = {
     "/version",
     "/version/nina",
     "/application-start",
     "/equipment/info",
+    "/image-history",
     "/image-history?count=true",
+    "/image-history?all=true",
+    "/event-history",
+    "/sequence/json",
+    "/flats/status",
 }
 
 
@@ -38,10 +45,9 @@ def test_every_sequence_names_states_that_exist() -> None:
 
 
 @pytest.mark.parametrize("name", sorted(STATES))
-def test_each_state_carries_the_fast_tier_endpoints(name: str) -> None:
-    """Advancing must not change which endpoints exist: an endpoint one state
-    serves and another does not reads as a build that dropped a route."""
-    assert FAST_TIER <= set(STATES[name])
+def test_every_state_serves_the_same_endpoints(name: str) -> None:
+    """Advancing must not change which routes exist, only what they answer."""
+    assert COMMON_ENDPOINTS <= set(STATES[name])
 
 
 async def test_the_history_parameters_dispatch_to_different_answers() -> None:
@@ -52,11 +58,17 @@ async def test_the_history_parameters_dispatch_to_different_answers() -> None:
     assert len(await client.get_frames(include_all=True)) == 122
 
 
-async def test_a_bare_path_is_served_when_the_state_registers_one() -> None:
-    """Bare /image-history answers `Index out of range` on a restarted rig,
-    which is no data rather than a failure."""
-    client = _client(FakeRig(STATES, start="nina_restarted"))
-    assert await client.get_frames() == []
+@pytest.mark.parametrize(
+    ("state", "frames"),
+    [("imaging", 1), ("nina_restarted", 0)],
+    ids=["newest frame only", "index out of range"],
+)
+async def test_the_bare_history_path_is_served_by_every_state(
+    state: str, frames: int
+) -> None:
+    """Bare /image-history answers the newest frame alone — which is why it is
+    not a reseed source — or `Index out of range`, which is no data."""
+    assert len(await _client(FakeRig(STATES, start=state)).get_frames()) == frames
 
 
 async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> None:
@@ -95,15 +107,24 @@ async def test_a_command_is_recorded_and_answered_success() -> None:
     assert rig.sent == [("/equipment/flatdevice/set-brightness", {"brightness": 2048})]
 
 
-@pytest.mark.parametrize("device", ["Camera", "SafetyMonitor", "Mount"])
+@pytest.mark.parametrize(
+    "device",
+    [pytest.param("Camera", marks=pytest.mark.synthetic),
+     pytest.param("SafetyMonitor", marks=pytest.mark.synthetic),
+     "Mount"],
+)
 def test_a_disconnected_device_drops_its_identity_rather_than_nulling_it(
     device: str,
 ) -> None:
-    """The wire DROPS DeviceId, Name and DisplayName when a device goes down.
-    Setting Connected=False on a full block would produce a shape it never
-    sends, and the first-sight latch keys on DeviceId."""
+    """The wire DROPS the identity keys when a device goes down. Setting
+    Connected=False on a full block would produce a shape it never sends, and
+    the first-sight latch keys on DeviceId.
+
+    The camera and the safety monitor are connected in every capture, so their
+    down-blocks are derived by that rule; the mount's is captured.
+    """
     block = disconnect(STATES["imaging"], device)["/equipment/info"]["Response"][device]
-    assert not {"DeviceId", "Name", "DisplayName"} & set(block)
+    assert not {"DeviceId", "Name", "DisplayName", "SupportedActions"} & set(block)
     assert block["Connected"] is False
 
 
@@ -113,7 +134,10 @@ def test_disconnecting_leaves_the_state_it_was_derived_from_alone() -> None:
     assert camera["DeviceId"] == "device-01"
 
 
+@pytest.mark.synthetic
 async def test_every_device_is_down_in_the_fully_disconnected_state() -> None:
+    """Four of the eleven down-blocks are derived: no capture has the camera,
+    flat panel, safety monitor or switch hub disconnected."""
     rig = FakeRig(STATES, start="equipment_disconnected")
     snapshot = await _client(rig).get_equipment()
     devices = [getattr(snapshot, field.name) for field in fields(snapshot)]

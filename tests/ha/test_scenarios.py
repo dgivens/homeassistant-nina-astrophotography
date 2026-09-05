@@ -27,7 +27,7 @@ async def test_two_instances_each_read_their_own_rig(
 ) -> None:
     """One session serves both hosts, so a router bug shows as both entries
     publishing the same generation."""
-    first, second = two_rigs
+    first, second = two_rigs.entries
     assert first.runtime_data.coordinator.data.generation != RESTART_GENERATION
     assert second.runtime_data.coordinator.data.generation == RESTART_GENERATION
-    assert [e.state for e in two_rigs] == [ConfigEntryState.LOADED] * 2
+    assert [e.state for e in two_rigs.entries] == [ConfigEntryState.LOADED] * 2
