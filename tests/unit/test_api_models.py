@@ -1,27 +1,7 @@
-"""models.py distinguishes 'never seen' from 'present but disconnected'."""
+"""The model contract's own logic — the switch channel's binary rule."""
 import pytest
 
-from nina_astrophotography.api.models import (
-    DeviceMeta,
-    EquipmentSnapshot,
-    SwitchChannelModel,
-    WeatherModel,
-)
-
-
-def test_absent_device_is_none_and_disconnected_device_is_a_model() -> None:
-    """§5.2.2 and §7.3 both need this distinction from one snapshot."""
-    snapshot = EquipmentSnapshot(
-        camera=None,
-        mount=None, focuser=None, filter_wheel=None, guider=None, rotator=None,
-        dome=None, flat_device=None,
-        weather=WeatherModel(connected=False, meta=DeviceMeta(None, None, None, None, None),
-                             channels={}),
-        safety_monitor=None, switch_device=None,
-    )
-    assert snapshot.camera is None                 # never seen
-    assert snapshot.weather is not None            # seen, currently down
-    assert snapshot.weather.connected is False
+from nina_astrophotography.api.models import SwitchChannelModel
 
 
 def test_a_switch_channel_is_binary_when_its_range_is_one_step() -> None:

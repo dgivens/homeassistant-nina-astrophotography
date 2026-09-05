@@ -268,6 +268,7 @@ def test_an_unparsable_rms_text_is_no_reading(first_light) -> None:
     assert map_frame({**first_light, "RmsText": "n/a"}, generation="g1").rms_arcsec is None
 
 
+@pytest.mark.synthetic
 def test_a_clouded_light_keeps_its_zero_star_count() -> None:
     """A light through thick cloud reports HFR 0 with Stars 0, and "zero stars
     detected" is the most diagnostic reading a clouded-out sub has. Keying
@@ -298,56 +299,50 @@ def test_a_frame_taken_with_no_filter_names_none() -> None:
     assert map_frame(push, generation="g1").filter_name is None
 
 
+def _first_event(name: str) -> dict:
+    """The first `/event-history` entry of that name from the dawn night: an
+    offset-aware mediator IMAGE-SAVE (21:26:56-05:00), a naive-UTC
+    TS-NEWTARGETSTART (02:15:32) and a naive-local ERROR-PLATESOLVE (21:54:26)."""
+    return next(e for e in load("dawn_event_history.json") if e["Event"] == name)
+
+
 def test_mediator_event_times_are_offset_aware_local() -> None:
-    event = map_event({"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"},
-                      generation="g1")
-    assert event.time.utcoffset() is not None
+    event = map_event(_first_event("IMAGE-SAVE"), generation="g1")
+    assert event.time.utcoffset() == timedelta(hours=-5)
 
 
 def test_ts_event_times_are_naive_utc() -> None:
     """Two naive formats, indistinguishable by shape — key on the event name."""
-    event = map_event({"Event": "TS-TARGETSTART", "Time": "2026-09-04T02:15:32.78"},
-                      generation="g1")
-    assert event.time.utcoffset().total_seconds() == 0
+    event = map_event(_first_event("TS-NEWTARGETSTART"), generation="g1")
+    assert event.time.utcoffset() == timedelta(0)
 
 
 def test_log_scraped_event_times_are_local_and_still_offset_aware() -> None:
     """Left naive, the first ERROR-PLATESOLVE to land beside 600 offset-aware
     events crashes fold()'s sorted iteration with "can't compare offset-naive
     and offset-aware datetimes". Every NinaEvent.time is aware."""
-    from datetime import timedelta
-
-    event = map_event({"Event": "ERROR-PLATESOLVE", "Time": "2026-09-03T21:54:26.93"},
-                      generation="g1", rig_offset=timedelta(hours=-5))
+    event = map_event(_first_event("ERROR-PLATESOLVE"), generation="g1",
+                      rig_offset=timedelta(hours=-5))
     assert event.time.utcoffset() == timedelta(hours=-5)
 
 
 def test_a_naive_local_time_falls_back_to_utc_before_the_offset_is_known() -> None:
     """The first poll can arrive after the first event. Ordering must always be
     defined; replay corrects it once the mount's clock has been read."""
-    event = map_event({"Event": "ERROR-PLATESOLVE", "Time": "2026-09-03T21:54:26.93"},
-                      generation="g1")
+    event = map_event(_first_event("ERROR-PLATESOLVE"), generation="g1")
     assert event.time.utcoffset() == timedelta(0)
 
 
 def test_every_event_class_sorts_together() -> None:
     """The property that matters: one comparable ordering across all three."""
-    from datetime import timedelta
-
     offset = timedelta(hours=-5)
-    events = [
-        map_event({"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"},
-                  "g1", rig_offset=offset),
-        map_event({"Event": "TS-TARGETSTART", "Time": "2026-09-04T02:15:32.78"},
-                  "g1", rig_offset=offset),
-        map_event({"Event": "ERROR-PLATESOLVE", "Time": "2026-09-03T21:54:26.93"},
-                  "g1", rig_offset=offset),
-    ]
-    # TS-* is naive UTC, so 02:15:32.78 is 21:15 local and sorts FIRST — before
-    # the 21:54 local ERROR-PLATESOLVE. Reading the three wall-clock strings and
-    # assuming they order as written gets this backwards.
+    events = [map_event(_first_event(name), "g1", rig_offset=offset)
+              for name in ("IMAGE-SAVE", "TS-NEWTARGETSTART", "ERROR-PLATESOLVE")]
+    # In UTC: TS-NEWTARGETSTART 02:15:32 is already UTC; IMAGE-SAVE 21:26:56-05:00
+    # is 02:26:56; ERROR-PLATESOLVE 21:54:26 local is 02:54:26. Reading the
+    # wall-clock strings as written puts the TS-* event last instead of first.
     assert [e.name for e in sorted(events, key=lambda e: e.time)] == [
-        "TS-TARGETSTART", "ERROR-PLATESOLVE", "IMAGE-SAVE"]
+        "TS-NEWTARGETSTART", "IMAGE-SAVE", "ERROR-PLATESOLVE"]
 
 
 def test_a_socket_image_save_is_timed_by_the_frame_it_carries() -> None:
@@ -400,13 +395,16 @@ def test_idle_flat_wizard_iterations_are_not_a_count() -> None:
     assert status.completed_iterations is None
 
 
+@pytest.mark.synthetic
 @pytest.mark.parametrize("raw", ["running", "Running", "STOPPED", "stopped"])
 def test_livestack_status_compares_case_insensitively(raw: str) -> None:
-    """The OpenAPI enum is [running, stopped]; a live rig returned "Stopped"."""
+    """The OpenAPI enum is [running, stopped]; a live rig returned "Stopped".
+    No livestack capture is in the corpus, so the status dict is constructed."""
     status = map_livestack_status({"Status": raw})
     assert status.running is (raw.lower() == "running")
 
 
+@pytest.mark.synthetic
 def test_a_missing_livestack_status_is_not_a_state_named_none() -> None:
     """The plugin may not be installed; the empty state is "", not "None"."""
     status = map_livestack_status({})

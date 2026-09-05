@@ -86,6 +86,28 @@ PROFILE_ALLOWLIST: tuple[str, ...] = (
 )
 
 
+def project(document: object, allowlist: tuple[str, ...]) -> dict:
+    """Keep only allowlisted dotted paths; a path naming a section keeps it whole.
+
+    The projection is the capture script's rule for `/profile/show` and lives
+    beside the redaction rules so the two cannot drift.
+    """
+    kept: dict = {}
+    for dotted in allowlist:
+        node, target = document, kept
+        parts = dotted.split(".")
+        for part in parts[:-1]:
+            if not isinstance(node, dict) or part not in node:
+                node = None
+                break
+            node = node[part]
+            target = target.setdefault(part, {})
+        leaf = parts[-1]
+        if isinstance(node, dict) and leaf in node:
+            target[leaf] = node[leaf]
+    return kept
+
+
 def _digest(value: str, prefix: str, legacy_width: int, suffix: str = "") -> str:
     """A stable pseudonym derived from the value, not from arrival order.
 
