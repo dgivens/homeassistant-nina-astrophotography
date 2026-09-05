@@ -8,7 +8,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Breaking
 
-- Every entity id changes on a fresh install: entities now hang off a device
+- New installs get device-scoped entity ids: entities now hang off a device
   per equipment type rather than one device per integration, and the device
   name is part of the id. `docs/2.0-renames.md` is the mapping. An **existing**
   install is not renamed — Home Assistant keys the registry on `unique_id`, so
