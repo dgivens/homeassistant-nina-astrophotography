@@ -5,12 +5,12 @@ sensors yet, and `data` is the published snapshot every phase-C entity reads.
 """
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from scenarios.fake_rig import FakeRig
-
-from custom_components.nina_astrophotography.api.v2.mapper import map_event
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
 AT = "2026-09-05T01:41:53.9-05:00"
@@ -59,10 +59,14 @@ async def test_the_same_frame_pushed_twice_is_folded_once(
     assert _count(loaded_entry) == before + 1
 
 
+@pytest.mark.synthetic
 async def test_a_disconnect_event_refetches_the_snapshot_before_the_next_tick(
     hass: HomeAssistant, loaded_entry, push, rig: FakeRig
 ) -> None:
-    """§6.4: a device dropping out must not sit until the next 10 s poll."""
+    """§6.4: a device dropping out must not sit until the next 10 s poll.
+
+    No capture holds the flat panel down, so its disconnected block is derived
+    by the rule the corpus does show."""
     rig.requests.clear()
     rig.goto("equipment_disconnected")
     push({"Event": "FLAT-DISCONNECTED", "Time": AT})
@@ -93,11 +97,12 @@ async def test_setup_replays_the_event_history(
     """What the socket could not deliver, because it was not connected yet: the
     entry knows about an autofocus that finished before Home Assistant started.
     """
-    history = nina_responses("dawn_event_history.json")
-    newest = max(map_event(event, None).time for event in history
-                 if event["Event"] == "AUTOFOCUS-FINISHED")
     autofocus = loaded_entry.runtime_data.coordinator.data.session.autofocus
-    assert autofocus.last_finished_at == newest
+    assert autofocus.last_finished_at == datetime.fromisoformat(
+        # The newest AUTOFOCUS-FINISHED of the dawn history, to the microsecond
+        # the mapper truncates the wire's 100 ns to.
+        "2026-09-04T03:21:11.414439-05:00"
+    )
 
 
 async def test_a_replayed_event_pushed_live_is_not_folded_again(

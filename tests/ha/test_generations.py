@@ -70,29 +70,23 @@ async def test_the_event_stream_follows_the_new_generation(
     assert loaded_entry.runtime_data.events.generation == RESTART_GENERATION
 
 
-async def test_a_count_mismatch_reseeds_only_once_it_persists(
-    rig: FakeRig, loaded_entry: MockConfigEntry, advance
+@pytest.mark.synthetic
+@pytest.mark.parametrize(("ticks", "reseeds"), [(1, 0), (2, 1), (5, 1)])
+async def test_a_count_mismatch_reseeds_once_it_persists_and_never_again(
+    rig: FakeRig, loaded_entry: MockConfigEntry, advance, ticks: int, reseeds: int
 ) -> None:
     """A frame saved between the `?count=true` read and the history read fails
-    the invariant for one tick; reseeding on that costs a 62 KB refetch every
-    time it happens."""
-    seeded = _reseeds(rig)
-    await advance("imaging_count_ahead")
-    assert _reseeds(rig) == seeded
-    await advance("imaging_count_ahead")
-    assert _reseeds(rig) == seeded + 1
+    the invariant for one tick, and reseeding on that costs a 62 KB refetch
+    every time it happens. A gap the refetch cannot close — an unmappable item,
+    or two frames sharing a `(date, filename)` — is structural, so asking again
+    every two ticks would go on for the life of the process.
 
-
-async def test_a_mismatch_the_refetch_cannot_close_stops_asking(
-    rig: FakeRig, loaded_entry: MockConfigEntry, advance
-) -> None:
-    """A count the fold can never match — an unmappable item, or two frames
-    sharing a `(date, filename)` — would otherwise refetch 62 KB every two
-    ticks for the life of the process."""
+    No capture can hold a snapshot of a race: the state varies the captured
+    count envelope's one number."""
     seeded = _reseeds(rig)
-    for _ in range(5):
+    for _ in range(ticks):
         await advance("imaging_count_ahead")
-    assert _reseeds(rig) == seeded + 1
+    assert _reseeds(rig) == seeded + reseeds
 
 
 @pytest.mark.synthetic

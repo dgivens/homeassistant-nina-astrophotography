@@ -182,8 +182,10 @@ STATES: dict[str, State] = {
     # Mid-session with everything captured: guider Guiding, camera exposing,
     # livestack Running, the profile and the last autofocus run served.
     "imaging_guiding": dict(_IMAGING_GUIDING),
-    # The 67 flats are in the same history — dawn flats are a phase of the
-    # night, not a different snapshot.
+    # CONTENT-IDENTICAL to `imaging`, deliberately: the 67 flats are in the
+    # same history, because dawn flats are a phase of the night rather than a
+    # different snapshot. The name exists so a test can say what it is
+    # exercising; a distinct capture would replace it in place.
     "dawn_flats": dict(_IMAGING),
     # The mount parked with tracking off, which is what reports 24 hours to
     # meridian flip. The sequence document is the completed one _IMAGING already
@@ -198,8 +200,9 @@ STATES: dict[str, State] = {
         **_IMAGING,
         "/sequence/json": load_envelope("startup_sequence_not_initialized.json"),
     },
-    # The dawn capture IS the physical station: SkyBrightness 5692 with
-    # CloudCover "NaN", on device-09.
+    # Also content-identical to `imaging`: the dawn capture IS the physical
+    # station — SkyBrightness 5692 with CloudCover "NaN", on device-09 — and
+    # `weather_openmeteo` below is the contrast it exists for.
     "weather_physical_station": dict(_IMAGING),
     # The same rig reporting weather from OpenMeteo on device-12: CloudCover 14
     # with SkyBrightness "NaN". The two sources' fields are disjoint.
