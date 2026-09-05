@@ -18,6 +18,9 @@ derive.py, the seam is broken.
 A device that is `None` has never been observed; a device present with
 `connected=False` has been observed and is currently down. §5.2.2's first-sight
 rule and §7.3's availability levels both need that distinction from one snapshot.
+A down device carries `connected`, `meta` and its capability flags and nothing
+else: a disconnected driver answers zeros and template defaults for every
+reading, and those are artefacts, not measurements.
 
 This module is closed to fields no entity, service, session.py or derive.py
 consumes. A guideline, not a test — the enforcement needs an exemption list on
@@ -66,6 +69,7 @@ class CameraModel:
     """Microns. Pairs with the profile focal length for image scale."""
     has_battery: bool | None
     battery: float | None
+    """Percent. A camera without a battery reports -1, which is `None` here."""
     can_set_temperature: bool | None
     gains: tuple[int, ...]
     binning_modes: tuple[str, ...]
@@ -110,7 +114,6 @@ class FocuserModel:
     """Steps."""
     temperature: float | None
     is_moving: bool | None
-    max_step: int | None
     step_size: float | None
     temp_comp_available: bool | None
     temp_comp: bool | None
@@ -191,8 +194,9 @@ class WeatherModel:
     channels this source has ever produced. Keys are the wire's names
     lowercased with underscores: cloud_cover, dew_point, humidity, pressure,
     rain_rate, sky_brightness, sky_quality, sky_temperature, star_fwhm,
-    temperature, wind_direction, wind_gust, wind_speed. A channel this source
-    cannot report is absent, not `None`.
+    temperature, wind_direction, wind_gust, wind_speed. Every wire channel is
+    present; `None` means the source emitted `"NaN"` for it — which is how a
+    channel this source cannot report looks, poll after poll.
     """
 
     connected: bool
@@ -269,8 +273,12 @@ class Frame:
     mean: float | None
     median: float | None
     std_dev: float | None
-    rms: float | None
-    """Total guide RMS for the exposure, parsed out of the wire's `RmsText`."""
+    rms_arcsec: float | None
+    """Total guide RMS over the exposure, in arcseconds — comparable across
+    rigs, the same convention as `GuiderModel.rms_total`. `RmsText` carries the
+    pixel figure first and the arcsecond figure in brackets; a total of 0 is no
+    guiding, not perfect guiding, and is already `None` here.
+    """
     temperature: float | None
     gain: int | None
     offset: int | None

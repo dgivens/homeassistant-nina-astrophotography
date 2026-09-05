@@ -5,14 +5,23 @@ Every wire quirk lives here and nowhere else:
   - "NaN" → None across every field, no allowlist. .NET serializes double.NaN
     as a JSON string, and the sentinel is overloaded — disconnected, momentarily
     unreadable, and not implemented by this driver all look alike.
-  - Calibration is keyed on `ImageType`, never on `HFR == 0`. A non-light loses
-    both `hfr` and `stars`; a LIGHT keeps `stars` even at 0, because a clouded
-    sub reporting zero stars is the most diagnostic reading it has. `Stars -1`
-    is a sentinel everywhere and never a calibration signal — flats report it,
-    the captured dark reported `Stars 1`.
-  - TimeToMeridianFlip 24 → None, as is any value while tracking is off. 12 h is
-    legitimate — it means "just flipped" — so a "≥12 → unknown" rule would be
-    wrong.
+  - Calibration is the explicit set FLAT / DARK / BIAS / DARKFLAT, keyed on
+    `ImageType`, never on `HFR == 0`. A calibration frame loses `hfr`, `stars`
+    and the guide RMS; LIGHT, SNAPSHOT and an unknown type keep their readings
+    under the sentinel rules alone (HFR 0, Stars -1, RMS 0 → None). A LIGHT
+    keeps `stars` even at 0, because a clouded sub reporting zero stars is the
+    most diagnostic reading it has. `Stars -1` is a sentinel everywhere and
+    never a calibration signal — flats report it, the captured dark reported
+    `Stars 1`.
+  - TimeToMeridianFlip is None while tracking is off, and at the literal 24 —
+    the sentinel — whatever TrackingEnabled says. 12 h is legitimate ("just
+    flipped"), and so is 24.08: a UseSideOfPier rig reads a few minutes over 24
+    for up to MaxMinutesAfterMeridian after its flip. Neither "≥12" nor "≥24"
+    is the rule.
+  - A `Connected: false` block maps with every reading None — only `connected`,
+    `meta` and the capability flags survive. A disconnected driver answers
+    Position 0, StepSize 0, ShutterNone: template defaults, not readings.
+    Guider PixelScale 0 is no reading even when connected.
   - Three timestamp classes, two of them naive and indistinguishable by shape,
     keyed by EVENT NAME through EVENT_TIMEZONES. Every NinaEvent.time is
     offset-aware: the fold sorts events, and one naive time among aware ones
@@ -68,6 +77,7 @@ from ..models import (
 _MERIDIAN_IDLE_SENTINEL = 24.0
 _IDLE_ITERATIONS_SENTINEL = -1
 _NO_STARS_SENTINEL = -1
+_CALIBRATION_TYPES = frozenset({"FLAT", "DARK", "BIAS", "DARKFLAT"})
 
 # Event-name PREFIX → the timezone a naive `Time` is in. Mediator events are
 # offset-aware and need no entry; TS-* are naive UTC; log-scraped ERROR-* are
@@ -97,7 +107,8 @@ _WEATHER_CHANNELS: Mapping[str, str] = MappingProxyType({
 _SEQUENCE_CHILDREN = ("GlobalTriggers", "Conditions", "Items", "Triggers")
 _SEQUENCE_OWN_KEYS = ("Name", "Status", "Iterations", *_SEQUENCE_CHILDREN)
 
-_TOTAL_RMS = re.compile(r"[-+]?\d*\.?\d+")
+# 'Tot: 0.26 (0.42")' — the bracketed figure is the arcsecond one.
+_TOTAL_RMS_ARCSEC = re.compile(r"\(\s*([-+]?\d*\.?\d+)")
 
 
 def nan_to_none(value: Any) -> Any:
@@ -168,51 +179,67 @@ def _connected(wire: dict) -> bool:
     return _flag(wire, "Connected") is True
 
 
+def _readings(wire: dict) -> dict:
+    """The block to read measurements from: empty when the device is down.
+
+    Capability flags and registry metadata still come from `wire`; everything
+    a driver measures comes from here, so a disconnected block maps to None
+    for every reading without a per-field guard.
+    """
+    return wire if _connected(wire) else {}
+
+
 def map_camera(wire: dict) -> CameraModel:
+    readings = _readings(wire)
+    has_battery = _flag(wire, "HasBattery")
+    battery = _number(readings, "Battery")
+    if has_battery is not True or (battery is not None and battery < 0):
+        battery = None  # -1 is "no battery", not a charge level
     return CameraModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        temperature=_number(wire, "Temperature"),
-        target_temperature=_number(wire, "TargetTemp"),
-        cooler_on=_flag(wire, "CoolerOn"),
-        cooler_power=_number(wire, "CoolerPower"),
-        dew_heater_on=_flag(wire, "DewHeaterOn"),
-        gain=_integer(wire, "Gain"),
-        offset=_integer(wire, "Offset"),
-        usb_limit=_integer(wire, "USBLimit"),
-        camera_state=_text(wire, "CameraState"),
-        is_exposing=_flag(wire, "IsExposing"),
-        pixel_size=_number(wire, "PixelSize"),
-        has_battery=_flag(wire, "HasBattery"),
-        battery=_number(wire, "Battery"),
+        temperature=_number(readings, "Temperature"),
+        target_temperature=_number(readings, "TargetTemp"),
+        cooler_on=_flag(readings, "CoolerOn"),
+        cooler_power=_number(readings, "CoolerPower"),
+        dew_heater_on=_flag(readings, "DewHeaterOn"),
+        gain=_integer(readings, "Gain"),
+        offset=_integer(readings, "Offset"),
+        usb_limit=_integer(readings, "USBLimit"),
+        camera_state=_text(readings, "CameraState"),
+        is_exposing=_flag(readings, "IsExposing"),
+        pixel_size=_number(readings, "PixelSize"),
+        has_battery=has_battery,
+        battery=battery,
         can_set_temperature=_flag(wire, "CanSetTemperature"),
         gains=tuple(int(gain) for gain in wire.get("Gains") or ()
                     if isinstance(gain, (int, float)) and not isinstance(gain, bool)),
         binning_modes=_names(wire.get("BinningModes")),
-        bin_x=_integer(wire, "BinX"),
+        bin_x=_integer(readings, "BinX"),
     )
 
 
 def map_mount(wire: dict) -> MountModel:
-    tracking = _flag(wire, "TrackingEnabled")
-    flip = _number(wire, "TimeToMeridianFlip")
-    if tracking is False or (flip is not None and flip >= _MERIDIAN_IDLE_SENTINEL):
+    readings = _readings(wire)
+    tracking = _flag(readings, "TrackingEnabled")
+    flip = _number(readings, "TimeToMeridianFlip")
+    if tracking is False or flip == _MERIDIAN_IDLE_SENTINEL:
         flip = None
     return MountModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        right_ascension=_number(wire, "RightAscension"),
-        declination=_number(wire, "Declination"),
-        altitude=_number(wire, "Altitude"),
-        azimuth=_number(wire, "Azimuth"),
-        sidereal_time=_number(wire, "SiderealTime"),
+        right_ascension=_number(readings, "RightAscension"),
+        declination=_number(readings, "Declination"),
+        altitude=_number(readings, "Altitude"),
+        azimuth=_number(readings, "Azimuth"),
+        sidereal_time=_number(readings, "SiderealTime"),
         tracking_enabled=tracking,
-        tracking_mode=_text(wire, "TrackingMode"),
+        tracking_mode=_text(readings, "TrackingMode"),
         tracking_modes=tuple(mode for mode in wire.get("TrackingModes") or ()
                              if isinstance(mode, str)),
-        at_park=_flag(wire, "AtPark"),
-        at_home=_flag(wire, "AtHome"),
-        side_of_pier=_text(wire, "SideOfPier"),
+        at_park=_flag(readings, "AtPark"),
+        at_home=_flag(readings, "AtHome"),
+        side_of_pier=_text(readings, "SideOfPier"),
         time_to_meridian_flip=flip,
         can_slew_alt_az=_flag(wire, "CanSlewAltAz"),
         epoch=_text(wire, "EquatorialSystem"),
@@ -220,26 +247,27 @@ def map_mount(wire: dict) -> MountModel:
 
 
 def map_focuser(wire: dict) -> FocuserModel:
+    readings = _readings(wire)
     return FocuserModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        position=_integer(wire, "Position"),
-        temperature=_number(wire, "Temperature"),
-        is_moving=_flag(wire, "IsMoving"),
-        max_step=None,  # neither the wire nor the spec carries a travel limit
-        step_size=_number(wire, "StepSize"),
+        position=_integer(readings, "Position"),
+        temperature=_number(readings, "Temperature"),
+        is_moving=_flag(readings, "IsMoving"),
+        step_size=_number(readings, "StepSize"),
         temp_comp_available=_flag(wire, "TempCompAvailable"),
-        temp_comp=_flag(wire, "TempComp"),
+        temp_comp=_flag(readings, "TempComp"),
     )
 
 
 def map_filter_wheel(wire: dict) -> FilterWheelModel:
+    readings = _readings(wire)
     return FilterWheelModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        selected_filter=_text(wire, "SelectedFilter", "Name"),
+        selected_filter=_text(readings, "SelectedFilter", "Name"),
         available_filters=_names(wire.get("AvailableFilters")),
-        is_moving=_flag(wire, "IsMoving"),
+        is_moving=_flag(readings, "IsMoving"),
     )
 
 
@@ -247,65 +275,72 @@ def map_guider(wire: dict) -> GuiderModel:
     """RMSError is reported in both pixels and arcseconds; arcseconds is the
     figure that means the same thing on every rig.
     """
+    readings = _readings(wire)
     return GuiderModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        state=_text(wire, "State"),
-        rms_total=_number(wire, "RMSError", "Total", "Arcseconds"),
-        rms_ra=_number(wire, "RMSError", "RA", "Arcseconds"),
-        rms_dec=_number(wire, "RMSError", "Dec", "Arcseconds"),
-        pixel_scale=_number(wire, "PixelScale"),
+        state=_text(readings, "State"),
+        rms_total=_number(readings, "RMSError", "Total", "Arcseconds"),
+        rms_ra=_number(readings, "RMSError", "RA", "Arcseconds"),
+        rms_dec=_number(readings, "RMSError", "Dec", "Arcseconds"),
+        # A plate scale of 0 is never a reading, connected or not.
+        pixel_scale=_number(readings, "PixelScale") or None,
     )
 
 
 def map_rotator(wire: dict) -> RotatorModel:
+    readings = _readings(wire)
     return RotatorModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        position=_number(wire, "Position"),
-        mechanical_position=_number(wire, "MechanicalPosition"),
-        is_moving=_flag(wire, "IsMoving"),
-        reverse=_flag(wire, "Reverse"),
-        synced=_flag(wire, "Synced"),
+        position=_number(readings, "Position"),
+        mechanical_position=_number(readings, "MechanicalPosition"),
+        is_moving=_flag(readings, "IsMoving"),
+        reverse=_flag(readings, "Reverse"),
+        synced=_flag(readings, "Synced"),
     )
 
 
 def map_dome(wire: dict) -> DomeModel:
+    readings = _readings(wire)
     return DomeModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        azimuth=_number(wire, "Azimuth"),
-        shutter_status=_text(wire, "ShutterStatus"),
-        at_park=_flag(wire, "AtPark"),
-        at_home=_flag(wire, "AtHome"),
-        driver_following=_flag(wire, "DriverFollowing"),
-        following=_flag(wire, "IsFollowing"),
-        slewing=_flag(wire, "Slewing"),
+        azimuth=_number(readings, "Azimuth"),
+        shutter_status=_text(readings, "ShutterStatus"),
+        at_park=_flag(readings, "AtPark"),
+        at_home=_flag(readings, "AtHome"),
+        driver_following=_flag(readings, "DriverFollowing"),
+        following=_flag(readings, "IsFollowing"),
+        slewing=_flag(readings, "Slewing"),
     )
 
 
 def map_flat_device(wire: dict) -> FlatDeviceModel:
+    readings = _readings(wire)
     return FlatDeviceModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        cover_state=_text(wire, "CoverState"),
-        light_on=_flag(wire, "LightOn"),
-        brightness=_number(wire, "Brightness"),
-        min_brightness=_number(wire, "MinBrightness"),
-        max_brightness=_number(wire, "MaxBrightness"),
+        cover_state=_text(readings, "CoverState"),
+        light_on=_flag(readings, "LightOn"),
+        brightness=_number(readings, "Brightness"),
+        min_brightness=_number(readings, "MinBrightness"),
+        max_brightness=_number(readings, "MaxBrightness"),
         supports_on_off=_flag(wire, "SupportsOnOff"),
         supports_open_close=_flag(wire, "SupportsOpenClose"),
     )
 
 
 def map_weather(wire: dict) -> WeatherModel:
-    """A channel this source cannot report is absent from the map, not None: the
-    entity for it is created on first reading and kept thereafter (§5.2.2).
+    """Every channel the wire carries is in the map; a channel this source
+    cannot report arrives as "NaN" and so reads None, poll after poll. §5.2.2's
+    first-reading rule keys on a channel having ever been non-None.
     """
+    readings = _readings(wire)
     return WeatherModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        channels={channel: _number(wire, key)
+        channels={channel: _number(readings, key)
                   for key, channel in _WEATHER_CHANNELS.items() if key in wire},
     )
 
@@ -314,14 +349,15 @@ def map_safety_monitor(wire: dict) -> SafetyMonitorModel:
     return SafetyMonitorModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        is_safe=_flag(wire, "IsSafe"),
+        is_safe=_flag(_readings(wire), "IsSafe"),
     )
 
 
 def map_switch(wire: dict) -> SwitchDeviceModel:
+    readings = _readings(wire)
     channels: list[SwitchChannelModel] = []
     for key, writable in (("WritableSwitches", True), ("ReadonlySwitches", False)):
-        for position, entry in enumerate(wire.get(key) or ()):
+        for position, entry in enumerate(readings.get(key) or ()):
             index = _integer(entry, "Id")
             channels.append(SwitchChannelModel(
                 index=index if index is not None else position,
@@ -389,10 +425,11 @@ def rig_offset(wire: dict) -> timedelta | None:
     return timedelta(minutes=round(drift.total_seconds() / 60))
 
 
-def _total_rms(raw: Any) -> float | None:
-    """`RmsText` is 'Tot: 0.18 (0.29")' — total in pixels, then in arcseconds."""
-    match = _TOTAL_RMS.search(raw) if isinstance(raw, str) else None
-    return float(match.group()) if match else None
+def _total_rms_arcsec(raw: Any) -> float | None:
+    """The bracketed arcsecond total of 'Tot: 0.18 (0.29")'; the leading figure
+    is guide-camera pixels, which mean something different on every rig."""
+    match = _TOTAL_RMS_ARCSEC.search(raw) if isinstance(raw, str) else None
+    return float(match.group(1)) if match else None
 
 
 def map_frame(wire: dict, generation: str | None) -> Frame:
@@ -401,23 +438,26 @@ def map_frame(wire: dict, generation: str | None) -> Frame:
     `Date` and `Filename` are the frame's identity and are present on every
     frame on both paths; a payload without them is not a frame.
 
-    A frame with no `ImageType` at all keeps every reading the sentinel rules
-    allow: the type decides only what is *dropped*, so an unclassifiable frame is
-    treated as neither calibration nor light rather than losing real data.
+    Only the calibration set loses readings. LIGHT, SNAPSHOT and a frame with
+    no `ImageType` at all keep every reading the sentinel rules allow: the type
+    decides only what is *dropped*, so an unclassifiable frame is treated as
+    neither calibration nor light rather than losing real data.
     """
     image_type = _text(wire, "ImageType")
     hfr = _number(wire, "HFR")
     stars = _integer(wire, "Stars")
-    rms = _total_rms(_dig(wire, "RmsText"))
-    if image_type is not None and image_type != "LIGHT":
-        # Calibration. Its ADU statistics are real measurements and survive; HFR,
-        # star count and guide RMS are meaningless on a frame with no sky in it —
-        # a flat reports 'Tot: 0.00', which is no guiding, not perfect guiding.
+    rms = _total_rms_arcsec(_dig(wire, "RmsText"))
+    if image_type in _CALIBRATION_TYPES:
+        # Its ADU statistics are real measurements and survive; HFR, star count
+        # and guide RMS are meaningless on a frame with no sky in it.
         hfr = None
         stars = None
         rms = None
-    elif hfr == 0:
-        hfr = None
+    else:
+        # HFR 0 is "no stars measured", and 'Tot: 0.00' is no guiding, not
+        # perfect guiding.
+        hfr = hfr or None
+        rms = rms or None
     return Frame(
         date=datetime.fromisoformat(wire["Date"]),
         filename=str(wire["Filename"]),
@@ -431,7 +471,7 @@ def map_frame(wire: dict, generation: str | None) -> Frame:
         mean=_number(wire, "Mean"),
         median=_number(wire, "Median"),
         std_dev=_number(wire, "StDev"),
-        rms=rms,
+        rms_arcsec=rms,
         temperature=_number(wire, "Temperature"),
         gain=_integer(wire, "Gain"),
         offset=_integer(wire, "Offset"),
