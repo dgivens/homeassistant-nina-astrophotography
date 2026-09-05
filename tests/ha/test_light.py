@@ -1,4 +1,6 @@
 """The flat panel light — §5.3.4's three fixes, on real hardware numbers."""
+from dataclasses import replace
+
 import pytest
 from homeassistant.components.light import ATTR_BRIGHTNESS, DOMAIN as LIGHT_DOMAIN
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, SERVICE_TURN_ON
@@ -52,7 +54,7 @@ async def test_a_bare_turn_on_does_not_go_to_full_output(
     tempts a falsy-fallback implementation into sending 255.
     """
     await _turn_on(hass)
-    assert sent.brightness <= 4096 // 4
+    assert sent.brightness == 16   # round(1 / 255 * 4096): HA level 1, the dim default
 
 
 async def test_a_bare_turn_on_restores_the_last_level_used(
@@ -103,6 +105,48 @@ async def test_turn_off_uses_set_light_not_brightness_zero(
     assert sent.last_call == ("set_flat_light", False)
 
 
+async def test_turn_on_of_a_lit_panel_only_adjusts_the_brightness(
+    hass: HomeAssistant, flat_panel_entry, sent
+) -> None:
+    """set-light on an already-lit panel is a no-op at best; FLAT-LIGHT-TOGGLED
+    would fire for nothing."""
+    await _turn_on(hass, **{ATTR_BRIGHTNESS: 64})
+    assert sent.calls == [("set_flat_brightness", 1028)]
+
+
+async def test_a_panel_that_disconnects_after_being_observed_stays_as_unavailable(
+    hass: HomeAssistant, idle_flat_panel_entry, monkeypatch
+) -> None:
+    """Observation is latched across polls (§5.2.2): a disconnected panel drops
+    its DeviceId and reports Min 0 / Max 0, and the entity must go unavailable,
+    not vanish."""
+    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+
+    snapshot = idle_flat_panel_entry.runtime_data.coordinator.data.snapshot
+    down = replace(snapshot, flat_device=replace(
+        snapshot.flat_device, meta=DeviceMeta(None, None, None, None, None),
+        connected=False, min_brightness=0.0, max_brightness=0.0,
+    ))
+
+    async def get_equipment(self):
+        return down
+
+    monkeypatch.setattr(NinaClientV2, "get_equipment", get_equipment)
+    await idle_flat_panel_entry.runtime_data.coordinator.async_refresh()
+    assert hass.states.get(ENTITY).state == "unavailable"
+
+
+async def test_the_light_is_registered_under_the_flat_panel_device(
+    hass: HomeAssistant, idle_flat_panel_entry, entity_registry, device_registry
+) -> None:
+    """has-entity-name: the entity is "Light" on a device named for the panel,
+    whose sw_version is the driver's own DriverVersion."""
+    entry = entity_registry.async_get(ENTITY)
+    device = device_registry.async_get(entry.device_id)
+    assert entry.unique_id == f"{idle_flat_panel_entry.entry_id}_flat_panel_light"
+    assert (device.name, device.sw_version) == ("N.I.N.A. Flat Panel", "1.0")
+
+
 async def test_a_panel_that_cannot_switch_its_light_is_unavailable_not_absent(
     hass: HomeAssistant, cover_only_flat_panel_entry
 ) -> None:
@@ -122,12 +166,18 @@ async def test_a_panel_never_observed_has_no_entity(
     assert hass.states.get(ENTITY) is None
 
 
+@pytest.mark.parametrize(
+    ("command", "act"),
+    [("set_flat_brightness", lambda hass: _turn_on(hass, **{ATTR_BRIGHTNESS: 10})),
+     ("set_flat_light", _turn_off)],
+    ids=["turn_on", "turn_off"],
+)
 async def test_a_refused_command_surfaces_as_a_home_assistant_error(
-    hass: HomeAssistant, flat_panel_entry, sent
+    hass: HomeAssistant, flat_panel_entry, sent, command, act
 ) -> None:
-    async def refuse(self, brightness: int) -> None:
+    async def refuse(self, *_args) -> None:
         raise NinaCommandError("Flat device not connected")
 
-    sent.patch("set_flat_brightness", refuse)
+    sent.patch(command, refuse)
     with pytest.raises(HomeAssistantError, match="flat panel"):
-        await _turn_on(hass, **{ATTR_BRIGHTNESS: 10})
+        await act(hass)

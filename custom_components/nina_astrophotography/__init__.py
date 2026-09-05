@@ -118,11 +118,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         session=session,
         hass_event_bus_fire=hass.bus.fire,
     )
+    frame_store = NinaFrameStatisticsStore()
+
+    entry.runtime_data = NinaRuntimeData(
+        client=client,
+        coordinator=coordinator,
+        service_client=service_client,
+        instance_name=entry.title,
+        ws_client=ws_client,
+        frame_store=frame_store,
+    )
+    # Registered before the socket starts: on_unload callbacks also run when a
+    # later setup step fails, which is what keeps the reconnect task from
+    # outliving a failed entry.
+    entry.async_on_unload(ws_client.stop)
     await ws_client.start()
 
     # ── Per-frame statistics store ───────────────────────────────────────────
-    frame_store = NinaFrameStatisticsStore()
-
     async def _on_image_save(response: dict) -> None:
         frame_store.push_frame(response)
         await coordinator.async_request_refresh()
@@ -138,15 +150,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 
     ws_client.add_listener("SEQUENCE-STARTING", _on_sequence_starting)
 
-    entry.runtime_data = NinaRuntimeData(
-        client=client,
-        coordinator=coordinator,
-        service_client=service_client,
-        instance_name=entry.title,
-        ws_client=ws_client,
-        frame_store=frame_store,
-    )
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _register_services(hass)
@@ -156,8 +159,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
-    """Unload a config entry."""
-    await entry.runtime_data.ws_client.stop()
+    """Unload a config entry. The socket stops via `async_on_unload`."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 

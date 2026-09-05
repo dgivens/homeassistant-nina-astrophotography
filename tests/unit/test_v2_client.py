@@ -252,6 +252,14 @@ async def test_events_use_the_offset_cached_from_equipment() -> None:
     assert error.time.utcoffset() == timedelta(hours=-5)
 
 
+async def test_the_cached_rig_offset_is_readable() -> None:
+    """The coordinator places the session's noon rollover in the rig's zone."""
+    client = _client(FakeSession({"equipment/info": envelope("dawn_equipment_info.json")}))
+    assert client.rig_offset is None
+    await client.get_equipment()
+    assert client.rig_offset == timedelta(hours=-5)
+
+
 async def test_a_zero_offset_replaces_a_stale_one() -> None:
     """UTC+0 is a real offset, not an absent one — a rig leaving summer time
     must not keep +1 h for the life of the process."""
