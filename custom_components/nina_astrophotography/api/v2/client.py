@@ -16,7 +16,6 @@ initialized"; the wire says "Sequence is not initialized". Match the wire.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from datetime import timedelta
@@ -61,7 +60,9 @@ _IMAGE_TIMEOUT = aiohttp.ClientTimeout(total=30)
 _NOT_SERVED = (404, 405, 501)
 
 # "No data yet" — ordinary states, normalized to None/[] rather than raised.
-_NO_DATA_MESSAGES = ("index out of range", "is not initialized")
+# Matched as substrings of the envelope's Error, but kept specific: a bare
+# "is not initialized" would also swallow a device refusal on a command path.
+_NO_DATA_MESSAGES = ("index out of range", "sequence is not initialized")
 
 
 class NinaClientV2:
@@ -85,7 +86,7 @@ class NinaClientV2:
             async with self._session.get(url, params=params, timeout=_TIMEOUT) as resp:
                 status = resp.status
                 body = await resp.text()
-        except (asyncio.TimeoutError, TimeoutError) as exc:
+        except TimeoutError as exc:
             raise NinaConnectionError(f"Timeout reaching N.I.N.A. at {url}") from exc
         except aiohttp.ClientError as exc:
             # ClientError, not ClientConnectorError: a crashed N.I.N.A. raises
@@ -94,9 +95,6 @@ class NinaClientV2:
 
         if status != 200:
             raise self._pre_handler_error(path, status, body)
-        if not body.strip():
-            # Sequence serialization failure: empty body, no envelope.
-            raise NinaUnavailableError(f"{path} returned an empty body")
         return self._unwrap(path, self._decode(path, body))
 
     @staticmethod
@@ -112,6 +110,9 @@ class NinaClientV2:
 
     @staticmethod
     def _decode(path: str, body: str) -> Any:
+        if not body.strip():
+            # Sequence serialization failure: empty body, no envelope.
+            raise NinaUnavailableError(f"{path} returned an empty body")
         try:
             return json.loads(body)
         except ValueError as exc:
@@ -130,10 +131,12 @@ class NinaClientV2:
             # Success: false, Error: "", StatusCode: 200 on a call that worked.
             if not error and status in (None, 200):
                 return payload.get("Response")
-            if any(message in error.lower() for message in _NO_DATA_MESSAGES):
-                return None
+            # A 5xx is a handler exception whatever its text says; only then
+            # may the message downgrade a refusal to "no data yet".
             if isinstance(status, int) and status >= 500:
                 raise NinaUnavailableError(f"{path}: {error} (StatusCode {status})")
+            if any(message in error.lower() for message in _NO_DATA_MESSAGES):
+                return None
             raise NinaCommandError(
                 f"{path}: {error or 'unknown error'} (StatusCode {status})",
                 status_code=status if isinstance(status, int) else None,
@@ -144,8 +147,13 @@ class NinaClientV2:
     # ── reads ────────────────────────────────────────────────────────────────
 
     async def get_versions(self) -> VersionInfo:
+        """`/version/nina` is diagnostic: a build that does not serve it is
+        still usable, so only that route's absence is tolerated."""
         api = await self._get("/version")
-        nina = await self._get("/version/nina")
+        try:
+            nina = await self._get("/version/nina")
+        except NinaEndpointError:
+            nina = None
         return VersionInfo(
             api_version=str(api) if api is not None else None,
             nina_version=str(nina) if nina is not None else None,
@@ -156,8 +164,11 @@ class NinaClientV2:
         return str(value) if value is not None else None
 
     async def get_equipment(self) -> EquipmentSnapshot:
-        wire = await self._get("/equipment/info") or {}
-        self._rig_offset = rig_offset(wire) or self._rig_offset
+        response = await self._get("/equipment/info")
+        wire = response if isinstance(response, dict) else {}
+        offset = rig_offset(wire)
+        if offset is not None:  # not `or`: UTC+0 is a real offset
+            self._rig_offset = offset
         return map_equipment_info(wire)
 
     async def get_frames(self, *, include_all: bool = False,
@@ -170,10 +181,11 @@ class NinaClientV2:
         """
         params = {"all": "true"} if include_all else None
         response = await self._get("/image-history", params)
-        if response is None:
+        if isinstance(response, dict):
+            response = [response]
+        if not isinstance(response, list):
             return []
-        wire = response if isinstance(response, list) else [response]
-        return [map_frame(item, generation) for item in wire]
+        return [map_frame(item, generation) for item in response]
 
     async def get_image_history_count(self) -> int:
         return int(await self._get("/image-history", {"count": "true"}) or 0)
@@ -219,15 +231,16 @@ class NinaClientV2:
         try:
             async with self._session.get(url, params=params,
                                          timeout=_IMAGE_TIMEOUT) as resp:
-                if resp.status != 200:
-                    raise self._pre_handler_error(path, resp.status, "")
                 # With stream=true a real image is served as image/*; a refusal
                 # arrives as 200 carrying the JSON envelope.
-                if (resp.content_type or "").startswith("image/"):
+                if resp.status == 200 and (resp.content_type or "").startswith("image/"):
                     return await resp.read()
-                self._unwrap(path, await resp.json(content_type=None))
+                body = await resp.text()
+                if resp.status != 200:
+                    raise self._pre_handler_error(path, resp.status, body)
+                self._unwrap(path, self._decode(path, body))
                 raise NinaUnavailableError(f"{path} returned no image")
-        except (asyncio.TimeoutError, TimeoutError) as exc:
+        except TimeoutError as exc:
             raise NinaConnectionError(f"Timeout fetching {url}") from exc
         except aiohttp.ClientError as exc:
             raise NinaConnectionError(f"Cannot reach N.I.N.A. at {url}: {exc}") from exc
