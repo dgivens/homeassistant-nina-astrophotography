@@ -69,12 +69,23 @@ def test_hours_to_meridian_matches_the_rig() -> None:
     )
 
 
+def test_hours_to_meridian_wraps_just_after_transit() -> None:
+    """Past the meridian the target is nearly a full 12 hours from the next one."""
+    assert hours_to_meridian(21.9, 22.0) == pytest.approx(11.9)
+
+
 def test_time_to_meridian_flip_adds_the_profile_offset() -> None:
     assert time_to_meridian_flip(1.0, max_minutes_after_meridian=15.0) == pytest.approx(1.25)
 
 
 def test_an_already_flipped_mount_is_twelve_hours_out() -> None:
     assert time_to_meridian_flip(1.0, 15.0, flipped=True) == pytest.approx(13.25)
+
+
+def test_a_mount_just_past_a_flip_is_not_minutes_from_the_next_one() -> None:
+    """Just flipped: the next flip is a sidereal day away, not five minutes; a
+    wrap here was the bug."""
+    assert time_to_meridian_flip(11.8333, 15.0, flipped=True) == pytest.approx(24.0833)
 
 
 def test_the_flip_warning_threshold_is_not_a_bare_number() -> None:
