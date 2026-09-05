@@ -58,9 +58,9 @@ custom_components/nina_astrophotography/
   polling.py          HA-free polling decisions: restart, reseed, tiers, event ledger
   const.py            domain, config keys, service names, enums
   config_flow.py      UI setup
-  binary_sensor.py sensor.py number.py select.py light.py
+  binary_sensor.py sensor.py number.py select.py light.py switch.py
                       migrated; each is a table of entity descriptors
-  switch.py button.py image.py   not migrated, not in PLATFORMS
+  button.py image.py             not migrated, not in PLATFORMS
 blueprints/automation/nina_astrophotography/   5 automation blueprints
 www/                                           5 Lovelace cards
 tests/unit/                                    HA-free; tests/ha/ under PHACC
