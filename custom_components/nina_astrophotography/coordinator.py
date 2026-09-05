@@ -59,7 +59,7 @@ from .polling import (
     TierSchedule,
     imaging,
 )
-from .session import fold
+from .session import DEFAULT_AUTOFOCUS_TIMEOUT, fold
 
 if TYPE_CHECKING:
     from .api.v2.events import NinaEventStream
@@ -565,6 +565,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 self.frames.values(),
                 self.events,
                 self.generation,
+                autofocus_timeout_seconds=(
+                    self._profile.autofocus_timeout_seconds
+                    or DEFAULT_AUTOFOCUS_TIMEOUT
+                ),
                 now=self._now(),
                 rollover_hour=self._rollover_hour,
             ),

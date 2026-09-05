@@ -29,6 +29,11 @@ from .derive import session_start
 _LIGHT = "LIGHT"
 _AUTOFOCUS_STARTING = "AUTOFOCUS-STARTING"
 _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
+
+# Only a fallback: the rig's own `FocuserSettings.AutoFocusTimeoutSeconds` is
+# polled from /profile/show and is 600 on the captured rig, so folding against
+# this would call a seven-minute run failed.
+DEFAULT_AUTOFOCUS_TIMEOUT = 300.0
 # Events that cancel a running autofocus without it reporting: the sequence
 # ending, a park, any device dropping, or the sequencer moving on to the next
 # exposure. SAFETY-CHANGED counts only when it reports unsafe.
@@ -114,7 +119,8 @@ def _autofocus(events: Iterable[NinaEvent], moment: datetime,
 
 
 def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
-         generation: str | None, *, autofocus_timeout_seconds: float = 300.0,
+         generation: str | None, *,
+         autofocus_timeout_seconds: float = DEFAULT_AUTOFOCUS_TIMEOUT,
          now: datetime | None = None, rollover_hour: int = 12) -> SessionStats:
     """Frames and events in, one session snapshot out.
 
