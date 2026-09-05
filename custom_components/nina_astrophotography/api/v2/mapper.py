@@ -400,22 +400,30 @@ def map_frame(wire: dict, generation: str | None) -> Frame:
 
     `Date` and `Filename` are the frame's identity and are present on every
     frame on both paths; a payload without them is not a frame.
+
+    A frame with no `ImageType` at all keeps every reading the sentinel rules
+    allow: the type decides only what is *dropped*, so an unclassifiable frame is
+    treated as neither calibration nor light rather than losing real data.
     """
     image_type = _text(wire, "ImageType")
     hfr = _number(wire, "HFR")
     stars = _integer(wire, "Stars")
-    if image_type != "LIGHT":
-        # Calibration. Its ADU statistics are real measurements and survive;
-        # HFR and star count are meaningless on a frame with no sky in it.
+    rms = _total_rms(_dig(wire, "RmsText"))
+    if image_type is not None and image_type != "LIGHT":
+        # Calibration. Its ADU statistics are real measurements and survive; HFR,
+        # star count and guide RMS are meaningless on a frame with no sky in it —
+        # a flat reports 'Tot: 0.00', which is no guiding, not perfect guiding.
         hfr = None
         stars = None
+        rms = None
     elif hfr == 0:
         hfr = None
     return Frame(
         date=datetime.fromisoformat(wire["Date"]),
         filename=str(wire["Filename"]),
         target_name=_text(wire, "TargetName"),
-        filter_name=_text(wire, "Filter"),
+        # A calibration frame taken with no filter reports "", not a filter name.
+        filter_name=_text(wire, "Filter") or None,
         image_type=image_type,
         exposure_time=_number(wire, "ExposureTime"),
         hfr=hfr,
@@ -423,7 +431,7 @@ def map_frame(wire: dict, generation: str | None) -> Frame:
         mean=_number(wire, "Mean"),
         median=_number(wire, "Median"),
         std_dev=_number(wire, "StDev"),
-        rms=_total_rms(_dig(wire, "RmsText")),
+        rms=rms,
         temperature=_number(wire, "Temperature"),
         gain=_integer(wire, "Gain"),
         offset=_integer(wire, "Offset"),
@@ -532,7 +540,7 @@ def map_flats_status(wire: dict) -> FlatsStatus:
 
 def map_livestack_status(wire: dict) -> LivestackStatus:
     """The spec's enum is lowercase; the rig answers "Stopped"."""
-    raw = str(_dig(wire, "Status"))
+    raw = _text(wire, "Status") or ""
     return LivestackStatus(running=raw.lower() == "running", raw_state=raw)
 
 
