@@ -60,7 +60,7 @@ from .entity import NinaEntity
 # Read-only: nothing here commands the rig, so there is nothing to serialize.
 PARALLEL_UPDATES = 0
 
-# The registry option that records which weather source established a channel.
+# The registry option that records the last weather source to feed a channel.
 # The registry row is the only per-entity store that outlives a restart, and
 # without it a recovered channel cannot tell a source that will never report it
 # from one that is momentarily quiet.

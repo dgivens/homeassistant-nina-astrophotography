@@ -18,6 +18,16 @@ SKY_BRIGHTNESS = "sensor.n_i_n_a_weather_sky_brightness"
 SKY_TEMPERATURE = "sensor.n_i_n_a_weather_sky_temperature"
 WEATHER_SOURCE = "sensor.n_i_n_a_weather_source"
 
+# Every `sensor.weather_*` 1.4.5 shipped. A channel that keeps its suffix keeps
+# its registry row through the upgrade; one that does not, orphans it.
+LEGACY_WEATHER_KEYS = {
+    "weather_cloud_cover", "weather_dew_point", "weather_humidity",
+    "weather_name", "weather_pressure", "weather_rain_rate", "weather_seeing",
+    "weather_sky_brightness", "weather_sky_quality", "weather_sky_temperature",
+    "weather_temperature", "weather_wind_direction", "weather_wind_gust",
+    "weather_wind_speed",
+}
+
 
 def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
     return registry.async_get_entity_id(
@@ -145,3 +155,15 @@ async def test_the_establishing_source_survives_a_restart(
     await _reload(hass, loaded_entry)
     await advance("weather_station_channel_nan")
     assert hass.states.get(SKY_BRIGHTNESS).state == "unknown"
+
+
+def test_every_weather_channel_keeps_a_1_4_5_unique_id() -> None:
+    """The registry-backed tests above can only cover channels a captured
+    source reports, and no capture reports StarFWHM or SkyQuality — so a
+    renamed suffix on those two would ship unnoticed and orphan the row.
+    """
+    from custom_components.nina_astrophotography.sensor import WEATHER_CHANNELS
+
+    shipped = {d.unique_id_suffix or d.key for d in WEATHER_CHANNELS}
+    assert shipped <= LEGACY_WEATHER_KEYS
+    assert "weather_seeing" in shipped
