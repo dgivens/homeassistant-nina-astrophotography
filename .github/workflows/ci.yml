@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main, v2]
+  pull_request:
+
+jobs:
+  unit:
+    name: Unit suite (HA-free)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync
+      # -p no:homeassistant makes the runtime half of the seam guard meaningful
+      # as a secondary; tests/unit/test_seam.py is the real check.
+      - run: uv run coverage run -m pytest tests/unit -p no:homeassistant -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: .coverage.*
+          include-hidden-files: true
+
+  ha:
+    name: Home Assistant suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --group test-ha
+      # No -n auto: pytest-socket is active under PHACC and the push path
+      # creates tasks outside the test's control.
+      - run: uv run coverage run -m pytest tests/ha -q
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-ha
+          path: .coverage.*
+          include-hidden-files: true
+
+  coverage:
+    name: Coverage floors
+    needs: [unit, ha]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+      - run: uv sync --group test-ha
+      - run: uv run coverage combine
+      - run: uv run coverage json
+      - run: uv run python scripts/coverage_floors.py
+
+  hassfest:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hacs/action@main
+        with:
+          category: integration
+          ignore: brands

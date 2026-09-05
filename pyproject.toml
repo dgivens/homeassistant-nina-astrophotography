@@ -25,6 +25,7 @@ test = [
     "pytest-asyncio>=0.23",
     "aiohttp>=3.9",
     "PyYAML>=6.0",
+    "coverage>=7.6",
 ]
 
 # The Home-Assistant-dependent suite, added in v2.0 phase A. Pinned exactly:
@@ -59,3 +60,11 @@ pythonpath = ["tests", "."]
 branch = true
 parallel = true
 source = ["custom_components/nina_astrophotography"]
+
+[tool.coverage.paths]
+# The two suites import the integration under different names; combine must
+# treat them as one file or every per-file floor reads zero.
+component = [
+    "custom_components/nina_astrophotography",
+    "*/custom_components/nina_astrophotography",
+]

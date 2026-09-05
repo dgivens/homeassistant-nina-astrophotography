@@ -1,9 +1,5 @@
 {
   "name": "N.I.N.A. Astrophotography",
-  "domain": "nina_astrophotography",
-  "documentation": "https://github.com/dgivens/homeassistant-nina-astrophotography",
-  "issue_tracker": "https://github.com/dgivens/homeassistant-nina-astrophotography/issues",
-  "homeassistant": "2024.1.0",
-  "iot_class": "local_polling",
+  "homeassistant": "2026.9.0",
   "render_readme": true
 }

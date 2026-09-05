@@ -1596,6 +1596,7 @@ source = { virtual = "." }
 [package.dev-dependencies]
 dev = [
     { name = "aiohttp" },
+    { name = "coverage" },
     { name = "datamodel-code-generator" },
     { name = "hypothesis" },
     { name = "pytest" },
@@ -1604,6 +1605,7 @@ dev = [
 ]
 test = [
     { name = "aiohttp" },
+    { name = "coverage" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pyyaml" },
@@ -1617,6 +1619,7 @@ test-ha = [
 [package.metadata.requires-dev]
 dev = [
     { name = "aiohttp", specifier = ">=3.9" },
+    { name = "coverage", specifier = ">=7.6" },
     { name = "datamodel-code-generator", specifier = "==0.76.1" },
     { name = "hypothesis", specifier = ">=6.100" },
     { name = "pytest", specifier = ">=8.0" },
@@ -1625,6 +1628,7 @@ dev = [
 ]
 test = [
     { name = "aiohttp", specifier = ">=3.9" },
+    { name = "coverage", specifier = ">=7.6" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "pyyaml", specifier = ">=6.0" },
