@@ -11,16 +11,19 @@ import json
 import sys
 from pathlib import Path
 
-FLOORS = {
+FLOORS: dict[str, int] = {}
+
+# A floor lives here until the PR that creates its module promotes it into
+# FLOORS — A11 the mapper, A12 derive, A13 session, B7 the config flow. That
+# keeps this job green on every PR in the stack while never leaving a floor
+# silently unenforced for a module that exists. Printed as a warning, never a
+# failure. D5 asserts PENDING is empty.
+PENDING = {
+    "config_flow.py": 100,
     "derive.py": 95,
     "session.py": 95,
     "api/v2/mapper.py": 90,
 }
-
-# Floors for modules a later phase creates. Printed as a warning, never a
-# failure — a required job that is knowingly red for two phases trains everyone
-# to ignore it. B7 promotes config_flow.py into FLOORS; D5 asserts PENDING empty.
-PENDING = {"config_flow.py": 100}
 
 PREFIX = "custom_components/nina_astrophotography/"
 
