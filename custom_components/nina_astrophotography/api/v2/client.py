@@ -412,11 +412,28 @@ class NinaClientV2:
         different endpoint, /equipment/rotator/move-mechanical."""
         await self._get("/equipment/rotator/move", {"position": position})
 
+    async def move_rotator_mechanical(self, position: float) -> None:
+        """`position` is the MECHANICAL angle in degrees, which is what the
+        rotator reports as `MechanicalPosition`; /move takes the sky angle.
+
+        Parameter name taken from the spec and not confirmed against hardware.
+        """
+        await self._get("/equipment/rotator/move-mechanical", {"position": position})
+
     async def set_rotator_reverse(self, on: bool) -> None:
         """The parameter is `reverseDirection`."""
         await self._get("/equipment/rotator/reverse", {"reverseDirection": _boolean(on)})
 
     # dome
+
+    async def slew_dome(self, azimuth: float) -> None:
+        """Degrees. The spec also declares `waitToFinish`; it is omitted, since
+        a command that blocks until the dome arrives would hold the poll.
+
+        Parameter name taken from the spec and not confirmed against hardware —
+        there is no dome to confirm it against (§5.3.1).
+        """
+        await self._get("/equipment/dome/slew", {"azimuth": azimuth})
 
     async def open_dome(self) -> None:
         await self._get("/equipment/dome/open")
