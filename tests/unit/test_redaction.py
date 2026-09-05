@@ -53,6 +53,15 @@ from redaction import PROFILE_ALLOWLIST, project, redact, scan
         ({"Name": "SFRO Weather Station"}, {"Name": "REDACTED"}),
         ({"ProjectName": "SFRO"}, {"ProjectName": "REDACTED"}),
         ({"ProjectName": "Lobster & Bubble"}, {"ProjectName": "Lobster & Bubble"}),
+        # Under a key no rule names, the TOKEN goes and the rest stays: a
+        # sequence node's text and a scheduler group label are the structure
+        # the fixtures exist to record.
+        ({"Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48"},
+         {"Group": "REDACTED / Lobster & Bubble : 2026-09-04 20:51:48"}),
+        ({"Text": "off as required by SFRO policy"},
+         {"Text": "off as required by REDACTED policy"}),
+        ({"Text": "off as required by policy"},
+         {"Text": "off as required by policy"}),
         # A four-part .NET version string is shaped exactly like a bare IPv4
         # address when every segment is 1-3 digits.
         ({"api_version": "2.2.15.2"}, {"api_version": "2.2.15.2"}),
@@ -96,6 +105,14 @@ def test_legacy_pseudonyms_pass_through_unchanged() -> None:
     over those already-committed fixtures."""
     assert redact({"Filename": "frame_0121.fits"})["Filename"] == "frame_0121.fits"
     assert redact({"DeviceId": "device-09"})["DeviceId"] == "device-09"
+
+
+def test_the_facility_token_rule_is_idempotent() -> None:
+    """It substitutes rather than replacing, so it must not match its own
+    output — `scan()` is a diff against `redact()` and would otherwise report
+    every committed fixture as dirty forever."""
+    once = redact({"Group": "SFRO / Lobster & Bubble"})
+    assert redact(once) == once
 
 
 def test_scan_finds_what_redact_would_change() -> None:

@@ -148,6 +148,7 @@ recoverable. If unsure whether a call mutates state, do not make it.
 | `*Path`, `*Folder`, `*Directory`, `*Host`, `*Url` | `"REDACTED"` |
 | any Windows path, bare IPv4, UUID or HA entity id in a value | `"REDACTED"` |
 | a site or facility identifier in `Name`, `DisplayName`, `Description` or `ProjectName` | `"REDACTED"` |
+| a facility token inside any other string value | the token → `"REDACTED"`, the rest of the string kept |
 | `DeviceId`, `EntityId` | stable pseudonym `device-<8 hex>`, preserving distinctness |
 | `TelescopeName`, `CameraName` | `"Telescope"`, `"Camera"` |
 | `Filename` | stable pseudonym `frame_<8 hex>.fits`, derived from the original |
