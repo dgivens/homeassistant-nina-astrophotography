@@ -92,9 +92,16 @@ def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
     `now` is the clock the session window and the autofocus timeout are measured
     against; with none supplied it is the newest thing observed, which makes the
     fold a function of its arguments alone and so testable against a fixture.
+    A caller that wants `autofocus.failed` must pass a real clock: a hung
+    autofocus produces nothing newer, so under the derived default the STARTING
+    event is itself the newest thing and no time can ever have elapsed.
+
+    The generation filter runs BEFORE the dedupe. A restart leaves a pre-restart
+    and a refetched copy of the same `(date, filename)` in the store, and
+    deduplicating first would let the stale copy win and then be discarded.
     """
-    kept_frames = [f for f in {_identity(f): f for f in frames}.values()
-                   if f.generation == generation]
+    kept_frames = list({_identity(f): f for f in frames
+                        if f.generation == generation}.values())
     kept_events = [e for e in events if e.generation == generation]
 
     moment = now
