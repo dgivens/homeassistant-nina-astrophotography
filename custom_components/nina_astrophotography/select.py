@@ -28,6 +28,7 @@ from .api.errors import NinaError
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN, TrackingMode
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .device import observed, read_field
 from .entity import NinaEntity
 
 # One in-flight command per platform: these move hardware.
@@ -55,15 +56,6 @@ class NinaSelectDescription(SelectEntityDescription):
     unique_id_suffix: str | None = None
     """The 1.4.5 key, where it differs from `key`. `unique_id` is
     `{entry_id}_{unique_id_suffix or key}`."""
-
-
-def _read(kind: str, field: str) -> Callable[[NinaData], str | None]:
-    """One field off one equipment model, `None` while the device is absent."""
-    def value(data: NinaData) -> str | None:
-        device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
-
-    return value
 
 
 def _options(kind: str, field: str) -> Callable[[NinaData], tuple[str, ...]]:
@@ -104,7 +96,7 @@ DESCRIPTIONS: tuple[NinaSelectDescription, ...] = (
         # The ACTUAL rate, not the last one commanded (§5.2.3). `Stopped` is one
         # of the rates, which is why this replaces `binary_sensor.mount_tracking`.
         choices=_options("mount", "tracking_modes"),
-        current=_read("mount", "tracking_mode"),
+        current=read_field("mount", "tracking_mode"),
         select=_set_tracking_mode,
     ),
     NinaSelectDescription(
@@ -113,7 +105,7 @@ DESCRIPTIONS: tuple[NinaSelectDescription, ...] = (
         unique_id_suffix="filterwheel_select",
         kind="filter_wheel",
         choices=_options("filter_wheel", "available_filters"),
-        current=_read("filter_wheel", "selected_filter"),
+        current=read_field("filter_wheel", "selected_filter"),
         select=_change_filter,
     ),
 )
@@ -179,7 +171,7 @@ async def async_setup_entry(
             NinaSelect(coordinator, entry, description)
             for description in DESCRIPTIONS
             if description.key not in added
-            and getattr(coordinator.data.snapshot, description.kind) is not None
+            and observed(coordinator.data, description.kind)
         ]
         if not new:
             return

@@ -56,18 +56,13 @@ from .const import (
     SERVICE_SEQUENCE_LOAD,
     SERVICE_SEQUENCE_START,
     SERVICE_SEQUENCE_STOP,
+    TrackingMode,
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
-from .const import TrackingMode
 from .device import async_sync_devices, kind_of
 
 _LOGGER = logging.getLogger(__name__)
 
-# A platform is registered only once it reads NinaData: Home Assistant imports
-# every listed platform module during entry setup, so listing one that still
-# speaks the 1.4.x coordinator fails the entry. Each remaining platform is
-# re-added by the phase-C PR that migrates it; until then it stays on disk,
-# unregistered.
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
@@ -283,11 +278,9 @@ def _register_services(hass: HomeAssistant) -> None:
     )
 
     async def handle_capture(call: ServiceCall) -> None:
-        # `filter_index` and `binning` are accepted and not sent: they bound
-        # nothing on the old client either — `/equipment/camera/capture` takes
-        # neither — so dropping them changes no behaviour. Phase D removes them
-        # from the schema. `exposure` now binds for the first time: 1.4.5 sent
-        # it as `time`, which the API ignored and defaulted.
+        # `filter_index` and `binning` are still accepted and deliberately not
+        # sent: `/equipment/camera/capture` takes neither. Phase D removes them
+        # from the schema.
         await _get_client(hass).capture_image(
             call.data["exposure"],
             gain=call.data.get("gain"),
@@ -318,8 +311,7 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_slew(call: ServiceCall) -> None:
         # The service takes RA in HOURS, because every RA N.I.N.A. hands out is
-        # in hours; the endpoint reads degrees. The conversion moved out of the
-        # client, which now takes degrees and says so. Phase D redesigns this.
+        # in hours; the endpoint reads degrees. Phase D redesigns this.
         await _get_client(hass).slew_mount(
             call.data["ra"] * 15.0, call.data["dec"]
         )
@@ -436,9 +428,8 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, SERVICE_SEQUENCE_STOP, handle_seq_stop)
 
     async def handle_seq_load(call: ServiceCall) -> None:
-        # The field is still called `path`, and is now sent as `sequenceName`
-        # — which is what the API reads, and why 1.4.5 never loaded anything.
-        # Phase D renames the field.
+        # The service field is `path`, but the API wants a sequence NAME, not a
+        # path. Phase D renames the field.
         await _get_client(hass).load_sequence(call.data["path"])
 
     hass.services.async_register(

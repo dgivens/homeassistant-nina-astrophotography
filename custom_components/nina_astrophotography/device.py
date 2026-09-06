@@ -23,8 +23,8 @@ not created leaves the entity platform to create a nameless device.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
@@ -55,6 +55,36 @@ KINDS: Mapping[str, str] = {
 }
 
 
+def observed(data: NinaData, kind: str | None) -> bool:
+    """Whether the equipment an entity hangs off has ever been seen.
+
+    `None` is the hub, which always exists. A platform MUST gate entity
+    creation on this: an identifiers-only `DeviceInfo` naming a kind this
+    module has not created leaves the entity platform to mint a nameless one.
+    """
+    return kind is None or getattr(data.snapshot, kind) is not None
+
+
+def read_field(kind: str, field: str) -> Callable[[NinaData], Any]:
+    """One reading off one equipment model, `None` while the device is absent.
+
+    A disconnected device's readings are already `None` from the mapper, so
+    this yields `unknown` rather than a driver template default.
+    """
+    def value(data: NinaData) -> Any:
+        device = getattr(data.snapshot, kind)
+        return None if device is None else getattr(device, field)
+
+    return value
+
+
+def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
+    """Every channel the N.I.N.A. switch device reports, empty while it is
+    absent — the device is one of eleven slots, not one of the channels."""
+    device = data.snapshot.switch_device
+    return device.channels if device is not None else ()
+
+
 def channel_key(channel: SwitchChannelModel) -> str:
     """The `unique_id` suffix for one N.I.N.A. switch-device channel.
 
@@ -77,9 +107,7 @@ def channel_name(channel: SwitchChannelModel) -> str:
 def channel_of(data: NinaData, index: int) -> SwitchChannelModel | None:
     """The channel with this `Id` in the published snapshot, if it is still
     there — a driver may stop reporting one, and the entity outlives it."""
-    device = data.snapshot.switch_device
-    channels = device.channels if device is not None else ()
-    return next((c for c in channels if c.index == index), None)
+    return next((c for c in channels_of(data) if c.index == index), None)
 
 
 def device_identifiers(entry_id: str, kind: str | None = None) -> set[tuple[str, str]]:
