@@ -229,10 +229,15 @@ class SwitchChannelModel:
 
     @property
     def binary(self) -> bool:
-        """A one-step range is an on/off channel, and belongs on `switch`."""
+        """A one-step range is an on/off channel, and belongs on `switch`.
+
+        A zero step is not one step: `Min 0 / Max 0 / Step 0` satisfies the
+        arithmetic and is what a DISCONNECTED device reports, so without the
+        guard it mints a switch whose on and off values are both 0.
+        """
         if self.minimum is None or self.maximum is None or self.step_size is None:
             return False
-        return self.maximum - self.minimum == self.step_size
+        return self.step_size > 0 and self.maximum - self.minimum == self.step_size
 
 
 @dataclass(frozen=True, slots=True)

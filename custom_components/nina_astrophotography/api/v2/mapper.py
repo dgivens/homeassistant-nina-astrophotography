@@ -81,6 +81,9 @@ _MERIDIAN_IDLE_SENTINEL = 24.0
 _IDLE_ITERATIONS_SENTINEL = -1
 _NO_STARS_SENTINEL = -1
 _CALIBRATION_TYPES = frozenset({"FLAT", "DARK", "BIAS", "DARKFLAT"})
+# Far above any plausible ASCOM switch id, so a synthesized read-only index
+# can never collide with a real one from either list.
+_READONLY_INDEX_BASE = 10_000
 
 # Event-name PREFIX → the timezone a naive `Time` is in. Mediator events are
 # offset-aware and need no entry; TS-* are naive UTC; log-scraped ERROR-* are
@@ -362,6 +365,17 @@ def map_safety_monitor(wire: dict) -> SafetyMonitorModel:
     )
 
 
+def _fallback_index(key: str, position: int) -> int:
+    """A synthetic channel index for an entry the driver gave no `Id`.
+
+    Offset per list so the two cannot collide. The value is only ever a key —
+    `switch_channel_{index}` and the `set` parameter — and a channel with no
+    `Id` cannot be commanded anyway, so a number no real `Id` will reach is
+    strictly better than one that can be reached twice.
+    """
+    return position + (_READONLY_INDEX_BASE if key == "ReadonlySwitches" else 0)
+
+
 def map_switch(wire: dict) -> SwitchDeviceModel:
     """The channel list is the device's capability, so it survives a disconnect
     the way every other block's option lists and ranges do; only `value` is a
@@ -373,7 +387,12 @@ def map_switch(wire: dict) -> SwitchDeviceModel:
         for position, entry in enumerate(wire.get(key) or ()):
             index = _integer(entry, "Id")
             channels.append(SwitchChannelModel(
-                index=index if index is not None else position,
+                # The fallback is namespaced per list: `position` restarts at
+                # zero for the second one, so a writable and a read-only
+                # channel both missing `Id` would otherwise land on the same
+                # index — and `channel_of` resolves by index, so the read-only
+                # gauge would render the writable channel's value.
+                index=index if index is not None else _fallback_index(key, position),
                 name=_text(entry, "Name") or "",
                 description=_text(entry, "Description") or "",
                 value=_number(entry, "Value") if connected else None,

@@ -164,6 +164,29 @@ def _rejected_autofocus(name: str, *, r_squared: float) -> dict:
     }}}
 
 
+def _rangeless(channel: dict) -> dict:
+    """A writable channel whose driver reports no usable range.
+
+    `"NaN"` is how this API sends a number it does not have, and every capture
+    has both outlets reporting a real 0-1 range — so the shape that falls
+    through all three platforms has to be derived.
+    """
+    return {**channel, "Id": 4, "Name": "Aux Port",
+            "Minimum": "NaN", "Maximum": "NaN", "StepSize": "NaN"}
+
+
+def _degenerate(channel: dict) -> dict:
+    """A channel reporting `Min 0 / Max 0 / Step 0`.
+
+    What a DISCONNECTED device sends for a range, which `number.py` already
+    documents for the flat panel. `Max - Min == Step` holds, so without a
+    zero-step guard it reads as binary and mints a switch whose on and off
+    values are both 0.
+    """
+    return {**channel, "Id": 5, "Name": "Stuck Outlet",
+            "Minimum": 0, "Maximum": 0, "StepSize": 0, "Value": 0}
+
+
 def _gauge() -> dict:
     """A captured binary channel as a read-only gauge.
 
@@ -404,6 +427,22 @@ STATES: dict[str, State] = {
         _IMAGING, "Switch",
         WritableSwitches=[{**_DAWN_CHANNELS[0], "Value": 0, "TargetValue": 1},
                           _DAWN_CHANNELS[1]],
+    ),
+    # A writable channel with no range, which belongs on no platform at all.
+    "switch_hub_with_a_rangeless_channel": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[*_DAWN_CHANNELS, _rangeless(_DAWN_CHANNELS[0])],
+    ),
+    # A channel whose range is `0-0 step 0` — the arithmetic a zero-step guard
+    # exists to refuse.
+    "switch_hub_with_a_degenerate_channel": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[*_DAWN_CHANNELS, _degenerate(_DAWN_CHANNELS[0])],
+    ),
+    # The flat panel outlet gone from the driver's list, which the entity
+    # created for it outlives.
+    "switch_channel_no_longer_reported": _with_readings(
+        _IMAGING, "Switch", WritableSwitches=[_DAWN_CHANNELS[1]],
     ),
     # A read-only gauge beside the two outlets, which belongs on `sensor`.
     "switch_hub_with_a_readonly_channel": _with_readings(

@@ -295,6 +295,14 @@ class NinaNumberChannel(NinaChannelEntity, NumberEntity):
         return self.channel_value
 
     async def async_set_native_value(self, value: float) -> None:
+        if self.channel is None:
+            # The API answers `Success: true` to a `set` for an index it does
+            # not have, so nothing downstream would report this.
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="channel_gone",
+                translation_placeholders={"channel": self.name or str(self._index)},
+            )
         try:
             await self.coordinator.client.set_switch_value(self._index, value)
         except NinaError as exc:
