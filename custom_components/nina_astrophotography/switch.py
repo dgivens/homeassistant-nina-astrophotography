@@ -16,8 +16,9 @@ but `Stopped`. `State == "Guiding"` reads *off* through `LostLock` and
 **The cooler is two endpoints, not a toggle.** `/equipment/camera/cool` takes
 the setpoint and has no "resume at the existing target" form, so cooling starts
 at the temperature the camera reports as its own target; a camera that reports
-none — `TargetTemp: "NaN"`, which is what a camera with no cooling sends — is
-refused rather than cooled to a guessed temperature.
+none is refused rather than cooled to a guessed temperature. `"NaN"` is how a
+camera with no cooling would report the field; no capture in the corpus holds
+one, so the rig state exercising it is derived.
 
 **A channel of the N.I.N.A. switch device belongs here only when it is
 binary** — `Max - Min == StepSize` (§5.3.5) — and its on/off values are that
@@ -189,8 +190,11 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
     NinaSwitchDescription(
         key="livestack",
         translation_key="livestack",
-        # Session-scoped, and the endpoint answers whether or not the plugin is
-        # installed, so it hangs off the hub and always exists.
+        # Session-scoped, so it hangs off the hub. It always exists because
+        # the model has an empty default, not because the endpoint always
+        # answers: a build without the plugin 404s, the coordinator latches
+        # that and stops asking, and the switch then reads `off` — where
+        # turning it on raises.
         kind=None,
         value=lambda data: data.livestack.running,
         command=_either("start_livestack", "stop_livestack"),

@@ -181,7 +181,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     # later setup step fails, which is what keeps the reconnect task from
     # outliving a failed entry.
     entry.async_on_unload(events.stop)
-    await events.start()
 
     # Before the platforms: an entity's `via_device` needs the hub to exist,
     # and a child device created here rather than by an entity is what lets a
@@ -194,6 +193,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # AFTER the platforms, so nothing dispatches into a window where the
+    # subscribers do not exist yet. `event.nina_error` subscribes in
+    # `async_added_to_hass` (Bronze entity-event-setup), and replay
+    # deliberately does not re-fire — so an ERROR-* arriving while nine
+    # platforms set themselves up would be lost for good, on every reload.
+    await events.start()
 
     _register_services(hass)
 
@@ -349,10 +355,16 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN,
         SERVICE_MOUNT_SLEW,
         _service(handle_slew),
+        # `services.yaml`'s selectors are a UI hint and bind nothing from a
+        # script, an automation or the REST API — and out-of-range input is
+        # silently clamped and answered `Success: true`, so the schema is the
+        # only thing between a typo and a mount slewing somewhere real.
         schema=vol.Schema(
             {
-                vol.Required("ra"): vol.Coerce(float),
-                vol.Required("dec"): vol.Coerce(float),
+                vol.Required("ra"): vol.All(vol.Coerce(float), vol.Range(min=0, max=24)),
+                vol.Required("dec"): vol.All(
+                    vol.Coerce(float), vol.Range(min=-90, max=90)
+                ),
             }
         ),
     )
@@ -389,7 +401,9 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN,
         SERVICE_FOCUSER_MOVE,
         _service(handle_focuser_move),
-        schema=vol.Schema({vol.Required("position"): vol.Coerce(int)}),
+        schema=vol.Schema(
+            {vol.Required("position"): vol.All(vol.Coerce(int), vol.Range(min=0))}
+        ),
     )
 
     async def handle_autofocus(call: ServiceCall) -> None:
@@ -407,7 +421,9 @@ def _register_services(hass: HomeAssistant) -> None:
         DOMAIN,
         SERVICE_FILTERWHEEL_CHANGE,
         _service(handle_filter_change),
-        schema=vol.Schema({vol.Required("filter_index"): vol.Coerce(int)}),
+        schema=vol.Schema(
+            {vol.Required("filter_index"): vol.All(vol.Coerce(int), vol.Range(min=0))}
+        ),
     )
 
     # ── Guider ───────────────────────────────────────────────────────────────

@@ -57,8 +57,8 @@ from .entity import NinaChannelEntity, NinaEntity
 # One in-flight command per platform: these move hardware.
 PARALLEL_UPDATES = 1
 
-# The focuser reports no travel limit — `/equipment/focuser/info` carries
-# Position and StepSize and nothing else — so the upper bound is a constant
+# The focuser reports no travel limit — no `MaxStep` or bound of any kind
+# reaches the wire — so the upper bound is a constant
 # wide enough for any focuser rather than a driver reading. N.I.N.A. clamps at
 # the driver's own MaxStep.
 _FOCUSER_MAX_STEP = 200_000

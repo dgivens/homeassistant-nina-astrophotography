@@ -446,12 +446,13 @@ class StackState:
     names the one currently accumulating. `/livestack/image/available` lists
     every pair the plugin holds without saying which is current, and the event
     is already folded, so nothing extra is polled for this.
+
+    `StackCount` rides the same event and is deliberately absent: nothing
+    consumes it, and this module is closed to fields nothing consumes.
     """
 
     target: str
     filter_name: str
-    count: int
-    """`StackCount` — how many subs are in the stack."""
     updated: datetime
 
 

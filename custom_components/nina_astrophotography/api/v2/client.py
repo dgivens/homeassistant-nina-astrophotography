@@ -321,8 +321,9 @@ class NinaClientV2:
 
     # ── commands ─────────────────────────────────────────────────────────────
     #
-    # Parameter names are verified by live probe and pinned by test. The spec
-    # declares set-light's parameter as literally `True`; `set-light?True=true`
+    # Parameter names are verified by live probe and pinned by test. The
+    # PUBLISHED documentation renames set-light's parameter to `True` — the
+    # committed spec and the wire both read `on` — and `set-light?True=true`
     # answers Success: true and leaves the panel alone. Never generate these.
     #
     # No command on this API can be confirmed from its own response: parameters

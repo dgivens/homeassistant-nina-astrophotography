@@ -7,6 +7,7 @@ each of those is a silent no-op if it is got wrong: N.I.N.A. answers
 seconds later, so nothing at the call site can tell.
 """
 import pytest
+import voluptuous as vol
 from helpers import failure
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -102,3 +103,26 @@ async def test_every_remaining_service_reaches_its_own_endpoint(
     data = {"temperature": -10} if service == "camera_cool" else {}
     await _call(hass, service, **data)
     assert rig.sent[-1][0] == path
+
+
+@pytest.mark.parametrize(
+    ("service", "data"),
+    [
+        ("mount_slew", {"ra": 30, "dec": 0}),
+        ("mount_slew", {"ra": -1, "dec": 0}),
+        ("mount_slew", {"ra": 0, "dec": 91}),
+        ("focuser_move", {"position": -1}),
+        ("filterwheel_change_filter", {"filter_index": -1}),
+    ],
+    ids=["ra-above-24", "ra-negative", "dec-above-90", "position", "filter"],
+)
+async def test_out_of_range_input_is_refused_rather_than_clamped(
+    hass: HomeAssistant, loaded_entry, rig, service: str, data: dict
+) -> None:
+    """`services.yaml`'s selectors are a UI hint and bind nothing from a script
+    or the REST API. Out-of-range input is silently clamped and answered
+    `Success: true`, so nothing downstream would report it — `ra: 30` is 450°,
+    and the mount slews somewhere real."""
+    with pytest.raises(vol.Invalid):
+        await _call(hass, service, **data)
+    assert rig.sent == []

@@ -204,12 +204,8 @@ def latest_stack(events: Iterable[NinaEvent],
         return None
     if not target or not filter_name:
         return None
-    count = newest.data.get("StackCount")
     return StackState(
-        target=target,
-        filter_name=filter_name,
-        count=int(count) if isinstance(count, (int, float)) else 0,
-        updated=newest.time,
+        target=target, filter_name=filter_name, updated=newest.time
     )
 
 
