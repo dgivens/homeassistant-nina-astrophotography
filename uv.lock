@@ -1602,6 +1602,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pyyaml" },
+    { name = "syrupy" },
 ]
 test = [
     { name = "aiohttp" },
@@ -1609,6 +1610,7 @@ test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pyyaml" },
+    { name = "syrupy" },
 ]
 test-ha = [
     { name = "pytest-homeassistant-custom-component" },
@@ -1625,6 +1627,7 @@ dev = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "syrupy", specifier = "==6.0.0" },
 ]
 test = [
     { name = "aiohttp", specifier = ">=3.9" },
@@ -1632,6 +1635,7 @@ test = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "syrupy", specifier = "==6.0.0" },
 ]
 test-ha = [{ name = "pytest-homeassistant-custom-component", specifier = "==0.13.363" }]
 
