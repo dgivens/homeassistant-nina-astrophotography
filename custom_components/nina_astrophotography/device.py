@@ -30,7 +30,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
-from .api.models import DeviceMeta, VersionInfo
+from .api.models import DeviceMeta, SwitchChannelModel, VersionInfo
 from .const import CONF_HOST, CONF_PORT, DEFAULT_PORT, DOMAIN
 
 if TYPE_CHECKING:
@@ -53,6 +53,33 @@ KINDS: Mapping[str, str] = {
     "safety_monitor": "Safety Monitor",
     "switch_device": "Switch",
 }
+
+
+def channel_key(channel: SwitchChannelModel) -> str:
+    """The `unique_id` suffix for one N.I.N.A. switch-device channel.
+
+    Keyed on the channel's own `Id`, never its position: a channel the driver
+    adds later would otherwise renumber every entity after it.
+    """
+    return f"switch_channel_{channel.index}"
+
+
+def channel_name(channel: SwitchChannelModel) -> str:
+    """The entity name for one channel — the driver's, where it gave one.
+
+    A driver need not name a channel, and an empty name resolves to the
+    device's own under `has_entity_name`, which would collapse every unnamed
+    channel onto one entity id.
+    """
+    return channel.name or f"Channel {channel.index}"
+
+
+def channel_of(data: NinaData, index: int) -> SwitchChannelModel | None:
+    """The channel with this `Id` in the published snapshot, if it is still
+    there — a driver may stop reporting one, and the entity outlives it."""
+    device = data.snapshot.switch_device
+    channels = device.channels if device is not None else ()
+    return next((c for c in channels if c.index == index), None)
 
 
 def device_identifiers(entry_id: str, kind: str | None = None) -> set[tuple[str, str]]:
