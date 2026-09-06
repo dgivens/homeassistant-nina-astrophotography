@@ -60,7 +60,8 @@ custom_components/nina_astrophotography/
   const.py            domain, config keys, service names, enums
   config_flow.py      UI setup
   binary_sensor.py sensor.py number.py select.py light.py switch.py
-  button.py image.py  migrated; each is a table of entity descriptors
+  button.py image.py event.py   every platform is a table of entity
+                      descriptors over NinaData; copy binary_sensor.py
 blueprints/automation/nina_astrophotography/   5 automation blueprints
 www/                                           5 Lovelace cards
 tests/unit/                                    HA-free; tests/ha/ under PHACC
