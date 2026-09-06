@@ -444,6 +444,17 @@ STATES: dict[str, State] = {
     "switch_channel_no_longer_reported": _with_readings(
         _IMAGING, "Switch", WritableSwitches=[_DAWN_CHANNELS[1]],
     ),
+    # A wheel whose slots are numbered from 4, so a position and an `Id` can
+    # be told apart. Every capture numbers from zero in list order, which is
+    # exactly why nothing else can show which one is sent.
+    "filter_wheel_numbered_from_four": _with_readings(
+        _IMAGING_GUIDING, "FilterWheel",
+        AvailableFilters=[
+            {**entry, "Id": entry["Id"] + 4}
+            for entry in _IMAGING_GUIDING["/equipment/info"]["Response"]
+            ["FilterWheel"]["AvailableFilters"]
+        ],
+    ),
     # A read-only gauge beside the two outlets, which belongs on `sensor`.
     "switch_hub_with_a_readonly_channel": _with_readings(
         _IMAGING, "Switch", ReadonlySwitches=[_gauge()],

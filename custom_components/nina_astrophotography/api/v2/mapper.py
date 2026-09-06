@@ -170,6 +170,23 @@ def _timestamp(raw: Any) -> datetime | None:
         return None
 
 
+def _slots(entries: Any) -> Mapping[str, int]:
+    """Filter name → the wheel's own `Id`, for the entries that carry both.
+
+    A name with no usable `Id` is simply absent, so the platform refuses the
+    change rather than guessing a slot for it.
+    """
+    if not isinstance(entries, list):
+        return MappingProxyType({})
+    return MappingProxyType({
+        entry["Name"]: index
+        for entry in entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("Name"), str)
+        and (index := _integer(entry, "Id")) is not None
+    })
+
+
 def _names(entries: Any) -> tuple[str, ...]:
     """The `Name` of each object in a list — filters, binning modes, ..."""
     return tuple(entry["Name"] for entry in entries or ()
@@ -279,6 +296,7 @@ def map_filter_wheel(wire: dict) -> FilterWheelModel:
         meta=_meta(wire),
         selected_filter=_text(readings, "SelectedFilter", "Name"),
         available_filters=_names(wire.get("AvailableFilters")),
+        filter_slots=_slots(wire.get("AvailableFilters")),
         is_moving=_flag(readings, "IsMoving"),
     )
 

@@ -50,6 +50,11 @@ DEFAULT_AUTOFOCUS_TIMEOUT = 300.0
 # ending, a park, any device dropping, or the sequencer moving on to the next
 # exposure. SAFETY-CHANGED counts only when it reports unsafe.
 #
+# `MOUNT-PARKED` is the one name here no capture holds — the full-night corpus
+# has MOUNT-HOMED and no park — so if the wire spells it otherwise, a park
+# during a hung run reads as a failure rather than an abort. Harmless to keep
+# either way: a name the rig never sends matches nothing.
+#
 # Read as signals, never counted. IMAGE-SAVE is the one event that cannot be
 # deduplicated across the live and replayed paths — the socket sends it with no
 # `Time`, `/event-history` with the rig's — so the set can hold two copies of

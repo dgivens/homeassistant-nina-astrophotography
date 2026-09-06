@@ -147,3 +147,19 @@ def test_every_dome_descriptor_is_marked_unverified() -> None:
     No dome descriptor exists on this platform yet — the guard is for the one
     that is added next."""
     assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []
+
+
+@pytest.mark.synthetic
+async def test_the_filter_change_sends_the_wheels_slot_not_the_list_position(
+    hass: HomeAssistant, loaded_entry, advance, rig
+) -> None:
+    """Every captured wheel numbers its slots from zero in list order, so a
+    position and an `Id` are indistinguishable there. A wheel that numbers
+    otherwise is what separates them — and a wrong slot changes to the wrong
+    filter, answers `Success: true`, and costs the sub."""
+    await advance("filter_wheel_numbered_from_four")
+    await hass.services.async_call(
+        SELECT_DOMAIN, SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: FILTER, ATTR_OPTION: "H"}, blocking=True,
+    )
+    assert rig.sent[-1] == ("/equipment/filterwheel/change-filter", {"filterId": 8})

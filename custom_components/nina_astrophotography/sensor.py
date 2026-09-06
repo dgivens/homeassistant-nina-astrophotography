@@ -895,6 +895,12 @@ async def async_setup_entry(
     _add_observed()
     entry.async_on_unload(coordinator.async_add_listener(_add_observed))
 
+    # The one path that does not gate on `observed()`. It cannot: the registry
+    # rows exist precisely because setup runs before any poll, and a source
+    # that is down at Home Assistant's start leaves `snapshot.weather` None
+    # while its channels are still this entry's. The device is not minted
+    # nameless because the device registry has kept the row from the run that
+    # created these entities — the same row this is reading them out of.
     established = _established_channels(er.async_get(hass), entry)
     channels = set(established)
     async_add_entities(
