@@ -76,17 +76,60 @@ def test_seam_guard_sees_the_modules_it_claims_to() -> None:
     assert {"const.py"} <= {p.name for p in _seam_files()}
 
 
+WIRE_MODULES = ("api.v2.mapper", "api.v2.schema")
+WIRE_PACKAGE = "api.v2"
+WIRE_NAMES = {"mapper", "schema"}
+
+
+def _ends_at(module: str, candidates: tuple[str, ...]) -> bool:
+    """True when a dotted import path ends at one of `candidates`."""
+    return any(module == c or module.endswith("." + c) for c in candidates)
+
+
+def _imports_the_wire_layer(tree: ast.AST) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(_ends_at(alias.name, WIRE_MODULES) for alias in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            # `node.module` is the path as written; relative depth does not
+            # change which module it ends at, so the tail is enough.
+            module = node.module or ""
+            if _ends_at(module, WIRE_MODULES):
+                return True
+            if (_ends_at(module, (WIRE_PACKAGE,))
+                    and any(alias.name in WIRE_NAMES for alias in node.names)):
+                return True
+    return False
+
+
 def test_nothing_above_the_seam_imports_the_wire_layer() -> None:
     """The client TYPE may be imported; the mapper and the generated schema may
     not. Holding a NinaClientV2 is not knowing a wire format — calling
     map_equipment_info, or naming a TypedDict, is.
+
+    Read from the import statements, not from the file's text: `from .api.v2
+    import mapper` names the wire layer without ever spelling `api.v2.mapper`.
     """
     above = [p for p in COMPONENT.rglob("*.py")
              if "api" not in p.relative_to(COMPONENT).parts]
-    offenders = [
-        p.name for p in above
-        if any(m in p.read_text(encoding="utf-8")
-               for m in ("api.v2.mapper", "api.v2.schema",
-                         "from .api.v2.mapper", "from .api.v2.schema"))
-    ]
+    offenders = [p.name for p in above
+                 if _imports_the_wire_layer(ast.parse(p.read_text(encoding="utf-8")))]
     assert not offenders, f"wire layer imported above the seam: {offenders}"
+
+
+@pytest.mark.parametrize(
+    ("source", "offends"),
+    [
+        ("from .api.v2 import mapper", True),
+        ("from .api.v2 import mapper as m, NinaClientV2", True),
+        ("from ..api.v2.mapper import map_frame", True),
+        ("import custom_components.nina_astrophotography.api.v2.schema", True),
+        ("from .api.v2 import NinaClientV2", False),
+        ("from .api import v2", False),
+        ("from .coordinator import NinaCoordinator", False),
+    ],
+)
+def test_the_wire_guard_reads_every_import_form(source: str, offends: bool) -> None:
+    """A guard that only matched one spelling is why this one reads the AST."""
+    assert _imports_the_wire_layer(ast.parse(source)) is offends
