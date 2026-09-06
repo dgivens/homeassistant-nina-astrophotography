@@ -335,13 +335,49 @@ class AutoFocusState:
 
     last_finished_at: datetime | None
     """The newest FINISHED. A FINISHED is the report, not a verdict: an
-    autofocus that found no focus still reports. Whether it succeeded is read
-    from `/equipment/focuser/last-af` — R² against the profile's
-    `RSquaredThreshold` — once phase C consumes it.
+    autofocus that found no focus still reports, so the verdict comes from
+    `AutoFocusReport.r_squared` against the profile's `RSquaredThreshold`.
     """
     running_since: datetime | None
     """The newest STARTING with nothing answering it yet."""
     failed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AutoFocusReport:
+    """The newest `/equipment/focuser/last-af`.
+
+    **Success only, and not even that.** The report file is written per
+    ATTEMPT, before the verdict, and the endpoint returns the newest — so a run
+    N.I.N.A. rejected overwrites the last good one carrying no failure flag.
+    `r_squared` against the profile's `RSquaredThreshold` is the only judge
+    there is (§4.4).
+
+    The report also survives a restart, so it must be dated against the session
+    before it is believed: a bad run from three nights ago is not tonight's
+    problem.
+    """
+
+    timestamp: datetime | None
+    filter_name: str | None
+    temperature: float | None
+    """Focuser temperature at the run — the other half of a temp-comp slope."""
+    method: str | None
+    """`STARHFR` or `CONTRASTDETECTION`."""
+    fitting: str | None
+    """Which curve was fitted: `TRENDPARABOLIC`, `HYPERBOLIC`, and so on."""
+    position: int | None
+    """Where the run left the focuser."""
+    hfr: float | None
+    """The fitted minimum — the HFR the curve predicts at `position`."""
+    r_squared: float | None
+    """The WORST fit in the report, which is what a threshold must judge.
+
+    N.I.N.A. computes an R² only for the fittings it actually used and sends
+    `"NaN"` for the rest — a `TRENDPARABOLIC` run carries Quadratic, LeftTrend
+    and RightTrend and a `"NaN"` Hyperbolic — so taking the minimum of what
+    survives the `"NaN"` rule needs no table of which fitting uses which.
+    """
 
 
 @dataclass(frozen=True, slots=True)

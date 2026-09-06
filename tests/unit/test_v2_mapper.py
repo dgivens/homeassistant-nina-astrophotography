@@ -13,6 +13,7 @@ from nina_astrophotography.api.v2.mapper import (
     map_flats_status,
     map_frame,
     map_guider,
+    map_last_autofocus,
     map_livestack_status,
     map_mount,
     map_profile,
@@ -444,3 +445,22 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
 
 def test_an_absent_profile_section_is_no_reading() -> None:
     assert map_profile({}).focal_length is None
+
+
+def test_the_autofocus_reports_worst_fit_is_what_a_threshold_judges() -> None:
+    """N.I.N.A. computes an R² only for the fittings a run actually used and
+    sends `"NaN"` for the rest — this TRENDPARABOLIC run carries a `"NaN"`
+    Hyperbolic — so the minimum of what survives the `"NaN"` rule is the worst
+    fit computed, and no fitting-to-R² table has to be guessed at."""
+    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    assert report.r_squared == pytest.approx(0.9710548595560263)
+
+
+def test_an_autofocus_report_carries_where_it_left_the_focuser() -> None:
+    """`CalculatedFocusPoint` is the fitted minimum, not the run's start."""
+    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    assert (report.position, report.filter_name) == (2340, "L")
+
+
+def test_a_rig_that_has_never_run_an_autofocus_has_no_report() -> None:
+    assert map_last_autofocus({}) is None

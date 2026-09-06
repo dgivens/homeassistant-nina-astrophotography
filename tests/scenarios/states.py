@@ -146,6 +146,24 @@ def _dimmable(channel: dict) -> dict:
     return {**channel, "Id": 2, "Name": "Dew Heater A", "Maximum": 100, "Value": 50}
 
 
+def _rejected_autofocus(name: str, *, r_squared: float) -> dict:
+    """The captured autofocus report with its curve fit degraded.
+
+    N.I.N.A. writes the report per ATTEMPT, before the verdict, so a run it
+    REJECTED is on the wire looking exactly like a good one bar its R² (§4.4).
+    The corpus holds only successful runs — every captured `RSquares` is above
+    the profile's 0.7 threshold — so the rejected case has to be derived, and
+    only the R² values move. `Hyperbolic` stays `"NaN"`: this run fitted
+    `TRENDPARABOLIC`, and an unused fitting reports no R² at all.
+    """
+    envelope = load_envelope(name)
+    squares = envelope["Response"]["RSquares"]
+    return {**envelope, "Response": {**envelope["Response"], "RSquares": {
+        key: (value if value == "NaN" else r_squared)
+        for key, value in squares.items()
+    }}}
+
+
 def _gauge() -> dict:
     """A captured binary channel as a read-only gauge.
 
@@ -355,6 +373,15 @@ STATES: dict[str, State] = {
     # `GuiderInfo.State` is Looping | LostLock | Guiding | Stopped | Calibrating
     # and the corpus holds only `Guiding` — a guider that is down carries no
     # `State` at all — so both are synthetic in that one string.
+    # An autofocus that FINISHED and was rejected on its curve fit: the profile
+    # threshold is 0.7 and this run fitted 0.42. Invisible in the event stream
+    # — the only evidence is the report's own R².
+    "autofocus_rejected_on_r_squared": {
+        **_IMAGING_GUIDING,
+        "/equipment/focuser/last-af": _rejected_autofocus(
+            "imaging_guiding_last_af.json", r_squared=0.42
+        ),
+    },
     "guider_lost_lock": _with_readings(_IMAGING_GUIDING, "Guider", State="LostLock"),
     "guider_stopped": _with_readings(_IMAGING_GUIDING, "Guider", State="Stopped"),
     # A camera cooling to -10 °C, and one that reports no setpoint at all.
