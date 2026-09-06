@@ -355,10 +355,11 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         unique_id_suffix="camera_status",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="camera",
-        # Retained beside `binary_sensor.camera_is_exposing` for the same
-        # reason `guider_status` is retained beside `switch.guider` (§5.2.3):
-        # the flag answers "is it exposing", while `Downloading`, `Waiting` and
-        # `Error` are the states an automation about a stalled camera needs.
+        # Retained beside `binary_sensor.<instance>_camera_exposing` for the
+        # same reason `guider_status` is retained beside `switch.guider`
+        # (§5.2.3): the flag answers "is it exposing", while `Reading`,
+        # `Download`, `Waiting` and `Error` are the states an automation about
+        # a stalled camera needs.
         value=read_field("camera", "camera_state"),
     ),
     # ── Mount ────────────────────────────────────────────────────────────
@@ -417,8 +418,9 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         translation_key="mount_side_of_pier",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="mount",
-        # New. The meridian-flip maths needs it (§11), and it is the one field
-        # that says whether a flip has already happened.
+        # New. One of the two inputs to §11's pier-side windows. It does NOT
+        # say whether a flip has happened: that needs the EXPECTED side from
+        # ASCOM's `DestinationSideOfPier`, which this API does not expose.
         value=read_field("mount", "side_of_pier"),
     ),
     NinaSensorDescription(
@@ -514,8 +516,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="flat_device",
         # Retained beside `switch.flat_panel_cover`: `CoverState` is
-        # Open | Closed | NeitherOpenNorClosed | Unknown | Error, and a switch
-        # cannot express a cover that is stuck between the two.
+        # Open | Closed | NeitherOpenNorClosed | NotPresent | Unknown | Error,
+        # and a switch cannot express a cover stuck between the two.
         value=read_field("flat_device", "cover_state"),
     ),
     # ── Sequence ─────────────────────────────────────────────────────────

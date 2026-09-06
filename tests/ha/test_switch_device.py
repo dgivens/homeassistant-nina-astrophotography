@@ -5,6 +5,9 @@ are the whole rule: a one-step writable channel is a `switch`, a wider writable
 one a `number`, and a read-only one a `sensor`. Nothing else about a channel is
 inspected, because nothing else is reported.
 
+`Value` versus `TargetValue` is pinned in `test_switch.py`, which owns the
+binary channel; this file owns the split itself.
+
 On this rig the switch device is a Home Assistant bridge exposing two mains
 outlets, so the entities duplicate ones that exist natively — accepted, the
 same device through two integrations is ordinary. The normal case is a real
@@ -48,14 +51,6 @@ async def test_a_number_channel_offers_the_channels_own_range(
     await advance("switch_hub_with_a_dimmable_channel")
     attributes = hass.states.get(DEW_HEATER).attributes
     assert (attributes["min"], attributes["max"], attributes["step"]) == (0, 100, 1)
-
-
-async def test_a_channel_reports_value_not_target_value(
-    hass: HomeAssistant, loaded_entry, advance
-) -> None:
-    """`TargetValue` is where the channel is going; `Value` is where it is."""
-    await advance("switch_channel_commanded_not_yet_switched")
-    assert hass.states.get(OUTLET).state == "off"
 
 
 async def test_channels_ship_enabled(

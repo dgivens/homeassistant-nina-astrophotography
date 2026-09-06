@@ -133,3 +133,30 @@ async def test_both_images_hang_off_the_hub(
     assert {entity_registry.async_get(e).device_id for e in (LAST_FRAME, LIVESTACK)} == {
         on_the_hub
     }
+
+
+async def test_the_livestack_image_says_which_stack_it_is_showing(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    """One entity follows whichever filter updated last, so on a mono rig the
+    tile jumps between channels — a caption needs somewhere to read the pair
+    from."""
+    attributes = hass.states.get(LIVESTACK).attributes
+    assert (attributes["target"], attributes["filter"]) == ("NGC 281", "S")
+
+
+async def test_a_stack_that_starts_after_home_assistant_did_gets_its_entity(
+    hass: HomeAssistant, two_rigs
+) -> None:
+    """Gold `dynamic-devices`. The default rig already carries a stack at
+    setup, so the listener that adds one later is never exercised there —
+    delete it and the rest of this file stays green."""
+    entry = two_rigs.entries[1]
+    assert hass.states.get("image.dome_livestack") is None
+    entry.runtime_data.events._dispatch(
+        {"Event": "STACK-UPDATED", "Time": "2026-09-04T04:30:00-05:00",
+         "Target": "NGC 281", "Filter": "S"},
+        entry.runtime_data.coordinator.generation,
+    )
+    await hass.async_block_till_done()
+    assert hass.states.get("image.dome_livestack") is not None

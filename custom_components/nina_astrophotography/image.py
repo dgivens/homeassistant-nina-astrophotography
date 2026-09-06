@@ -15,9 +15,10 @@ its target and filter.
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from homeassistant.components.image import ImageEntity, ImageEntityDescription
 from homeassistant.core import HomeAssistant, callback
@@ -43,15 +44,16 @@ _QUALITY = 85
 class NinaImageDescription(ImageEntityDescription):
     """An image, plus where its bytes and its timestamp come from.
 
-    `observed` is the §5.2.2 first-sight rule: the last frame exists from the
-    start because `/image/0` is served whether or not anything has been
-    captured, while the livestack pair is only knowable once a stack has
-    reported one.
+    `observed` is the §5.2.2 first-sight rule. The last frame exists from the
+    start because its identity does not depend on the poll — with no frame
+    yet the timestamp is `None` and `async_image` never asks — while the
+    livestack pair is only knowable once a stack has reported one.
     """
 
     stamp: Callable[[NinaData], datetime | None]
     fetch: Callable[[NinaClientV2, NinaData], Awaitable[bytes]]
     observed: Callable[[NinaData], bool] = lambda data: True
+    attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
     unique_id_suffix: str | None = None
     """The 1.4.5 key, where it differs from `key`."""
 
@@ -74,6 +76,14 @@ DESCRIPTIONS: tuple[NinaImageDescription, ...] = (
             data.stack.target, data.stack.filter_name, quality=_QUALITY
         ),
         observed=lambda data: data.stack is not None,
+        # Which stack is on screen. On a mono rig the plugin holds one stack
+        # per filter and this entity follows whichever updated last, so
+        # without these a dashboard shows an Ha frame and then an SII one with
+        # nothing explaining the jump.
+        attributes=lambda data: {
+            "target": None if data.stack is None else data.stack.target,
+            "filter": None if data.stack is None else data.stack.filter_name,
+        },
     ),
 )
 
@@ -96,6 +106,11 @@ class NinaImage(NinaEntity, ImageEntity):
         )
         ImageEntity.__init__(self, hass)
         self.entity_description = description
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        build = self.entity_description.attributes
+        return None if build is None else build(self.coordinator.data)
 
     @property
     def image_last_updated(self) -> datetime | None:

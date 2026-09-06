@@ -6,7 +6,7 @@ filters a wheel does not carry.
 
 **The tracking index is the API's own enum, never the position in the options
 list.** `mode` is `0 Sidereal, 1 Lunar, 2 Solar, 3 King, 4 Stopped`, and a mount
-that offers no King — this one — reports four modes with `Stopped` third.
+that offers no King — this one — reports four modes with `Stopped` at index 3.
 Indexing the list would start King tracking on a mount asked to stop. The
 spec spells the first mode `Siderial`; the wire spells it `Sidereal`, and the
 wire is what the options carry.

@@ -108,8 +108,10 @@ def unplaced_channels(data: NinaData) -> tuple[SwitchChannelModel, ...]:
 def channel_key(channel: SwitchChannelModel) -> str:
     """The `unique_id` suffix for one N.I.N.A. switch-device channel.
 
-    Keyed on the channel's own `Id`, never its position: a channel the driver
-    adds later would otherwise renumber every entity after it.
+    Keyed on the channel's own `Id` rather than its position, so a channel the
+    driver adds later does not renumber every entity after it. A channel with
+    no `Id` at all falls back to a synthesized index, offset per list so the
+    two cannot collide.
     """
     return f"switch_channel_{channel.index}"
 
