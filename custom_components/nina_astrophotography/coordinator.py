@@ -60,10 +60,12 @@ from .polling import (
     TierSchedule,
     imaging,
 )
+from .sequence import target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
     fold,
     latest_stack,
+    latest_target,
     newest_frame,
 )
 
@@ -115,6 +117,12 @@ class NinaData:
     livestack: LivestackStatus
     stack: StackState | None
     """The pair `image.livestack` fetches; None until a stack has updated."""
+    target: str | None
+    """What the sequence is shooting: the newest `TS-*TARGETSTART`'s name, else
+    the innermost `TargetName` in the `/sequence/json` tree. Distinct from
+    `session.last_frame.target_name`, which is what was shot LAST — the two
+    differ across a target change, and only this one moves before the first
+    sub."""
     newest_frame: Frame | None
     """The newest frame of any type this process saved — what `/image/0` serves,
     and so `image.last_frame`'s timestamp. `session.last_frame` is the newest
@@ -627,6 +635,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             flats=self._flats,
             livestack=self._livestack,
             stack=latest_stack(self.events, self.generation),
+            target=(latest_target(self.events, self.generation)
+                    or target_name(self._sequence)),
             newest_frame=newest_frame(self.frames.values(), self.generation),
             profile=self._profile,
             generation=self.generation,

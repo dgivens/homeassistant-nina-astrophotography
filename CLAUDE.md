@@ -54,7 +54,8 @@ custom_components/nina_astrophotography/
   entity.py           the shared entity base
   device.py           the hub and one device per equipment type; the only
                       writer of driver metadata into the device registry
-  derive.py           pure maths; session.py — the pure session fold
+  derive.py           pure maths; session.py the pure session fold;
+                      sequence.py the pure /sequence/json walks
   polling.py          HA-free polling decisions: restart, reseed, tiers, event ledger
   const.py            domain, config keys, service names, enums
   config_flow.py      UI setup

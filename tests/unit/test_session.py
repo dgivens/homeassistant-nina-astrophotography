@@ -9,7 +9,12 @@ from helpers import load_fixture
 
 from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
-from nina_astrophotography.session import fold, latest_stack, newest_frame
+from nina_astrophotography.session import (
+    fold,
+    latest_stack,
+    latest_target,
+    newest_frame,
+)
 
 # Noon the day after the dawn corpus: every one of its frames is by then in
 # the previous session.
@@ -338,3 +343,15 @@ def test_a_stack_update_missing_half_its_pair_names_nothing(missing: str) -> Non
 def test_no_stack_update_is_no_stack(night_events) -> None:
     assert latest_stack([e for e in night_events if e.name != "STACK-UPDATED"],
                         "g1") is None
+
+
+def test_the_target_is_the_one_the_newest_start_announced(night_events) -> None:
+    """TS-TARGETSTART fires once per exposure, so the newest is the current
+    target, not the first of the night."""
+    assert latest_target(night_events, "g1") == "NGC 281"
+
+
+def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> None:
+    """A plain N.I.N.A. sequence emits no TS-* event; its target is in the tree."""
+    assert latest_target([e for e in night_events
+                          if not e.name.startswith("TS-")], "g1") is None
