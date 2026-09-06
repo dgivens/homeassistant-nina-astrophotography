@@ -37,6 +37,9 @@ _LIGHT = "LIGHT"
 _AUTOFOCUS_STARTING = "AUTOFOCUS-STARTING"
 _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
 _STACK_UPDATED = "STACK-UPDATED"
+# Target Scheduler announces a target twice: NEWTARGETSTART when it changes,
+# TARGETSTART once per exposure. Both name it, so both count.
+_TARGET_STARTED = frozenset({"TS-TARGETSTART", "TS-NEWTARGETSTART"})
 
 # Only a fallback: the rig's own `FocuserSettings.AutoFocusTimeoutSeconds` is
 # polled from /profile/show and is 600 on the captured rig, so folding against
@@ -220,3 +223,18 @@ def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | Non
     """
     kept = [f for f in frames if f.generation == generation]
     return max(kept, key=_identity, default=None)
+
+
+def latest_target(events: Iterable[NinaEvent],
+                  generation: str | None) -> str | None:
+    """The target the newest `TS-*TARGETSTART` named, or None if none has.
+
+    Target Scheduler only: a plain N.I.N.A. sequence emits no such event and
+    names its target in the `/sequence/json` tree instead (`sequence.py`).
+    """
+    starts = [e for e in events
+              if e.name in _TARGET_STARTED and e.generation == generation]
+    if not starts:
+        return None
+    name = max(starts, key=lambda e: e.time).data.get("TargetName")
+    return name if isinstance(name, str) and name else None
