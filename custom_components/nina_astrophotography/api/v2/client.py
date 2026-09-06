@@ -28,6 +28,7 @@ from ..errors import (
     NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
+    NinaNoImageError,
     NinaRequestError,
     NinaUnavailableError,
 )
@@ -305,8 +306,14 @@ class NinaClientV2:
                 body = await resp.text()
                 if resp.status != 200:
                     raise self._pre_handler_error(path, resp.status, body)
-                self._unwrap(path, self._decode(path, body))
-                raise NinaUnavailableError(f"{path} returned no image")
+                # `_unwrap` answers None for the "no data yet" sentinels — an
+                # empty history's `Index out of range` — which is the idle
+                # rig's ordinary state, not an outage.
+                if self._unwrap(path, self._decode(path, body)) is None:
+                    raise NinaNoImageError(f"{path} has no image to render")
+                raise NinaUnavailableError(
+                    f"{path} answered an envelope, not image bytes"
+                )
         except TimeoutError as exc:
             raise NinaConnectionError(f"Timeout fetching {url}") from exc
         except aiohttp.ClientError as exc:
