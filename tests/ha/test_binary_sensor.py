@@ -210,3 +210,35 @@ async def test_a_hub_entity_is_not_on_an_equipment_device(
 def test_every_dome_descriptor_is_marked_unverified() -> None:
     """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
     assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []
+
+
+@pytest.mark.synthetic
+async def test_a_completed_autofocus_rejected_on_its_curve_fit_raises_the_problem(
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+) -> None:
+    """The failure that costs a night. A rejected run FINISHES — the event
+    stream shows a normal pair, so the hung heuristic sees nothing — and
+    N.I.N.A. writes its report with no verdict on it. The R² under the
+    profile's `RSquaredThreshold` is the only evidence there is (§4.4).
+    """
+    await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
+    assert hass.states.get(AUTOFOCUS_FAILED).state == "on"
+
+
+async def test_a_completed_autofocus_that_fitted_well_raises_nothing(
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+) -> None:
+    """The same captured report unmodified: 0.971 against a 0.7 threshold."""
+    await _set_up_at(hass, config_entry, rig, "imaging_guiding")
+    assert hass.states.get(AUTOFOCUS_FAILED).state == "off"
+
+
+async def test_a_report_older_than_the_session_is_not_tonights_problem(
+    hass: HomeAssistant, config_entry, rig
+) -> None:
+    """The report file outlives a restart, and without the real clock this test
+    runs a day or more after the capture — so the same rejected report reads
+    `off`. Believing an old one would raise a problem every time Home Assistant
+    started."""
+    await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
+    assert hass.states.get(AUTOFOCUS_FAILED).state == "off"

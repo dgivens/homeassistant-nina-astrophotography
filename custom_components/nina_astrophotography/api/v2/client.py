@@ -32,6 +32,7 @@ from ..errors import (
     NinaUnavailableError,
 )
 from ..models import (
+    AutoFocusReport,
     EquipmentSnapshot,
     FlatsStatus,
     Frame,
@@ -46,6 +47,7 @@ from .mapper import (
     map_event,
     map_flats_status,
     map_frame,
+    map_last_autofocus,
     map_livestack_status,
     map_profile,
     map_sequence,
@@ -242,6 +244,15 @@ class NinaClientV2:
 
     async def get_flats(self) -> FlatsStatus:
         return map_flats_status(await self._get("/flats/status") or {})
+
+    async def get_last_autofocus(self) -> AutoFocusReport | None:
+        """The newest autofocus report. `None` where the rig has never run one.
+
+        Reports SUCCESS ONLY in the sense that matters least: the file is
+        written per attempt, before the verdict, so a rejected run is here too
+        with nothing marking it rejected (§4.4).
+        """
+        return map_last_autofocus(await self._get("/equipment/focuser/last-af") or {})
 
     async def get_livestack(self) -> LivestackStatus:
         # No `or {}`: the Response is a bare string, and "" is falsy.

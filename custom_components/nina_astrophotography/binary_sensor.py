@@ -73,6 +73,34 @@ def _unsafe(data: NinaData) -> bool | None:
     return not monitor.is_safe
 
 
+def _autofocus_failed(data: NinaData) -> bool | None:
+    """`on` for either way an autofocus fails, which look nothing alike.
+
+    A HUNG run is an absence — a start no finish answers, past the profile's
+    timeout — and the fold decides it (§4.4).
+
+    A REJECTED run finishes normally and is invisible in the event stream: the
+    report N.I.N.A. writes carries no verdict, so the only evidence is its R²
+    falling under the profile's `RSquaredThreshold`. That is the case that
+    costs a night, because the focuser stays where it was and the subs are soft
+    with nothing raised.
+
+    The report outlives the session, so it is believed only while it is newer
+    than the session start — otherwise a bad run from a previous night would
+    read as a problem the moment Home Assistant restarted.
+    """
+    if data.session.autofocus.failed:
+        return True
+    report = data.autofocus_report
+    threshold = data.profile.r_squared_threshold
+    if report is None or report.r_squared is None or threshold is None:
+        return False
+    start = data.session.session_start
+    if report.timestamp is None or (start is not None and report.timestamp < start):
+        return False
+    return report.r_squared < threshold
+
+
 DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
         key="safety_unsafe",
@@ -118,7 +146,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.PROBLEM,
         kind="focuser",
         # Derived from the folded event set on read — there is no timer to leak.
-        value=lambda data: data.session.autofocus.failed,
+        value=_autofocus_failed,
     ),
     NinaBinarySensorDescription(
         key="sequence_running",

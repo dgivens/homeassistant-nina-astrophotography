@@ -54,6 +54,7 @@ from types import MappingProxyType
 from typing import Any
 
 from ..models import (
+    AutoFocusReport,
     CameraModel,
     DeviceMeta,
     DomeModel,
@@ -589,6 +590,35 @@ def map_flats_status(wire: dict) -> FlatsStatus:
         state=_text(wire, "State"),
         total_iterations=_iterations(wire, "TotalIterations"),
         completed_iterations=_iterations(wire, "CompletedIterations"),
+    )
+
+
+def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
+    """The newest autofocus report, or `None` where the rig has never run one.
+
+    `RSquares` carries one entry per fitting N.I.N.A. knows and `"NaN"` for
+    every fitting this run did not use, so the minimum of what survives the
+    `"NaN"` rule is the worst fit actually computed — which is what the
+    profile's threshold has to judge. No fitting-to-R² table is needed, and
+    none is guessed at.
+    """
+    if not wire:
+        return None
+    squares = wire.get("RSquares")
+    fits = [
+        value
+        for value in (nan_to_none(v) for v in (squares or {}).values())
+        if isinstance(value, (int, float))
+    ] if isinstance(squares, dict) else []
+    return AutoFocusReport(
+        timestamp=_timestamp(wire.get("Timestamp")),
+        filter_name=_text(wire, "Filter") or None,
+        temperature=_number(wire, "Temperature"),
+        method=_text(wire, "Method"),
+        fitting=_text(wire, "Fitting"),
+        position=_integer(wire, "CalculatedFocusPoint", "Position"),
+        hfr=_number(wire, "CalculatedFocusPoint", "Value"),
+        r_squared=min(fits) if fits else None,
     )
 
 
