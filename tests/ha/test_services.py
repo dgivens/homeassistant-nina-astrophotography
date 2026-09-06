@@ -7,7 +7,9 @@ each of those is a silent no-op if it is got wrong: N.I.N.A. answers
 seconds later, so nothing at the call site can tell.
 """
 import pytest
+from helpers import failure
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.nina_astrophotography.const import DOMAIN
 
@@ -58,3 +60,45 @@ async def test_capture_still_accepts_the_parameters_that_bind_nothing(
     await _call(hass, "camera_capture", exposure=5, binning=2, filter_index=3)
     assert rig.sent[-1] == ("/equipment/camera/capture",
                             {"duration": 5.0, "save": "false"})
+
+
+async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
+    hass: HomeAssistant, loaded_entry, rig
+) -> None:
+    """`NinaError` subclasses `Exception` alone, deliberately — the API layer
+    stays free of Home Assistant. One escaping a handler is treated as a defect
+    in this integration: the step fails with a traceback and the frontend
+    offers to file a bug. A disconnected mount is not that."""
+    rig.respond("/equipment/mount/park", failure("Mount not connected"))
+    with pytest.raises(HomeAssistantError) as raised:
+        await _call(hass, "mount_park")
+    assert "Mount not connected" in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("service", "path"),
+    [
+        ("camera_cool", "/equipment/camera/cool"),
+        ("camera_warm", "/equipment/camera/warm"),
+        ("camera_abort_capture", "/equipment/camera/abort-exposure"),
+        ("mount_unpark", "/equipment/mount/unpark"),
+        ("focuser_auto_focus", "/equipment/focuser/auto-focus"),
+        ("guider_start", "/equipment/guider/start"),
+        ("guider_stop", "/equipment/guider/stop"),
+        ("dome_open", "/equipment/dome/open"),
+        ("dome_close", "/equipment/dome/close"),
+        ("dome_park", "/equipment/dome/park"),
+        ("sequence_start", "/sequence/start"),
+        ("sequence_stop", "/sequence/stop"),
+    ],
+    ids=lambda value: value if value.startswith("/") is False else None,
+)
+async def test_every_remaining_service_reaches_its_own_endpoint(
+    hass: HomeAssistant, loaded_entry, rig, service: str, path: str
+) -> None:
+    """The rest of the ported handlers, which differ only in the endpoint they
+    send. `dome_close` is the roof: two shipped blueprints call it, and a
+    handler pointed at the wrong path is answered `Success: true`."""
+    data = {"temperature": -10} if service == "camera_cool" else {}
+    await _call(hass, service, **data)
+    assert rig.sent[-1][0] == path

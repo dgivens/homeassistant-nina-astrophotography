@@ -43,6 +43,16 @@ class NinaRequestError(NinaError):
     """
 
 
+class NinaNoImageError(NinaError):
+    """The rig has nothing to render at this index or for this stack.
+
+    Distinct from `NinaUnavailableError`, which means the rig is unwell: an
+    empty image history answering `Index out of range` is the ordinary state of
+    an idle rig, and treating it as an outage would put a traceback in the log
+    every time a dashboard drew the card before the first sub.
+    """
+
+
 class NinaCommandError(NinaError):
     """The handler ran and refused.
 
