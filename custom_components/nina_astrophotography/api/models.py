@@ -128,6 +128,16 @@ class FilterWheelModel:
     meta: DeviceMeta
     selected_filter: str | None
     available_filters: tuple[str, ...]
+    """Names, in the order the wheel reports them — the select's options."""
+    filter_slots: Mapping[str, int]
+    """Name → the wheel's own `Id`, which is what `change-filter` takes.
+
+    Carried rather than derived from the option's position: a wheel is free to
+    number its slots non-contiguously, and a filter whose `Name` is not a
+    string drops out of the name list and shifts every position after it. A
+    wrong slot changes to the wrong filter, answers `Success: true`, and costs
+    the sub — the disagreement only shows up on the next poll.
+    """
     is_moving: bool | None
 
 

@@ -519,6 +519,9 @@
     "no_driver_range": {
       "message": "{entity_id} cannot be set: the driver reports no usable range."
     },
+    "unknown_filter": {
+      "message": "The filter wheel does not report a slot for \"{option}\", so the change was not sent."
+    },
     "unknown_tracking_mode": {
       "message": "The mount offers a tracking mode the API cannot encode: {option}."
     }
