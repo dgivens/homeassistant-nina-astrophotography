@@ -1607,6 +1607,7 @@ dev = [
 test = [
     { name = "aiohttp" },
     { name = "coverage" },
+    { name = "hypothesis" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pyyaml" },
@@ -1632,6 +1633,7 @@ dev = [
 test = [
     { name = "aiohttp", specifier = ">=3.9" },
     { name = "coverage", specifier = ">=7.6" },
+    { name = "hypothesis", specifier = ">=6.100" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-asyncio", specifier = ">=0.23" },
     { name = "pyyaml", specifier = ">=6.0" },

@@ -296,6 +296,66 @@ class NinaEvent:
 
 
 @dataclass(frozen=True, slots=True)
+class TargetBreakdown:
+    """Light-frame totals for one group — one row per target, or per filter.
+
+    `SessionStats.by_filter` reuses this with the filter name in `name`: the two
+    breakdowns carry identical fields, so a second class would differ only in
+    its docstring.
+    """
+
+    name: str
+    count: int
+    integration_seconds: float
+    hfr_mean: float | None
+    """None when no light in this group reported an HFR."""
+
+
+@dataclass(frozen=True, slots=True)
+class AutoFocusState:
+    """`AUTOFOCUS-STARTING` and `AUTOFOCUS-FINISHED` do not pair up — an
+    ordinary night ends with one more STARTING than FINISHED, and there is no
+    failure event. A run is a failure once it has gone unanswered for longer
+    than the profile's autofocus timeout (§4.4).
+    """
+
+    last_success_at: datetime | None
+    running_since: datetime | None
+    """The newest STARTING with no FINISHED after it."""
+    failed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class SessionStats:
+    """The session fold's result (§5.2.4).
+
+    Every aggregate but `image_count` is over LIGHT frames only. Flats report a
+    Mean ADU two orders of magnitude above a light's and an HFR of zero, which
+    is what made `Last Image Mean ADU` read 33,139 after a dawn flat run.
+    """
+
+    session_start: datetime | None
+    """None only when nothing has been observed and no clock was supplied."""
+    image_count: int
+    """Every frame in the session window, calibration included."""
+    light_count: int
+    integration_seconds: float
+    """Summed exposures, never count × nominal."""
+    hfr_mean: float | None
+    hfr_best: float | None
+    """The smallest HFR — a tighter star is a better one."""
+    hfr_worst: float | None
+    star_count_mean: float | None
+    last_frame: Frame | None
+    """The newest LIGHT, never the newest frame."""
+    by_target: tuple[TargetBreakdown, ...]
+    """Sorted by name."""
+    by_filter: tuple[TargetBreakdown, ...]
+    """Sorted by name; the filter name sits in `TargetBreakdown.name`."""
+    autofocus: AutoFocusState
+
+
+@dataclass(frozen=True, slots=True)
 class SequenceNode:
     """One node of `/sequence/json`, normalized so derive.py can walk it purely."""
 
