@@ -13,13 +13,32 @@ Naming is `<state>_<endpoint>.json`. Each file holds the **raw envelope**
 
 Credentials, absolute paths, hostnames, IPv4 addresses, UUIDs and Home Assistant
 entity ids are `"REDACTED"`. `DeviceId` and `EntityId` are stable pseudonyms
-(`device-NN`) so *distinctness* survives — two weather sources still compare
-unequal. `TelescopeName`/`CameraName` are
-generic, and `Filename` is renumbered `frame_NNNN.fits`. `TargetName` is kept:
-an astronomical object is not identifying.
+(`device-<8 hex>`) so *distinctness* survives — two weather sources still
+compare unequal. `TelescopeName`/`CameraName` are
+generic, and `Filename` is a stable pseudonym (`frame_<8 hex>.fits`) derived
+from a hash of the original — never renumbered by position, since frame
+identity is `(Date, Filename)` and the fold spans fixtures. `TargetName` is
+kept: an astronomical object is not identifying.
 
-A trial capture of `/profile/show` contained a live API key, which is why that
-endpoint is excluded here. Never add it without an allowlist projection.
+The committed corpus predates the 8-hex digest and still carries the legacy,
+narrower forms (`frame_NNNN.fits`, `device-NN`) from the pre-script redactor.
+`redact()` accepts both forms as already-pseudonymised, so the legacy fixtures
+stay clean without a re-capture.
+
+Every fixture carries a trailing `_meta: {captured_at, nina_version,
+api_version, endpoint, params}`, stripped before type-checking against the
+schema. The 18 fixtures captured before `scripts/capture_fixtures.py` existed
+had `_meta` backfilled by hand with `captured_at: "2026-09-04T00:00:00+00:00"`
+and the versions in the heading above; `image_history_session.json` is a bare
+JSON list, not an envelope, so it carries no `_meta`.
+
+A trial capture of `/profile/show` contained a live API key, so it is captured
+as an **allowlist projection**, never a redaction: only
+`TelescopeSettings.FocalLength`, `FocuserSettings.{AutoFocusTimeoutSeconds,
+RSquaredThreshold}`, `MeridianFlipSettings.*` and `CameraSettings.PixelSize`.
+Excluding the endpoint entirely would leave a polled endpoint with no fixture,
+no drift coverage and no mapper test. Never denylist it — its secret surface
+is too large to redact confidently.
 
 ## Inventory
 

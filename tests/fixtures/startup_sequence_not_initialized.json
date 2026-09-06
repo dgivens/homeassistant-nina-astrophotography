@@ -3,5 +3,12 @@
   "Error": "Sequence is not initialized",
   "StatusCode": 409,
   "Success": false,
-  "Type": "API"
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-04T00:00:00+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/sequence/json",
+    "params": {}
+  }
 }

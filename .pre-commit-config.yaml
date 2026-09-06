@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: fixture-redaction
+        name: fixtures carry no unredacted secrets
+        entry: uv run python scripts/check_fixtures.py
+        language: system
+        files: ^tests/fixtures/.*\.json$
+        pass_filenames: true
