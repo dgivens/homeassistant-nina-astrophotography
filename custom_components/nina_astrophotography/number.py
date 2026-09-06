@@ -51,8 +51,8 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channel_name, channel_of
-from .entity import NinaEntity
+from .device import channel_key, channels_of, observed, read_field
+from .entity import NinaChannelEntity, NinaEntity
 
 # One in-flight command per platform: these move hardware.
 PARALLEL_UPDATES = 1
@@ -93,15 +93,6 @@ class NinaNumberDescription(NumberEntityDescription):
     `{entry_id}_{unique_id_suffix or key}`."""
 
 
-def _read(kind: str, field: str) -> Callable[[NinaData], float | None]:
-    """One reading off one equipment model, `None` while the device is absent."""
-    def value(data: NinaData) -> float | None:
-        device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
-
-    return value
-
-
 def _driver_range(
     kind: str, low_field: str, high_field: str
 ) -> Callable[[NinaData], tuple[float, float] | None]:
@@ -129,7 +120,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         native_step=1,
         mode=NumberMode.SLIDER,
         kind="flat_device",
-        value=_read("flat_device", "brightness"),
+        value=read_field("flat_device", "brightness"),
         bounds=_driver_range("flat_device", "min_brightness", "max_brightness"),
         command=lambda client, value: client.set_flat_brightness(round(value)),
     ),
@@ -143,7 +134,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         native_unit_of_measurement="steps",
         mode=NumberMode.BOX,
         kind="focuser",
-        value=_read("focuser", "position"),
+        value=read_field("focuser", "position"),
         command=lambda client, value: client.move_focuser(round(value)),
     ),
     NinaNumberDescription(
@@ -160,7 +151,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         kind="camera",
         # The ACTUAL setpoint, not the last one commanded (§5.2.3). There is no
         # setpoint endpoint either: changing it is a cool-down to the new value.
-        value=_read("camera", "target_temperature"),
+        value=read_field("camera", "target_temperature"),
         command=lambda client, value: client.set_target_temperature(value),
     ),
     NinaNumberDescription(
@@ -171,7 +162,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="camera",
-        value=_read("camera", "usb_limit"),
+        value=read_field("camera", "usb_limit"),
         bounds=_driver_range("camera", "usb_limit_min", "usb_limit_max"),
         command=lambda client, value: client.set_usb_limit(round(value)),
     ),
@@ -186,7 +177,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         mode=NumberMode.BOX,
         kind="rotator",
         # Sky position angle, meaningful only while `rotator_synced` is on.
-        value=_read("rotator", "position"),
+        value=read_field("rotator", "position"),
         command=lambda client, value: client.move_rotator(value),
     ),
     NinaNumberDescription(
@@ -200,7 +191,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="rotator",
-        value=_read("rotator", "mechanical_position"),
+        value=read_field("rotator", "mechanical_position"),
         command=lambda client, value: client.move_rotator_mechanical(value),
     ),
     # Spec-derived and untested against hardware (§5.3.1): a bare field read, a
@@ -217,7 +208,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
-        value=_read("dome", "azimuth"),
+        value=read_field("dome", "azimuth"),
         command=lambda client, value: client.slew_dome(value),
     ),
 )
@@ -278,12 +269,12 @@ class NinaNumber(NinaEntity, NumberEntity):
         await self.coordinator.async_request_refresh()
 
 
-class NinaNumberChannel(NinaEntity, NumberEntity):
+class NinaNumberChannel(NinaChannelEntity, NumberEntity):
     """One writable, non-binary channel of the N.I.N.A. switch device.
 
     The range is held from creation: it is capability metadata rather than a
-    reading, so it survives the device disconnecting, and `binary` has already
-    proved both ends are present.
+    reading, so it survives the device disconnecting, and the platform has
+    already proved both ends are present.
     """
 
     _attr_mode = NumberMode.SLIDER
@@ -294,21 +285,14 @@ class NinaNumberChannel(NinaEntity, NumberEntity):
         entry: NinaConfigEntry,
         channel: SwitchChannelModel,
     ) -> None:
-        super().__init__(
-            coordinator, entry, channel_key(channel), kind="switch_device"
-        )
-        self._index = channel.index
+        super().__init__(coordinator, entry, channel)
         self._attr_native_min_value = channel.minimum
         self._attr_native_max_value = channel.maximum
         self._attr_native_step = channel.step_size
-        # Named by the driver, so there is no translation key to name it by.
-        self._attr_name = channel_name(channel)
 
     @property
     def native_value(self) -> float | None:
-        """`Value` is where the channel IS; `TargetValue` is where it is going."""
-        channel = channel_of(self.coordinator.data, self._index)
-        return None if channel is None else channel.value
+        return self.channel_value
 
     async def async_set_native_value(self, value: float) -> None:
         try:
@@ -338,12 +322,11 @@ async def async_setup_entry(
             description
             for description in DESCRIPTIONS
             if description.key not in added
-            and getattr(coordinator.data.snapshot, description.kind) is not None
+            and observed(coordinator.data, description.kind)
         ]
-        device = coordinator.data.snapshot.switch_device
         channels = [
             channel
-            for channel in (device.channels if device is not None else ())
+            for channel in channels_of(coordinator.data)
             if channel.writable
             and not channel.binary
             and channel.minimum is not None

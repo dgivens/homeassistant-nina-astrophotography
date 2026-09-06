@@ -41,8 +41,8 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channel_name, channel_of
-from .entity import NinaEntity
+from .device import channel_key, channels_of, observed, read_field
+from .entity import NinaChannelEntity, NinaEntity
 
 # One in-flight command per platform: these switch hardware.
 PARALLEL_UPDATES = 1
@@ -80,27 +80,12 @@ class NinaSwitchDescription(SwitchEntityDescription):
     `{entry_id}_{unique_id_suffix or key}`."""
 
 
-def _read(kind: str, field: str) -> Callable[[NinaData], bool | None]:
-    """One flag off one equipment model, `None` while the device is absent."""
-    def value(data: NinaData) -> bool | None:
-        device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
-
-    return value
-
-
 def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
     def supported(data: NinaData) -> bool:
         device = getattr(data.snapshot, kind)
         return device is not None and bool(getattr(device, field))
 
     return supported
-
-
-def channel_key(channel: SwitchChannelModel) -> str:
-    """Keyed on the channel's own `Id`, so a channel the driver adds later does
-    not renumber the entities already registered."""
-    return f"switch_channel_{channel.index}"
 
 
 def _guider_running(data: NinaData) -> bool | None:
@@ -174,14 +159,14 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         translation_key="camera_cooler",
         unique_id_suffix="camera_cooler_switch",
         kind="camera",
-        value=_read("camera", "cooler_on"),
+        value=read_field("camera", "cooler_on"),
         command=_set_cooler,
     ),
     NinaSwitchDescription(
         key="camera_dew_heater",
         translation_key="camera_dew_heater",
         kind="camera",
-        value=_read("camera", "dew_heater_on"),
+        value=read_field("camera", "dew_heater_on"),
         command=_toggle("set_dew_heater"),
     ),
     NinaSwitchDescription(
@@ -207,7 +192,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="rotator",
-        value=_read("rotator", "reverse"),
+        value=read_field("rotator", "reverse"),
         command=_toggle("set_rotator_reverse"),
     ),
     # Spec-derived and untested against hardware (§5.3.1): a bare field read,
@@ -219,7 +204,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
-        value=_read("dome", "following"),
+        value=read_field("dome", "following"),
         command=_toggle("set_dome_follow"),
     ),
 )
@@ -264,7 +249,7 @@ class NinaSwitch(NinaEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
 
-class NinaSwitchChannel(NinaEntity, SwitchEntity):
+class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
     """One binary channel of the N.I.N.A. switch device.
 
     The on and off values are the channel's own range ends, held from creation:
@@ -279,23 +264,13 @@ class NinaSwitchChannel(NinaEntity, SwitchEntity):
         entry: NinaConfigEntry,
         channel: SwitchChannelModel,
     ) -> None:
-        super().__init__(
-            coordinator, entry, channel_key(channel), kind="switch_device"
-        )
-        self._index = channel.index
+        super().__init__(coordinator, entry, channel)
         self._off_value = channel.minimum
         self._on_value = channel.maximum
-        # Named by the driver, so there is no translation key to name it by.
-        self._attr_name = channel_name(channel)
-
-    @property
-    def _channel(self) -> SwitchChannelModel | None:
-        return channel_of(self.coordinator.data, self._index)
 
     @property
     def is_on(self) -> bool | None:
-        channel = self._channel
-        value = channel.value if channel is not None else None
+        value = self.channel_value
         return None if value is None else value == self._on_value
 
     async def async_turn_on(self, **kwargs: Any) -> None:
@@ -312,11 +287,11 @@ class NinaSwitchChannel(NinaEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
 
-def _observed(data: NinaData, description: NinaSwitchDescription) -> bool:
+def _usable(data: NinaData, description: NinaSwitchDescription) -> bool:
     """The device has been seen, and reports the capability the switch drives."""
-    if description.kind is not None and getattr(data.snapshot, description.kind) is None:
-        return False
-    return description.supported is None or description.supported(data)
+    return observed(data, description.kind) and (
+        description.supported is None or description.supported(data)
+    )
 
 
 async def async_setup_entry(
@@ -340,12 +315,11 @@ async def async_setup_entry(
             description
             for description in DESCRIPTIONS
             if description.key not in added
-            and _observed(coordinator.data, description)
+            and _usable(coordinator.data, description)
         ]
-        device = coordinator.data.snapshot.switch_device
         channels = [
             channel
-            for channel in (device.channels if device is not None else ())
+            for channel in channels_of(coordinator.data)
             if channel.binary
             and channel.writable
             and channel_key(channel) not in added

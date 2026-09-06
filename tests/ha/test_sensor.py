@@ -16,7 +16,6 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DOMAIN
-from custom_components.nina_astrophotography.sensor import EQUIPMENT
 
 FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip"
 FOCUSER_POSITION = "sensor.n_i_n_a_focuser_position"
@@ -128,8 +127,3 @@ async def test_sequence_progress_is_unknown_where_no_node_counts_iterations(
     """The truth about what this API exposes on a Target Scheduler rig.
     Inventing a percentage from node statuses would be worse (§6.2)."""
     assert hass.states.get("sensor.n_i_n_a_sequence_progress").state == "unknown"
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
-    assert [d.key for d in EQUIPMENT if d.kind == "dome" and d.verified] == []

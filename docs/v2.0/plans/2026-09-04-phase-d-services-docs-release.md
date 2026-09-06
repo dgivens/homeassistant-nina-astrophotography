@@ -632,6 +632,30 @@ git branch -D wip/v2.0 && git push origin --delete wip/v2.0
 
 ---
 
+## Deferred past 2.0
+
+**Static typing is not enforced, and the entity descriptors have stopped
+documenting their own value types.** `device.read_field` is one helper shared
+by five platforms and returns `Callable[[NinaData], Any]`; the five per-module
+copies it replaced narrowed to `bool | None` or `float | None`, which said what
+a `binary_sensor` reader may return where the shared one cannot.
+
+Nothing enforced that narrowing — there is no type checker in CI — so it was
+documentation, and losing it changes no behaviour: every entity's state and
+attributes were compared across the change and are identical.
+
+Picking it back up means both halves together, because either alone is theatre:
+
+1. **Add a type checker to CI** (a seventh job). It has to run against the Home
+   Assistant stubs, so it belongs on the `test-ha` group rather than the lean
+   one.
+2. **Make `read_field` generic** — `read_field[T](kind, field) -> Callable[[NinaData], T | None]`
+   — so each descriptor table gets its narrowing back at the call site.
+
+Deliberately **not** in 2.0: a type checker over a codebase that has never had
+one produces a large first-run backlog, and triaging it against a release
+that ships new platforms is how a release slips. File it as `2.0-nice` (§12).
+
 ## Definition of done (§12)
 
 - [ ] Every Bronze rule in §10 passes. `quality_scale.yaml` records
