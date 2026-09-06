@@ -28,13 +28,11 @@ from .api.errors import (
 from .api.models import NinaEvent
 from .api.v2 import NinaClientV2, NinaEventStream
 from .const import (
-    CONF_API_VERSION,
     CONF_HOST,
     CONF_INSTANCE_NAME,
     CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
-    DEFAULT_API_VERSION,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
@@ -60,8 +58,8 @@ from .const import (
     SERVICE_SEQUENCE_STOP,
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
+from .const import TrackingMode
 from .device import async_sync_devices, kind_of
-from .legacy_api import NinaApiClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +85,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     """Set up N.I.N.A. from a config entry."""
     host = entry.data[CONF_HOST]
     port = entry.data.get(CONF_PORT, DEFAULT_PORT)
-    api_version = entry.data.get(CONF_API_VERSION, DEFAULT_API_VERSION)
     poll_interval = entry.options.get(
         CONF_POLL_INTERVAL,
         entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
@@ -99,10 +96,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 
     session = async_get_clientsession(hass)
     client = NinaClientV2(host, port, session)
-    # The unmigrated services still speak 1.4.x; phase D retires this client.
-    service_client = NinaApiClient(
-        host=host, port=port, api_version=api_version, session=session
-    )
 
     # Verify reachability at startup
     try:
@@ -182,7 +175,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     entry.runtime_data = NinaRuntimeData(
         client=client,
         coordinator=coordinator,
-        service_client=service_client,
         instance_name=instance_name,
         events=events,
     )
@@ -247,14 +239,13 @@ async def _async_update_listener(hass: HomeAssistant, entry: NinaConfigEntry) ->
 
 # ─── Service registration ─────────────────────────────────────────────────────
 
-def _get_client(hass: HomeAssistant) -> NinaApiClient:
-    """Return the first loaded entry's service client.
+def _get_client(hass: HomeAssistant) -> NinaClientV2:
+    """Return the first loaded entry's client.
 
     Still "first entry wins" — phase D replaces this with device targeting.
-    What changes here is only where the client is stored.
     """
     for entry in hass.config_entries.async_loaded_entries(DOMAIN):
-        return entry.runtime_data.service_client
+        return entry.runtime_data.client
     raise ServiceValidationError("No N.I.N.A. instance is configured")
 
 
@@ -266,7 +257,7 @@ def _register_services(hass: HomeAssistant) -> None:
     async def handle_camera_cool(call: ServiceCall) -> None:
         temperature = call.data["temperature"]
         minutes = call.data.get("minutes", 10)
-        await _get_client(hass).cool_camera(temperature, minutes)
+        await _get_client(hass).cool_camera(temperature, minutes=minutes)
 
     hass.services.async_register(
         DOMAIN,
@@ -282,7 +273,7 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_camera_warm(call: ServiceCall) -> None:
         minutes = call.data.get("minutes", 10)
-        await _get_client(hass).warm_camera(minutes)
+        await _get_client(hass).warm_camera(minutes=minutes)
 
     hass.services.async_register(
         DOMAIN,
@@ -292,11 +283,14 @@ def _register_services(hass: HomeAssistant) -> None:
     )
 
     async def handle_capture(call: ServiceCall) -> None:
+        # `filter_index` and `binning` are accepted and not sent: they bound
+        # nothing on the old client either — `/equipment/camera/capture` takes
+        # neither — so dropping them changes no behaviour. Phase D removes them
+        # from the schema. `exposure` now binds for the first time: 1.4.5 sent
+        # it as `time`, which the API ignored and defaulted.
         await _get_client(hass).capture_image(
-            exposure=call.data["exposure"],
+            call.data["exposure"],
             gain=call.data.get("gain"),
-            filter_index=call.data.get("filter_index"),
-            binning=call.data.get("binning", 1),
             save=call.data.get("save", False),
         )
 
@@ -323,8 +317,11 @@ def _register_services(hass: HomeAssistant) -> None:
     # ── Mount ────────────────────────────────────────────────────────────────
 
     async def handle_slew(call: ServiceCall) -> None:
+        # The service takes RA in HOURS, because every RA N.I.N.A. hands out is
+        # in hours; the endpoint reads degrees. The conversion moved out of the
+        # client, which now takes degrees and says so. Phase D redesigns this.
         await _get_client(hass).slew_mount(
-            ra_hours=call.data["ra"], dec=call.data["dec"]
+            call.data["ra"] * 15.0, call.data["dec"]
         )
 
     hass.services.async_register(
@@ -350,7 +347,8 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, SERVICE_MOUNT_UNPARK, handle_unpark)
 
     async def handle_tracking(call: ServiceCall) -> None:
-        await _get_client(hass).set_tracking(call.data["enabled"])
+        mode = TrackingMode.SIDEREAL if call.data["enabled"] else TrackingMode.STOPPED
+        await _get_client(hass).set_tracking_mode(int(mode))
 
     hass.services.async_register(
         DOMAIN,
@@ -438,6 +436,9 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(DOMAIN, SERVICE_SEQUENCE_STOP, handle_seq_stop)
 
     async def handle_seq_load(call: ServiceCall) -> None:
+        # The field is still called `path`, and is now sent as `sequenceName`
+        # — which is what the API reads, and why 1.4.5 never loaded anything.
+        # Phase D renames the field.
         await _get_client(hass).load_sequence(call.data["path"])
 
     hass.services.async_register(
