@@ -1,5 +1,5 @@
-"""Sensors: the equipment readings, the session family, the sequence and the
-weather channels.
+"""Sensors: the equipment readings, the session family, the sequence, the flat
+wizard and the weather channels.
 
 **One session family, fed by both paths (§5.2.4).** 1.4.5 shipped two — a
 polled set read off `/image-history` and a pushed set fed by `IMAGE-SAVE` — and
@@ -570,10 +570,45 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
     ),
 )
 
+FLATS: tuple[NinaSensorDescription, ...] = (
+    # `/flats/status` observes only flats started THROUGH THE API (§5.3.3).
+    # This rig runs Target Scheduler Flats, so it reads
+    # {State: "Finished", TotalIterations: -1, CompletedIterations: -1}
+    # straight through a completed dawn run — which is why all three ship
+    # disabled: an entity that reports a stale "Finished" all night is worse
+    # than no entity. The `-1`s are already `None` from the mapper.
+    NinaSensorDescription(
+        key="flats_state",
+        translation_key="flats_state",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind=None,
+        value=lambda data: data.flats.state,
+    ),
+    NinaSensorDescription(
+        key="flats_total_iterations",
+        translation_key="flats_total_iterations",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind=None,
+        value=lambda data: data.flats.total_iterations,
+    ),
+    NinaSensorDescription(
+        key="flats_completed_iterations",
+        translation_key="flats_completed_iterations",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind=None,
+        value=lambda data: data.flats.completed_iterations,
+    ),
+)
+
 # The table `async_setup_entry` creates statically, gated on the entity's
 # equipment having been observed. The weather channels are not here: they are
 # created per channel rather than per device, and have their own lifecycle.
-DESCRIPTIONS: tuple[NinaSensorDescription, ...] = SESSION + EQUIPMENT
+DESCRIPTIONS: tuple[NinaSensorDescription, ...] = SESSION + EQUIPMENT + FLATS
 
 
 def _channel(key: str) -> Callable[[NinaData], float | None]:
