@@ -101,3 +101,15 @@ class NinaChannelEntity(NinaEntity):
         last asked for."""
         channel = self.channel
         return None if channel is None else channel.value
+
+    @property
+    def available(self) -> bool:
+        """A channel the driver has stopped reporting is genuinely unavailable.
+
+        `NinaEntity.available` asks whether the switch DEVICE is connected,
+        which is still true — so without this the entity reads `unknown` and
+        stays clickable, and a tap sends a command for an index that no longer
+        exists. Nothing refuses it: this API answers `Success: true` to a `set`
+        it did not act on.
+        """
+        return super().available and self.channel is not None

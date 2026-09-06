@@ -26,6 +26,7 @@ never `TargetValue`, which is only what the channel was last asked for.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -41,8 +42,16 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_of, observed, read_field
+from .device import (
+    channel_key,
+    channels_of,
+    observed,
+    read_field,
+    unplaced_channels,
+)
 from .entity import NinaChannelEntity, NinaEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 # One in-flight command per platform: these switch hardware.
 PARALLEL_UPDATES = 1
@@ -280,6 +289,14 @@ class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
         await self._send(self._off_value)
 
     async def _send(self, value: float) -> None:
+        if self.channel is None:
+            # The API answers `Success: true` to a `set` for an index it does
+            # not have, so nothing downstream would report this.
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="channel_gone",
+                translation_placeholders={"channel": self.name or str(self._index)},
+            )
         try:
             await self.coordinator.client.set_switch_value(self._index, value)
         except NinaError as exc:
@@ -301,6 +318,26 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data.coordinator
     added: set[str] = set()
+    warned: set[int] = set()
+
+    @callback
+    def _warn_about_unplaced() -> None:
+        """Say so when a channel falls through all three platforms.
+
+        Once per channel: the switch device is polled on the fast tier, and a
+        driver that reports no range will go on doing it all night.
+        """
+        for channel in unplaced_channels(coordinator.data):
+            if channel.index in warned:
+                continue
+            warned.add(channel.index)
+            _LOGGER.warning(
+                "N.I.N.A. switch channel %s (%r) is writable but reports no "
+                "usable range (min=%s max=%s step=%s), so no entity was "
+                "created for it",
+                channel.index, channel.name,
+                channel.minimum, channel.maximum, channel.step_size,
+            )
 
     @callback
     def _add_observed() -> None:
@@ -334,4 +371,6 @@ async def async_setup_entry(
         )
 
     _add_observed()
+    _warn_about_unplaced()
     entry.async_on_unload(coordinator.async_add_listener(_add_observed))
+    entry.async_on_unload(coordinator.async_add_listener(_warn_about_unplaced))

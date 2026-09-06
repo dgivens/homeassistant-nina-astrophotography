@@ -85,6 +85,26 @@ def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
     return device.channels if device is not None else ()
 
 
+def unplaced_channels(data: NinaData) -> tuple[SwitchChannelModel, ...]:
+    """Channels no platform will claim, so the absence can be reported.
+
+    The three platforms partition by shape (§5.3.5) — read-only is a `sensor`,
+    one step is a `switch`, a wider range is a `number` — and that partition
+    has a hole: a WRITABLE channel whose `Minimum`/`Maximum`/`StepSize` are
+    absent or arrive as `"NaN"` is none of the three. Without this it simply
+    does not appear in Home Assistant, and the operator has a switch device
+    with fewer channels than the driver reports and nothing to diagnose it
+    with.
+    """
+    return tuple(
+        channel
+        for channel in channels_of(data)
+        if channel.writable
+        and not channel.binary
+        and (channel.minimum is None or channel.maximum is None)
+    )
+
+
 def channel_key(channel: SwitchChannelModel) -> str:
     """The `unique_id` suffix for one N.I.N.A. switch-device channel.
 

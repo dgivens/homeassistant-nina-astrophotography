@@ -507,6 +507,9 @@
     }
   },
   "exceptions": {
+    "channel_gone": {
+      "message": "N.I.N.A.'s switch device no longer reports the channel \"{channel}\", so the command was not sent."
+    },
     "command_failed": {
       "message": "N.I.N.A. did not accept the command: {error}"
     },
