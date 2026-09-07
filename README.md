@@ -12,17 +12,27 @@
 > defects in the API client, sensors and blueprints — see `CHANGELOG.md`.
 > Distributed under GPL-3.0, as the original is.
 
-Connect [N.I.N.A. (Nighttime Imaging 'N' Astronomy)](https://nighttime-imaging.eu) to Home Assistant via the **[Advanced API plugin](https://github.com/christian-photo/ninaAPI)** (v2).  Monitor all equipment in real time and control your rig directly from HA automations, dashboards, and scripts.
+Connect [N.I.N.A. (Nighttime Imaging 'N' Astronomy)](https://nighttime-imaging.eu)
+to Home Assistant through the
+**[Advanced API plugin](https://github.com/christian-photo/ninaAPI)** (v2).
+Monitor the rig in real time and control it from automations, dashboards and
+scripts.
+
+> **Upgrading from 1.4.x?** Read [Upgrading to 2.0](#upgrading-to-20) first.
 
 ---
 
 ## Prerequisites
 
-1. **N.I.N.A. 3.x** installed on your imaging PC (Windows).
+1. **N.I.N.A. 3.x** on your imaging PC (Windows).
 2. **Advanced API plugin** installed and enabled inside N.I.N.A.:
-   - Open N.I.N.A. → *Plugins* tab → search "Advanced API" → Install.
-   - Go to *Options → Advanced API* and confirm the port (default **1888**) and that the service is enabled.
-3. Your Home Assistant instance must be able to reach the N.I.N.A. PC on the network (same LAN or VPN).
+   - N.I.N.A. → *Plugins* → search "Advanced API" → Install.
+   - *Options → Advanced API*: confirm the port (default **1888**) and that the
+     service is enabled.
+3. Home Assistant must be able to reach the imaging PC (same LAN, or a VPN).
+
+The API has **no authentication of any kind**. Anything that can reach the port
+can move the mount, so keep it off the open internet.
 
 ---
 
@@ -30,492 +40,363 @@ Connect [N.I.N.A. (Nighttime Imaging 'N' Astronomy)](https://nighttime-imaging.e
 
 ### HACS (recommended)
 
-> add this repo as a custom repository in HACS and download from there.
+Add this repository as a custom repository in HACS and download it from there.
 
 ### Manual
 
-1. Copy the `nina_astrophotography` folder into your HA `custom_components` directory:
+1. Copy the `nina_astrophotography` folder into your HA `custom_components`
+   directory:
    ```
    config/
    └── custom_components/
        └── nina_astrophotography/    ← this folder
    ```
 2. Restart Home Assistant.
-3. Go to **Settings → Devices & Services → Add Integration** and search for **N.I.N.A. Astrophotography**.
-4. Enter the IP/hostname of your imaging PC, the API port (default `1888`) and a
-   name for the instance. The name titles the entry and prefixes every device,
-   so two rigs can coexist.
+3. **Settings → Devices & Services → Add Integration** → **N.I.N.A.
+   Astrophotography**.
+4. Enter the IP or hostname of the imaging PC, the API port (default `1888`) and
+   a name for the instance.
 
-## Session rollover hour
+### Removing it
 
-A session runs from one rollover to the next, defaulting to **12:00 in the rig's
-own local time** — the boundary an astrophotographer means by "last night", and
-the one N.I.N.A.'s image-history dockable uses.
-
-Until the mount has connected once, the rig's clock is unknown and the boundary
-falls at noon in **Home Assistant's** zone instead; on a rig in another zone the
-session those first minutes report is the one that moves when the mount comes up.
-
-Change it under **Settings → Devices & Services → N.I.N.A. → Configure** if your
-imaging PC's Windows clock runs UTC, which is common on hosted rigs. Every
-N.I.N.A. timestamp is local to that clock, so for a site at UTC−05:00 the noon
-default falls at 07:00 site time — in the middle of the dawn flat run, splitting
-one night's statistics across two sessions. Set it to an hour that is genuinely
-midday at the site, expressed in the rig's clock.
+**Settings → Devices & Services → N.I.N.A. Astrophotography → ⋮ → Delete.**
+That removes the entry, its devices and its entities. If you copied the Lovelace
+cards into `www/`, delete those files and their dashboard resources too.
 
 ---
 
-## Sensors Created
+## The device model
 
-### Measurement Sensors
-| Entity | Description | Unit |
+The instance name is the one thing worth choosing carefully: it titles the
+config entry, names the hub device, and prefixes every entity id.
+
+Each instance creates **one hub device** and **one child device per piece of
+equipment** — Camera, Mount, Focuser, Filter Wheel, Guider, Rotator, Dome, Flat
+Panel, Weather, Safety Monitor, Switch. Driver name and version live in the
+**device registry**, on the device page, rather than in entity attributes.
+
+A device appears the first time N.I.N.A. reports it and stays thereafter:
+equipment is routinely disconnected, and a device that came and went would take
+its entity ids with it. To retire equipment you have sold, delete the device
+from its device page.
+
+**Two rigs coexist.** Give the second instance its own name, and every device
+and entity is prefixed with it. Actions take a device target so they reach the
+rig you mean — see [Actions](#actions).
+
+## Availability
+
+**A disconnected device makes its entities `unavailable`, not `off`.** There is
+no `*_connected` binary sensor for equipment any more; availability carries it.
+An automation that needs to know triggers on `to: "unavailable"` on any of that
+device's entities.
+
+**The safety monitor is the exception**, and keeps
+`binary_sensor.<instance>_safety_monitor_connected`. Availability cannot
+distinguish "the monitor has stopped reporting" from "Home Assistant is
+restarting", and a roof-close automation has to tell those apart.
+
+**`binary_sensor.<instance>_safety_monitor_unsafe` is `on` when conditions are
+UNSAFE.** That is Home Assistant's `SAFETY` device class convention — on means
+problem. An abort automation triggers on `to: "on"`; one written against `off`
+fires when the sky *clears*.
+
+## Sessions
+
+A session is **everything since the most recent local noon on the rig** — the
+boundary N.I.N.A.'s own image-history dockable and Target Scheduler use. It
+spans targets, filters and exposure lengths, and integration time sums the
+actual exposures rather than multiplying a count by a nominal length.
+
+Change the boundary under **Settings → Devices & Services → N.I.N.A. →
+Configure** if the imaging PC's Windows clock runs UTC, which is common on
+hosted rigs. Every N.I.N.A. timestamp is local to that clock, so on a site at
+UTC−05:00 the noon default lands at 07:00 site time — in the middle of the dawn
+flat run, splitting one night across two sessions. Set it to an hour that is
+genuinely midday on site.
+
+Until the mount has connected once the rig's clock is unknown, and the boundary
+falls at noon in **Home Assistant's** zone instead.
+
+---
+
+## Entities
+
+Entity ids are `<domain>.<instance>_<name>` — with the default instance name
+`N.I.N.A.`, `sensor.n_i_n_a_mount_altitude`. The reference rig registers 89
+entities. A dome adds ten more, and a weather source reporting cloud cover,
+sky quality or star FWHM adds one each.
+
+| Device | Entities |
+|---|---|
+| Camera | temperature, cooler power, gain, offset, state; target temperature and USB limit (`number`); cooler and dew heater (`switch`); exposing (`binary_sensor`); abort exposure (`button`) |
+| Mount | RA, declination, altitude, azimuth, sidereal time, side of pier, time to meridian flip; at park, at home (`binary_sensor`); tracking rate (`select`); park, unpark, find home (`button`) |
+| Focuser | position, temperature, step size; position (`number`); moving, autofocus failed (`binary_sensor`); autofocus (`button`) |
+| Filter Wheel | filter (`select`); moving (`binary_sensor`) |
+| Guider | RMS total, RA and declination, status; guider (`switch`); clear calibration (`button`) |
+| Rotator | position, mechanical position (`number`); reverse (`switch`); moving, synced (`binary_sensor`) |
+| Flat Panel | cover state; brightness (`number`); light (`light`); cover (`switch`) |
+| Weather | temperature, humidity, dew point, pressure, wind speed/direction/gust, rain rate, sky brightness, sky temperature, cloud cover, sky quality, star FWHM, source |
+| Safety Monitor | unsafe, connected (`binary_sensor`) |
+| Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing (`binary_sensor`); open, close, park, home (`button`) |
+| Switch | one entity per channel the driver reports, by shape: read-only becomes a `sensor`, an on/off channel a `switch`, a range a `number` |
+| Hub | session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequence running (`binary_sensor`); sequence start/stop (`button`); livestack (`switch`) |
+
+Some entities ship **disabled by default**: the three flat-wizard sensors (see
+[Flats](#flats)) and diagnostics you are unlikely to want on a dashboard.
+Enable them from the entity page.
+
+`sensor.<instance>_session_avg_hfr` carries `by_target` and `by_filter`
+attributes: a per-target and per-filter breakdown of count, integration hours
+and mean HFR.
+
+`sensor.<instance>_mount_time_to_meridian_flip` carries
+`flip_fires_at_minutes` — the reading at which N.I.N.A. actually flips. It is
+`(MaxMinutesAfterMeridian − MinMinutesAfterMeridian)`, **not zero**, and both
+come from the profile, so a warning threshold written as a bare number is not
+portable between rigs.
+
+## Weather
+
+Weather channels appear **on their first real reading**, so configuring the
+integration in daylight yields no weather entities until the source starts
+reporting. They persist once created.
+
+A channel the active source cannot provide reads **`unavailable`**, not
+`unknown` — two sources on the same rig are routinely disjoint in both
+directions.
+
+**Weather is telemetry, not an abort authority.** A forecast-backed
+`ObservingConditions` source — OpenMeteo is a 10-minute gridded forecast — reads
+0% cloud while you sit under a cloud. Abort belongs to
+`binary_sensor.<instance>_safety_monitor_unsafe`. Weather channels are worth
+watching, and worth using to hold a *resume* back; never to authorise imaging.
+
+## Dome
+
+The dome entities are **derived from the specification and untested against
+hardware** — nobody involved has a dome. They are shipped rather than withheld
+because a dome owner can then report what is wrong. If you have one, findings
+are welcome on the
+[issue tracker](https://github.com/dgivens/homeassistant-nina-astrophotography/issues).
+
+## Livestack
+
+`switch.<instance>_livestack` exists whether or not the Livestack plugin is
+installed. Without it the switch reads `off`, and turning it on fails with an
+error rather than silently doing nothing.
+
+## Flats
+
+`/flats/status` observes **only flats started through the API**. A Target
+Scheduler flat run reads `Finished` with `-1` iterations straight through, so an
+entity reporting a stale `Finished` all night is worse than none: the three
+`flats_*` entities ship **disabled**. Enable them if you start flats through the
+API.
+
+## Errors
+
+`event.<instance>_error` is **best-effort and solver-specific**. N.I.N.A.'s
+`ERROR-*` events are log-file regex scrapes: `ERROR-PLATESOLVE` matches ASTAP
+only, so a failure from another solver produces nothing. The autofocus arm is
+this integration's own timeout verdict rather than N.I.N.A.'s `ERROR-AF`, which
+appears dead in the plugin.
+
+
+---
+
+## Actions
+
+Call these from automations, scripts, or **Developer Tools → Actions**.
+
+Every action takes an optional **rig**, picked as a device — the hub, or any of
+that rig's equipment. With one instance configured you can leave it off; with
+two, an untargeted call is refused rather than guessed at, even when only one
+of them is currently loaded. From YAML you may also identify the rig by one of
+its entities, or by an area holding them.
+
+| Action | Description | Parameters |
 |---|---|---|
-| `sensor.camera_temperature` | Sensor chip temperature | °C |
-| `sensor.camera_target_temperature` | Cooling setpoint | °C |
-| `sensor.camera_cooler_power` | Cooler TEC duty cycle | % |
-| `sensor.camera_gain` | Current gain | — |
-| `sensor.camera_offset` | Current offset | — |
-| `sensor.mount_ra` | Current Right Ascension | h |
-| `sensor.mount_dec` | Current Declination | ° |
-| `sensor.mount_altitude` | Mount altitude | ° |
-| `sensor.mount_azimuth` | Mount azimuth | ° |
-| `sensor.mount_time_to_meridian_flip` | Minutes until meridian flip | min |
-| `sensor.focuser_position` | Focuser step position | steps |
-| `sensor.focuser_temperature` | Focuser temp probe | °C |
-| `sensor.guider_rms_total` | Guide error total RMS | arcsec |
-| `sensor.guider_rms_ra` | Guide error RA RMS | arcsec |
-| `sensor.guider_rms_dec` | Guide error Dec RMS | arcsec |
-| `sensor.sequence_progress` | Sequence progress | % |
-| `sensor.image_last_hfr` | Half-flux radius of last image | px |
-| `sensor.image_last_star_count` | Stars detected in last image | — |
-| `sensor.image_last_mean_adu` | Mean ADU of last image | — |
-| `sensor.image_count` | Images captured this session | — |
+| `camera_cool` | Cool the sensor | `temperature` (°C), `minutes` |
+| `camera_warm` | Warm the sensor | `minutes` |
+| `camera_capture` | Single exposure | `duration` (s), `gain`, `save` |
+| `camera_abort_capture` | Abort the exposure | — |
+| `mount_slew` | Slew to coordinates | `ra_degrees`, `dec_degrees` (**J2000, degrees**) |
+| `mount_park` / `mount_unpark` | Park / unpark | — |
+| `mount_set_tracking` | Sidereal tracking on or off | `enabled` |
+| `focuser_move` | Absolute move | `position` (steps) |
+| `focuser_auto_focus` | Run an autofocus | — |
+| `filterwheel_change_filter` | Change filter | `filter_index` |
+| `guider_start` | Start guiding | `force_calibration` |
+| `guider_stop` | Stop guiding | — |
+| `dome_open` / `dome_close` / `dome_park` | Dome control | — |
+| `sequence_start` / `sequence_stop` | Sequence control | — |
+| `sequence_load` | Load a sequence | `sequence_name` |
 
-### Status Sensors
-| Entity | Description |
-|---|---|
-| `sensor.camera_status` | Camera state string |
-| `sensor.camera_current_filter` | Active filter name |
-| `sensor.mount_status` | Mount name/status |
-| `sensor.mount_sidereal_time` | Local sidereal time |
-| `sensor.focuser_status` | Focuser name/status |
-| `sensor.guider_status` | PHD2 guider state |
-| `sensor.sequence_status` | Sequence state |
-| `sensor.sequence_target` | Current target name |
+**`mount_slew` takes J2000 degrees**, and sends them through untouched:
+N.I.N.A. transforms to the mount's own equatorial system internally. Two ways
+to get this wrong, neither of which anything can catch — the value is valid
+either way: do not feed it a figure read back from
+`sensor.<instance>_mount_right_ascension`, which reports the *mount's* epoch in
+*hours*; and catalogues and N.I.N.A.'s framing tab quote RA in h:m:s, so
+multiply those hours by 15.
 
-### Binary Sensors
-| Entity | Description |
-|---|---|
-| `binary_sensor.camera_connected` | Camera connected |
-| `binary_sensor.camera_cooling` | Cooler active |
-| `binary_sensor.mount_connected` | Mount connected |
-| `binary_sensor.mount_parked` | Mount at park position |
-| `binary_sensor.mount_tracking` | Sidereal tracking on |
-| `binary_sensor.mount_slewing` | Mount is slewing |
-| `binary_sensor.focuser_connected` | Focuser connected |
-| `binary_sensor.focuser_moving` | Focuser in motion |
-| `binary_sensor.filterwheel_connected` | Filter wheel connected |
-| `binary_sensor.guider_connected` | Guider connected |
-| `binary_sensor.guider_active` | Actively guiding |
-| `binary_sensor.dome_connected` | Dome connected |
-| `binary_sensor.dome_shutter_open` | Dome shutter is open |
-| `binary_sensor.sequence_running` | Sequence running |
+**There is no dither action.** The API exposes no dither command — dithering is
+driven from inside a sequence, and only reported back, over `GUIDER-DITHER`.
 
----
-
-## Services
-
-Call these from automations, scripts, or the Developer Tools → Services panel.
-
-| Service | Description | Key Parameters |
-|---|---|---|
-| `nina_astrophotography.camera_cool` | Cool sensor | `temperature` (°C), `minutes` |
-| `nina_astrophotography.camera_warm` | Warm sensor | `minutes` |
-| `nina_astrophotography.camera_capture` | Single exposure | `exposure` (s), `gain`, `filter_index`, `binning`, `save` |
-| `nina_astrophotography.camera_abort_capture` | Abort exposure | — |
-| `nina_astrophotography.mount_slew` | Slew to coords | `ra` (h), `dec` (°) |
-| `nina_astrophotography.mount_park` | Park mount | — |
-| `nina_astrophotography.mount_unpark` | Unpark mount | — |
-| `nina_astrophotography.mount_set_tracking` | Toggle tracking | `enabled` |
-| `nina_astrophotography.focuser_move` | Absolute move | `position` (steps) |
-| `nina_astrophotography.focuser_auto_focus` | Run autofocus | — |
-| `nina_astrophotography.filterwheel_change_filter` | Change filter | `filter_index` |
-| `nina_astrophotography.guider_start` | Start guiding | `force_calibration` |
-| `nina_astrophotography.guider_stop` | Stop guiding | — |
-| `nina_astrophotography.dome_open` | Open dome | — |
-| `nina_astrophotography.dome_close` | Close dome | — |
-| `nina_astrophotography.dome_park` | Park dome | — |
-| `nina_astrophotography.sequence_start` | Start sequence | — |
-| `nina_astrophotography.sequence_stop` | Stop sequence | — |
-| `nina_astrophotography.sequence_load` | Load sequence file | `path` |
-
----
-
-## Example Dashboard (Lovelace YAML)
-
-Add this to a dashboard view to get a full astrophotography control panel:
+An action returns when N.I.N.A. **accepts** the command, not when the equipment
+finishes moving. Watch the entities for that. Out-of-range input is refused
+client-side: the API silently clamps it and reports success.
 
 ```yaml
-title: Observatory
-views:
-  - title: N.I.N.A.
-    cards:
-      # ── Equipment Status ──────────────────────────────────────────────────
-      - type: entities
-        title: Equipment Status
-        entities:
-          - entity: binary_sensor.mount_connected
-          - entity: binary_sensor.camera_connected
-          - entity: binary_sensor.focuser_connected
-          - entity: binary_sensor.filterwheel_connected
-          - entity: binary_sensor.guider_connected
-          - entity: binary_sensor.dome_connected
-
-      # ── Session Overview ──────────────────────────────────────────────────
-      - type: glance
-        title: Session Overview
-        entities:
-          - entity: binary_sensor.sequence_running
-            name: Sequence
-          - entity: sensor.sequence_target
-            name: Target
-          - entity: sensor.sequence_progress
-            name: Progress
-          - entity: sensor.image_count
-            name: Frames
-          - entity: binary_sensor.mount_tracking
-            name: Tracking
-          - entity: binary_sensor.guider_active
-            name: Guiding
-
-      # ── Camera ────────────────────────────────────────────────────────────
-      - type: entities
-        title: Camera
-        entities:
-          - entity: sensor.camera_temperature
-          - entity: sensor.camera_target_temperature
-          - entity: sensor.camera_cooler_power
-          - entity: binary_sensor.camera_cooling
-          - entity: sensor.camera_gain
-          - entity: sensor.camera_current_filter
-          - entity: sensor.camera_status
-
-      # ── Mount Pointing ────────────────────────────────────────────────────
-      - type: entities
-        title: Mount Pointing
-        entities:
-          - entity: sensor.mount_ra
-          - entity: sensor.mount_dec
-          - entity: sensor.mount_altitude
-          - entity: sensor.mount_azimuth
-          - entity: sensor.mount_time_to_meridian_flip
-          - entity: binary_sensor.mount_parked
-          - entity: binary_sensor.mount_slewing
-
-      # ── Focuser ───────────────────────────────────────────────────────────
-      - type: entities
-        title: Focuser
-        entities:
-          - entity: sensor.focuser_position
-          - entity: sensor.focuser_temperature
-          - entity: binary_sensor.focuser_moving
-
-      # ── Guiding ───────────────────────────────────────────────────────────
-      - type: entities
-        title: Guiding (PHD2)
-        entities:
-          - entity: sensor.guider_rms_total
-          - entity: sensor.guider_rms_ra
-          - entity: sensor.guider_rms_dec
-          - entity: sensor.guider_status
-
-      # ── Last Image Stats ──────────────────────────────────────────────────
-      - type: entities
-        title: Last Image
-        entities:
-          - entity: sensor.image_last_hfr
-          - entity: sensor.image_last_star_count
-          - entity: sensor.image_last_mean_adu
-
-      # ── Controls ──────────────────────────────────────────────────────────
-      - type: button
-        name: Start Sequence
-        tap_action:
-          action: call-service
-          service: nina_astrophotography.sequence_start
-      - type: button
-        name: Stop Sequence
-        tap_action:
-          action: call-service
-          service: nina_astrophotography.sequence_stop
-      - type: button
-        name: Park Mount
-        tap_action:
-          action: call-service
-          service: nina_astrophotography.mount_park
-      - type: button
-        name: Auto Focus
-        tap_action:
-          action: call-service
-          service: nina_astrophotography.focuser_auto_focus
+- alias: "Cool the camera at sunset"
+  triggers:
+    - trigger: sun
+      event: sunset
+      offset: "-00:30:00"
+  actions:
+    - action: nina_astrophotography.camera_cool
+      target:
+        device_id: 0123456789abcdef0123456789abcdef
+      data:
+        temperature: -10
+        minutes: 15
 ```
 
 ---
 
-## Example Automations
+## Events
 
-### Auto-cool camera at sunset
+The integration holds a WebSocket connection to N.I.N.A. alongside its polling,
+and **every N.I.N.A. event fires a Home Assistant event** — no polling delay.
+The socket is the primary source; polling backstops it.
 
-```yaml
-automation:
-  - alias: "Cool camera at sunset"
-    trigger:
-      - platform: sun
-        event: sunset
-        offset: "-00:30:00"
-    action:
-      - service: nina_astrophotography.camera_cool
-        data:
-          temperature: -10
-          minutes: 15
-```
+`IMAGE-SAVE` → `nina_image_save`, `MOUNT-AFTER-FLIP` → `nina_mount_after_flip`,
+and so on. Everything also fires as `nina_event`.
 
-### Alert if guiding RMS exceeds threshold
+The payload is:
 
-```yaml
-automation:
-  - alias: "Guiding alert"
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.guider_rms_total
-        above: 2.5
-        for: "00:03:00"
-    action:
-      - service: notify.mobile_app
-        data:
-          message: "⚠️ Guide RMS is {{ states('sensor.guider_rms_total') }} arcsec!"
-```
-
-### Auto-park before dawn
+| Field | |
+|---|---|
+| `event` | the N.I.N.A. event name, e.g. `IMAGE-SAVE` |
+| `time` | ISO 8601, offset-aware |
+| `instance` | the instance name, so a two-rig install can tell them apart |
+| `entry_id` | that instance's config entry id, for an exact match |
+| `data` | the event's own scalar fields, under N.I.N.A.'s key names |
+| `frame` | the mapped frame statistics on `IMAGE-SAVE`, otherwise `null` |
 
 ```yaml
-automation:
-  - alias: "Park before dawn"
-    trigger:
-      - platform: sun
-        event: sunrise
-        offset: "-00:45:00"
-    condition:
-      - condition: state
-        entity_id: binary_sensor.sequence_running
-        state: "off"
-    action:
-      - service: nina_astrophotography.sequence_stop
-      - delay: "00:01:00"
-      - service: nina_astrophotography.mount_park
-      - service: nina_astrophotography.camera_warm
-        data:
-          minutes: 20
-      - service: nina_astrophotography.dome_close
+- alias: "Report each saved frame"
+  triggers:
+    - trigger: event
+      event_type: nina_image_save
+  conditions:
+    - condition: template
+      value_template: >
+        {{ trigger.event.data.entry_id
+           == config_entry_id('sensor.n_i_n_a_session_image_count') }}
+  actions:
+    - action: notify.mobile_app_myphone
+      data:
+        message: >
+          HFR {{ trigger.event.data.frame.hfr | round(2) }},
+          {{ trigger.event.data.frame.stars }} stars
 ```
+
+`nina_websocket_connected` and `nina_websocket_disconnected` fire on connection
+**transitions** only.
 
 ---
 
+## Blueprints
+
+Copy `blueprints/automation/nina_astrophotography/` into your Home Assistant
+config directory, then **Settings → Automations & Scenes → Blueprints**.
+
+| Blueprint | What it does |
+|---|---|
+| `weather_abort.yaml` | The safety automation: on unsafe conditions **or** the safety monitor dropping out, stop the sequence, park, warm the camera, close the dome. Optionally resumes when conditions clear. |
+| `session_startup.yaml` | Unpark, track, open the dome, cool the camera, load and start a sequence. |
+| `session_shutdown.yaml` | The scheduled end of night: stop, park, warm, close. |
+| `meridian_flip_warning.yaml` | Warns ahead of the flip, and again when N.I.N.A. commits to it and completes it. |
+| `guiding_alert.yaml` | Notifies, and optionally refocuses, when guide RMS stays high. |
+
+All five take a device or entity picker for the rig they act on, so they work on
+a two-rig install and need no editing.
+
+`weather_abort.yaml` takes **no weather trigger**, deliberately — see
+[Weather](#weather). Its optional resume conditions are where weather belongs.
 
 ---
 
-## Additional Entities (v1.1)
+## Lovelace cards
 
-### Switch Entities
-| Entity | Description |
-|---|---|
-| `switch.camera_cooler` | Toggle camera TEC cooler on/off (cool to −10 °C / warm over 15 min) |
-| `switch.mount_tracking` | Enable/disable sidereal tracking |
-| `switch.autoguiding` | Start/stop PHD2 guiding |
-| `switch.flat_panel_light` | Toggle flat panel light |
-
-### Select Entities
-| Entity | Description |
-|---|---|
-| `select.active_filter` | Choose filter by name (maps to slot index automatically) |
-| `select.mount_tracking_rate` | Sidereal / Lunar / Solar / King |
-
-### Number Entities (controllable)
-| Entity | Description | Range |
-|---|---|---|
-| `number.camera_gain_control` | Set camera gain | 0–5000 |
-| `number.camera_offset_control` | Set camera offset | 0–5000 |
-| `number.camera_binning_control` | Set binning factor | 1–4 |
-| `number.camera_cooling_setpoint` | Set cooling target temperature | −30–20 °C |
-| `number.focuser_target_position` | Move focuser to absolute position | 0–200,000 steps |
-| `number.filter_wheel_slot` | Change filter by slot index | 0–20 |
-| `number.rotator_position` | Rotate to absolute position | 0–360 ° |
-
-### Light Entity
-| Entity | Description |
-|---|---|
-| `light.flat_panel_light` | Flat panel with full HA brightness control (0–255) |
-
-### Button Entities
-One-tap action buttons — ideal for dashboard card rows:
-`button.run_auto_focus` · `button.mount_find_home` ·
-`button.park_mount` · `button.unpark_mount` · `button.start_sequence` ·
-`button.stop_sequence` · `button.open_dome` · `button.close_dome` ·
-`button.park_dome` · `button.abort_capture` · `button.start_guiding` ·
-`button.stop_guiding`
-
----
-
-## WebSocket Push Events
-
-The integration maintains a persistent WebSocket connection to N.I.N.A. alongside
-the REST polling. **Every N.I.N.A. event fires a native HA event** so automations
-can react instantly — no polling delay.
-
-### Event naming convention
-N.I.N.A. event `IMAGE-SAVE` → HA event `nina_image_save`  
-N.I.N.A. event `MOUNT-AFTER-FLIP` → HA event `nina_mount_after_flip`  
-All events also fire as `nina_event`. Event data is `event` (the N.I.N.A. name),
-`time` (ISO 8601, offset-aware), `data` (the event's own scalar fields) and
-`frame` (the mapped statistics on `IMAGE-SAVE`, otherwise `null`).
-
-### Using WebSocket events in automations
-
-```yaml
-automation:
-  - alias: "React to image saved"
-    trigger:
-      - platform: event
-        event_type: nina_image_save
-    action:
-      - service: notify.mobile_app_myphone
-        data:
-          message: >
-            Frame saved: HFR {{ trigger.event.data.frame.hfr | round(2) }}
-            Stars: {{ trigger.event.data.frame.stars }}
-
-  - alias: "Alert when autofocus fails"
-    trigger:
-      - platform: event
-        event_type: nina_error_af
-    action:
-      - service: notify.mobile_app_myphone
-        data:
-          message: "⚠️ N.I.N.A. autofocus failed!"
-
-  - alias: "React to meridian flip complete"
-    trigger:
-      - platform: event
-        event_type: nina_mount_after_flip
-    action:
-      - service: notify.mobile_app_myphone
-        data:
-          message: "✅ Meridian flip complete — imaging resuming"
-```
-
-### Full list of HA event types
-| HA Event | N.I.N.A. Trigger |
-|---|---|
-| `nina_image_save` | Frame written to disk (carries full ImageStatistics) |
-| `nina_sequence_starting` / `nina_sequence_finished` | Sequence begins / ends |
-| `nina_autofocus_starting` / `nina_autofocus_finished` | AF run starts / completes |
-| `nina_error_af` | Autofocus failure |
-| `nina_mount_before_flip` / `nina_mount_after_flip` | Meridian flip events |
-| `nina_mount_parked` / `nina_mount_unparked` | Park state changes |
-| `nina_camera_connected` / `nina_camera_disconnected` | Camera connection |
-| `nina_guider_start` / `nina_guider_stop` | Guiding starts/stops |
-| `nina_guider_dither` | Dither complete |
-| `nina_dome_shutter_opened` / `nina_dome_shutter_closed` | Dome shutter |
-| `nina_safety_changed` | Safety monitor state (data: `{IsSafe: bool}`) |
-| `nina_filterwheel_changed` | Filter changed (data: `{Previous: …, New: …}`) |
-| `nina_websocket_connected` / `nina_websocket_disconnected` | WS connection health |
-
----
-
-## Automation Blueprints
-
-Copy the `blueprints/` folder to your HA config directory to install all four blueprints.
-Then use **Settings → Automations → Import Blueprint** or just reference them directly.
-
-| Blueprint | Description |
-|---|---|
-| `session_startup.yaml` | Full startup: unpark → cool camera → open dome → load & start sequence |
-| `session_shutdown.yaml` | Safe shutdown: stop sequence → park → warm camera → close dome |
-| `guiding_alert.yaml` | Notify (and optionally re-focus) when RMS exceeds threshold |
-| `meridian_flip_warning.yaml` | Warn before flip, confirm after flip completes |
-
----
-
-## Custom Lovelace Card(s)
-
-Copy the following to your HA `/config/www/` folder, then register them:
- 
-`www/nina-observatory-card.js`
-`www/nina-frame-stats-card.js`
-`www/nina-image-panel-card.js`
-`www/nina-sky-map-card.js`
-`www/nina-weather-card.js`
-
-```yaml
-# configuration.yaml  (or via UI: Settings → Dashboards → Resources)
-lovelace:
-  resources:
-    - url: /local/nina-observatory-card.js
-      type: module
-```
-
-Add to any dashboard:
+Copy the files from `www/` into your `/config/www/` folder and register each as
+a dashboard resource (**Settings → Dashboards → ⋮ → Resources**, type
+*JavaScript Module*, URL `/local/<file>.js`).
 
 ```yaml
 type: custom:nina-observatory-card
-type: custom:nina-frame-stats-card
-type: custom:nina-image-panel-card
-type: custom:nina-sky-map-card
-type: custom:nina-weather-card
+prefix: n_i_n_a          # the slugified instance name your entity ids carry
+device_id: 0123…         # nina-observatory-card only: which rig its buttons
+                         # act on. Needed once two rigs are configured.
 ```
 
-The Observatory Card provides:
-- Live session banner with target name and progress bar
-- Equipment connectivity chips (Camera, Mount, Focuser, Filter Wheel, Guider, Dome)
-- Meridian flip countdown warning
-- Camera temperature, gain, cooler power, current filter
-- Mount RA/Dec/Alt/Az and time to flip
-- Focuser position and temperature
-- PHD2 guiding RMS bar chart (RA + Dec, colour-coded by severity)
-- Last image HFR, star count and mean ADU
-- One-tap control buttons: Start/Stop Sequence, Park/Unpark, Auto Focus,
-  Open/Close Dome, Cool/Warm Camera, Start/Stop Guiding
+`N.I.N.A.` slugifies to `n_i_n_a`, which is also the default. Copy yours from
+any entity id.
 
-The Frame Stats Card provides:
-- live per-frame HFR trend, star count, ADU sparklines
-- per-filter frame counts
-- all driven by IMAGE-SAVE WebSocket events
- 
-The Image Panel Card provides:
-- Latest image display
-- previous 5 image history
-- RMS, HFR, ADU, Exposure and Star count stats
- 
-The Sky Map Card provides:
-- A live star chart
-- Reticle indicating current pointing direction (trails indicate recent movements)
-- Current Target coordinates (RA/Dec and Alt/Az)
-- mount tracking status
- 
-The Weather Card provides:
-- Safety Monitor
-- Atmospheric Conditions - Temperature, Humiidity, DewPoint, Air Pressue
-- Ground level wind conditions
-- Sky/Viewing Conditions - Cloud cover, Rain Rate, Sky Temp, and Seeing Quality
-- Tied to weather monitor in N.I.N.A.
- 
+| Card | |
+|---|---|
+| `nina-observatory-card` | Session banner and progress, equipment chips, meridian countdown, camera / mount / focuser readings, guiding RMS bars, last-frame statistics, and one-tap controls. Stopping a sequence, parking and closing the dome ask for confirmation. |
+| `nina-frame-stats-card` | Per-frame HFR, star-count and ADU sparklines with a trend, and a per-filter breakdown. The series is sampled in the browser as frames arrive, so a page reload starts it over. |
+| `nina-image-panel-card` | The latest image with a filmstrip of recent frames, an ADU histogram, and per-frame statistics. Needs `host:` (and `port:`) — it fetches images from N.I.N.A. directly. |
+| `nina-sky-map-card` | A live star chart with the current pointing, a trail of recent positions, and the meridian. **Set `latitude:`** — it projects the whole star field and defaults to 40°N. |
+| `nina-weather-card` | Safety banner, atmospheric and wind conditions, and sky quality. Channels the source cannot provide are shown as absent rather than zero. |
 
+---
+
+## Upgrading to 2.0
+
+**There is no migration, and nothing renames itself.** Home Assistant keys the
+entity registry on `unique_id`, so an existing install keeps the entity ids it
+already has — dashboards and automations keep working — while entities move
+onto their new devices. A **fresh** install gets the new ids.
+[`docs/2.0-renames.md`](docs/2.0-renames.md) maps every one.
+
+What does need your attention:
+
+- **Three actions changed their parameters**, because in 1.4.5 they silently did
+  nothing: `camera_capture` takes `duration` (was `exposure`, which was never
+  sent) and no longer offers `binning` or `filter_index` (which bound nothing);
+  `sequence_load` takes `sequence_name` (was `path`, which the API ignores);
+  `mount_slew` takes `ra_degrees`/`dec_degrees` in **J2000 degrees** (was `ra`
+  in hours) — see [Actions](#actions).
+- **All five blueprints were rewritten** and their inputs changed. Re-import
+  them and rebuild the automations. The old ones referenced entities 2.0 does
+  not create, so they were inert either way.
+- **The Lovelace cards need `prefix:`** — see [Lovelace cards](#lovelace-cards).
+- **`switch.<instance>_flat_panel_light` is gone** — the `light` entity survives.
+  Its old registry row lingers as unavailable until you delete it.
+- **The poll interval is capped at 60 s**; an entry storing more keeps its rate
+  until the options form is next submitted.
+- **Entity attributes no longer carry driver metadata.** It is on the device.
+- **Long-term statistics restart for two session sensors.**
+  `sensor.<instance>_session_integration_time` moves from minutes to hours and
+  from `total_increasing` to `measurement`; `sensor.<instance>_session_image_count`
+  also becomes `measurement`. Both keep their `unique_id`, so an upgraded
+  install keeps the entity and loses its recorded history — the two statistic
+  types are not migrated between.
+
+---
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| "Cannot connect" in config flow | Verify the Advanced API plugin is running. Open `http://<IP>:1888/v2/api/version` in a browser from the HA machine. |
-| Sensors showing `unknown` | The specific device (camera, mount, etc.) may not be connected in N.I.N.A. Connect it there first. |
-| Poll is slow | Increase the poll interval in Options if you have many devices. |
-| Service calls fail | Check HA logs (`Settings → System → Logs`) for the underlying API error from N.I.N.A. |
+| "Cannot connect" during setup | Check the Advanced API plugin is running: open `http://<IP>:1888/v2/api/version` in a browser **from the Home Assistant machine**. |
+| Entities read `unavailable` | That device is not connected in N.I.N.A. Connect it there. |
+| No weather entities | See [Weather](#weather) — channels appear on their first real reading. |
+| An action failed | The message carries N.I.N.A.'s own refusal. The HTTP status is almost always 200, so the real reason is in the body — and in `Settings → System → Logs`. |
+| An action says several instances are configured | Add a device target to say which rig you mean. |
+| A card is blank | Set `prefix:` to your instance's slug — the default `n_i_n_a` only matches the default instance name. |
+| `Last Image HFR` does not change during a flat run | Correct. The last-image sensors report the last **light** frame, so a calibration run leaves them where they were rather than blanking your imaging readouts. They read `unknown` only when the session has no lights at all. |
