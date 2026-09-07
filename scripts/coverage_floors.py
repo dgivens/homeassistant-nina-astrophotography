@@ -22,13 +22,6 @@ FLOORS: dict[str, int] = {
     "config_flow.py": 100,
 }
 
-# A floor lives here until the PR that creates its module promotes it into
-# FLOORS — A11 the mapper, A12 derive, A13 session, B7 the config flow. That
-# keeps this job green on every PR in the stack while never leaving a floor
-# silently unenforced for a module that exists. Printed as a warning, never a
-# failure. D5 asserts PENDING is empty.
-PENDING: dict[str, int] = {}
-
 PREFIX = "custom_components/nina_astrophotography/"
 
 
@@ -44,9 +37,6 @@ def main() -> int:
         actual = files[key]["summary"]["percent_covered"]
         if actual + 1e-9 < floor:
             failures.append(f"{relative}: {actual:.1f}% < {floor}%")
-    for relative, floor in PENDING.items():
-        print(f"coverage floor pending (not enforced): {relative} >= {floor}%",
-              file=sys.stderr)
     for line in failures:
         print(f"coverage floor breached: {line}", file=sys.stderr)
     return 1 if failures else 0

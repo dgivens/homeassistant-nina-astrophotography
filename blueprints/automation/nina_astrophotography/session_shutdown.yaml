@@ -1,12 +1,13 @@
 blueprint:
   name: "N.I.N.A. – Session Shutdown"
   description: >
-    A planned end-of-night shutdown: stop the sequence, park the mount, warm the
-    camera and optionally close the dome.
+    A planned end-of-night shutdown: stop the sequence, park the mount, close
+    the dome once the mount confirms park, and warm the camera.
 
     This is the scheduled counterpart to the unsafe-conditions abort, not a
     replacement for it. Every step continues on error, so a mount that refuses
-    to park still leaves the camera warming and the dome closing.
+    to park still leaves the camera warming — but the dome is the exception:
+    it closes only over a mount that has confirmed park.
   domain: automation
   author: dgivens
   source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/session_shutdown.yaml
@@ -22,18 +23,18 @@ blueprint:
           selector:
             device:
               integration: nina_astrophotography
-        sequence_running_entity:
+        sequence_running:
           name: Sequence running
           selector:
             entity:
               integration: nina_astrophotography
               domain: binary_sensor
               device_class: running
-        mount_parked_entity:
+        mount_parked:
           name: Mount at park
           description: >
-            Used to confirm the mount is parked before the dome closes. A roof
-            closing over an unparked telescope is how the mirror gets broken.
+            The dome closes only once this reads on. A roof closing over an
+            unparked telescope is how the mirror gets broken.
           selector:
             entity:
               integration: nina_astrophotography
@@ -62,6 +63,12 @@ blueprint:
       name: Settings
       icon: mdi:cog
       input:
+        close_dome:
+          name: Close the dome
+          description: Only over a mount that has confirmed park.
+          default: false
+          selector:
+            boolean:
         warming_ramp_minutes:
           name: Camera warming time
           default: 20
@@ -70,33 +77,38 @@ blueprint:
               min: 5
               max: 60
               unit_of_measurement: min
-        close_dome:
-          name: Close the dome
-          description: Only after the mount has parked.
-          default: false
+        notify_target:
+          name: Notify
+          description: Notify entities to alert. Leave empty for none.
+          default: []
           selector:
-            boolean:
-        notify_device:
-          name: Notify service
-          description: >
-            The notify service to send to, without the `notify.` prefix.
-            Leave blank for no notification.
-          default: ""
-          selector:
-            text:
+            entity:
+              domain: notify
+              multiple: true
 
 mode: single
 max_exceeded: silent
 
 # Inputs must be bound here before templates can reference them.
 variables:
-  mount_parked: !input mount_parked_entity
-  notify_device: !input notify_device
-  sequence_running: !input sequence_running_entity
+  mount_parked: !input mount_parked
+  nina_rig: !input nina_rig
+  sequence_running: !input sequence_running
 
 triggers:
   - trigger: time
     at: !input trigger_time
+
+conditions:
+  # Selectors cannot cross-filter, so the entities and the device above can
+  # name different rigs on a two-rig install — which would park the wrong
+  # telescope. Only blocks when they positively disagree.
+  - alias: "The entities and the device name the same rig"
+    condition: template
+    value_template: >
+      {% set entry = config_entry_id(sequence_running) %}
+      {% set rig = device_attr(nina_rig, 'config_entries') %}
+      {{ entry is none or rig is not iterable or entry in rig | list }}
 
 actions:
   # `wait_template`, not `wait_for_trigger`: a sequence that has already
@@ -110,7 +122,7 @@ actions:
   - alias: "Stop the sequence if it is still running"
     if:
       - condition: state
-        entity_id: !input sequence_running_entity
+        entity_id: !input sequence_running
         state: "on"
     then:
       - action: nina_astrophotography.sequence_stop
@@ -119,19 +131,42 @@ actions:
         continue_on_error: true
       - delay: "00:00:10"
 
+  # Park stops tracking itself. Sending `mount_set_tracking` here would land
+  # mid-slew, where the driver may refuse it — and once parked most drivers
+  # refuse it outright.
   - alias: "Park the mount"
     action: nina_astrophotography.mount_park
     target:
       device_id: !input nina_rig
     continue_on_error: true
 
-  - alias: "Stop tracking"
-    action: nina_astrophotography.mount_set_tracking
-    target:
-      device_id: !input nina_rig
-    data:
-      enabled: false
-    continue_on_error: true
+  - alias: "Wait for the mount to reach its park position"
+    wait_template: "{{ is_state(mount_parked, 'on') }}"
+    timeout: "00:03:00"
+    continue_on_timeout: true
+
+  # The roof before the camera, and only over a parked mount: the wait above
+  # times out rather than failing, and a disconnected mount never reads `on`.
+  - alias: "Close the dome, but only over a parked mount"
+    enabled: !input close_dome
+    if:
+      - condition: template
+        value_template: "{{ is_state(mount_parked, 'on') }}"
+    then:
+      - action: nina_astrophotography.dome_close
+        target:
+          device_id: !input nina_rig
+        continue_on_error: true
+    else:
+      - action: notify.send_message
+        target:
+          entity_id: !input notify_target
+        data:
+          title: "🚨 Roof left open"
+          message: >
+            The mount did not confirm park, so the dome was NOT closed.
+            Manual intervention needed.
+        continue_on_error: true
 
   - alias: "Warm the camera"
     action: nina_astrophotography.camera_warm
@@ -141,30 +176,17 @@ actions:
       minutes: !input warming_ramp_minutes
     continue_on_error: true
 
-  - alias: "Wait for the mount to reach its park position"
-    wait_template: "{{ is_state(mount_parked, 'on') }}"
-    timeout: "00:03:00"
-    continue_on_timeout: true
-
-  - alias: "Close the dome"
-    action: nina_astrophotography.dome_close
-    target:
-      device_id: !input nina_rig
-    continue_on_error: true
-    enabled: !input close_dome
-
   - alias: "Wait out the camera warming ramp"
     delay:
       minutes: !input warming_ramp_minutes
 
   - alias: "Notify that the session is over"
-    if:
-      - condition: template
-        value_template: "{{ notify_device != '' }}"
-    then:
-      - action: "notify.{{ notify_device }}"
-        data:
-          title: "🌅 N.I.N.A. session complete"
-          message: >
-            Session ended. Mount parked: {{ is_state(mount_parked, 'on') }}.
-            Camera warming finished.
+    action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "🌅 N.I.N.A. session complete"
+      message: >
+        Session ended. Mount parked: {{ is_state(mount_parked, 'on') }}.
+        Camera warming finished.
+    continue_on_error: true

@@ -10,8 +10,8 @@ import coverage_floors  # noqa: E402
 
 PREFIX = coverage_floors.PREFIX
 
-# The script ships with FLOORS empty until each module lands, so the tests
-# supply their own set rather than depending on how far the stack has got.
+# The tests supply their own floors rather than asserting against the shipped
+# set, which is a release decision rather than a property of the script.
 FLOORS = {"derive.py": 95, "session.py": 95, "api/v2/mapper.py": 90}
 
 
@@ -47,8 +47,3 @@ def test_an_unmeasured_file_fails_rather_than_passing_silently(
     _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0})
     assert coverage_floors.main() == 1
 
-
-def test_no_floor_is_still_waiting_to_be_enforced() -> None:
-    """A pending floor is unenforced by design while the module it names is
-    being built. Shipping with one left is shipping an unguarded module."""
-    assert coverage_floors.PENDING == {}

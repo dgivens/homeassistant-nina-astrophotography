@@ -10,6 +10,8 @@ pins it field by field, and the only connected device the corpus ever shows
 reporting `"NaN"` is the weather station, whose channels answer `unavailable`
 rather than `unknown` by a rule of their own (§5.2.2).
 """
+from pathlib import Path
+
 import pytest
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.core import HomeAssistant
@@ -127,3 +129,22 @@ async def test_sequence_progress_is_unknown_where_no_node_counts_iterations(
     """The truth about what this API exposes on a Target Scheduler rig.
     Inventing a percentage from node statuses would be worse (§6.2)."""
     assert hass.states.get("sensor.n_i_n_a_sequence_progress").state == "unknown"
+
+
+async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    """`meridian_flip_warning.yaml` reads this attribute by name to place its
+    early warning. Rename or drop it and the blueprint silently falls back to
+    warning AT the flip — which is the bug the attribute exists to fix."""
+    flip = hass.states.get(FLIP)
+
+    assert "flip_fires_at_minutes" in flip.attributes
+
+
+def test_the_blueprint_reads_the_attribute_by_that_name() -> None:
+    """The other half of the seam: nothing else connects the two."""
+    blueprint = (Path(__file__).resolve().parents[2] / "blueprints" / "automation"
+                 / "nina_astrophotography" / "meridian_flip_warning.yaml")
+
+    assert "flip_fires_at_minutes" in blueprint.read_text(encoding="utf-8")

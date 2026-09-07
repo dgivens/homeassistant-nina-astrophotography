@@ -22,8 +22,9 @@ camera_cool:
           unit_of_measurement: "°C"
     minutes:
       name: Ramp Time
-      description: Minutes over which to ramp to the target temperature.
-      default: 10
+      description: >-
+        Minutes over which to ramp to the target temperature. Omit to use the
+        ramp N.I.N.A.'s own profile specifies for this camera.
       example: 10
       selector:
         number:
@@ -45,8 +46,9 @@ camera_warm:
           integration: nina_astrophotography
     minutes:
       name: Ramp Time
-      description: Minutes over which to ramp back to ambient.
-      default: 10
+      description: >-
+        Minutes over which to ramp back to ambient. Omit to use the ramp
+        N.I.N.A.'s own profile specifies for this camera.
       example: 10
       selector:
         number:
@@ -106,7 +108,6 @@ camera_abort_capture:
         device:
           integration: nina_astrophotography
 
-
 mount_slew:
   name: Slew Mount
   description: Slew the telescope mount to J2000 RA/Dec coordinates.
@@ -123,7 +124,7 @@ mount_slew:
       name: Right Ascension
       description: Target J2000 RA in decimal degrees (0–360).
       required: true
-      example: 83.6324
+      example: 83.822
       selector:
         number:
           min: 0
@@ -157,7 +158,6 @@ mount_park:
         device:
           integration: nina_astrophotography
 
-
 mount_unpark:
   name: Unpark Mount
   description: Unpark the telescope mount.
@@ -170,7 +170,6 @@ mount_unpark:
       selector:
         device:
           integration: nina_astrophotography
-
 
 mount_set_tracking:
   name: Set Tracking
@@ -227,7 +226,6 @@ focuser_auto_focus:
         device:
           integration: nina_astrophotography
 
-
 filterwheel_change_filter:
   name: Change Filter
   description: Rotate the filter wheel to the specified filter slot.
@@ -282,7 +280,6 @@ guider_stop:
         device:
           integration: nina_astrophotography
 
-
 dome_open:
   name: Open Dome
   description: Open the dome shutter.
@@ -295,7 +292,6 @@ dome_open:
       selector:
         device:
           integration: nina_astrophotography
-
 
 dome_close:
   name: Close Dome
@@ -310,7 +306,6 @@ dome_close:
         device:
           integration: nina_astrophotography
 
-
 dome_park:
   name: Park Dome
   description: Park the dome.
@@ -323,7 +318,6 @@ dome_park:
       selector:
         device:
           integration: nina_astrophotography
-
 
 sequence_start:
   name: Start Sequence
@@ -338,7 +332,6 @@ sequence_start:
         device:
           integration: nina_astrophotography
 
-
 sequence_stop:
   name: Stop Sequence
   description: Stop the currently running sequence.
@@ -351,7 +344,6 @@ sequence_stop:
       selector:
         device:
           integration: nina_astrophotography
-
 
 sequence_load:
   name: Load Sequence

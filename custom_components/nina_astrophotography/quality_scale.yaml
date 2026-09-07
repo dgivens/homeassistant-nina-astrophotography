@@ -1,4 +1,9 @@
-# The quality-scale register, in the form Home Assistant reads it.
+# The quality-scale register, in the form Home Assistant reads it. Hassfest
+# validates this file for core integrations only, so nothing checks it here —
+# which is exactly why a status in it has to be earned rather than asserted.
+#
+# Bronze and Silver are recorded in full. Gold and Platinum list only the rules
+# actually decided; the rest are covered by §10's "not pursued".
 # `docs/v2.0-design.md` §10 is the same register with a pointer to the section
 # that implements each rule; keep the two in step.
 #
@@ -19,9 +24,17 @@ rules:
   config-flow-test-coverage: done
   dependency-transparency: done
   docs-actions: done
+  docs-conditions:
+    status: exempt
+    comment: The integration registers no conditions.
   docs-high-level-description: done
   docs-installation-instructions: done
   docs-removal-instructions: done
+  docs-triggers:
+    status: exempt
+    comment: >-
+      The integration registers no triggers. Automations key on the
+      `nina_<event>` bus events, which the README documents.
   entity-event-setup: done
   entity-unique-id: done
   has-entity-name: done
@@ -33,7 +46,10 @@ rules:
   # Silver
   action-exceptions: done
   config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
   entity-unavailable: done
+  integration-owner: done
   log-when-unavailable: done
   parallel-updates: done
   reauthentication-flow:
@@ -54,14 +70,11 @@ rules:
   entity-category: done
   entity-disabled-by-default: done
   stale-devices: done
-  diagnostics:
-    status: todo
+  diagnostics: todo
   discovery:
     status: exempt
     comment: The Advanced API advertises no discovery protocol.
-  repair-issues:
-    status: todo
+  repair-issues: todo
 
   # Platinum
-  strict-typing:
-    status: todo
+  strict-typing: todo
