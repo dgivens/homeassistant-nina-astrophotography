@@ -139,11 +139,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         """Keep the 1.4.x automation contract: `nina_<event>` plus the catch-all.
 
         The payload is derived from the model, so a wire dict never reaches an
-        automation; phase D rewrites the blueprints against the entities.
+        automation. It names the instance the event came from: the event types
+        are shared, so on a two-rig install an unfiltered automation would fire
+        for both.
         """
         payload = {
             "event": event.name,
             "time": event.time.isoformat(),
+            "instance": instance_name,
+            "entry_id": entry.entry_id,
             "data": dict(event.data),
             "frame": asdict(event.frame) if event.frame is not None else None,
         }

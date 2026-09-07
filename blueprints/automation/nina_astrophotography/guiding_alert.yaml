@@ -1,97 +1,124 @@
 blueprint:
   name: "N.I.N.A. – Guiding Quality Alert"
   description: >
-    Sends a notification and optionally runs an autofocus when guiding error (RMS)
-    exceeds a threshold for a sustained period. Useful for catching cloud, wind
-    or seeing degradation mid-session.
+    Notifies, and optionally runs an autofocus, when total guiding RMS stays
+    above a threshold while the guider is running. Catches cloud, wind and
+    seeing degradation mid-session.
+
+    The guider running is a condition rather than a trigger source: RMS is
+    reported through calibration and settling too, where a spike means nothing.
   domain: automation
-  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography
+  author: dgivens
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/guiding_alert.yaml
+  homeassistant:
+    min_version: "2024.10.0"
   input:
-    rms_threshold:
-      name: RMS Threshold (arcsec)
-      description: Alert when total RMS error stays above this value.
-      default: 2.0
-      selector:
-        number:
-          min: 0.5
-          max: 10
-          step: 0.1
-          unit_of_measurement: arcsec
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        nina_rig:
+          name: N.I.N.A. instance
+          description: The rig to run an autofocus on, if that is enabled below.
+          selector:
+            device:
+              integration: nina_astrophotography
+        rms_sensor:
+          name: Total guiding RMS
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+        guider_entity:
+          name: Guider
+          description: The rig's guider switch, on while the guider is running.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: switch
 
-    sustained_minutes:
-      name: Sustained Duration (minutes)
-      description: How many consecutive minutes the RMS must exceed the threshold before alerting.
-      default: 3
-      selector:
-        number:
-          min: 1
-          max: 30
-          unit_of_measurement: min
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        rms_threshold:
+          name: RMS threshold
+          description: Alert when total RMS stays above this value.
+          default: 2.0
+          selector:
+            number:
+              min: 0.5
+              max: 10
+              step: 0.1
+              unit_of_measurement: arcsec
+        sustained_minutes:
+          name: Sustained duration
+          description: How long RMS must stay above the threshold before alerting.
+          default: 3
+          selector:
+            number:
+              min: 1
+              max: 30
+              unit_of_measurement: min
+        run_autofocus:
+          name: Run an autofocus on alert
+          description: Helps when the cause is focus drift; useless when it is cloud.
+          default: false
+          selector:
+            boolean:
+        cooldown_minutes:
+          name: Cooldown between alerts
+          default: 15
+          selector:
+            number:
+              min: 5
+              max: 120
+              unit_of_measurement: min
+        notify_device:
+          name: Notify service
+          description: The notify service to send to, without the `notify.` prefix.
+          selector:
+            text:
 
-    notify_device:
-      name: Notify Device
-      description: Mobile device to send the alert to.
-      selector:
-        text:
-
-    run_autofocus:
-      name: Run Autofocus on Alert
-      description: Trigger an autofocus routine when the alert fires (helps if the issue is focus drift).
-      default: false
-      selector:
-        boolean:
-
-    cooldown_minutes:
-      name: Cooldown Between Alerts (minutes)
-      description: Minimum time between repeated alerts.
-      default: 15
-      selector:
-        number:
-          min: 5
-          max: 120
-          unit_of_measurement: min
+# `single` plus the closing delay is what implements the cooldown: the
+# automation stays running, so re-triggers are dropped until it elapses.
+mode: single
+max_exceeded: silent
 
 # Inputs must be bound here before templates can reference them.
 variables:
   notify_device: !input notify_device
+  rms_sensor: !input rms_sensor
   rms_threshold: !input rms_threshold
-  run_autofocus: !input run_autofocus
   sustained_minutes: !input sustained_minutes
 
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.guider_rms_total
+triggers:
+  - trigger: numeric_state
+    entity_id: !input rms_sensor
     above: !input rms_threshold
     for:
       minutes: !input sustained_minutes
 
-condition:
+conditions:
   - condition: state
-    entity_id: binary_sensor.guider_is_guiding
+    entity_id: !input guider_entity
     state: "on"
 
-action:
-  - service: "notify.{{ notify_device }}"
+actions:
+  - action: "notify.{{ notify_device }}"
     data:
-      title: "⚠️ Guiding Alert"
+      title: "⚠️ Guiding alert"
       message: >
-        Guide RMS has been {{ states('sensor.guider_rms_total') }}" for
-        {{ sustained_minutes }} minutes (threshold: {{ rms_threshold }}").
-        RA: {{ states('sensor.guider_rms_ra') }}" |
-        Dec: {{ states('sensor.guider_rms_dec') }}"
+        Guide RMS has been {{ states(rms_sensor) }}" for {{ sustained_minutes }}
+        minutes (threshold {{ rms_threshold }}").
 
-  - choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ run_autofocus }}"
-        sequence:
-          - service: nina_astrophotography.focuser_auto_focus
+  - alias: "Run an autofocus"
+    action: nina_astrophotography.focuser_auto_focus
+    target:
+      device_id: !input nina_rig
+    continue_on_error: true
+    enabled: !input run_autofocus
 
-  # mode: single plus this delay is what implements the cooldown: the
-  # automation stays running, so re-triggers are dropped until it elapses.
   - alias: "Hold off further alerts for the cooldown period"
     delay:
       minutes: !input cooldown_minutes
-
-mode: single
-max_exceeded: silent

@@ -58,6 +58,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from . import derive
 from .api.models import Frame, TargetBreakdown
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
@@ -142,6 +143,21 @@ def _minutes_to_meridian_flip(data: NinaData) -> float | None:
     if mount is None or mount.time_to_meridian_flip is None:
         return None
     return mount.time_to_meridian_flip * 60.0
+
+
+def _flip_bounds(data: NinaData) -> Mapping[str, Any]:
+    """The reading at which N.I.N.A. actually flips, for a warning threshold.
+
+    The flip fires at (Max − Min), not zero, and both bounds are per-profile —
+    so a warning written as a bare `below: 10` fires at the flip on this rig
+    and somewhere else on the next one.
+    """
+    minimum = data.profile.min_minutes_after_meridian
+    maximum = data.profile.max_minutes_after_meridian
+    return {
+        "flip_fires_at_minutes": None if minimum is None or maximum is None
+        else derive.flip_offset_minutes(minimum, maximum)
+    }
 
 
 def _weather_source(data: NinaData) -> str | None:
@@ -432,6 +448,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         suggested_display_precision=1,
         kind="mount",
         value=_minutes_to_meridian_flip,
+        attributes=_flip_bounds,
     ),
     # ── Focuser ──────────────────────────────────────────────────────────
     NinaSensorDescription(
