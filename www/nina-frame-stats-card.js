@@ -1,16 +1,18 @@
 /**
  * N.I.N.A. Frame Statistics Card
  * Displays live per-frame HFR trend, star count, ADU sparklines and
- * per-filter frame counts — all driven by IMAGE-SAVE WebSocket events.
+ * per-filter frame counts, sampled from the last-frame sensors as N.I.N.A.
+ * saves each image.
  *
  * Installation:
  *   1. Copy to /config/www/nina-frame-stats-card.js
  *   2. Add resource: /local/nina-frame-stats-card.js (JavaScript Module)
  *   3. Add card:
  *        type: custom:nina-frame-stats-card
+ *        prefix: n_i_n_a   # the slugified instance name your entities carry
  */
 
-const VERSION = "1.0.0";
+const VERSION = "2.0.0";
 
 const FILTER_COLOURS = [
   "#7b8de8", "#5bcfcf", "#f4a261", "#57cc99",
@@ -88,6 +90,21 @@ const STYLE = `
   .no-data .icon { font-size: 2rem; margin-bottom: 8px; }
 `;
 
+// 2.0 entity ids carry the instance name, so the card is told the prefix
+// rather than guessing it: it is the instance name from the config flow,
+// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
+// renamed instance, or for the second rig.
+//
+// Repeated in each card on purpose: the cards are copied into `www/` one file
+// at a time, and a shared module would break a card whose neighbour was missed.
+const DEFAULT_PREFIX = "n_i_n_a";
+
+// How many frames the sparklines keep.
+const MAX_SAMPLES = 60;
+
+// Half of one HFR step on a typical rig: below this the trend is noise.
+const TREND_EPSILON = 0.05;
+
 class NinaFrameStatsCard extends HTMLElement {
   constructor() {
     super();
@@ -96,9 +113,13 @@ class NinaFrameStatsCard extends HTMLElement {
     this._stars = [];
     this._adu = [];
     this._filters = [];
+    this._count = null;
   }
 
-  setConfig(config) { this._config = config || {}; }
+  setConfig(config) {
+    this._config = config || {};
+    this._prefix = this._config.prefix || DEFAULT_PREFIX;
+  }
 
   set hass(hass) {
     this._hass = hass;
@@ -116,30 +137,66 @@ class NinaFrameStatsCard extends HTMLElement {
     return e ? (e.attributes[attr] ?? fallback) : fallback;
   }
 
+  _number(id) {
+    const value = parseFloat(this._state(id));
+    return isNaN(value) ? null : value;
+  }
+
+  // 2.0 publishes the newest frame's statistics rather than a per-frame
+  // history, so the card keeps its own series. The session frame count is the
+  // ticker rather than the HFR itself: two frames running can report the same
+  // HFR, and a calibration frame reports none at all. The series lives in the
+  // page, so a reload starts it over.
   _updateData() {
-    // Pull sparkline data from the dedicated sensor's extra attributes
-    this._hfr    = this._attr("sensor.frame_sparkline_data", "hfr_sparkline", []) || [];
-    this._stars  = this._attr("sensor.frame_sparkline_data", "stars_sparkline", []) || [];
-    this._adu    = this._attr("sensor.frame_sparkline_data", "adu_sparkline", []) || [];
-    this._filters = this._attr("sensor.frame_sparkline_data", "filter_timeline", []) || [];
+    const prefix = this._prefix;
+    const count = parseInt(
+      this._state(`sensor.${prefix}_session_image_count`, ""), 10);
+    if (!Number.isFinite(count) || count === this._count) return;
+    this._count = count;
+
+    this._hfr.push(this._number(`sensor.${prefix}_last_image_hfr`));
+    this._stars.push(this._number(`sensor.${prefix}_last_image_star_count`));
+    this._adu.push(this._number(`sensor.${prefix}_last_image_mean_adu`));
+    this._filters.push(this._state(`sensor.${prefix}_last_image_filter`, null));
+    for (const series of [this._hfr, this._stars, this._adu, this._filters]) {
+      while (series.length > MAX_SAMPLES) series.shift();
+    }
+  }
+
+  _mean(values) {
+    const known = values.filter((v) => v !== null && v !== undefined);
+    return known.length
+      ? known.reduce((total, v) => total + v, 0) / known.length
+      : null;
   }
 
   _render() {
     const h = this._hass;
     if (!h) return;
+    const prefix = this._prefix;
 
-    const frameCount   = this._state("sensor.frame_session_count", "0");
-    const integration  = this._state("sensor.session_integration_time", "—");
-    const lastHfr      = this._state("sensor.last_frame_hfr", "—");
-    const rollingHfr   = this._state("sensor.rolling_avg_hfr_10", "—");
-    const lastStars    = this._state("sensor.last_frame_stars", "—");
-    const lastFilter   = this._state("sensor.last_frame_filter", "—");
-    const lastExposure = this._state("sensor.last_frame_exposure", "—");
-    const trend        = this._state("sensor.hfr_trend", "unknown");
-    const trendDelta   = parseFloat(this._state("sensor.hfr_trend_delta", "0")) || 0;
-    const sessionAvgHfr = this._state("sensor.session_avg_hfr", "—");
-    const sessionBestHfr = this._state("sensor.session_best_hfr", "—");
-    const filterCounts = this._attr("sensor.frames_per_filter", "frames_per_filter", {}) || {};
+    const frameCount   = this._state(`sensor.${prefix}_session_image_count`, "0");
+    const integration  = this._state(`sensor.${prefix}_session_integration_time`, "—");
+    const lastHfr      = this._state(`sensor.${prefix}_last_image_hfr`, "—");
+    const lastStars    = this._state(`sensor.${prefix}_last_image_star_count`, "—");
+    const lastFilter   = this._state(`sensor.${prefix}_last_image_filter`, "—");
+    const lastExposure = this._state(`sensor.${prefix}_last_image_exposure`, "—");
+    const sessionAvgHfr = this._state(`sensor.${prefix}_session_avg_hfr`, "—");
+    const sessionBestHfr = this._state(`sensor.${prefix}_session_best_hfr`, "—");
+    // The session breakdown rides on the average-HFR sensor, one row per
+    // filter: {count, integration_hours, hfr_mean}.
+    const byFilter = this._attr(`sensor.${prefix}_session_avg_hfr`, "by_filter", {}) || {};
+
+    // The last five frames against the five before them, as the deleted trend
+    // sensor computed it.
+    const rolling  = this._mean(this._hfr.slice(-10));
+    const recent   = this._mean(this._hfr.slice(-5));
+    const previous = this._mean(this._hfr.slice(-10, -5));
+    const trendDelta = recent !== null && previous !== null ? recent - previous : 0;
+    const trend = recent === null || previous === null ? "unknown"
+      : Math.abs(trendDelta) < TREND_EPSILON ? "stable"
+      : trendDelta < 0 ? "improving" : "degrading";
+    const rollingHfr = rolling === null ? "—" : rolling.toFixed(2);
 
     const trendIcon = trend === "improving" ? "↘" : trend === "degrading" ? "↗" : "→";
     const trendLabel = trend === "improving"
@@ -153,7 +210,8 @@ class NinaFrameStatsCard extends HTMLElement {
     const hasData = this._hfr.filter(v => v !== null).length > 0;
 
     // Build filter chip HTML
-    const filterEntries = Object.entries(filterCounts);
+    const filterEntries = Object.entries(byFilter)
+      .map(([name, row]) => [name, row.count]);
     const filterChipsHtml = filterEntries.map(([name, count], i) => {
       const colour = FILTER_COLOURS[i % FILTER_COLOURS.length];
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
