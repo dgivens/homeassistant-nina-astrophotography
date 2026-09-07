@@ -7,10 +7,15 @@ blueprint:
     The flip itself is reported by N.I.N.A.'s own MOUNT-BEFORE-FLIP and
     MOUNT-AFTER-FLIP events, so those two notifications need no threshold at
     all. The early warning does, and a bare number is not portable: N.I.N.A.
-    flips when "time to meridian flip" reaches (Max − Min) minutes from the
-    profile's meridian settings, not zero — 10 minutes on one rig, something
-    else on the next. The warning window below is added to that offset, which
-    the flip sensor publishes as `flip_fires_at_minutes`.
+    flips somewhere in the window between the reading reaching (Max − Min)
+    minutes — from the profile's meridian settings — and reaching zero. The
+    warning window below is added to that offset, which the flip sensor
+    publishes as `flip_fires_at_minutes`.
+
+    The early warning is withheld until the profile has been read, rather than
+    fired late. It also cannot know whether the sequence HAS a meridian flip
+    trigger — the API reports no such thing — so it warns whenever the mount is
+    tracking toward transit.
   domain: automation
   author: dgivens
   source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/meridian_flip_warning.yaml
@@ -23,7 +28,9 @@ blueprint:
       input:
         flip_sensor:
           name: Time to meridian flip
-          description: The rig's "Time to meridian flip" sensor.
+          description: >
+            The rig's "Time to meridian flip" sensor. Leave its display unit as
+            minutes — the threshold below is read from its state.
           selector:
             entity:
               integration: nina_astrophotography
@@ -37,19 +44,20 @@ blueprint:
         warning_minutes:
           name: Warning before the flip
           description: >
-            How long before the flip to warn. Added to the profile's own flip
-            offset, so it means what it says on every rig.
+            How long before the earliest possible flip to warn. Added to the
+            profile's own flip offset, so it means what it says on every rig.
           default: 10
           selector:
             number:
               min: 1
               max: 60
               unit_of_measurement: min
-        notify_device:
-          name: Notify service
-          description: The notify service to send to, without the `notify.` prefix.
+        notify_target:
+          name: Notify
           selector:
-            text:
+            entity:
+              domain: notify
+              multiple: true
 
 mode: queued
 max_exceeded: silent
@@ -61,17 +69,19 @@ trigger_variables:
 
 variables:
   flip_sensor: !input flip_sensor
-  notify_device: !input notify_device
 
 triggers:
-  # The early warning. `flip_fires_at_minutes` is the reading at which N.I.N.A.
-  # actually flips; it is 0 only if the profile has not been read yet.
+  # The early warning. `flip_fires_at_minutes` is absent until the profile has
+  # been read — and defaulting it to 0 would put the warning back exactly where
+  # this blueprint exists to move it from, at the flip itself. So: no attribute,
+  # no early warning. The two event triggers below are unaffected.
   - trigger: template
     id: approaching
     value_template: >
+      {% set fires_at = state_attr(flip_sensor, 'flip_fires_at_minutes') %}
       {% set minutes = states(flip_sensor) | float(-1) %}
-      {{ minutes >= 0 and minutes <= warning_minutes | float
-         + (state_attr(flip_sensor, 'flip_fires_at_minutes') | float(0)) }}
+      {{ fires_at is not none and minutes >= 0
+         and minutes <= warning_minutes | float + fires_at | float }}
 
   # N.I.N.A. has committed to the flip. Observed on the wire, not assumed.
   - trigger: event
@@ -85,38 +95,55 @@ triggers:
 conditions:
   # The event types are shared by every configured rig, so an event trigger has
   # to say which one it came from. The template trigger is already per-entity.
+  # An unregistered sensor yields no entry id, which must not match an event
+  # that carries none either.
   - condition: template
     value_template: >
       {{ trigger.id == 'approaching'
-         or trigger.event.data.entry_id == config_entry_id(flip_sensor) }}
+         or (config_entry_id(flip_sensor) is not none
+             and trigger.event.data.entry_id == config_entry_id(flip_sensor)) }}
 
 actions:
+  - variables:
+      # What the sensor reads at the flip, so the message can report time to
+      # the flip rather than the raw countdown, which runs (Max − Min) long.
+      fires_at: "{{ state_attr(flip_sensor, 'flip_fires_at_minutes') | float(0) }}"
+      reading: "{{ states(flip_sensor) | float(0) }}"
+
   - choose:
       - conditions:
           - condition: trigger
             id: approaching
         sequence:
-          - action: "notify.{{ notify_device }}"
+          - action: notify.send_message
+            target:
+              entity_id: !input notify_target
             data:
               title: "🔄 Meridian flip approaching"
               message: >
-                Meridian flip in about
-                {{ states(flip_sensor) | float(0) | round(1) }} minutes.
+                Meridian flip in {{ (reading | float - fires_at | float) | round(0) }}–{{
+                reading | float | round(0) }} minutes.
 
       - conditions:
           - condition: trigger
             id: committed
         sequence:
-          - action: "notify.{{ notify_device }}"
+          - action: notify.send_message
+            target:
+              entity_id: !input notify_target
             data:
               title: "🔄 Meridian flip starting"
-              message: "N.I.N.A. has begun the meridian flip."
+              message: >
+                N.I.N.A. has begun the meridian flip, with the countdown
+                reading {{ reading | float | round(1) }} minutes.
 
       - conditions:
           - condition: trigger
             id: complete
         sequence:
-          - action: "notify.{{ notify_device }}"
+          - action: notify.send_message
+            target:
+              entity_id: !input notify_target
             data:
               title: "✅ Meridian flip complete"
               message: "The flip finished. Guiding and imaging resume."

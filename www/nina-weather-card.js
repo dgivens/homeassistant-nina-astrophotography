@@ -1,5 +1,5 @@
 /**
- * N.I.N.A. Weather & Safety Card  v1.0.0
+ * N.I.N.A. Weather & Safety Card
  *
  * Displays weather station data and safety monitor status from N.I.N.A.
  * Works with any ASCOM ObservingConditions driver or weather station
@@ -183,14 +183,6 @@ class NinaWeatherCard extends HTMLElement {
   }
   _on(id) { return this._s(id) === "on"; }
 
-  // A channel appears on its first real reading and reads `unavailable` once
-  // the active source stops providing it: two sources on one rig are disjoint
-  // in both directions, so an absent channel is normal rather than a fault.
-  _provided(id) {
-    const value = this._s(id);
-    return value !== null && value !== "unavailable" && value !== "unknown";
-  }
-
   _render() {
     if (!this._hass) return;
     const prefix = this._prefix;
@@ -199,12 +191,21 @@ class NinaWeatherCard extends HTMLElement {
     const safetyConnected = this._on(`binary_sensor.${prefix}_safety_monitor_connected`);
     // The SAFETY device class is on = problem, so the entity is named for the
     // problem: it reads `on` when conditions are UNSAFE.
-    const isUnsafe = this._on(`binary_sensor.${prefix}_safety_monitor_unsafe`);
-    const isSafe   = safetyConnected && !isUnsafe;
+    //
+    // Three states, not two. `unknown` is what the monitor reports before it
+    // has a reading, and rendering that as "safe" is the trap this entity is
+    // named to avoid — at the worst possible moment.
+    const unsafeState = this._s(`binary_sensor.${prefix}_safety_monitor_unsafe`);
+    const isUnsafe = unsafeState === "on";
+    const isSafe   = safetyConnected && unsafeState === "off";
 
     // Weather. The source has no connectivity entity of its own — a
-    // disconnected device makes its entities unavailable instead.
-    const wxConnected = this._provided(`sensor.${prefix}_weather_source`);
+    // disconnected device makes its entities unavailable instead. One read,
+    // because the name is that same state and printing `unavailable` as the
+    // station's name is worse than printing nothing.
+    const source = this._s(`sensor.${prefix}_weather_source`);
+    const wxConnected = source !== null && source !== "unavailable"
+      && source !== "unknown";
     const temp    = this._f(`sensor.${prefix}_weather_temperature`);
     const humid   = this._f(`sensor.${prefix}_weather_humidity`);
     const dewPt   = this._f(`sensor.${prefix}_weather_dew_point`);
@@ -218,7 +219,7 @@ class NinaWeatherCard extends HTMLElement {
     const skyB    = this._f(`sensor.${prefix}_weather_sky_brightness`);
     const skyT    = this._f(`sensor.${prefix}_weather_sky_temperature`);
     const seeing  = this._f(`sensor.${prefix}_weather_star_fwhm`);
-    const wxName  = this._s(`sensor.${prefix}_weather_source`, "Weather station");
+    const wxName  = wxConnected ? source : "Weather station";
 
     // Dew threat: temp within 3°C of dew point
     const dewThreat = temp !== null && dewPt !== null && (temp - dewPt) < 3;
@@ -229,6 +230,12 @@ class NinaWeatherCard extends HTMLElement {
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor not connected";
       safetyDetail = "Connect a safety monitor in N.I.N.A. to enable automated abort";
+      bannerCls = "safety-banner unknown";
+    } else if (!isUnsafe && !isSafe) {
+      // Connected, but no reading yet — not the same thing as safe.
+      safetyIcon = "🔘"; safetyLabelCls = "unknown";
+      safetyLabel = "Safety monitor has no reading";
+      safetyDetail = "The monitor is connected but has not reported yet";
       bannerCls = "safety-banner unknown";
     } else if (isSafe) {
       safetyIcon = "✅"; safetyLabelCls = "safe";

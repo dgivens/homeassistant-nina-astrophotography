@@ -9,6 +9,12 @@
           "port": "API Port",
           "instance_name": "Instance Name",
           "poll_interval": "Poll Interval (seconds)"
+        },
+        "data_description": {
+          "host": "The hostname or IP address of the PC running N.I.N.A.",
+          "port": "The Advanced API plugin's port, 1888 unless you changed it.",
+          "instance_name": "Names this rig. It titles the entry, names the hub device and prefixes every entity id, so give a second rig its own name.",
+          "poll_interval": "How often to poll, in seconds. The event socket carries most changes; this is the backstop."
         }
       }
     },
@@ -29,6 +35,10 @@
         "data": {
           "poll_interval": "Poll Interval (seconds)",
           "rollover_hour": "Session Rollover Hour (rig local time)"
+        },
+        "data_description": {
+          "poll_interval": "How often to poll, in seconds. The event socket carries most changes; this is the backstop.",
+          "rollover_hour": "The hour, in the RIG's own local time, where one session ends and the next begins. Noon by default. Set it to a real midday on site if the imaging PC's clock runs UTC, or a night's statistics split in two during its dawn flats."
         }
       }
     }
@@ -604,6 +614,9 @@
     "command_failed": {
       "message": "N.I.N.A. did not accept the command: {error}"
     },
+    "entry_not_loaded": {
+      "message": "N.I.N.A. instance {instance} is not loaded, so the action was not sent."
+    },
     "no_cooling_setpoint": {
       "message": "The cooler cannot be started: the camera reports no target temperature."
     },
@@ -620,7 +633,7 @@
       "message": "The filter wheel does not report a slot for \"{option}\", so the change was not sent."
     },
     "unknown_target": {
-      "message": "Device {device_id} does not belong to a loaded N.I.N.A. instance."
+      "message": "The target does not name a configured N.I.N.A. instance, so the action was not sent."
     },
     "unknown_tracking_mode": {
       "message": "The mount offers a tracking mode the API cannot encode: {option}."

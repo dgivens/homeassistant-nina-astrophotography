@@ -14,14 +14,21 @@ from helpers import failure
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import selector
+from homeassistant.setup import async_setup_component
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.const import DOMAIN
 
 SERVICES_YAML = yaml.safe_load(
-    (Path(__file__).resolve().parents[2] / "custom_components"
-     / "nina_astrophotography" / "services.yaml").read_text(encoding="utf-8")
+    (Path(integration.__file__).parent / "services.yaml").read_text(encoding="utf-8")
 )
+
+
+# What a target picker can yield, none of which is a documented field.
+_TARGET_FIELDS = {"area_id", "device_id", "entity_id", "floor_id", "label_id"}
 
 
 async def _call(hass: HomeAssistant, service: str, **data) -> None:
@@ -54,12 +61,48 @@ async def test_an_untargeted_call_is_refused_when_two_rigs_are_configured(
         await _call(hass, "mount_park")
 
 
-async def test_a_device_belonging_to_no_nina_instance_is_refused(
+async def test_a_target_that_names_no_nina_instance_is_refused(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
-    with pytest.raises(ServiceValidationError):
-        await _call(hass, "mount_park", device_id="not-a-device")
+    """Never widened back to "the only rig": a device of some other
+    integration must not park this mount, and neither must a typo."""
+    other = MockConfigEntry(domain="other")
+    other.add_to_hass(hass)
+    foreign = dr.async_get(hass).async_get_or_create(
+        config_entry_id=other.entry_id, identifiers={("other", "thing")}
+    )
+
+    for target in ("not-a-device", foreign.id):
+        with pytest.raises(ServiceValidationError):
+            await _call(hass, "mount_park", device_id=target)
     assert rig.sent == []
+
+
+async def test_an_untargeted_call_is_refused_while_a_second_rig_is_merely_down(
+    hass: HomeAssistant, two_rigs
+) -> None:
+    """Ambiguity is judged on CONFIGURED entries. Judged on loaded ones, an
+    untargeted call would silently retarget to the surviving rig whenever the
+    other rig's N.I.N.A. was down — which is when nobody is watching."""
+    assert await hass.config_entries.async_unload(two_rigs.entries[0].entry_id)
+
+    with pytest.raises(ServiceValidationError):
+        await _call(hass, "mount_park")
+    assert two_rigs.rigs[1].sent == []
+
+
+async def test_an_entity_of_a_rig_targets_that_rig(
+    hass: HomeAssistant, two_rigs
+) -> None:
+    """`services.yaml` declares a `target:`, so the action must accept every
+    form the target picker yields, not only a bare device."""
+    first, second = two_rigs.rigs
+    entity = er.async_entries_for_config_entry(
+        er.async_get(hass), two_rigs.entries[1].entry_id)[0]
+    await _call(hass, "mount_park", entity_id=entity.entity_id)
+
+    assert second.sent[-1][0] == "/equipment/mount/park"
+    assert "/equipment/mount/park" not in [path for path, _ in first.sent]
 
 
 @pytest.mark.parametrize(
@@ -93,12 +136,11 @@ async def test_a_service_sends_what_the_api_reads(
     assert rig.sent[-1] == (path, params)
 
 
-def test_capture_no_longer_offers_the_parameters_that_bind_nothing() -> None:
-    """`binning` and `filter_index` bind nothing on the wire —
-    `/equipment/camera/capture` takes neither — and a parameter that looks like
-    it works is worse than no parameter."""
-    assert set(SERVICES_YAML["camera_capture"]["fields"]) - {"device_id"} == {
-        "duration", "gain", "save"}
+def test_capture_offers_only_the_parameters_the_api_binds() -> None:
+    """`/equipment/camera/capture` binds no binning and no filter index, and a
+    parameter that looks like it works is worse than no parameter."""
+    assert {"binning", "filter_index"}.isdisjoint(
+        SERVICES_YAML["camera_capture"]["fields"])
 
 
 @pytest.mark.parametrize("service", sorted(SERVICES_YAML), ids=str)
@@ -124,15 +166,20 @@ def test_every_action_offers_a_rig_picker(service: str) -> None:
 
 @pytest.mark.parametrize("service", sorted(SERVICES_YAML), ids=str)
 async def test_the_documented_fields_are_the_fields_the_schema_binds(
-    hass: HomeAssistant, loaded_entry, service: str
+    hass: HomeAssistant, service: str
 ) -> None:
     """A field documented but not bound does nothing; a field bound but not
-    documented is invisible. Both were shipped in 1.4.5."""
+    documented is invisible. Both were shipped in 1.4.5.
+
+    No entry: the actions register in `async_setup`, so the schema cannot
+    depend on one being loaded.
+    """
+    assert await async_setup_component(hass, DOMAIN, {})
     schema = hass.services.async_services()[DOMAIN][service].schema
-    # `device_id` is documented as a field but bound as a target field the
+    # `device_id` is documented as a field but bound by the target fields the
     # schema accepts wholesale, so it is excluded from both sides.
     documented = set(SERVICES_YAML[service]["fields"]) - {"device_id"}
-    bound = {str(key) for key in schema.schema} - {"device_id"}
+    bound = {str(key) for key in schema.schema} - _TARGET_FIELDS
 
     assert bound == documented
 
@@ -158,10 +205,9 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": 91}),
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": -91}),
         ("focuser_move", {"position": -1}),
-        ("filterwheel_change_filter", {"filter_index": -1}),
     ],
     ids=["ra-above-360", "ra-negative", "dec-above-90", "dec-below-90",
-         "position", "filter"],
+         "position"],
 )
 async def test_out_of_range_input_is_refused_rather_than_clamped(
     hass: HomeAssistant, loaded_entry, rig, service: str, data: dict
@@ -210,7 +256,5 @@ async def test_the_actions_exist_before_any_entry_is_loaded(
     """Bronze `action-setup`. Registered from `async_setup_entry`, the actions
     vanish with the last entry, and an automation referencing one fails
     validation rather than failing legibly at call time."""
-    from homeassistant.setup import async_setup_component
-
     assert await async_setup_component(hass, DOMAIN, {})
     assert hass.services.has_service(DOMAIN, "mount_park")
