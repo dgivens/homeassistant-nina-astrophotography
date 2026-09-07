@@ -1,0 +1,80 @@
+# The quality-scale register, in the form Home Assistant reads it. Hassfest
+# validates this file for core integrations only, so nothing checks it here —
+# which is exactly why a status in it has to be earned rather than asserted.
+#
+# Bronze and Silver are recorded in full. Gold and Platinum list only the rules
+# actually decided; the rest are covered by §10's "not pursued".
+# `docs/v2.0-design.md` §10 is the same register with a pointer to the section
+# that implements each rule; keep the two in step.
+#
+# An exemption is recorded rather than left looking unimplemented: "we decided
+# this does not apply, and here is why" is information, and a blank is not.
+rules:
+  # Bronze
+  action-setup: done
+  appropriate-polling: done
+  brands:
+    status: todo
+    comment: >-
+      There is no home-assistant/brands entry for this fork, and the HACS
+      validation job passes `ignore: brands` accordingly. Submitting one is the
+      remaining Bronze gap.
+  common-modules: done
+  config-flow: done
+  config-flow-test-coverage: done
+  dependency-transparency: done
+  docs-actions: done
+  docs-conditions:
+    status: exempt
+    comment: The integration registers no conditions.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  docs-triggers:
+    status: exempt
+    comment: >-
+      The integration registers no triggers. Automations key on the
+      `nina_<event>` bus events, which the README documents.
+  entity-event-setup: done
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data: done
+  test-before-configure: done
+  test-before-setup: done
+  unique-config-entry: done
+
+  # Silver
+  action-exceptions: done
+  config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
+  entity-unavailable: done
+  integration-owner: done
+  log-when-unavailable: done
+  parallel-updates: done
+  reauthentication-flow:
+    status: exempt
+    comment: >-
+      The N.I.N.A. Advanced API has no authentication of any kind, so there are
+      no credentials to re-enter.
+  test-coverage:
+    status: todo
+    comment: >-
+      Coverage is deliberately uneven — 100% on the config flow, high on the
+      mapper and the pure modules, no global gate. `scripts/coverage_floors.py`
+      enforces the per-file floors.
+
+  # Gold
+  devices: done
+  dynamic-devices: done
+  entity-category: done
+  entity-disabled-by-default: done
+  stale-devices: done
+  diagnostics: todo
+  discovery:
+    status: exempt
+    comment: The Advanced API advertises no discovery protocol.
+  repair-issues: todo
+
+  # Platinum
+  strict-typing: todo

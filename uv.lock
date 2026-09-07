@@ -1626,7 +1626,7 @@ wheels = [
 
 [[package]]
 name = "nina-astrophotography"
-version = "1.4.5"
+version = "2.0.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
