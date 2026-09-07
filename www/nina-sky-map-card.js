@@ -5,17 +5,8 @@
  * telescope is currently pointing, with altitude rings, cardinal directions,
  * a meridian line, and a trail of recent positions.
  *
- * Reads from:
- *   sensor.mount_altitude          (degrees, 0–90)
- *   sensor.mount_azimuth           (degrees, 0–360, N=0)
- *   sensor.mount_ra                (decimal hours)
- *   sensor.mount_dec               (decimal degrees)
- *   sensor.mount_time_to_meridian_flip   (minutes)
- *   sensor.sequence_target_name
- *   binary_sensor.mount_connected
- *   binary_sensor.mount_tracking
- *   binary_sensor.mount_parked
- *   binary_sensor.mount_slewing
+ * Reads the mount's altitude, azimuth, RA, declination, sidereal time, time to
+ * meridian flip and tracking rate, its park state, and the sequence target.
  *
  * Installation:
  *   1. Copy to /config/www/nina-sky-map-card.js
@@ -25,6 +16,7 @@
  *        latitude: 38.5    # your observing latitude (improves horizon shading)
  *        trail_length: 60  # number of historical positions to keep (default 60)
  *        show_constellations: true
+ *        prefix: n_i_n_a   # the slugified instance name your entities carry
  */
 
 const VERSION = "1.0.0";
@@ -198,6 +190,15 @@ const STYLE = `
 `;
 
 /* ── Card class ──────────────────────────────────────────────────────── */
+// 2.0 entity ids carry the instance name, so the card is told the prefix
+// rather than guessing it: it is the instance name from the config flow,
+// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
+// renamed instance, or for the second rig.
+//
+// Repeated in each card on purpose: the cards are copied into `www/` one file
+// at a time, and a shared module would break a card whose neighbour was missed.
+const DEFAULT_PREFIX = "n_i_n_a";
+
 class NinaSkyMapCard extends HTMLElement {
   constructor() {
     super();
@@ -217,6 +218,7 @@ class NinaSkyMapCard extends HTMLElement {
       map_size: 320,
       ...config,
     };
+    this._prefix = this._config.prefix || DEFAULT_PREFIX;
   }
 
   connectedCallback() {
@@ -247,9 +249,22 @@ class NinaSkyMapCard extends HTMLElement {
   }
   _on(id) { return this._s(id) === "on"; }
 
+  // A device that is disconnected makes its entities unavailable rather than
+  // publishing an off state, so availability is what "connected" reads from.
+  _available(id) {
+    const value = this._s(id);
+    return value !== null && value !== "unavailable";
+  }
+  // Tracking is one of the mount's own rates, and `Stopped` is one of them.
+  _tracking(prefix) {
+    const rate = this._s(`select.${prefix}_mount_tracking_rate`);
+    return rate !== null && rate !== "Stopped" && rate !== "unavailable";
+  }
+
   _updateTrail() {
-    const alt = this._f("sensor.mount_altitude");
-    const az  = this._f("sensor.mount_azimuth");
+    const prefix = this._prefix;
+    const alt = this._f(`sensor.${prefix}_mount_altitude`);
+    const az  = this._f(`sensor.${prefix}_mount_azimuth`);
     if (alt === this._lastAlt && az === this._lastAz) return;
     this._lastAlt = alt;
     this._lastAz  = az;
@@ -297,12 +312,13 @@ class NinaSkyMapCard extends HTMLElement {
   }
 
   _updateInfoRow() {
-    const alt = this._f("sensor.mount_altitude");
-    const az  = this._f("sensor.mount_azimuth");
-    const ra  = this._f("sensor.mount_ra");
-    const dec = this._f("sensor.mount_dec");
-    const target = this._s("sensor.sequence_target_name", "");
-    const ttf    = this._f("sensor.mount_time_to_meridian_flip", 999);
+    const prefix = this._prefix;
+    const alt = this._f(`sensor.${prefix}_mount_altitude`);
+    const az  = this._f(`sensor.${prefix}_mount_azimuth`);
+    const ra  = this._f(`sensor.${prefix}_mount_right_ascension`);
+    const dec = this._f(`sensor.${prefix}_mount_declination`);
+    const target = this._s(`sensor.${prefix}_sequence_target`, "");
+    const ttf    = this._f(`sensor.${prefix}_mount_time_to_meridian_flip`, 999);
 
     const set = (id, v) => {
       const el = this.shadowRoot?.getElementById(id);
@@ -324,18 +340,16 @@ class NinaSkyMapCard extends HTMLElement {
   _updateStatusBar() {
     const bar = this.shadowRoot?.getElementById("status-bar");
     if (!bar) return;
-    const connected = this._on("binary_sensor.mount_connected");
-    const tracking  = this._on("binary_sensor.mount_tracking");
-    const parked    = this._on("binary_sensor.mount_parked");
-    const slewing   = this._on("binary_sensor.mount_slewing");
+    const prefix = this._prefix;
+    const connected = this._available(`sensor.${prefix}_mount_right_ascension`);
+    const tracking  = this._tracking(prefix);
+    const parked    = this._on(`binary_sensor.${prefix}_mount_at_park`);
 
     const chips = [];
     if (!connected) {
       chips.push(`<span class="dot off"></span> Mount disconnected`);
     } else if (parked) {
       chips.push(`<span class="dot warn"></span> Parked`);
-    } else if (slewing) {
-      chips.push(`<span class="dot warn"></span> Slewing…`);
     } else if (tracking) {
       chips.push(`<span class="dot on"></span> Tracking`);
     } else {
@@ -388,6 +402,7 @@ class NinaSkyMapCard extends HTMLElement {
   // ── Main draw ─────────────────────────────────────────────────────────
 
   _drawFrame() {
+    const prefix = this._prefix;
     const ctx  = this._ctx;
     const size = this._config.map_size;
     const dpr  = this._dpr;
@@ -454,7 +469,7 @@ class NinaSkyMapCard extends HTMLElement {
     }
 
     // ── Meridian line (azimuth 0° N–S through zenith) ─────────────────
-    const ttf = this._f("sensor.mount_time_to_meridian_flip", 999);
+    const ttf = this._f(`sensor.${prefix}_mount_time_to_meridian_flip`, 999);
     const meridianColor = ttf < 15 && ttf > 0
       ? `rgba(244, 162, 97, ${0.5 + 0.4 * Math.sin(Date.now() / 400)})`
       : "rgba(123,141,232,0.25)";
@@ -472,8 +487,8 @@ class NinaSkyMapCard extends HTMLElement {
 
     // ── Stars ──────────────────────────────────────────────────────────
     const lat = this._config.latitude;
-    const lst = this._f("sensor.mount_sidereal_time", 12);  // fallback to noon
-    const connectedST = this._on("binary_sensor.mount_connected");
+    const lst = this._f(`sensor.${prefix}_mount_sidereal_time`, 12);  // fallback to noon
+    const connectedST = this._available(`sensor.${prefix}_mount_sidereal_time`);
 
     if (connectedST) {
       for (const star of BRIGHT_STARS) {
@@ -523,21 +538,19 @@ class NinaSkyMapCard extends HTMLElement {
     }
 
     // ── Current pointing dot ───────────────────────────────────────────
-    const alt = this._f("sensor.mount_altitude");
-    const az  = this._f("sensor.mount_azimuth");
-    const isParked   = this._on("binary_sensor.mount_parked");
-    const isSlewing  = this._on("binary_sensor.mount_slewing");
-    const isTracking = this._on("binary_sensor.mount_tracking");
-    const isMounted  = this._on("binary_sensor.mount_connected");
+    const alt = this._f(`sensor.${prefix}_mount_altitude`);
+    const az  = this._f(`sensor.${prefix}_mount_azimuth`);
+    const isParked   = this._on(`binary_sensor.${prefix}_mount_at_park`);
+    const isTracking = this._tracking(prefix);
+    const isMounted  = this._available(`sensor.${prefix}_mount_right_ascension`);
 
     if (isMounted && alt >= 0) {
       const p = proj(alt, az);
 
       // Outer glow
-      const glowR = (isSlewing ? 20 : 14) * dpr;
+      const glowR = 14 * dpr;
       const glow  = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
-      const glowColor = isParked  ? "244,162,97"
-                      : isSlewing ? "231,111,81"
+      const glowColor = isParked ? "244,162,97"
                       : isTracking ? "91,207,207"
                       : "123,141,232";
       glow.addColorStop(0,   `rgba(${glowColor},0.35)`);

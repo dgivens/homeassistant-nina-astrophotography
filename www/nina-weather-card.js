@@ -11,7 +11,7 @@
  *   3. Add card:  type: custom:nina-weather-card
  */
 
-const VERSION = "1.0.0";
+const VERSION = "2.0.0";
 
 const STYLE = `
   :host {
@@ -148,13 +148,25 @@ function degToCompass(deg) {
   return DEG_LABELS[Math.round(deg / 22.5) % 16];
 }
 
+// 2.0 entity ids carry the instance name, so the card is told the prefix
+// rather than guessing it: it is the instance name from the config flow,
+// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
+// renamed instance, or for the second rig.
+//
+// Repeated in each card on purpose: the cards are copied into `www/` one file
+// at a time, and a shared module would break a card whose neighbour was missed.
+const DEFAULT_PREFIX = "n_i_n_a";
+
 class NinaWeatherCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
   }
 
-  setConfig(config) { this._config = config || {}; }
+  setConfig(config) {
+    this._config = config || {};
+    this._prefix = this._config.prefix || DEFAULT_PREFIX;
+  }
 
   set hass(hass) {
     this._hass = hass;
@@ -171,31 +183,42 @@ class NinaWeatherCard extends HTMLElement {
   }
   _on(id) { return this._s(id) === "on"; }
 
+  // A channel appears on its first real reading and reads `unavailable` once
+  // the active source stops providing it: two sources on one rig are disjoint
+  // in both directions, so an absent channel is normal rather than a fault.
+  _provided(id) {
+    const value = this._s(id);
+    return value !== null && value !== "unavailable" && value !== "unknown";
+  }
+
   _render() {
     if (!this._hass) return;
+    const prefix = this._prefix;
 
     // Safety monitor
-    const safetyConnected = this._on("binary_sensor.safety_monitor_connected");
-    // binary_sensor.observatory_safe uses SAFETY device class: "on" = UNSAFE
-    const isUnsafe = this._on("binary_sensor.observatory_safe");
+    const safetyConnected = this._on(`binary_sensor.${prefix}_safety_monitor_connected`);
+    // The SAFETY device class is on = problem, so the entity is named for the
+    // problem: it reads `on` when conditions are UNSAFE.
+    const isUnsafe = this._on(`binary_sensor.${prefix}_safety_monitor_unsafe`);
     const isSafe   = safetyConnected && !isUnsafe;
 
-    // Weather
-    const wxConnected = this._on("binary_sensor.weather_station_connected");
-    const temp    = this._f("sensor.weather_temperature");
-    const humid   = this._f("sensor.weather_humidity");
-    const dewPt   = this._f("sensor.dew_point");
-    const windSpd = this._f("sensor.wind_speed");
-    const windDir = this._f("sensor.wind_direction");
-    const windGst = this._f("sensor.wind_gust");
-    const press   = this._f("sensor.barometric_pressure");
-    const cloud   = this._f("sensor.cloud_cover");
-    const rain    = this._f("sensor.rain_rate");
-    const skyQ    = this._f("sensor.sky_quality");
-    const skyB    = this._f("sensor.sky_brightness");
-    const skyT    = this._f("sensor.sky_temperature");
-    const seeing  = this._f("sensor.atmospheric_seeing");
-    const wxName  = this._s("sensor.weather_station_name", "Weather Station");
+    // Weather. The source has no connectivity entity of its own — a
+    // disconnected device makes its entities unavailable instead.
+    const wxConnected = this._provided(`sensor.${prefix}_weather_source`);
+    const temp    = this._f(`sensor.${prefix}_weather_temperature`);
+    const humid   = this._f(`sensor.${prefix}_weather_humidity`);
+    const dewPt   = this._f(`sensor.${prefix}_weather_dew_point`);
+    const windSpd = this._f(`sensor.${prefix}_weather_wind_speed`);
+    const windDir = this._f(`sensor.${prefix}_weather_wind_direction`);
+    const windGst = this._f(`sensor.${prefix}_weather_wind_gust`);
+    const press   = this._f(`sensor.${prefix}_weather_pressure`);
+    const cloud   = this._f(`sensor.${prefix}_weather_cloud_cover`);
+    const rain    = this._f(`sensor.${prefix}_weather_rain_rate`);
+    const skyQ    = this._f(`sensor.${prefix}_weather_sky_quality`);
+    const skyB    = this._f(`sensor.${prefix}_weather_sky_brightness`);
+    const skyT    = this._f(`sensor.${prefix}_weather_sky_temperature`);
+    const seeing  = this._f(`sensor.${prefix}_weather_star_fwhm`);
+    const wxName  = this._s(`sensor.${prefix}_weather_source`, "Weather station");
 
     // Dew threat: temp within 3°C of dew point
     const dewThreat = temp !== null && dewPt !== null && (temp - dewPt) < 3;
