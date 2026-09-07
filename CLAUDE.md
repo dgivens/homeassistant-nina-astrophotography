@@ -167,6 +167,15 @@ Test through **public Home Assistant interfaces**: set up via
 and the registries. Do not reach into coordinator internals — tests that do stop
 surviving refactors, which defeats the point during a restructure.
 
+**Registry snapshots live in `tests/ha/snapshots/`, and the extension is pinned
+in `tests/ha/conftest.py`.** Syrupy and `pytest-homeassistant-custom-component`
+both register a plugin fixture named `snapshot`, and pytest settles the clash by
+entry-point load order — which is not stable across machines. Syrupy winning
+stores under `__snapshots__/`, PHACC winning under `snapshots/`, so an unpinned
+corpus recorded on one host is invisible on the next: every read misses, and the
+same snapshots are reported both "does not exist" and "unused". Keep the
+conftest fixture, which outranks both plugins.
+
 ### Keep tests tightly scoped
 
 - One behaviour per test. If a test needs a paragraph to explain what it proves,
