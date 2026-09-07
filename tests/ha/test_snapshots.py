@@ -24,9 +24,9 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from syrupy.assertion import SnapshotAssertion
 
-# Syrupy's own directory, so the plain-text inventory sits beside the .ambr
-# it is regenerated with.
-SNAPSHOTS = Path(__file__).parent / "__snapshots__"
+# The snapshot extension's own directory (see conftest's `snapshot`), so the
+# plain-text inventory sits beside the .ambr it is regenerated with.
+SNAPSHOTS = Path(__file__).parent / "snapshots"
 
 PLATFORMS = [
     Platform.SENSOR,
