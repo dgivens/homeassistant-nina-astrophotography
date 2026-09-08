@@ -71,16 +71,6 @@ SWITCH_DESCRIPTIONS: list[NinaSwitchDescription] = [
         turn_off_fn=lambda c: c.stop_guiding(),
         available_fn=lambda d: bool(_safe(d, "guider", "Response", "Connected")),
     ),
-    # ── Flat Light ────────────────────────────────────────────────────────────
-    NinaSwitchDescription(
-        key="flat_light_switch",
-        name="Flat Panel Light",
-        icon="mdi:lightbulb",
-        is_on_fn=lambda d: bool(_safe(d, "flatdevice", "Response", "LightOn")),
-        turn_on_fn=lambda c: c.toggle_flat_light(True),
-        turn_off_fn=lambda c: c.toggle_flat_light(False),
-        available_fn=lambda d: bool(_safe(d, "flatdevice", "Response", "Connected")),
-    ),
 ]
 
 
