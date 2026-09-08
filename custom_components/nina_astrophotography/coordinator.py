@@ -50,7 +50,7 @@ from .api.models import (
     VersionInfo,
 )
 from .api.v2 import NinaClientV2
-from .const import CONF_HOST
+from .const import CONF_HOST, DEFAULT_ROLLOVER_HOUR
 from .device import KINDS
 from .polling import (
     EventLedger,
@@ -134,6 +134,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         config_entry: ConfigEntry,
         update_interval: timedelta = FAST_INTERVAL,
         version: VersionInfo = VersionInfo(None, None),
+        rollover_hour: int = DEFAULT_ROLLOVER_HOUR,
     ) -> None:
         super().__init__(
             hass,
@@ -151,6 +152,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         # fold the moment it arrives.
         self.event_stream: NinaEventStream | None = None
         self._version = version
+        self._rollover_hour = rollover_hour
         self._observed: set[str] = set()
         self._rejection_logged = False
         self._unavailable_logged = False
@@ -520,7 +522,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return replace(snapshot, **unseen)
 
     def _now(self) -> datetime:
-        """The clock the session's noon rollover is measured against.
+        """The clock the session's rollover is measured against.
 
         Frame dates carry the RIG's offset, so the boundary must be rig-local:
         12:00 UTC is 07:00 on a UTC-5 rig, inside its dawn flats. Home
@@ -541,6 +543,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 self.events,
                 self.generation,
                 now=self._now(),
+                rollover_hour=self._rollover_hour,
             ),
             sequence=self._sequence,
             flats=self._flats,

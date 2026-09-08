@@ -28,12 +28,20 @@ DOMAIN = "nina_astrophotography"
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_API_VERSION = "api_version"
+CONF_INSTANCE_NAME = "instance_name"
 CONF_POLL_INTERVAL = "poll_interval"
+CONF_ROLLOVER_HOUR = "rollover_hour"
 
 # Defaults
 DEFAULT_PORT = 1888
 DEFAULT_API_VERSION = "v2"
+DEFAULT_INSTANCE_NAME = "N.I.N.A."
 DEFAULT_POLL_INTERVAL = 10  # seconds
+# The session boundary, in the RIG's local hours. Noon is the astrophotographer's
+# night boundary; a rig whose Windows clock runs UTC needs it moved, because
+# every N.I.N.A. timestamp is local to that clock and 12:00 UTC falls inside a
+# UTC-5 site's dawn flats.
+DEFAULT_ROLLOVER_HOUR = 12
 
 # Base API path
 API_BASE = "http://{host}:{port}/{version}/api"

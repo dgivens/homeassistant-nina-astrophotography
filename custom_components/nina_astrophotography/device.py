@@ -31,7 +31,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 from .api.models import DeviceMeta, VersionInfo
-from .const import DOMAIN
+from .const import CONF_HOST, CONF_PORT, DEFAULT_PORT, DOMAIN
 
 if TYPE_CHECKING:
     from .coordinator import NinaConfigEntry, NinaData
@@ -62,7 +62,10 @@ def device_identifiers(entry_id: str, kind: str | None = None) -> set[tuple[str,
 
 
 def hub_device_info(
-    entry_id: str, instance_name: str, version: VersionInfo
+    entry_id: str,
+    instance_name: str,
+    version: VersionInfo,
+    configuration_url: str | None = None,
 ) -> DeviceInfo:
     """The service device every piece of equipment hangs off."""
     return DeviceInfo(
@@ -71,7 +74,10 @@ def hub_device_info(
         manufacturer=MANUFACTURER,
         model="Advanced API",
         entry_type=DeviceEntryType.SERVICE,
-        **_present(sw_version=version.nina_version),
+        **_present(
+            sw_version=version.nina_version,
+            configuration_url=configuration_url,
+        ),
     )
 
 
@@ -115,7 +121,15 @@ def async_sync_devices(
     instance_name = entry.runtime_data.instance_name
     hub = registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        **hub_device_info(entry.entry_id, instance_name, data.version),
+        **hub_device_info(
+            entry.entry_id,
+            instance_name,
+            data.version,
+            configuration_url=(
+                f"http://{entry.data[CONF_HOST]}:"
+                f"{entry.data.get(CONF_PORT, DEFAULT_PORT)}"
+            ),
+        ),
     )
     for kind in KINDS:
         device = getattr(data.snapshot, kind)
