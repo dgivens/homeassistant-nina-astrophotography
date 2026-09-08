@@ -30,9 +30,15 @@ AT = "2026-09-05T01:41:53.9-05:00"
 
 
 def captured(name: str) -> dict:
-    """The first `name` event of the dawn history, as the socket sends it."""
-    return next(event for event in load_fixture("dawn_event_history.json")
-                if event["Event"] == name)
+    """The first `name` event of the dawn history, as the socket sends it.
+
+    Restamped: setup replays `/event-history`, so a payload carrying its
+    captured time is one the fold has already taken. A live event is by
+    definition one the history did not hold.
+    """
+    event = next(event for event in load_fixture("dawn_event_history.json")
+                 if event["Event"] == name)
+    return {**event, "Time": AT}
 
 
 def reads(rig: FakeRig, path: str) -> int:

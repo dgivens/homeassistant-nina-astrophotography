@@ -6,18 +6,24 @@ tested as functions of their arguments rather than through a config entry.
 from __future__ import annotations
 
 from dataclasses import fields, replace
+from datetime import datetime
 
 import pytest
 from helpers import load_fixture as load
 
-from nina_astrophotography.api.models import EquipmentSnapshot
+from nina_astrophotography.api.models import EquipmentSnapshot, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_equipment_info
 from nina_astrophotography.polling import (
+    EventLedger,
     ReseedGuard,
     RestartDetector,
     TierSchedule,
     imaging,
 )
+
+# A next-evening restart emits 21:00 events against an 05:30 mark.
+T1 = "2026-09-03T21:00:00-05:00"
+T2 = "2026-09-04T05:30:00-05:00"
 
 
 @pytest.mark.parametrize(
@@ -118,6 +124,15 @@ def test_a_sequence_refetch_is_debounced() -> None:
     assert schedule.request_sequence_refetch(1000.0 + TierSchedule.SEQUENCE_DEBOUNCE) is True
 
 
+def test_a_refused_refetch_an_event_asked_for_stays_queued() -> None:
+    """The debounce is a rate limit, not a veto. Dropping the request loses the
+    event's ask until the five-minute floor comes round."""
+    schedule = TierSchedule()
+    assert schedule.request_sequence_refetch(1000.0, requeue="/sequence/json") is True
+    assert schedule.request_sequence_refetch(1001.0, requeue="/sequence/json") is False
+    assert schedule.take_pending() == {"/sequence/json"}
+
+
 def test_events_queue_endpoints_once_and_taking_them_drains_the_queue() -> None:
     """Two events naming the same endpoint are one refetch, and the tick that
     performs it must clear the queue or it re-reads on every tick after."""
@@ -202,3 +217,29 @@ def _snapshot_with_camera(*, is_exposing: bool | None) -> EquipmentSnapshot:
     blanks = {f.name: None for f in fields(EquipmentSnapshot)}
     return EquipmentSnapshot(**{**blanks,
                                 "camera": replace(camera, is_exposing=is_exposing)})
+
+
+@pytest.mark.parametrize(
+    ("marked", "asked", "seen"),
+    [
+        (("IMAGE-SAVE", T1, "g1"), ("IMAGE-SAVE", T1, "g1"), True),
+        (("IMAGE-SAVE", T1, "g1"), ("IMAGE-SAVE", T2, "g1"), False),
+        (("IMAGE-SAVE", T1, "g1"), ("AUTOFOCUS-FINISHED", T1, "g1"), False),
+        # The mark is scoped to the generation: a restart emits fresh
+        # timestamps that can be EARLIER than a retained one, and a global mark
+        # would filter a whole evening's replay away as already-seen.
+        (("IMAGE-SAVE", T2, "g1"), ("IMAGE-SAVE", T1, "g2"), False),
+    ],
+    ids=["the same event", "another time", "another name", "another generation"],
+)
+def test_the_event_ledger_identifies_an_event_by_generation_name_and_time(
+    marked, asked, seen
+) -> None:
+    ledger = EventLedger()
+    ledger.mark(_event(*marked))
+    assert ledger.seen(_event(*asked)) is seen
+
+
+def _event(name: str, time: str, generation: str) -> NinaEvent:
+    return NinaEvent(name=name, time=datetime.fromisoformat(time), data={},
+                     generation=generation)

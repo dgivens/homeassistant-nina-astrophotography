@@ -37,13 +37,13 @@ redaction, hassfest, HACS); no linter or formatter is configured.
 custom_components/nina_astrophotography/
   api/                the version-independent seam: errors.py, models.py (THE CONTRACT)
   api/v2/             client.py (the only module that talks to N.I.N.A.), mapper.py
-                      (wire → models; every sentinel dies here), schema.py (generated)
+                      (wire → models; every sentinel dies here), schema.py (generated),
+                      events.py (the event socket inside the seam; emits NinaEvent)
   legacy_api.py       the 1.4.x client the unmigrated services still use
   coordinator.py      DataUpdateCoordinator publishing NinaData; owns frames/events
   entity.py           the shared entity base
   derive.py           pure maths; session.py — the pure session fold
-  websocket.py        event socket; fires HA events
-  frame_statistics.py per-frame session store, fed by IMAGE-SAVE
+  polling.py          HA-free polling decisions: restart, reseed, tiers, event ledger
   const.py            domain, config keys, service names, enums
   config_flow.py      UI setup
   light.py            the flat panel (migrated); the other platforms are
