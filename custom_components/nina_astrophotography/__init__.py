@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import asdict
 from datetime import timedelta
 
 import voluptuous as vol
@@ -23,9 +24,9 @@ from .api.errors import (
     NinaRequestError,
     NinaUnavailableError,
 )
-from .api.v2 import NinaClientV2
+from .api.models import NinaEvent
+from .api.v2 import NinaClientV2, NinaEventStream
 from .legacy_api import NinaApiClient
-from .websocket import NinaWebSocketClient
 from .frame_statistics import NinaFrameStatisticsStore
 from .const import (
     CONF_API_VERSION,
@@ -111,13 +112,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     )
     await coordinator.async_config_entry_first_refresh()
 
-    # ── WebSocket: real-time push events ──────────────────────────────────────
-    ws_client = NinaWebSocketClient(
+    # ── The event socket: real-time push ─────────────────────────────────────
+    def _fire_bus_event(event: NinaEvent) -> None:
+        """Keep the 1.4.x automation contract: `nina_<event>` plus the catch-all.
+
+        The payload is derived from the model, so a wire dict never reaches an
+        automation; phase D rewrites the blueprints against the entities.
+        """
+        payload = {
+            "event": event.name,
+            "time": event.time.isoformat(),
+            "data": dict(event.data),
+            "frame": asdict(event.frame) if event.frame is not None else None,
+        }
+        hass.bus.async_fire(f"nina_{event.name.lower().replace('-', '_')}", payload)
+        hass.bus.async_fire("nina_event", payload)
+
+    def _fire_connection_event(connected: bool) -> None:
+        hass.bus.async_fire(
+            "nina_websocket_connected" if connected else "nina_websocket_disconnected",
+            {},
+        )
+
+    events = NinaEventStream(
         host=host,
         port=port,
         session=session,
-        hass_event_bus_fire=hass.bus.fire,
+        rig_offset=lambda: client.rig_offset,
+        on_connection=_fire_connection_event,
     )
+    # B4 keeps this current from the poll; at setup the first refresh has
+    # already read /application-start.
+    events.generation = coordinator.generation
+    events.subscribe(coordinator.handle_event)
+    events.subscribe(_fire_bus_event)
+
+    # No longer fed: its only consumer, frame_stats_sensor.py, is unregistered
+    # and B4 deletes both.
     frame_store = NinaFrameStatisticsStore()
 
     entry.runtime_data = NinaRuntimeData(
@@ -125,30 +156,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         coordinator=coordinator,
         service_client=service_client,
         instance_name=entry.title,
-        ws_client=ws_client,
+        events=events,
         frame_store=frame_store,
     )
     # Registered before the socket starts: on_unload callbacks also run when a
     # later setup step fails, which is what keeps the reconnect task from
     # outliving a failed entry.
-    entry.async_on_unload(ws_client.stop)
-    await ws_client.start()
-
-    # ── Per-frame statistics store ───────────────────────────────────────────
-    async def _on_image_save(response: dict) -> None:
-        frame_store.push_frame(response)
-        await coordinator.async_request_refresh()
-
-    ws_client.add_listener(
-        "IMAGE-SAVE",
-        lambda r: hass.async_create_task(_on_image_save(r)),
-    )
-
-    # Reset per-session stats when a new sequence starts
-    def _on_sequence_starting(response: dict) -> None:
-        frame_store.reset()
-
-    ws_client.add_listener("SEQUENCE-STARTING", _on_sequence_starting)
+    entry.async_on_unload(events.stop)
+    await events.start()
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
