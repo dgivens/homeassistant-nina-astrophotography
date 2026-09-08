@@ -75,15 +75,15 @@ class NinaFlatLight(NinaEntity, LightEntity):
 
     @property
     def available(self) -> bool:
-        # A cover-only panel and a disconnected one are unavailable, never
-        # absent: the entity must not appear and disappear across restarts.
-        panel = self._panel
+        # The panel's own two conditions, on top of the base's levels 1 and 2.
+        # A cover-only panel and one whose driver reports no usable range are
+        # unavailable, never absent: the entity must not appear and disappear
+        # across restarts. Past `super().available` the panel is present, so
+        # the short-circuit is what makes the attribute reads safe.
         return bool(
             super().available
-            and panel is not None
-            and panel.connected
             and self._span > 0
-            and panel.supports_on_off is not False
+            and self._panel.supports_on_off is not False
         )
 
     @property
