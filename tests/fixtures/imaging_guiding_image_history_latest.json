@@ -1,0 +1,39 @@
+{
+  "Response": [
+    {
+      "ExposureTime": 600,
+      "ImageType": "LIGHT",
+      "Filter": "H",
+      "RmsText": "Tot: 0.23 (0.38\")",
+      "Temperature": -5,
+      "CameraName": "Camera",
+      "TargetName": "NGC 281",
+      "Gain": 100,
+      "Offset": 50,
+      "Date": "2026-09-05T01:41:27.6528392-05:00",
+      "TelescopeName": "Telescope",
+      "FocalLength": 500,
+      "StDev": 257.3302873514262,
+      "Mean": 537.0364521627764,
+      "Median": 527,
+      "Min": 368,
+      "Max": 65535,
+      "Stars": 4026,
+      "HFR": 1.4423536001116757,
+      "HFRStDev": 0.16401226558155146,
+      "IsBayered": false,
+      "Filename": "frame_aa733dce.fits"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-05T06:43:39+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/image-history",
+    "params": {}
+  }
+}

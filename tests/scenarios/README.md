@@ -42,16 +42,18 @@ corpus does show: drop `DeviceId`, `Name`, `DisplayName`, `Description`,
 that holds them down. Tests exercising a derived block carry
 `@pytest.mark.synthetic`.
 
-Bare `/image-history` for the imaging family is likewise assembled: the newest
-frame of the captured `?all=true` list, in an envelope of our own, because no
-bare capture of a rig holding frames exists.
+Bare `/image-history` for the `imaging` family is likewise assembled: the newest
+frame of the captured `?all=true` list, in an envelope of our own, because the
+dawn capture predates the bare path. `imaging_guiding` serves the real capture —
+a single-element **list**, not the bare object that assembly produces.
 
 ## Awaiting capture
 
-Three **endpoints** have no capture at all — `/livestack/status`,
-`/profile/show?active=true` and `/equipment/focuser/last-af` — though the
-event-driven tier polls all three. No state registers them, so they answer 404
-and exercise the coordinator's not-served handling rather than a fake body.
+No **endpoint** awaits capture any more: `imaging_guiding` serves every path the
+integration reads, `/livestack/status`, `/profile/show?active=true` and
+`/equipment/focuser/last-af` included. The other states still leave those three
+unregistered, so they answer 404 — which is what a build without the livestack
+plugin sends — and the coordinator's not-served latch stays exercised.
 
 Three **states** are named in `AWAITING_CAPTURE` and skip the tests that ask for
 them: `camera_warm_at_setup`, `idle_with_stale_running_nodes`,

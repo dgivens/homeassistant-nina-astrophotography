@@ -394,20 +394,27 @@ def test_idle_flat_wizard_iterations_are_not_a_count() -> None:
     assert status.completed_iterations is None
 
 
-@pytest.mark.synthetic
-@pytest.mark.parametrize("raw", ["running", "Running", "STOPPED", "stopped"])
-def test_livestack_status_compares_case_insensitively(raw: str) -> None:
-    """The OpenAPI enum is [running, stopped]; a live rig returned "Stopped".
-    No livestack capture is in the corpus, so the status dict is constructed."""
-    status = map_livestack_status({"Status": raw})
-    assert status.running is (raw.lower() == "running")
-
-
-@pytest.mark.synthetic
-def test_a_missing_livestack_status_is_not_a_state_named_none() -> None:
-    """The plugin may not be installed; the empty state is "", not "None"."""
-    status = map_livestack_status({})
-    assert (status.running, status.raw_state) == (False, "")
+@pytest.mark.parametrize(
+    ("wire", "expected"),
+    [
+        # The captured shape: Response is the bare status string.
+        (load("imaging_guiding_livestack_status.json"), (True, "Running")),
+        pytest.param("stopped", (False, "stopped"), marks=pytest.mark.synthetic),
+        # The spec's documented shape, kept because the enum is lowercase there
+        # and a live rig has answered "Stopped".
+        pytest.param({"Status": "Running"}, (True, "Running"),
+                     marks=pytest.mark.synthetic),
+        pytest.param({"Status": "STOPPED"}, (False, "STOPPED"),
+                     marks=pytest.mark.synthetic),
+        # The plugin may not be installed; the empty state is "", not "None".
+        pytest.param({}, (False, ""), marks=pytest.mark.synthetic),
+    ],
+    ids=["captured bare string", "bare string stopped", "spec dict running",
+         "spec dict stopped", "absent"],
+)
+def test_livestack_status_reads_both_wire_shapes(wire, expected) -> None:
+    status = map_livestack_status(wire)
+    assert (status.running, status.raw_state) == expected
 
 
 def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:

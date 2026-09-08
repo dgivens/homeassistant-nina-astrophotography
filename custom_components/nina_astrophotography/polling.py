@@ -13,6 +13,8 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from .api.models import EquipmentSnapshot
+
 
 @dataclass
 class RestartDetector:
@@ -96,8 +98,13 @@ class TierSchedule:
     """Per-tier due times, against an injected monotonic clock.
 
     Six tiers, one coordinator: a single 10 s tick with per-tier due-time
-    checks inside it, not three coordinators. The coordinator wires this up in
-    the tier task; the generation work only ships it.
+    checks inside it, not three coordinators.
+
+        fast       7,420 B @ 10 s  =  44,520 B/min
+        sequence   8,429 B @ 30 s  =  16,858 B/min
+                                      ──────────
+                                      61,378 B/min ~ 3.7 MB/h ~ 37 MB / night
+        before                        82,606 B x 6/min ~ 297 MB / night
     """
 
     FAST = 10.0
@@ -106,12 +113,18 @@ class TierSchedule:
     FLOOR = 300.0
     SEQUENCE_DEBOUNCE = 30.0
 
-    def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(self, clock: Callable[[], float] | None = None) -> None:
+        # `time.monotonic` is resolved per call rather than bound as a default
+        # argument, which would capture the real function at import time and
+        # leave no seam for a test clock.
         self._clock = clock
         self._last: dict[str, float] = {}
         self._requested: float | None = None
         self.sequence_interval = self.SEQUENCE_IDLE
-        self.pending: set[str] = set()
+        self._pending: set[str] = set()
+
+    def _now(self) -> float:
+        return time.monotonic() if self._clock is None else self._clock()
 
     def _interval(self, tier: str) -> float:
         """`KeyError` on an unknown tier: a silent default would hand a
@@ -124,12 +137,25 @@ class TierSchedule:
         # Resolved before the never-run shortcut, so an unknown tier raises
         # rather than reading as due.
         interval = self._interval(tier)
-        moment = self._clock() if now is None else now
+        moment = self._now() if now is None else now
         last = self._last.get(tier)
         return last is None or moment - last >= interval
 
     def mark(self, tier: str, now: float | None = None) -> None:
-        self._last[tier] = self._clock() if now is None else now
+        self._last[tier] = self._now() if now is None else now
+
+    def set_imaging(self, imaging_now: bool) -> None:
+        """Choose the sequence tier's cadence from the activity heuristic."""
+        self.sequence_interval = (
+            self.SEQUENCE_IMAGING if imaging_now else self.SEQUENCE_IDLE
+        )
+
+    def sequence_finished(self) -> None:
+        """Fall back to the idle interval — `SEQUENCE-FINISHED` fires once at
+        session end, so the cadence need not wait the five minutes the activity
+        heuristic (§6.2) takes to go quiet. Not a latch: a rising frame count
+        afterwards puts the tier back at 30 s through `set_imaging`."""
+        self.sequence_interval = self.SEQUENCE_IDLE
 
     def request_sequence_refetch(self, now: float | None = None) -> bool:
         """True at most once per 30 s.
@@ -138,7 +164,7 @@ class TierSchedule:
         carries what a refetch would fetch, so an undebounced refetch turns the
         sequence tier's budget into a per-exposure cost.
         """
-        moment = self._clock() if now is None else now
+        moment = self._now() if now is None else now
         if (self._requested is not None
                 and moment - self._requested < self.SEQUENCE_DEBOUNCE):
             return False
@@ -147,10 +173,39 @@ class TierSchedule:
 
     def add_pending(self, endpoint: str) -> None:
         """Queue an endpoint an event asked for; the next tick drains it."""
-        self.pending.add(endpoint)
+        self._pending.add(endpoint)
 
-    def drop_sequence_cadence(self) -> None:
-        """Fall back to the idle interval — `SEQUENCE-FINISHED` fires once at
-        session end, so the cadence need not wait for the activity heuristic
-        (§6.2) to go quiet."""
-        self.sequence_interval = self.SEQUENCE_IDLE
+    def take_pending(self) -> set[str]:
+        """The queued endpoints, cleared. Draining is the caller's obligation:
+        a queue that is read without clearing re-reads on every tick."""
+        pending, self._pending = self._pending, set()
+        return pending
+
+
+# An IMAGE-SAVE older than this no longer counts as activity. One 600 s sub is
+# longer than the window, which is why `is_exposing` is a separate signal
+# rather than a refinement of it.
+_RECENT_SAVE = 300.0
+
+
+def imaging(
+    snapshot: EquipmentSnapshot,
+    count: int,
+    last_count: int,
+    seconds_since_last_image_save: float,
+) -> bool:
+    """Infer imaging from activity, never from `/sequence/json` node status.
+
+    Node `Status` persists from the loaded sequence file and from prior runs:
+    on the idle rig three nodes read RUNNING with nothing happening and zero
+    frames captured. Tree status drives only the displayed per-instruction
+    state, so gating the sequence tier on it polls at 30 s indefinitely.
+
+    All three signals are already on the fast tier, so this costs no request.
+    """
+    if count > last_count:
+        return True
+    camera = snapshot.camera
+    if camera is not None and camera.is_exposing:
+        return True
+    return seconds_since_last_image_save < _RECENT_SAVE

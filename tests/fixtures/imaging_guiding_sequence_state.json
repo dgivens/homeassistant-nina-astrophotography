@@ -1,0 +1,2634 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": [
+        {
+          "Status": "CREATED",
+          "Name": "Failures to Discord_Trigger",
+          "Issues": []
+        },
+        {
+          "Name": "Dew Heater Control_Trigger",
+          "Status": "CREATED"
+        },
+        {
+          "QoS": 1,
+          "Issues": [],
+          "Status": "CREATED",
+          "Topic": "astro/nina",
+          "Name": "Failures to MQTT broker_Trigger",
+          "Retain": true
+        }
+      ]
+    },
+    {
+      "Triggers": [],
+      "Items": [
+        {
+          "ShowAddTemplate": false,
+          "Triggers": [],
+          "Items": [
+            {
+              "OriginalDefinition": "0",
+              "Executed": true,
+              "Definition": "0",
+              "IsReference": false,
+              "isDataSymbol": false,
+              "CValue": null,
+              "Issues": [],
+              "Status": "FINISHED",
+              "CValueExpr": null,
+              "Name": "Global Variable",
+              "Identifier": "AbortNight",
+              "IsGlobalVariable": true,
+              "Expr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Variable": null,
+              "OValueExpr": null,
+              "OriginalExpr": {
+                "Expression": "0",
+                "Type": "Any"
+              }
+            },
+            {
+              "OriginalDefinition": "0",
+              "Executed": true,
+              "Definition": "0",
+              "IsReference": false,
+              "isDataSymbol": false,
+              "CValue": null,
+              "Issues": [],
+              "Status": "FINISHED",
+              "CValueExpr": null,
+              "Name": "Global Variable",
+              "Identifier": "DiscordUnsafeNotified",
+              "IsGlobalVariable": true,
+              "Expr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Variable": null,
+              "OValueExpr": null,
+              "OriginalExpr": {
+                "Expression": "0",
+                "Type": "Any"
+              }
+            }
+          ],
+          "Conditions": [],
+          "Status": "FINISHED",
+          "Iterations": 1,
+          "Name": "Constant/Variable Container_Container"
+        },
+        {
+          "Triggers": [],
+          "Items": [
+            {
+              "SelectedDevice": "Safety Monitor",
+              "Status": "FINISHED",
+              "Name": "Connect Equipment",
+              "Issues": []
+            },
+            {
+              "SelectedDevice": "Switch",
+              "Status": "FINISHED",
+              "Name": "Connect Equipment",
+              "Issues": []
+            },
+            {
+              "RolloverTime": "07:15:48.8597042",
+              "Issues": [],
+              "Seconds": 48,
+              "MinutesOffset": 0,
+              "Status": "FINISHED",
+              "Hours": 20,
+              "Name": "Wait for Time",
+              "SelectedProvider": {},
+              "Minutes": 21
+            },
+            {
+              "EmbedTitle": "",
+              "EmbedText": "",
+              "Issues": [],
+              "Status": "FINISHED",
+              "EmbedEdgeColor": "#FF206694",
+              "Message": "\ud83d\udce1 FRA500 -  Beginning startup sequence",
+              "WindowService": {},
+              "Name": "Send to Discord",
+              "ShowEmbed": false
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Check PSF Guard connection",
+              "Issues": []
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Pull PSF Guard planning",
+              "Issues": []
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Pull PSF Guard grades",
+              "Issues": []
+            },
+            {
+              "Iterations": 0,
+              "Predicate": null,
+              "Items": [
+                {
+                  "EmbedTitle": "",
+                  "EmbedText": "",
+                  "Issues": [],
+                  "Status": "CREATED",
+                  "EmbedEdgeColor": "#FFFFA500",
+                  "Message": "\ud83d\udce1 FRA500 - Initial startup paused due to unsafe conditions",
+                  "WindowService": {},
+                  "Name": "Send to Discord",
+                  "ShowEmbed": false
+                },
+                {
+                  "Triggers": [],
+                  "Items": [
+                    {
+                      "Time": 60.0,
+                      "Status": "CREATED",
+                      "Name": "Wait for Time Span"
+                    }
+                  ],
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while unsafe_Condition",
+                      "Issues": []
+                    },
+                    {
+                      "RolloverTime": "19:57:18.2162519",
+                      "Issues": [],
+                      "Seconds": 1,
+                      "MinutesOffset": 0,
+                      "Status": "CREATED",
+                      "Hours": 6,
+                      "Name": "Loop Until Time_Condition",
+                      "SelectedProvider": {},
+                      "Minutes": 22
+                    }
+                  ],
+                  "Status": "CREATED",
+                  "Iterations": 0,
+                  "Name": "Wait for safety_Container"
+                },
+                {
+                  "Iterations": 0,
+                  "Predicate": null,
+                  "Items": [
+                    {
+                      "EmbedTitle": "",
+                      "EmbedText": "",
+                      "Issues": [],
+                      "Status": "CREATED",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Message": "\ud83d\udce1 FRA500 - Conditions are now safe. Proceeding with startup.",
+                      "WindowService": {},
+                      "Name": "Send to Discord",
+                      "ShowEmbed": false
+                    }
+                  ],
+                  "Switches": null,
+                  "IfExpr": {
+                    "Expression": "IsSafe",
+                    "Type": "Any"
+                  },
+                  "Status": "CREATED",
+                  "Issues": [],
+                  "Name": "If/Then/Else_Container",
+                  "ElseInstructions": {
+                    "Strategy": {},
+                    "Name": "If/Then/Else",
+                    "Conditions": [],
+                    "IsExpanded": true,
+                    "Items": [
+                      {
+                        "Message": "\ud83d\udce1 FRA500 - Safety conditions never cleared overnight.",
+                        "EmbedTitle": "",
+                        "EmbedText": "",
+                        "EmbedEdgeColor": "#FFFF0000",
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      {
+                        "Expr": {
+                          "Expression": "1",
+                          "Type": "Any"
+                        },
+                        "Variable": "AbortNight",
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      }
+                    ],
+                    "Triggers": [],
+                    "ErrorBehavior": 0,
+                    "Attempts": 1
+                  }
+                }
+              ],
+              "Switches": [
+                "TargetRA: 0.87",
+                "TargetDec: 56.56",
+                "TargetValid: 1",
+                "TargetName: 'NGC 281'",
+                "TargetRotation: 165",
+                "TS_WaitStart: 20:51 yesterday",
+                "TS_TargetName: 'NGC 281'",
+                "TS_ProjectName: 'Narrowband'",
+                "TS_Target_Rotation: 165",
+                "TS_Target_RA: 0.87",
+                "TS_Target_Dec: 56.56",
+                "MoonAltitude: 6.49",
+                "MoonIllumination: 0.39",
+                "SunAltitude: -51.64",
+                "SunAzimuth: 2.84",
+                "LocalSiderealTime: 23.06",
+                "TIME: 29728",
+                "EXITCODE: 0",
+                "Altitude: 58.32",
+                "Azimuth: 29.2",
+                "AtPark: 'False'",
+                "RightAscension: 0.89",
+                "Declination: 56.56",
+                "SideOfPier: PierWest",
+                "IsSafe: 'True'",
+                "RoofStatus: RoofOpen",
+                "FocuserPosition: 2353",
+                "FocuserTemperature: 25.5",
+                "SensorTemp: -5",
+                "RotatorPosition: '64.12'",
+                "CurrentFilter: Filter_H",
+                "S: FlatPanel: 0",
+                "S: OTA: 1",
+                "W: DewPoint: 20.5",
+                "W: Humidity: 67.3",
+                "W: Pressure: 960.6",
+                "W: RainRate: 0",
+                "W: SkyBrightness: 0",
+                "W: SkyTemperature: 5.2",
+                "W: Temperature: 27.1",
+                "W: WindDirection: 165",
+                "W: WindGust: 1.4",
+                "W: WindSpeed: 0.7",
+                "Image_HFR: 1.44",
+                "Image_StarCount: 4026",
+                "Image_Id: 203",
+                "Image_ExposureTime: 600",
+                "Image_MeanADU: 537.04",
+                "Image_RMS: 0.23",
+                "Image_Type: LIGHT",
+                "Image_Gain: 100",
+                "Image_Offset: 50",
+                "Image_Eccentricity: 0.4",
+                "Image_FWHM: 4.14"
+              ],
+              "IfExpr": {
+                "Expression": "!IsSafe",
+                "Type": "Any"
+              },
+              "Status": "FINISHED",
+              "Issues": [],
+              "Name": "If_Container"
+            },
+            {
+              "Iterations": 1,
+              "Predicate": null,
+              "Items": [
+                {
+                  "Triggers": [],
+                  "Items": [
+                    {
+                      "Triggers": [],
+                      "Items": [
+                        {
+                          "SelectedDevice": "Camera",
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "SelectedDevice": "Filter Wheel",
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "SelectedDevice": "Focuser",
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "SelectedDevice": "Rotator",
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "SelectedDevice": "Weather",
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "SelectedDevice": "Guider",
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "SelectedDevice": "Mount",
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        }
+                      ],
+                      "Conditions": [],
+                      "Status": "FINISHED",
+                      "Iterations": 1,
+                      "Name": "Connect Equipment_Container"
+                    },
+                    {
+                      "Triggers": [],
+                      "Items": [
+                        {
+                          "Triggers": [],
+                          "Items": [
+                            {
+                              "EmbedTitle": "",
+                              "EmbedText": "",
+                              "Issues": [],
+                              "Status": "FINISHED",
+                              "EmbedEdgeColor": "#FF206694",
+                              "Message": "\ud83d\udce1 FRA500 - Turning on flat panel",
+                              "WindowService": {},
+                              "Name": "Send to Discord",
+                              "ShowEmbed": false
+                            },
+                            {
+                              "SelectedSwitch": {
+                                "Minimum": 0.0,
+                                "Maximum": 1.0,
+                                "StepSize": 1.0,
+                                "TargetValue": 0.0,
+                                "Id": 0,
+                                "EntityId": "device-057dc28f",
+                                "Name": "Flat Panel",
+                                "Description": "REDACTED",
+                                "Value": 0.0
+                              },
+                              "WritableSwitches": [
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 0.0,
+                                  "Id": 0,
+                                  "EntityId": "device-057dc28f",
+                                  "Name": "Flat Panel",
+                                  "Description": "REDACTED",
+                                  "Value": 0.0
+                                },
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 1,
+                                  "EntityId": "device-fb078731",
+                                  "Name": "OTA",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                }
+                              ],
+                              "Issues": [],
+                              "Status": "FINISHED",
+                              "SwitchIndex": 0,
+                              "Name": "Set Switch Value",
+                              "Value": 1.0
+                            },
+                            {
+                              "Time": 5.0,
+                              "Status": "FINISHED",
+                              "Name": "Wait for Time Span"
+                            },
+                            {
+                              "SelectedDevice": "Flat Panel",
+                              "Status": "FINISHED",
+                              "Name": "Connect Equipment",
+                              "Issues": []
+                            }
+                          ],
+                          "Conditions": [],
+                          "Status": "FINISHED",
+                          "Iterations": 1,
+                          "Name": "Turn on Flat Panel_Container"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Open Flat Panel Cover",
+                          "Issues": [
+                            "Flat device not connected"
+                          ]
+                        },
+                        {
+                          "Triggers": [],
+                          "Items": [
+                            {
+                              "EmbedTitle": "",
+                              "EmbedText": "",
+                              "Issues": [],
+                              "Status": "FINISHED",
+                              "EmbedEdgeColor": "#FF206694",
+                              "Message": "\ud83d\udce1 FRA500 - Powering off flat panel",
+                              "WindowService": {},
+                              "Name": "Send to Discord",
+                              "ShowEmbed": false
+                            },
+                            {
+                              "SelectedDevice": "Flat Panel",
+                              "Status": "FINISHED",
+                              "Name": "Disconnect Equipment",
+                              "Issues": []
+                            },
+                            {
+                              "SelectedSwitch": {
+                                "Minimum": 0.0,
+                                "Maximum": 1.0,
+                                "StepSize": 1.0,
+                                "TargetValue": 0.0,
+                                "Id": 0,
+                                "EntityId": "device-057dc28f",
+                                "Name": "Flat Panel",
+                                "Description": "REDACTED",
+                                "Value": 0.0
+                              },
+                              "WritableSwitches": [
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 0.0,
+                                  "Id": 0,
+                                  "EntityId": "device-057dc28f",
+                                  "Name": "Flat Panel",
+                                  "Description": "REDACTED",
+                                  "Value": 0.0
+                                },
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 1,
+                                  "EntityId": "device-fb078731",
+                                  "Name": "OTA",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                }
+                              ],
+                              "Issues": [],
+                              "Status": "FINISHED",
+                              "SwitchIndex": 0,
+                              "Name": "Set Switch Value",
+                              "Value": 0.0
+                            }
+                          ],
+                          "Conditions": [],
+                          "Status": "FINISHED",
+                          "Iterations": 1,
+                          "Name": "Turn off Flat Panel_Container"
+                        }
+                      ],
+                      "Conditions": [],
+                      "Status": "FINISHED",
+                      "Iterations": 1,
+                      "Name": "Open Flat Panel_Container"
+                    }
+                  ],
+                  "Conditions": [],
+                  "Status": "FINISHED",
+                  "Iterations": 0,
+                  "Name": "Initial Startup_Container"
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Find home",
+                  "Issues": []
+                },
+                {
+                  "RolloverTime": "07:15:48.8597042",
+                  "Issues": [],
+                  "Seconds": 51,
+                  "MinutesOffset": -10,
+                  "Status": "SKIPPED",
+                  "Hours": 20,
+                  "Name": "Wait for Time",
+                  "SelectedProvider": {},
+                  "Minutes": 40
+                },
+                {
+                  "Iterations": 0,
+                  "Predicate": null,
+                  "Items": [
+                    {
+                      "Text": "Ensure the flat panel is really off as required by SFRO policy",
+                      "Status": "CREATED",
+                      "Name": "Annotation"
+                    },
+                    {
+                      "EmbedTitle": "",
+                      "EmbedText": "",
+                      "Issues": [],
+                      "Status": "CREATED",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Message": "\ud83d\udce1 FRA500 - Power to flat panel was still on. Powering off now",
+                      "WindowService": {},
+                      "Name": "Send to Discord",
+                      "ShowEmbed": false
+                    },
+                    {
+                      "SelectedDevice": "Flat Panel",
+                      "Status": "CREATED",
+                      "Name": "Disconnect Equipment",
+                      "Issues": []
+                    },
+                    {
+                      "SelectedSwitch": {
+                        "Minimum": 0.0,
+                        "Maximum": 1.0,
+                        "StepSize": 1.0,
+                        "TargetValue": 0.0,
+                        "Id": 0,
+                        "EntityId": "device-057dc28f",
+                        "Name": "Flat Panel",
+                        "Description": "REDACTED",
+                        "Value": 0.0
+                      },
+                      "WritableSwitches": [
+                        {
+                          "Minimum": 0.0,
+                          "Maximum": 1.0,
+                          "StepSize": 1.0,
+                          "TargetValue": 0.0,
+                          "Id": 0,
+                          "EntityId": "device-057dc28f",
+                          "Name": "Flat Panel",
+                          "Description": "REDACTED",
+                          "Value": 0.0
+                        },
+                        {
+                          "Minimum": 0.0,
+                          "Maximum": 1.0,
+                          "StepSize": 1.0,
+                          "TargetValue": 1.0,
+                          "Id": 1,
+                          "EntityId": "device-fb078731",
+                          "Name": "OTA",
+                          "Description": "REDACTED",
+                          "Value": 1.0
+                        }
+                      ],
+                      "Issues": [],
+                      "Status": "CREATED",
+                      "SwitchIndex": 0,
+                      "Name": "Set Switch Value",
+                      "Value": 0.0
+                    }
+                  ],
+                  "Switches": [
+                    "TargetRA: 0.87",
+                    "TargetDec: 56.56",
+                    "TargetValid: 1",
+                    "TargetName: 'NGC 281'",
+                    "TargetRotation: 165",
+                    "TS_WaitStart: 20:51 yesterday",
+                    "TS_TargetName: 'NGC 281'",
+                    "TS_ProjectName: 'Narrowband'",
+                    "TS_Target_Rotation: 165",
+                    "TS_Target_RA: 0.87",
+                    "TS_Target_Dec: 56.56",
+                    "MoonAltitude: 6.49",
+                    "MoonIllumination: 0.39",
+                    "SunAltitude: -51.64",
+                    "SunAzimuth: 2.84",
+                    "LocalSiderealTime: 23.06",
+                    "TIME: 29728",
+                    "EXITCODE: 0",
+                    "Altitude: 58.32",
+                    "Azimuth: 29.2",
+                    "AtPark: 'False'",
+                    "RightAscension: 0.89",
+                    "Declination: 56.56",
+                    "SideOfPier: PierWest",
+                    "IsSafe: 'True'",
+                    "RoofStatus: RoofOpen",
+                    "FocuserPosition: 2353",
+                    "FocuserTemperature: 25.5",
+                    "SensorTemp: -5",
+                    "RotatorPosition: '64.12'",
+                    "CurrentFilter: Filter_H",
+                    "S: FlatPanel: 0",
+                    "S: OTA: 1",
+                    "W: DewPoint: 20.5",
+                    "W: Humidity: 67.3",
+                    "W: Pressure: 960.6",
+                    "W: RainRate: 0",
+                    "W: SkyBrightness: 0",
+                    "W: SkyTemperature: 5.2",
+                    "W: Temperature: 27.1",
+                    "W: WindDirection: 165",
+                    "W: WindGust: 1.4",
+                    "W: WindSpeed: 0.7",
+                    "Image_HFR: 1.44",
+                    "Image_StarCount: 4026",
+                    "Image_Id: 203",
+                    "Image_ExposureTime: 600",
+                    "Image_MeanADU: 537.04",
+                    "Image_RMS: 0.23",
+                    "Image_Type: LIGHT",
+                    "Image_Gain: 100",
+                    "Image_Offset: 50",
+                    "Image_Eccentricity: 0.4",
+                    "Image_FWHM: 4.14"
+                  ],
+                  "IfExpr": {
+                    "Expression": "FlatPanel == 1",
+                    "Type": "Any"
+                  },
+                  "Status": "FINISHED",
+                  "Issues": [],
+                  "Name": "If_Container"
+                },
+                {
+                  "Name": "Start live stacking",
+                  "Status": "FINISHED"
+                }
+              ],
+              "Switches": [
+                "TargetRA: 0.87",
+                "TargetDec: 56.56",
+                "TargetValid: 1",
+                "TargetName: 'NGC 281'",
+                "TargetRotation: 165",
+                "TS_WaitStart: 20:51 yesterday",
+                "TS_TargetName: 'NGC 281'",
+                "TS_ProjectName: 'Narrowband'",
+                "TS_Target_Rotation: 165",
+                "TS_Target_RA: 0.87",
+                "TS_Target_Dec: 56.56",
+                "MoonAltitude: 6.49",
+                "MoonIllumination: 0.39",
+                "SunAltitude: -51.64",
+                "SunAzimuth: 2.84",
+                "LocalSiderealTime: 23.06",
+                "TIME: 29728",
+                "EXITCODE: 0",
+                "Altitude: 58.32",
+                "Azimuth: 29.2",
+                "AtPark: 'False'",
+                "RightAscension: 0.89",
+                "Declination: 56.56",
+                "SideOfPier: PierWest",
+                "IsSafe: 'True'",
+                "RoofStatus: RoofOpen",
+                "FocuserPosition: 2353",
+                "FocuserTemperature: 25.5",
+                "SensorTemp: -5",
+                "RotatorPosition: '64.12'",
+                "CurrentFilter: Filter_H",
+                "S: FlatPanel: 0",
+                "S: OTA: 1",
+                "W: DewPoint: 20.5",
+                "W: Humidity: 67.3",
+                "W: Pressure: 960.6",
+                "W: RainRate: 0",
+                "W: SkyBrightness: 0",
+                "W: SkyTemperature: 5.2",
+                "W: Temperature: 27.1",
+                "W: WindDirection: 165",
+                "W: WindGust: 1.4",
+                "W: WindSpeed: 0.7",
+                "Image_HFR: 1.44",
+                "Image_StarCount: 4026",
+                "Image_Id: 203",
+                "Image_ExposureTime: 600",
+                "Image_MeanADU: 537.04",
+                "Image_RMS: 0.23",
+                "Image_Type: LIGHT",
+                "Image_Gain: 100",
+                "Image_Offset: 50",
+                "Image_Eccentricity: 0.4",
+                "Image_FWHM: 4.14"
+              ],
+              "IfExpr": {
+                "Expression": "!AbortNight",
+                "Type": "Any"
+              },
+              "Status": "FINISHED",
+              "Issues": [],
+              "Name": "If_Container"
+            }
+          ],
+          "Conditions": [],
+          "Status": "FINISHED",
+          "Iterations": 1,
+          "Name": "MY START_Container"
+        }
+      ],
+      "Conditions": [],
+      "Status": "FINISHED",
+      "Iterations": 1,
+      "Name": "Start_Container"
+    },
+    {
+      "Triggers": [],
+      "Items": [
+        {
+          "Iterations": 0,
+          "Predicate": null,
+          "Items": [
+            {
+              "Name": "Night Summary Start",
+              "Status": "FINISHED"
+            },
+            {
+              "Triggers": [],
+              "Items": [
+                {
+                  "WindowServiceFactory": {},
+                  "Status": "FINISHED",
+                  "Name": "Run Autofocus",
+                  "Issues": []
+                },
+                {
+                  "Name": "Dynamic Cool Camera",
+                  "Status": "FINISHED"
+                }
+              ],
+              "Conditions": [],
+              "Status": "FINISHED",
+              "Iterations": 0,
+              "Name": "Camera Prep_Container"
+            },
+            {
+              "Triggers": [
+                {
+                  "Issues": [],
+                  "DistanceArcMinutes": 10.0,
+                  "Status": "CREATED",
+                  "Inherited": true,
+                  "AfterExposures": 1,
+                  "Coordinates": {
+                    "RAHours": 0,
+                    "RAMinutes": 52,
+                    "RASeconds": 25.1,
+                    "NegativeDec": false,
+                    "DecDegrees": 56,
+                    "DecMinutes": 33,
+                    "DecSeconds": 54.0
+                  },
+                  "Name": "Center After Drift_Trigger"
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Restore Guiding_Trigger",
+                  "Issues": []
+                },
+                {
+                  "SampleSize": 10,
+                  "Status": "CREATED",
+                  "Name": "AF After HFR Increase_Trigger",
+                  "Issues": [],
+                  "Amount": 5.0
+                },
+                {
+                  "DeltaT": 0.1,
+                  "Status": "CREATED",
+                  "Name": "AF After Temperature Change_Trigger",
+                  "Issues": [],
+                  "Amount": 2.0
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "AF After Time_Trigger",
+                  "Issues": [],
+                  "Amount": 60.0
+                },
+                {
+                  "PauseTimeBeforeMeridian": 0.0,
+                  "Issues": [],
+                  "UseSideOfPier": true,
+                  "MaxMinutesAfterMeridian": 15.0,
+                  "MinutesAfterMeridian": 5.0,
+                  "Status": "CREATED",
+                  "TimeToMeridianFlip": 2.1036111110833335,
+                  "Name": "Meridian Flip_Trigger"
+                },
+                {
+                  "Mode": 1,
+                  "MinimumPoints": 5,
+                  "Status": "CREATED",
+                  "RmsInstance": {
+                    "RA": 0.2708575804530655,
+                    "Dec": 0.11551765617813099,
+                    "Total": 0.2944624895937982,
+                    "RAText": "RA: 0.27 (0.45\")",
+                    "DecText": "Dec: 0.12 (0.19\")",
+                    "TotalText": "Tot: 0.29 (0.49\")",
+                    "PeakRAText": "Peak RA: 0.84 (1.38\")",
+                    "PeakDecText": "Peak Dec: 0.49 (0.81\")",
+                    "Scale": 1.65012,
+                    "PeakRA": 0.839,
+                    "PeakDec": 0.488,
+                    "DataPoints": 60
+                  },
+                  "Name": "Interrupt when RMS above_Trigger",
+                  "RmsThreshold": 2.5
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Restart When Saturated_Trigger",
+                  "Saturated": false
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Settle before Exposure_Trigger",
+                  "Issues": []
+                },
+                {
+                  "Name": "Reconnect Camera On Download Failure_Trigger",
+                  "Status": "CREATED"
+                },
+                {
+                  "Name": "Dew Heater Control_Trigger",
+                  "Status": "CREATED"
+                }
+              ],
+              "Items": [
+                {
+                  "Triggers": [
+                    {
+                      "AfterExposures": 1,
+                      "Status": "FINISHED",
+                      "Name": "PSF Guard target sync_Trigger",
+                      "Issues": []
+                    },
+                    {
+                      "Issues": [],
+                      "Status": "FINISHED",
+                      "Name": "PSF Guard exposure sync_Trigger",
+                      "UploadImage": false
+                    }
+                  ],
+                  "Items": [
+                    {
+                      "UnpauseEnabled": false,
+                      "BeforeTargetContainer": {
+                        "EventContainerType": 2,
+                        "Strategy": {},
+                        "Name": "BeforeTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Triggers": [],
+                      "ContainerPaused": false,
+                      "PauseEnabled": true,
+                      "AfterAllTargetsContainer": {
+                        "EventContainerType": 5,
+                        "Strategy": {},
+                        "Name": "AfterEachTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "UnpauseRequested": false,
+                      "Status": "RUNNING",
+                      "AfterWaitContainer": {
+                        "EventContainerType": 1,
+                        "Strategy": {},
+                        "Name": "AfterWait",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Iterations": 0,
+                      "BeforeWaitContainer": {
+                        "EventContainerType": 0,
+                        "Strategy": {},
+                        "Name": "BeforeWait",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "TrackingMode": 5,
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "Condition": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [
+                                {
+                                  "Message": "\ud83d\udce1 FRA500 - Target Scheduler",
+                                  "EmbedTitle": "Beginning wait",
+                                  "EmbedText": "Target Scheduler has paused until {TS_NextTargetStart} for the next target {TS_NextTargetName}",
+                                  "EmbedEdgeColor": "#FF206694",
+                                  "ErrorBehavior": 0,
+                                  "Attempts": 1
+                                }
+                              ],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "Instructions": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Items": [],
+                      "Name": "Target Scheduler Container_Container",
+                      "TotalExposureCount": 27,
+                      "AfterEachExposureContainer": {
+                        "EventContainerType": 3,
+                        "Strategy": {},
+                        "Name": "AfterEachExposure",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "AfterTargetContainer": {
+                        "EventContainerType": 4,
+                        "Strategy": {},
+                        "Name": "AfterTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "SchedulerProgress": {
+                        "CurrentRow": {
+                          "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                          "ItemName": "TakeExposure",
+                          "FilterName": "H",
+                          "StartTime": "2026-09-05T01:41:53.8778508-05:00",
+                          "EndTime": "0001-01-01T00:00:00",
+                          "IsComplete": false,
+                          "Complete": "System.Windows.Media.GeometryGroup"
+                        },
+                        "CurrentGroup": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                        "ProgressItemList": [
+                          {
+                            "Group": "Waiting : 2026-09-04 20:42:02 -> 2026-09-04 20:51:48",
+                            "ItemName": "BeforeWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:42:02.8638496-05:00",
+                            "EndTime": "2026-09-04T20:42:03.4913757-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-04 20:42:02 -> 2026-09-04 20:51:48",
+                            "ItemName": "Wait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:42:03.4914005-05:00",
+                            "EndTime": "2026-09-04T20:51:48.629556-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-04 20:42:02 -> 2026-09-04 20:51:48",
+                            "ItemName": "AfterWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:51:48.6295586-05:00",
+                            "EndTime": "2026-09-04T20:51:48.6323002-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Slew",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:51:48.6792884-05:00",
+                            "EndTime": "2026-09-04T20:52:51.6977011-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "BeforeTarget",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:52:51.6977054-05:00",
+                            "EndTime": "2026-09-04T20:52:51.6994652-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T20:52:51.6994664-05:00",
+                            "EndTime": "2026-09-04T20:52:56.8389925-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T20:52:56.8389943-05:00",
+                            "EndTime": "2026-09-04T21:03:28.4779978-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T21:03:28.4779992-05:00",
+                            "EndTime": "2026-09-04T21:13:46.478116-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T21:13:46.4781179-05:00",
+                            "EndTime": "2026-09-04T21:13:59.7147284-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T21:13:59.7147299-05:00",
+                            "EndTime": "2026-09-04T21:24:15.2760712-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:24:15.2760726-05:00",
+                            "EndTime": "2026-09-04T21:24:34.020626-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:24:34.0206281-05:00",
+                            "EndTime": "2026-09-04T21:29:49.5336598-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:29:49.5336614-05:00",
+                            "EndTime": "2026-09-04T21:35:06.055665-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T21:35:06.0556675-05:00",
+                            "EndTime": "2026-09-04T21:35:18.1515571-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:35:18.1515596-05:00",
+                            "EndTime": "2026-09-04T21:40:33.8682448-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:40:33.868246-05:00",
+                            "EndTime": "2026-09-04T21:50:43.0709384-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T21:50:43.0709408-05:00",
+                            "EndTime": "2026-09-04T21:50:52.2160004-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:50:52.2160057-05:00",
+                            "EndTime": "2026-09-04T21:56:08.6931212-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:56:08.6931266-05:00",
+                            "EndTime": "2026-09-04T22:01:24.7289815-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:01:24.7289829-05:00",
+                            "EndTime": "2026-09-04T22:01:35.4091809-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T22:01:35.4091894-05:00",
+                            "EndTime": "2026-09-04T22:06:59.5293442-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Slew",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:06:59.5295421-05:00",
+                            "EndTime": "2026-09-04T22:08:41.2303653-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "BeforeTarget",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:08:41.2303675-05:00",
+                            "EndTime": "2026-09-04T22:13:52.6845312-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:13:52.6845331-05:00",
+                            "EndTime": "2026-09-04T22:14:12.6486157-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:14:12.6486178-05:00",
+                            "EndTime": "2026-09-04T22:24:30.871675-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:24:30.8716765-05:00",
+                            "EndTime": "2026-09-04T22:34:47.6247568-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:34:47.6247588-05:00",
+                            "EndTime": "2026-09-04T22:35:01.8392538-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:35:01.8392588-05:00",
+                            "EndTime": "2026-09-04T22:45:18.1952754-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T22:45:18.1952772-05:00",
+                            "EndTime": "2026-09-04T22:45:36.644739-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T22:45:36.6447415-05:00",
+                            "EndTime": "2026-09-04T23:04:19.9801035-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:04:19.9801062-05:00",
+                            "EndTime": "2026-09-04T23:17:56.8347877-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T23:17:56.8347895-05:00",
+                            "EndTime": "2026-09-04T23:18:07.522848-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:18:07.5228496-05:00",
+                            "EndTime": "2026-09-04T23:38:19.457155-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:38:19.4571627-05:00",
+                            "EndTime": "2026-09-04T23:48:34.8568512-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T23:48:34.8568528-05:00",
+                            "EndTime": "2026-09-04T23:48:45.0378827-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:48:45.037884-05:00",
+                            "EndTime": "2026-09-04T23:59:12.0936559-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:59:12.0936598-05:00",
+                            "EndTime": "2026-09-05T00:13:57.5853455-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T00:13:57.5853478-05:00",
+                            "EndTime": "2026-09-05T00:14:12.2751593-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:14:12.2751632-05:00",
+                            "EndTime": "2026-09-05T00:24:28.058926-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:24:28.0589274-05:00",
+                            "EndTime": "2026-09-05T00:34:43.0576176-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T00:34:43.0576192-05:00",
+                            "EndTime": "2026-09-05T00:35:00.3140021-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:35:00.314004-05:00",
+                            "EndTime": "2026-09-05T00:45:19.1854394-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:45:19.185441-05:00",
+                            "EndTime": "2026-09-05T00:55:33.6240674-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T00:55:33.6240688-05:00",
+                            "EndTime": "2026-09-05T00:55:49.8179266-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:55:49.817928-05:00",
+                            "EndTime": "2026-09-05T01:06:05.4484736-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:06:05.4484757-05:00",
+                            "EndTime": "2026-09-05T01:20:48.4791179-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T01:20:48.479119-05:00",
+                            "EndTime": "2026-09-05T01:20:59.643602-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:20:59.6436032-05:00",
+                            "EndTime": "2026-09-05T01:31:13.6552692-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:31:13.6552711-05:00",
+                            "EndTime": "2026-09-05T01:41:31.5838705-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T01:41:31.5838722-05:00",
+                            "EndTime": "2026-09-05T01:41:53.8778495-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:41:53.8778508-05:00",
+                            "EndTime": "0001-01-01T00:00:00",
+                            "IsComplete": false,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          }
+                        ],
+                        "ItemsView": [
+                          {
+                            "Group": "Waiting : 2026-09-04 20:42:02 -> 2026-09-04 20:51:48",
+                            "ItemName": "BeforeWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:42:02.8638496-05:00",
+                            "EndTime": "2026-09-04T20:42:03.4913757-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-04 20:42:02 -> 2026-09-04 20:51:48",
+                            "ItemName": "Wait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:42:03.4914005-05:00",
+                            "EndTime": "2026-09-04T20:51:48.629556-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-04 20:42:02 -> 2026-09-04 20:51:48",
+                            "ItemName": "AfterWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:51:48.6295586-05:00",
+                            "EndTime": "2026-09-04T20:51:48.6323002-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Slew",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:51:48.6792884-05:00",
+                            "EndTime": "2026-09-04T20:52:51.6977011-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "BeforeTarget",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T20:52:51.6977054-05:00",
+                            "EndTime": "2026-09-04T20:52:51.6994652-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T20:52:51.6994664-05:00",
+                            "EndTime": "2026-09-04T20:52:56.8389925-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T20:52:56.8389943-05:00",
+                            "EndTime": "2026-09-04T21:03:28.4779978-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T21:03:28.4779992-05:00",
+                            "EndTime": "2026-09-04T21:13:46.478116-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T21:13:46.4781179-05:00",
+                            "EndTime": "2026-09-04T21:13:59.7147284-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "O",
+                            "StartTime": "2026-09-04T21:13:59.7147299-05:00",
+                            "EndTime": "2026-09-04T21:24:15.2760712-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:24:15.2760726-05:00",
+                            "EndTime": "2026-09-04T21:24:34.020626-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:24:34.0206281-05:00",
+                            "EndTime": "2026-09-04T21:29:49.5336598-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:29:49.5336614-05:00",
+                            "EndTime": "2026-09-04T21:35:06.055665-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T21:35:06.0556675-05:00",
+                            "EndTime": "2026-09-04T21:35:18.1515571-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:35:18.1515596-05:00",
+                            "EndTime": "2026-09-04T21:40:33.8682448-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:40:33.868246-05:00",
+                            "EndTime": "2026-09-04T21:50:43.0709384-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T21:50:43.0709408-05:00",
+                            "EndTime": "2026-09-04T21:50:52.2160004-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:50:52.2160057-05:00",
+                            "EndTime": "2026-09-04T21:56:08.6931212-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T21:56:08.6931266-05:00",
+                            "EndTime": "2026-09-04T22:01:24.7289815-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:01:24.7289829-05:00",
+                            "EndTime": "2026-09-04T22:01:35.4091809-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "B",
+                            "StartTime": "2026-09-04T22:01:35.4091894-05:00",
+                            "EndTime": "2026-09-04T22:06:59.5293442-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Slew",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:06:59.5295421-05:00",
+                            "EndTime": "2026-09-04T22:08:41.2303653-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "BeforeTarget",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:08:41.2303675-05:00",
+                            "EndTime": "2026-09-04T22:13:52.6845312-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:13:52.6845331-05:00",
+                            "EndTime": "2026-09-04T22:14:12.6486157-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:14:12.6486178-05:00",
+                            "EndTime": "2026-09-04T22:24:30.871675-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:24:30.8716765-05:00",
+                            "EndTime": "2026-09-04T22:34:47.6247568-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T22:34:47.6247588-05:00",
+                            "EndTime": "2026-09-04T22:35:01.8392538-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "S",
+                            "StartTime": "2026-09-04T22:35:01.8392588-05:00",
+                            "EndTime": "2026-09-04T22:45:18.1952754-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T22:45:18.1952772-05:00",
+                            "EndTime": "2026-09-04T22:45:36.644739-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T22:45:36.6447415-05:00",
+                            "EndTime": "2026-09-04T23:04:19.9801035-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:04:19.9801062-05:00",
+                            "EndTime": "2026-09-04T23:17:56.8347877-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T23:17:56.8347895-05:00",
+                            "EndTime": "2026-09-04T23:18:07.522848-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:18:07.5228496-05:00",
+                            "EndTime": "2026-09-04T23:38:19.457155-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:38:19.4571627-05:00",
+                            "EndTime": "2026-09-04T23:48:34.8568512-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-04T23:48:34.8568528-05:00",
+                            "EndTime": "2026-09-04T23:48:45.0378827-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:48:45.037884-05:00",
+                            "EndTime": "2026-09-04T23:59:12.0936559-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-04T23:59:12.0936598-05:00",
+                            "EndTime": "2026-09-05T00:13:57.5853455-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T00:13:57.5853478-05:00",
+                            "EndTime": "2026-09-05T00:14:12.2751593-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:14:12.2751632-05:00",
+                            "EndTime": "2026-09-05T00:24:28.058926-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:24:28.0589274-05:00",
+                            "EndTime": "2026-09-05T00:34:43.0576176-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T00:34:43.0576192-05:00",
+                            "EndTime": "2026-09-05T00:35:00.3140021-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:35:00.314004-05:00",
+                            "EndTime": "2026-09-05T00:45:19.1854394-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:45:19.185441-05:00",
+                            "EndTime": "2026-09-05T00:55:33.6240674-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T00:55:33.6240688-05:00",
+                            "EndTime": "2026-09-05T00:55:49.8179266-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T00:55:49.817928-05:00",
+                            "EndTime": "2026-09-05T01:06:05.4484736-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:06:05.4484757-05:00",
+                            "EndTime": "2026-09-05T01:20:48.4791179-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T01:20:48.479119-05:00",
+                            "EndTime": "2026-09-05T01:20:59.643602-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:20:59.6436032-05:00",
+                            "EndTime": "2026-09-05T01:31:13.6552692-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:31:13.6552711-05:00",
+                            "EndTime": "2026-09-05T01:41:31.5838705-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-05T01:41:31.5838722-05:00",
+                            "EndTime": "2026-09-05T01:41:53.8778495-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Narrowband / NGC 281 : 2026-09-04 22:06:59",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "H",
+                            "StartTime": "2026-09-05T01:41:53.8778508-05:00",
+                            "EndTime": "0001-01-01T00:00:00",
+                            "IsComplete": false,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          }
+                        ]
+                      },
+                      "Conditions": [],
+                      "PauseRequested": false,
+                      "Target": {
+                        "TargetName": "NGC 281",
+                        "PositionAngle": 165.0,
+                        "InputCoordinates": {
+                          "RAHours": 0,
+                          "RAMinutes": 52,
+                          "RASeconds": 25.1,
+                          "NegativeDec": false,
+                          "DecDegrees": 56,
+                          "DecMinutes": 33,
+                          "DecSeconds": 54.0
+                        }
+                      },
+                      "AfterTargetCompleteContainer": {
+                        "EventContainerType": 6,
+                        "Strategy": {},
+                        "Name": "AfterTargetComplete",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "Condition": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [
+                                {
+                                  "Message": "\ud83d\udce1 Ground Station - FRA500",
+                                  "EmbedTitle": "Completion",
+                                  "EmbedText": "Target Scheduler has completed imaging of the current target",
+                                  "EmbedEdgeColor": "#FF206694",
+                                  "ErrorBehavior": 0,
+                                  "Attempts": 1
+                                }
+                              ],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "Instructions": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      }
+                    }
+                  ],
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while safe_Condition",
+                      "Issues": []
+                    },
+                    {
+                      "SelectedMode": "While Targets Remain Tonight",
+                      "CheckIsActive": false,
+                      "Status": "CREATED",
+                      "Name": "Target Scheduler Condition_Condition",
+                      "ConditionWasCompleted": false
+                    }
+                  ],
+                  "Status": "RUNNING",
+                  "Iterations": 0,
+                  "Name": "Target Acquisition_Container"
+                },
+                {
+                  "Triggers": [],
+                  "Items": [
+                    {
+                      "Iterations": 0,
+                      "Predicate": null,
+                      "Items": [
+                        {
+                          "EmbedTitle": "",
+                          "EmbedText": "",
+                          "Issues": [],
+                          "Status": "CREATED",
+                          "EmbedEdgeColor": "#FFFFA500",
+                          "Message": "\ud83d\udce1 FRA500 -  Imaging interrupted due to unsafe conditions",
+                          "WindowService": {},
+                          "Name": "Send to Discord",
+                          "ShowEmbed": false
+                        },
+                        {
+                          "Expr": {
+                            "Expression": "1",
+                            "Type": "Any"
+                          },
+                          "CValueExpr": null,
+                          "Issues": [],
+                          "Status": "CREATED",
+                          "Variable": "DiscordUnsafeNotified",
+                          "Name": "Set Variable"
+                        }
+                      ],
+                      "Switches": [
+                        "TargetRA: 0.87",
+                        "TargetDec: 56.56",
+                        "TargetValid: 1",
+                        "TargetName: 'NGC 281'",
+                        "TargetRotation: 165",
+                        "TS_WaitStart: 20:51 yesterday",
+                        "TS_TargetName: 'NGC 281'",
+                        "TS_ProjectName: 'Narrowband'",
+                        "TS_Target_Rotation: 165",
+                        "TS_Target_RA: 0.87",
+                        "TS_Target_Dec: 56.56",
+                        "MoonAltitude: 6.49",
+                        "MoonIllumination: 0.39",
+                        "SunAltitude: -51.64",
+                        "SunAzimuth: 2.84",
+                        "LocalSiderealTime: 23.06",
+                        "TIME: 29728",
+                        "EXITCODE: 0",
+                        "Altitude: 58.32",
+                        "Azimuth: 29.2",
+                        "AtPark: 'False'",
+                        "RightAscension: 0.89",
+                        "Declination: 56.56",
+                        "SideOfPier: PierWest",
+                        "IsSafe: 'True'",
+                        "RoofStatus: RoofOpen",
+                        "FocuserPosition: 2353",
+                        "FocuserTemperature: 25.5",
+                        "SensorTemp: -5",
+                        "RotatorPosition: '64.12'",
+                        "CurrentFilter: Filter_H",
+                        "S: FlatPanel: 0",
+                        "S: OTA: 1",
+                        "W: DewPoint: 20.5",
+                        "W: Humidity: 67.3",
+                        "W: Pressure: 960.6",
+                        "W: RainRate: 0",
+                        "W: SkyBrightness: 0",
+                        "W: SkyTemperature: 5.2",
+                        "W: Temperature: 27.1",
+                        "W: WindDirection: 165",
+                        "W: WindGust: 1.4",
+                        "W: WindSpeed: 0.7",
+                        "Image_HFR: 1.44",
+                        "Image_StarCount: 4026",
+                        "Image_Id: 203",
+                        "Image_ExposureTime: 600",
+                        "Image_MeanADU: 537.04",
+                        "Image_RMS: 0.23",
+                        "Image_Type: LIGHT",
+                        "Image_Gain: 100",
+                        "Image_Offset: 50",
+                        "Image_Eccentricity: 0.4",
+                        "Image_FWHM: 4.14"
+                      ],
+                      "IfExpr": {
+                        "Expression": "DiscordUnsafeNotified == 0",
+                        "Type": "Any"
+                      },
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "Name": "If_Container"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Stop Guiding",
+                      "Issues": []
+                    },
+                    {
+                      "TrackingMode": 5,
+                      "Status": "CREATED",
+                      "Name": "Set Tracking",
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Find home",
+                      "Issues": []
+                    },
+                    {
+                      "Duration": 5.0,
+                      "Status": "CREATED",
+                      "Name": "Warm Camera",
+                      "Issues": []
+                    },
+                    {
+                      "Time": 60.0,
+                      "Status": "CREATED",
+                      "Name": "Wait for Time Span"
+                    },
+                    {
+                      "Iterations": 0,
+                      "Predicate": null,
+                      "Items": [
+                        {
+                          "EmbedTitle": "",
+                          "EmbedText": "",
+                          "Issues": [],
+                          "Status": "CREATED",
+                          "EmbedEdgeColor": "#FF008000",
+                          "Message": "\ud83d\udce1 FRA500 - Safe conditions returned. Resuming imaging...",
+                          "WindowService": {},
+                          "Name": "Send to Discord",
+                          "ShowEmbed": false
+                        },
+                        {
+                          "Expr": {
+                            "Expression": "0",
+                            "Type": "Any"
+                          },
+                          "CValueExpr": null,
+                          "Issues": [],
+                          "Status": "CREATED",
+                          "Variable": "DiscordUnsafeNotified",
+                          "Name": "Set Variable"
+                        }
+                      ],
+                      "Switches": [
+                        "TargetRA: 0.87",
+                        "TargetDec: 56.56",
+                        "TargetValid: 1",
+                        "TargetName: 'NGC 281'",
+                        "TargetRotation: 165",
+                        "TS_WaitStart: 20:51 yesterday",
+                        "TS_TargetName: 'NGC 281'",
+                        "TS_ProjectName: 'Narrowband'",
+                        "TS_Target_Rotation: 165",
+                        "TS_Target_RA: 0.87",
+                        "TS_Target_Dec: 56.56",
+                        "MoonAltitude: 6.49",
+                        "MoonIllumination: 0.39",
+                        "SunAltitude: -51.64",
+                        "SunAzimuth: 2.84",
+                        "LocalSiderealTime: 23.06",
+                        "TIME: 29728",
+                        "EXITCODE: 0",
+                        "Altitude: 58.32",
+                        "Azimuth: 29.2",
+                        "AtPark: 'False'",
+                        "RightAscension: 0.89",
+                        "Declination: 56.56",
+                        "SideOfPier: PierWest",
+                        "IsSafe: 'True'",
+                        "RoofStatus: RoofOpen",
+                        "FocuserPosition: 2353",
+                        "FocuserTemperature: 25.5",
+                        "SensorTemp: -5",
+                        "RotatorPosition: '64.12'",
+                        "CurrentFilter: Filter_H",
+                        "S: FlatPanel: 0",
+                        "S: OTA: 1",
+                        "W: DewPoint: 20.5",
+                        "W: Humidity: 67.3",
+                        "W: Pressure: 960.6",
+                        "W: RainRate: 0",
+                        "W: SkyBrightness: 0",
+                        "W: SkyTemperature: 5.2",
+                        "W: Temperature: 27.1",
+                        "W: WindDirection: 165",
+                        "W: WindGust: 1.4",
+                        "W: WindSpeed: 0.7",
+                        "Image_HFR: 1.44",
+                        "Image_StarCount: 4026",
+                        "Image_Id: 203",
+                        "Image_ExposureTime: 600",
+                        "Image_MeanADU: 537.04",
+                        "Image_RMS: 0.23",
+                        "Image_Type: LIGHT",
+                        "Image_Gain: 100",
+                        "Image_Offset: 50",
+                        "Image_Eccentricity: 0.4",
+                        "Image_FWHM: 4.14"
+                      ],
+                      "IfExpr": {
+                        "Expression": "IsSafe",
+                        "Type": "Any"
+                      },
+                      "Status": "CREATED",
+                      "Issues": [],
+                      "Name": "If_Container"
+                    }
+                  ],
+                  "Conditions": [
+                    {
+                      "SelectedMode": "While Targets Remain Tonight",
+                      "CheckIsActive": true,
+                      "Status": "CREATED",
+                      "Name": "Target Scheduler Condition_Condition",
+                      "ConditionWasCompleted": false
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while unsafe_Condition",
+                      "Issues": []
+                    }
+                  ],
+                  "Status": "CREATED",
+                  "Iterations": 0,
+                  "Name": "Unsafe Wait_Container"
+                }
+              ],
+              "Conditions": [
+                {
+                  "SelectedMode": "While Targets Remain Tonight",
+                  "CheckIsActive": false,
+                  "Status": "CREATED",
+                  "Name": "Target Scheduler Condition_Condition",
+                  "ConditionWasCompleted": false
+                },
+                {
+                  "Name": "Target Scheduler Background Condition_Condition",
+                  "Status": "CREATED"
+                }
+              ],
+              "Status": "RUNNING",
+              "Iterations": 0,
+              "Name": "Target Scheduler Imaging_Container"
+            }
+          ],
+          "Switches": [
+            "TargetRA: 0.87",
+            "TargetDec: 56.56",
+            "TargetValid: 1",
+            "TargetName: 'NGC 281'",
+            "TargetRotation: 165",
+            "TS_WaitStart: 20:51 yesterday",
+            "TS_TargetName: 'NGC 281'",
+            "TS_ProjectName: 'Narrowband'",
+            "TS_Target_Rotation: 165",
+            "TS_Target_RA: 0.87",
+            "TS_Target_Dec: 56.56",
+            "MoonAltitude: 6.49",
+            "MoonIllumination: 0.39",
+            "SunAltitude: -51.64",
+            "SunAzimuth: 2.84",
+            "LocalSiderealTime: 23.06",
+            "TIME: 29728",
+            "EXITCODE: 0",
+            "Altitude: 58.32",
+            "Azimuth: 29.2",
+            "AtPark: 'False'",
+            "RightAscension: 0.89",
+            "Declination: 56.56",
+            "SideOfPier: PierWest",
+            "IsSafe: 'True'",
+            "RoofStatus: RoofOpen",
+            "FocuserPosition: 2353",
+            "FocuserTemperature: 25.5",
+            "SensorTemp: -5",
+            "RotatorPosition: '64.12'",
+            "CurrentFilter: Filter_H",
+            "S: FlatPanel: 0",
+            "S: OTA: 1",
+            "W: DewPoint: 20.5",
+            "W: Humidity: 67.3",
+            "W: Pressure: 960.6",
+            "W: RainRate: 0",
+            "W: SkyBrightness: 0",
+            "W: SkyTemperature: 5.2",
+            "W: Temperature: 27.1",
+            "W: WindDirection: 165",
+            "W: WindGust: 1.4",
+            "W: WindSpeed: 0.7",
+            "Image_HFR: 1.44",
+            "Image_StarCount: 4026",
+            "Image_Id: 203",
+            "Image_ExposureTime: 600",
+            "Image_MeanADU: 537.04",
+            "Image_RMS: 0.23",
+            "Image_Type: LIGHT",
+            "Image_Gain: 100",
+            "Image_Offset: 50",
+            "Image_Eccentricity: 0.4",
+            "Image_FWHM: 4.14"
+          ],
+          "IfExpr": {
+            "Expression": "!AbortNight",
+            "Type": "Any"
+          },
+          "Status": "RUNNING",
+          "Issues": [],
+          "Name": "If_Container"
+        }
+      ],
+      "Conditions": [],
+      "Status": "RUNNING",
+      "Iterations": 0,
+      "Name": "Targets_Container"
+    },
+    {
+      "Triggers": [],
+      "Items": [
+        {
+          "Triggers": [],
+          "Items": [
+            {
+              "Iterations": 0,
+              "Predicate": null,
+              "Items": [
+                {
+                  "EmbedTitle": "",
+                  "EmbedText": "",
+                  "Issues": [],
+                  "Status": "CREATED",
+                  "EmbedEdgeColor": "#FF206694",
+                  "Message": "\ud83d\udce1 FRA500 - Planned imaging done for the evening",
+                  "WindowService": {},
+                  "Name": "Send to Discord",
+                  "ShowEmbed": false
+                },
+                {
+                  "Triggers": [],
+                  "Items": [
+                    {
+                      "Name": "Stop live stacking",
+                      "Status": "CREATED"
+                    },
+                    {
+                      "Triggers": [],
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Name": "Stop Guiding",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Shutdown PHD2",
+                          "Issues": []
+                        }
+                      ],
+                      "Conditions": [],
+                      "Status": "CREATED",
+                      "Iterations": 0,
+                      "Name": "Shutdown PHD2_Container"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Find home",
+                      "Issues": []
+                    },
+                    {
+                      "TrackingMode": 5,
+                      "Status": "CREATED",
+                      "Name": "Set Tracking",
+                      "Issues": []
+                    }
+                  ],
+                  "Conditions": [],
+                  "Status": "CREATED",
+                  "Iterations": 0,
+                  "Name": "Initial Shutdown Steps_Container"
+                },
+                {
+                  "RolloverTime": "19:57:18.2162519",
+                  "Issues": [],
+                  "Seconds": 1,
+                  "MinutesOffset": 0,
+                  "Status": "CREATED",
+                  "Hours": 6,
+                  "Name": "Wait for Time",
+                  "SelectedProvider": {},
+                  "Minutes": 22
+                },
+                {
+                  "Triggers": [],
+                  "Items": [
+                    {
+                      "EmbedTitle": "",
+                      "EmbedText": "",
+                      "Issues": [],
+                      "Status": "CREATED",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Message": "\ud83d\udce1 FRA500 - Capturing flats",
+                      "WindowService": {},
+                      "Name": "Send to Discord",
+                      "ShowEmbed": false
+                    },
+                    {
+                      "Triggers": [],
+                      "Items": [
+                        {
+                          "EmbedTitle": "",
+                          "EmbedText": "",
+                          "Issues": [],
+                          "Status": "CREATED",
+                          "EmbedEdgeColor": "#FF206694",
+                          "Message": "\ud83d\udce1 FRA500 - Turning on flat panel",
+                          "WindowService": {},
+                          "Name": "Send to Discord",
+                          "ShowEmbed": false
+                        },
+                        {
+                          "SelectedSwitch": {
+                            "Minimum": 0.0,
+                            "Maximum": 1.0,
+                            "StepSize": 1.0,
+                            "TargetValue": 0.0,
+                            "Id": 0,
+                            "EntityId": "device-057dc28f",
+                            "Name": "Flat Panel",
+                            "Description": "REDACTED",
+                            "Value": 0.0
+                          },
+                          "WritableSwitches": [
+                            {
+                              "Minimum": 0.0,
+                              "Maximum": 1.0,
+                              "StepSize": 1.0,
+                              "TargetValue": 0.0,
+                              "Id": 0,
+                              "EntityId": "device-057dc28f",
+                              "Name": "Flat Panel",
+                              "Description": "REDACTED",
+                              "Value": 0.0
+                            },
+                            {
+                              "Minimum": 0.0,
+                              "Maximum": 1.0,
+                              "StepSize": 1.0,
+                              "TargetValue": 1.0,
+                              "Id": 1,
+                              "EntityId": "device-fb078731",
+                              "Name": "OTA",
+                              "Description": "REDACTED",
+                              "Value": 1.0
+                            }
+                          ],
+                          "Issues": [],
+                          "Status": "CREATED",
+                          "SwitchIndex": 0,
+                          "Name": "Set Switch Value",
+                          "Value": 1.0
+                        },
+                        {
+                          "Time": 5.0,
+                          "Status": "CREATED",
+                          "Name": "Wait for Time Span"
+                        },
+                        {
+                          "SelectedDevice": "Flat Panel",
+                          "Status": "CREATED",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        }
+                      ],
+                      "Conditions": [],
+                      "Status": "CREATED",
+                      "Iterations": 0,
+                      "Name": "Turn on Flat Panel_Container"
+                    },
+                    {
+                      "TotalFlatSets": 0,
+                      "Issues": [
+                        "Flat device not connected"
+                      ],
+                      "DisplayText": "",
+                      "Iterations": 0,
+                      "CompletedIterations": 0,
+                      "Status": "CREATED",
+                      "AlwaysRepeatFlatSet": false,
+                      "FlatCount": 15,
+                      "Name": "Target Scheduler Flats",
+                      "CompletedFlatSets": 0,
+                      "TargetName": null
+                    }
+                  ],
+                  "Conditions": [],
+                  "Status": "CREATED",
+                  "Iterations": 0,
+                  "Name": "Flats_Container"
+                },
+                {
+                  "Triggers": [],
+                  "Items": [
+                    {
+                      "Duration": 10.0,
+                      "Status": "CREATED",
+                      "Name": "Warm Camera",
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Dew Heater",
+                      "Issues": [],
+                      "OnOff": false
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Reconcile PSF Guard catalog",
+                      "Issues": []
+                    },
+                    {
+                      "Name": "Night Summary End",
+                      "Status": "CREATED"
+                    }
+                  ],
+                  "Conditions": [],
+                  "Status": "CREATED",
+                  "Iterations": 0,
+                  "Name": "Final Shutdown Steps_Container"
+                },
+                {
+                  "EmbedTitle": "",
+                  "EmbedText": "",
+                  "Issues": [],
+                  "Status": "CREATED",
+                  "EmbedEdgeColor": "#FF206694",
+                  "Message": "\ud83d\udce1 FRA500 - Sequence complete",
+                  "WindowService": {},
+                  "Name": "Send to Discord",
+                  "ShowEmbed": false
+                }
+              ],
+              "Switches": null,
+              "IfExpr": {
+                "Expression": "!AbortNight",
+                "Type": "Any"
+              },
+              "Status": "CREATED",
+              "Issues": [],
+              "Name": "If/Then/Else_Container",
+              "ElseInstructions": {
+                "Strategy": {},
+                "Name": "If/Then/Else",
+                "Conditions": [],
+                "IsExpanded": true,
+                "Items": [
+                  {
+                    "Message": "\ud83d\udce1 FRA500 - Night aborted. Sequence ending now.",
+                    "EmbedTitle": "",
+                    "EmbedText": "",
+                    "EmbedEdgeColor": "#FFDC143C",
+                    "ErrorBehavior": 0,
+                    "Attempts": 1
+                  }
+                ],
+                "Triggers": [],
+                "ErrorBehavior": 0,
+                "Attempts": 1
+              }
+            }
+          ],
+          "Conditions": [],
+          "Status": "CREATED",
+          "Iterations": 0,
+          "Name": "MY END_Container"
+        }
+      ],
+      "Conditions": [],
+      "Status": "CREATED",
+      "Iterations": 0,
+      "Name": "End_Container"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-05T06:43:39+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/sequence/state",
+    "params": {}
+  }
+}

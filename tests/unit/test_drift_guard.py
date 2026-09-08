@@ -49,6 +49,7 @@ _NAMESPACE = {
     "/equipment/focuser/last-af": "AutoFocusRun",
     "/application-start": "ApplicationStart",
     "/version": "Version",
+    "/version/nina": "Version",
     "/profile/show": "Profile",
     # The live IMAGE-SAVE payload already carries ImageStatistics.* under its
     # own key, so it merges into the /image-history namespace deliberately.
@@ -88,6 +89,11 @@ def _observe(document: object, prefix: str = "") -> dict[str, set[str]]:
     stale. A dict or list item keeps recursing; a scalar item (Mount.TrackingModes'
     strings) matches neither branch below it, so it is recorded separately at
     a synthetic `<path>[]` leaf rather than silently dropped.
+
+    A whole `Response` can itself be a scalar — `/livestack/status` answers the
+    bare string "Running" where the spec documents an object — so a scalar
+    document records its type at its own namespace rather than contributing
+    nothing at all.
     """
     seen: dict[str, set[str]] = defaultdict(set)
     if isinstance(document, dict):
@@ -111,6 +117,8 @@ def _observe(document: object, prefix: str = "") -> dict[str, set[str]]:
                     seen[sub] |= types_
             elif prefix:
                 seen[_collapse(f"{prefix}[]")].add(_type_name(item))
+    elif prefix:
+        seen[_collapse(prefix)].add(_type_name(document))
     return seen
 
 

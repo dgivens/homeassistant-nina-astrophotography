@@ -25,8 +25,12 @@ from redaction import PROFILE_ALLOWLIST, project, redact, scan
         # A timestamp has colons too; only eight groups or a "::" is an IPv6.
         ({"Time": "2026-09-03T21:26:56.6584856-05:00"},
          {"Time": "2026-09-03T21:26:56.6584856-05:00"}),
-        # "user" is a whole-word rule: Focuser is a device, not an account.
+        ({"Username": "dan"}, {"Username": "REDACTED"}),
+        # "user" and "username" are whole-word rules: Focuser is a device, not
+        # an account, and "AutoFocuserName" spells "username" across the seam
+        # between "AutoFocuser" and "Name".
         ({"Focuser": {"Position": 2332}}, {"Focuser": {"Position": 2332}}),
+        ({"AutoFocuserName": "Hocus Focus"}, {"AutoFocuserName": "Hocus Focus"}),
         # Site and pointing fields are KEPT — see the module docstring.
         ({"SiteLatitude": 41.87}, {"SiteLatitude": 41.87}),
         ({"Altitude": 31.5478}, {"Altitude": 31.5478}),

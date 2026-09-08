@@ -1,0 +1,116 @@
+{
+  "Response": {
+    "Version": 2,
+    "Filter": "L",
+    "AutoFocuserName": "Hocus Focus",
+    "StarDetectorName": "Hocus Focus",
+    "Timestamp": "2026-09-05T01:10:14.8781758-05:00",
+    "Temperature": 25.7,
+    "Method": "STARHFR",
+    "Fitting": "TRENDPARABOLIC",
+    "InitialFocusPoint": {
+      "Position": 2352,
+      "Value": 1.5191799853991006,
+      "Error": 0
+    },
+    "CalculatedFocusPoint": {
+      "Position": 2340,
+      "Value": 1.0932570683996303,
+      "Error": 0
+    },
+    "PreviousFocusPoint": {
+      "Position": 2340,
+      "Value": 1.0932570683996303,
+      "Error": 0
+    },
+    "MeasurePoints": [
+      {
+        "Position": 2212,
+        "Value": 6.767517920907358,
+        "Error": 0.3301867392819892
+      },
+      {
+        "Position": 2247,
+        "Value": 4.851116817456493,
+        "Error": 0.2779231723941218
+      },
+      {
+        "Position": 2282,
+        "Value": 2.931302237344836,
+        "Error": 0.2619241121808811
+      },
+      {
+        "Position": 2317,
+        "Value": 1.6915236322456115,
+        "Error": 0.1750879684785367
+      },
+      {
+        "Position": 2352,
+        "Value": 1.55229727412562,
+        "Error": 0.10801730574556397
+      },
+      {
+        "Position": 2387,
+        "Value": 2.7793979915513467,
+        "Error": 0.1431211126995581
+      },
+      {
+        "Position": 2422,
+        "Value": 4.705365782189137,
+        "Error": 0.14803708941099442
+      },
+      {
+        "Position": 2457,
+        "Value": 6.729585209398029,
+        "Error": 0.15060254104731347
+      },
+      {
+        "Position": 2492,
+        "Value": 8.65665187592478,
+        "Error": 0.1594547816533992
+      }
+    ],
+    "Intersections": {
+      "TrendLineIntersection": {
+        "Position": 2344,
+        "Value": 0.3330580830396599,
+        "Error": 0
+      },
+      "QuadraticMinimum": {
+        "Position": 2336,
+        "Value": 1.8534560537596008,
+        "Error": 0
+      }
+    },
+    "Fittings": {
+      "Quadratic": "y = 0.0003058854621319121 * x^2 + -1.4293365331583652 * x + 1671.5984427459177",
+      "Hyperbolic": "",
+      "Gaussian": "",
+      "LeftTrend": "y = -0.04727009756935714 * x + 111.1161540435258",
+      "RightTrend": "y = 0.056162978412705115 * x + -131.29156185332315"
+    },
+    "RSquares": {
+      "Quadratic": 0.9710548595560263,
+      "Hyperbolic": "NaN",
+      "LeftTrend": 0.9902518159347956,
+      "RightTrend": 0.9998991212499581
+    },
+    "BacklashCompensation": {
+      "BacklashCompensationModel": "OVERSHOOT",
+      "BacklashIN": 300,
+      "BacklashOUT": 0
+    },
+    "Duration": "00:04:02.0079444"
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-05T06:43:39+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/equipment/focuser/last-af",
+    "params": {}
+  }
+}
