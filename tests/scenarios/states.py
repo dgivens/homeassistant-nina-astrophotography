@@ -180,6 +180,22 @@ STATES: dict[str, State] = {
         **_IMAGING,
         "/equipment/info": load_envelope("weather_source_openmeteo.json"),
     },
+    # The same rig with `?count=true` one frame ahead of `?all=true`, which is
+    # what a frame saved between the two reads looks like. The count is a
+    # scalar, so this varies the captured envelope's one number rather than
+    # inventing a history: no capture can hold a snapshot of a race.
+    "imaging_count_ahead": {
+        **_IMAGING,
+        "/image-history?count=true": {
+            **load_envelope("dawn_image_history_count.json"),
+            "Response": 123,
+        },
+    },
+    # The same rig answering /application-start with a null Response — the
+    # generation unreadable for one tick. Also a scalar variant: the corpus
+    # holds no capture of a transiently empty endpoint.
+    "imaging_start_unreadable": {**_IMAGING,
+                                 "/application-start": {**ok(), "Response": None}},
     "camera_disconnected": disconnect(_IMAGING, "Camera"),
     "safety_monitor_disconnected": disconnect(_IMAGING, "SafetyMonitor"),
     # All eleven down: the seven the restart capture holds down, plus the four

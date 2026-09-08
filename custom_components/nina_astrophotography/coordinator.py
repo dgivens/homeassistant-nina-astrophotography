@@ -10,8 +10,12 @@ callback, /event-history replay and the restart reseed — and without that rule
 poll awaiting /equipment/info while IMAGE-SAVE arrives publishes a snapshot
 assembled from a pre-event read, so the frame appears, vanishes and reappears.
 
-Phase A polls the fast tier only. Tiering, the push path and generation handling
-land in phase B.
+The polling decisions themselves — is this a restart, does the invariant hold —
+live in `polling.py`, which knows nothing of Home Assistant. This module is the
+I/O and the ownership.
+
+Phase B polls the fast tier and holds the generation; the remaining tiers and
+the push path follow.
 """
 from __future__ import annotations
 
@@ -39,6 +43,7 @@ from .api.models import (
     VersionInfo,
 )
 from .api.v2 import NinaClientV2
+from .polling import ReseedGuard, RestartDetector
 from .session import fold
 
 if TYPE_CHECKING:
@@ -113,17 +118,41 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self.frames: dict[tuple[datetime, str], Frame] = {}
         self.events: list[NinaEvent] = []
         self.generation: str | None = None
+        # Set by setup once the socket exists, so the generation reaches the
+        # push path: an event tagged with a stale one is filtered out of the
+        # fold the moment it arrives.
+        self.event_stream: NinaEventStream | None = None
         self._version = version
         self._observed: set[str] = set()
         self._rejection_logged = False
+        self._restart = RestartDetector()
+        self._reseed_guard = ReseedGuard()
+        self._seeded = False
+        self._mismatch_logged = False
 
     async def _async_update_data(self) -> NinaData:
         try:
             snapshot = await self.client.get_equipment()
-            generation = await self.client.get_application_start()
-            # Unused until phase B's history invariant; kept so the fast tier's
-            # byte cost is real from the start.
-            _ = await self.client.get_image_history_count()
+            application_start = await self.client.get_application_start()
+            count = await self.client.get_image_history_count()
+            restarted = self._restart.observe(application_start, count)
+            if restarted:
+                _LOGGER.info(
+                    "N.I.N.A. restarted (%s); reseeding from /image-history?all=true",
+                    application_start,
+                )
+            # Only a restart moves the generation on. A single unreadable
+            # /application-start is missing information, not a new process, and
+            # adopting its `None` would filter the whole session away for a tick.
+            if restarted or self.generation is None:
+                self._set_generation(application_start)
+            # The frame set is never seeded from the bare path: it answers the
+            # newest frame alone, which leaves the session count reading 1.
+            if restarted or not self._seeded:
+                await self._reseed(count)
+            elif self._reseed_guard.check(self._generation_frames(), count):
+                await self._reseed(count)
+            self._restart.update(application_start, count)
         except (NinaRequestError, NinaEndpointError) as exc:
             # Neither becomes right by retrying. With a previous snapshot, log
             # once and keep it rather than making every entity unavailable;
@@ -139,11 +168,49 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             raise UpdateFailed(str(exc)) from exc
 
         self._rejection_logged = False
-        self.generation = generation
         return self._assemble(self._latch_observed(snapshot))
 
     def handle_event(self, event: NinaEvent) -> None:
         """Take one pushed event. A no-op until B4 gives it the fold."""
+
+    def _set_generation(self, generation: str | None) -> None:
+        """Publish the process tag everything the fold keeps is stamped with."""
+        self.generation = generation
+        if self.event_stream is not None:
+            self.event_stream.generation = generation
+
+    def _generation_frames(self) -> int:
+        """Frames held for the CURRENT process — what `?count=true` counts.
+
+        `?count=true` is process-scoped, not session-scoped, so the invariant
+        is checked against the whole generation and not the night. The set is
+        therefore unbounded for the N.I.N.A. process lifetime: pruning it makes
+        the fold smaller than the count forever, and so reseeds forever. At
+        Target Scheduler volumes a week is a few thousand frames.
+        """
+        return sum(1 for f in self.frames.values() if f.generation == self.generation)
+
+    async def _reseed(self, count: int) -> None:
+        """Union `/image-history?all=true` into the frame set. Never clears.
+
+        Clearing races a concurrent poll and loses what arrives during the
+        refetch; the stale generation is dropped by the fold's filter instead.
+        """
+        for frame in await self.client.get_frames(
+            include_all=True, generation=self.generation
+        ):
+            self.frames[(frame.date, frame.filename)] = frame
+        self._seeded = True
+        held = self._generation_frames()
+        if not self._reseed_guard.settle(held, count):
+            self._mismatch_logged = False
+        elif not self._mismatch_logged:
+            _LOGGER.info(
+                "history count %s differs from %s mapped frames after a reseed; "
+                "will re-check when the count changes",
+                count, held,
+            )
+            self._mismatch_logged = True
 
     def _latch_observed(self, snapshot: EquipmentSnapshot) -> EquipmentSnapshot:
         """Record every slot carrying a `DeviceId`; blank the never-observed."""
