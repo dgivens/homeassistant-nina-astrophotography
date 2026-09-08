@@ -48,7 +48,7 @@ from .mapper import (
     map_livestack_status,
     map_profile,
     map_sequence,
-    rig_offset,
+    rig_utc_offset,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -76,6 +76,15 @@ class NinaClientV2:
         # it is the only place the API states it; the last known value is kept
         # across a mount disconnect, which drops the clock from the wire.
         self._rig_offset: timedelta | None = None
+
+    @property
+    def rig_offset(self) -> timedelta | None:
+        """The rig's UTC offset as last read from the mount's clock; `None`
+        until the first `/equipment/info` with a connected mount. Frame dates
+        carry this offset, so anything placing a local-time boundary — the
+        session's noon rollover — must use it rather than Home Assistant's zone.
+        """
+        return self._rig_offset
 
     # ── transport ────────────────────────────────────────────────────────────
 
@@ -166,7 +175,7 @@ class NinaClientV2:
     async def get_equipment(self) -> EquipmentSnapshot:
         response = await self._get("/equipment/info")
         wire = response if isinstance(response, dict) else {}
-        offset = rig_offset(wire)
+        offset = rig_utc_offset(wire)
         if offset is not None:  # not `or`: UTC+0 is a real offset
             self._rig_offset = offset
         return map_equipment_info(wire)
@@ -185,7 +194,14 @@ class NinaClientV2:
             response = [response]
         if not isinstance(response, list):
             return []
-        return [map_frame(item, generation) for item in response]
+        frames: list[Frame] = []
+        for item in response:
+            try:
+                frames.append(map_frame(item, generation))
+            except (KeyError, TypeError, ValueError) as exc:
+                # No (Date, Filename) identity means it cannot enter the fold.
+                _LOGGER.debug("Skipping unmappable frame %s: %s", item, exc)
+        return frames
 
     async def get_image_history_count(self) -> int:
         return int(await self._get("/image-history", {"count": "true"}) or 0)

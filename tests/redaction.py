@@ -20,8 +20,9 @@ real. That is not laxity — SiderealTime is the input to the meridian-flip math
 in §11, and zeroing it would leave that formula with no captured fixture to test
 against and force a hand-written substitute, which the fixture rules forbid.
 
-Credentials, absolute paths, hostnames, IPv4 addresses, UUIDs and Home Assistant
-entity ids are a different matter and are still redacted.
+Credentials, account names, absolute paths, hostnames, IPv4 and IPv6 addresses,
+UUIDs and Home Assistant entity ids are a different matter and are still
+redacted.
 """
 from __future__ import annotations
 
@@ -32,8 +33,12 @@ from typing import Any
 REDACTED = "REDACTED"
 
 # Substring match on the lowercased key.
-_SECRET_KEYS = ("key", "token", "secret", "password", "credential")
-_LOCATION_KEYS = ("path", "folder", "directory", "host", "url")
+_SECRET_KEYS = ("key", "token", "secret", "password", "credential", "username", "email")
+_LOCATION_KEYS = ("path", "folder", "directory", "host", "url", "address", "machinename")
+# Whole camel-case words only: "Focuser" and "PauseRequested" both contain
+# "user" as a substring, and a substring rule would zero the Focuser block.
+_WORD_KEYS = ("user",)
+_CAMEL_WORDS = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|\d+")
 
 _RENAMED = {"telescopename": "Telescope", "cameraname": "Camera"}
 _PSEUDONYM_KEYS = ("deviceid", "entityid")
@@ -59,6 +64,12 @@ _KEEP = (
 _VALUE_PATTERNS = (
     re.compile(r"[A-Za-z]:\\"),                                  # Windows path
     re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"),                  # bare IPv4
+    # IPv6: eight hex groups, or a "::" compression. Timestamps ("21:26:56")
+    # and RmsText carry one or two colons and must not match.
+    re.compile(r"(?<![\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}"
+               r"|(?:[0-9a-f]{1,4}:){1,6}(?::[0-9a-f]{1,4}){1,6}"
+               r"|(?:[0-9a-f]{1,4}:){1,7}:|:(?::[0-9a-f]{1,4}){1,7})(?![\w:])", re.I),
+    re.compile(r"\.ts\.net\b", re.I),                            # Tailscale hostname
     re.compile(r"\b[0-9a-f]{8}(?:-?[0-9a-f]{4}){3}-?[0-9a-f]{12}\b", re.I),  # UUID
     re.compile(r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
                r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"),  # HA entity id
@@ -84,6 +95,28 @@ PROFILE_ALLOWLIST: tuple[str, ...] = (
     "MeridianFlipSettings",
     "CameraSettings.PixelSize",
 )
+
+
+def project(document: object, allowlist: tuple[str, ...]) -> dict:
+    """Keep only allowlisted dotted paths; a path naming a section keeps it whole.
+
+    The projection is the capture script's rule for `/profile/show` and lives
+    beside the redaction rules so the two cannot drift.
+    """
+    kept: dict = {}
+    for dotted in allowlist:
+        node, target = document, kept
+        parts = dotted.split(".")
+        for part in parts[:-1]:
+            if not isinstance(node, dict) or part not in node:
+                node = None
+                break
+            node = node[part]
+            target = target.setdefault(part, {})
+        leaf = parts[-1]
+        if isinstance(node, dict) and leaf in node:
+            target[leaf] = node[leaf]
+    return kept
 
 
 def _digest(value: str, prefix: str, legacy_width: int, suffix: str = "") -> str:
@@ -137,6 +170,8 @@ def _redact_scalar(key: str, value: Any) -> Any:
     if any(p in low for p in _PSEUDONYM_KEYS) and isinstance(value, str):
         return _digest(value, "device-", 2)
     if any(p in low for p in (*_SECRET_KEYS, *_LOCATION_KEYS)):
+        return _typed_redaction(value)
+    if any(word.lower() in _WORD_KEYS for word in _CAMEL_WORDS.findall(key)):
         return _typed_redaction(value)
     if low in _NAME_KEYS and isinstance(value, str) and _FACILITY.search(value):
         return REDACTED

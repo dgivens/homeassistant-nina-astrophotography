@@ -11,8 +11,10 @@ Naming is `<state>_<endpoint>.json`. Each file holds the **raw envelope**
 
 ## What has been redacted
 
-Credentials, absolute paths, hostnames, IPv4 addresses, UUIDs and Home Assistant
-entity ids are `"REDACTED"`. `DeviceId` and `EntityId` are stable pseudonyms
+Credentials, account names, absolute paths, hostnames, IPv4 and IPv6 addresses,
+UUIDs and Home Assistant entity ids are `"REDACTED"`. The same rules run as a
+pre-commit hook over staged fixtures — install it once with
+`uv run --group dev pre-commit install`. `DeviceId` and `EntityId` are stable pseudonyms
 (`device-<8 hex>`) so *distinctness* survives — two weather sources still
 compare unequal. `TelescopeName`/`CameraName` are
 generic, and `Filename` is a stable pseudonym (`frame_<8 hex>.fits`) derived
@@ -46,7 +48,7 @@ is too large to redact confidently.
 
 | File | Contents |
 |---|---|
-| `dawn_equipment_info.json` | 11 devices, 9 connected; Dome and FlatDevice disconnected |
+| `dawn_equipment_info.json` | 11 devices, 9 connected; Dome and Guider disconnected. FlatDevice connected (`device-03`, `MaxBrightness 4096`) |
 | `dawn_event_history.json` | **628 events, 44 distinct types**, 19:41 → 07:06. Includes `SEQUENCE-FINISHED`, `MOUNT-BEFORE-FLIP`/`-AFTER-FLIP`, and 8 `AUTOFOCUS-STARTING` against 7 `AUTOFOCUS-FINISHED` (one unmatched — the AF-failure case) |
 | `dawn_image_history_with_flats.json` | **122 frames: 55 LIGHT, 67 FLAT.** Every flat has `HFR 0` and `Stars -1`. Four targets, five filters, three exposure lengths |
 | `dawn_image_history_count.json` | `?count=true` → `122` |
@@ -80,8 +82,10 @@ is too large to redact confidently.
 
 - **`Date` is the save time**, not the exposure start — start + exposure +
   download. Verified against FITS `DATE-LOC`.
-- **`HFR == 0` is the reliable calibration marker.** `Stars == -1` appears on
-  flats but a dark reported `Stars 1`.
+- **Calibration is keyed on `ImageType`** (`FLAT`, `DARK`, `BIAS`, `DARKFLAT`),
+  not on a sentinel: `Stars == -1` appears on flats but a dark reported
+  `Stars 1`, and a clouded light reports `HFR 0` too. `HFR 0` is a secondary
+  null-out *inside* lights.
 - **`"NaN"` arrives as a JSON string**, and which fields carry it depends on
   what is connected and on what the driver implements.
 - **`/event-history` and `/image-history` are in-process**; both reset when

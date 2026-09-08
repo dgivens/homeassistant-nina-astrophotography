@@ -1,12 +1,18 @@
-"""Test doubles for the N.I.N.A. HTTP API.
+"""Test doubles for the N.I.N.A. HTTP API, and the captured-fixture loader.
 
 `responses` maps a path fragment to a payload, a FakeResponse, or an exception
 to raise; the first fragment found in the URL wins, so register the more
 specific fragment first. `default` covers everything else.
+
+Imports neither Home Assistant nor the integration, so both suites can use it.
 """
 from __future__ import annotations
 
 import json
+from pathlib import Path
+from typing import Any
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
 class FakeResponse:
@@ -84,3 +90,18 @@ def failure(error="Camera not connected", status=409):
         "Success": False,
         "Type": "API",
     }
+
+
+def load_envelope(name: str) -> dict:
+    """A captured envelope as the wire sent it, less our own `_meta` block.
+
+    Re-read from disk on every call, so a test may edit what it gets back.
+    """
+    document = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+    document.pop("_meta", None)
+    return document
+
+
+def load_fixture(name: str) -> Any:
+    """The `Response` of a captured envelope — the payload the mappers take."""
+    return load_envelope(name)["Response"]
