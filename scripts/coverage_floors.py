@@ -12,7 +12,9 @@ import sys
 from pathlib import Path
 
 FLOORS: dict[str, int] = {
+    "coordinator.py": 95,
     "derive.py": 95,
+    "device.py": 95,
     "polling.py": 95,
     "session.py": 95,
     "api/v2/mapper.py": 90,

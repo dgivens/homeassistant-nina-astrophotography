@@ -48,7 +48,7 @@ _PSEUDONYM_KEYS = ("deviceid", "entityid")
 # Kept deliberately, and asserted by test so a later "tightening" cannot quietly
 # break the maths that depends on them:
 #   TargetName    an astronomical object, not identifying
-#   SideOfPier    not identifying; §11's already-flipped branch needs it
+#   SideOfPier    not identifying; §11's +12 h windows turn on it
 #   site + pointing fields   the site is a public hosting facility, and
 #                            SiderealTime is §11's LST input
 #   api_version, nina_version   four-part dotted version numbers (.NET's
@@ -77,16 +77,23 @@ _VALUE_PATTERNS = (
                r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"),  # HA entity id
 )
 
-# Site or facility identifiers seen in device Name/DisplayName/Description.
+# Site or facility identifiers, matched two ways: as the whole value of a name
+# key (`_NAME_KEYS` below), and as a TOKEN anywhere inside any string value —
+# a sequence node's text, a Target Scheduler group label. The token rule
+# substitutes rather than replacing the value, because the rest of a sequence
+# node's text is the structure the fixtures exist to record.
+#
 # Distinctive stems are left unbounded so camel-cased compounds still match
-# ("StarfrontObservatory"); short, generic words are word-bounded so they
-# don't match as substrings of something else — unbounded "rack" matches the
-# sequence node named "Set Tracking", and unbounded "colo" matches
+# ("StarfrontObservatory"); short, generic words and acronyms are word-bounded
+# so they don't match as substrings of something else — unbounded "rack"
+# matches the sequence node named "Set Tracking", and unbounded "colo" matches
 # "Color"/"Colour" (an OSC camera's Name). "coloc" (colocation), not "colo".
 _FACILITY = re.compile(
-    r"observator|data ?cent|\b(?:building|suite|rack|coloc)\b", re.I
+    r"observator|data ?cent|\b(?:building|suite|rack|coloc|sfro)\b", re.I
 )
-_NAME_KEYS = ("name", "displayname", "description")
+# `ProjectName` is a Target Scheduler project, which is routinely named after
+# the site hosting the rig; `TargetName` stays, being an astronomical object.
+_NAME_KEYS = ("name", "displayname", "description", "projectname")
 
 # /profile/show is captured as an allowlist PROJECTION, not a redaction — its
 # secret surface is too large to redact confidently. §8.3.
@@ -179,6 +186,10 @@ def _redact_scalar(key: str, value: Any) -> Any:
         return REDACTED
     if isinstance(value, str) and any(p.search(value) for p in _VALUE_PATTERNS):
         return REDACTED
+    if isinstance(value, str) and _FACILITY.search(value):
+        # Free text under a key no rule names — the token goes, the sentence
+        # stays. Idempotent: "REDACTED" carries no facility token itself.
+        return _FACILITY.sub(REDACTED, value)
     return value
 
 

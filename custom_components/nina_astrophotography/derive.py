@@ -64,24 +64,24 @@ def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) 
 
 
 def time_to_meridian_flip(hours_to_meridian_value: float,
-                          max_minutes_after_meridian: float,
-                          *, flipped: bool = False) -> float:
-    """Hours until the flip fires.
+                          max_minutes_after_meridian: float) -> float:
+    """Hours until the flip fires: `(HoursToMeridian + Max/60) mod 12`.
 
     `MountInfo.TimeToMeridianFlip` is AUTHORITATIVE — it is the number N.I.N.A.
     itself acts on, and publishing a derived value that disagrees with it is
     worse than not deriving one. This exists for the MeridianFlipSettings-aware
     secondary warning threshold only.
 
-    Deliberately unwrapped. Just after a flip the value is ~24 hours, and that
-    is the truth: the next flip is a sidereal day away. Wrapping it to keep it
-    under 24 turns a mount that has just finished flipping into one reading
-    minutes from the next flip. The 24-hour "tracking off" sentinel is a wire
-    value on `MountInfo.TimeToMeridianFlip` that the mapper nulls; a derived
-    figure never passes through the mapper, so it cannot be confused with it.
+    Wrapped, because N.I.N.A. wraps: its own figure is
+    `mod12(RA − (LST − Max/60))`. Five minutes past transit `HoursToMeridian`
+    reads 11.92, and with a 15-minute limit the flip is ten minutes away — not
+    twelve hours and ten. N.I.N.A. adds 12 h only inside two one-hour windows
+    where the mount's pier side disagrees with the side the coordinates expect,
+    and subtracts 24 from anything that reaches it, so its value always lies in
+    [0, 24). Those windows need the ASCOM `DestinationSideOfPier`, which the
+    API does not report; `MountInfo.TimeToMeridianFlip` already carries them.
     """
-    value = hours_to_meridian_value + max_minutes_after_meridian / 60
-    return value + 12 if flipped else value
+    return (hours_to_meridian_value + max_minutes_after_meridian / 60) % 12
 
 
 def flip_threshold_minutes(warning_minutes: float, min_minutes_after: float,

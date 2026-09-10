@@ -52,6 +52,10 @@ A session runs from one rollover to the next, defaulting to **12:00 in the rig's
 own local time** — the boundary an astrophotographer means by "last night", and
 the one N.I.N.A.'s image-history dockable uses.
 
+Until the mount has connected once, the rig's clock is unknown and the boundary
+falls at noon in **Home Assistant's** zone instead; on a rig in another zone the
+session those first minutes report is the one that moves when the mount comes up.
+
 Change it under **Settings → Devices & Services → N.I.N.A. → Configure** if your
 imaging PC's Windows clock runs UTC, which is common on hosted rigs. Every
 N.I.N.A. timestamp is local to that clock, so for a site at UTC−05:00 the noon

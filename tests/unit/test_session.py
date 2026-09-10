@@ -93,16 +93,24 @@ def test_image_count_counts_calibration_frames_too(night) -> None:
 
 
 @pytest.mark.synthetic
-def test_an_unmatched_autofocus_start_past_the_timeout_is_a_failure() -> None:
-    """A start that nothing answers within the profile's timeout has hung. The
-    corpus has no such night — its one unanswered start was aborted — so the
-    hang is constructed."""
+@pytest.mark.parametrize(
+    ("timeout", "elapsed", "failed"),
+    [(300, 301, True), (600, 301, False), (600, 601, True)],
+)
+def test_an_unmatched_autofocus_start_hangs_at_the_profiles_timeout(
+    timeout, elapsed, failed
+) -> None:
+    """A start that nothing answers within the RIG's timeout has hung, and that
+    timeout is `FocuserSettings.AutoFocusTimeoutSeconds` — 600 on the captured
+    rig, so a 300 s constant would call a seven-minute run failed. The corpus
+    has no hung night — its one unanswered start was aborted — so the hang is
+    constructed."""
     start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
     events = [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")]
     stats = fold([], events, generation="g1",
-                 autofocus_timeout_seconds=300,
-                 now=start + timedelta(seconds=301))
-    assert stats.autofocus.failed is True
+                 autofocus_timeout_seconds=timeout,
+                 now=start + timedelta(seconds=elapsed))
+    assert stats.autofocus.failed is failed
 
 
 _START = datetime.fromisoformat("2026-09-03T23:00:00-05:00")

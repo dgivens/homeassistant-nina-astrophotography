@@ -14,10 +14,11 @@ Every wire quirk lives here and nowhere else:
     never a calibration signal — flats report it, the captured dark reported
     `Stars 1`.
   - TimeToMeridianFlip is None while tracking is off, and at the literal 24 —
-    the sentinel — whatever TrackingEnabled says. 12 h is legitimate ("just
-    flipped"), and so is 24.08: a UseSideOfPier rig reads a few minutes over 24
-    for up to MaxMinutesAfterMeridian after its flip. Neither "≥12" nor "≥24"
-    is the rule.
+    the sentinel — whatever TrackingEnabled says. Tracking off and a driver
+    exception both return that 24 without computing anything; every computed
+    value is in [0, 24), because the calculation subtracts 24 from whatever
+    reaches it. 12 h is legitimate — a mount inside the pier-side window that
+    adds 12 h reads it — so "≥12" is no rule either: only the literal 24 is.
   - A `Connected: false` block maps with every reading None — `connected`,
     `meta` and the capabilities survive, and a switch's channel list is a
     capability, not a reading. A disconnected driver answers Position 0,
