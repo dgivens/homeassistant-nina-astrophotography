@@ -66,6 +66,15 @@ class FakeRig(FakeSession):
             raise KeyError(f"unknown rig state: {name!r}")
         self.state_name = name
 
+    def respond(self, path: str, envelope: object) -> None:
+        """Answer `path` with `envelope` while the current state is in force.
+
+        Copy-on-write: the catalogue is module-level and shared by every test,
+        so a per-test refusal must not be written into it.
+        """
+        state = {**self.states[self.state_name], path: envelope}
+        self.states = {**self.states, self.state_name: state}
+
     def advance(self) -> str:
         """Move to the next state of the ordered sequence, and name it."""
         if not self._sequence:
