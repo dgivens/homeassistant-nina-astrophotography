@@ -16,6 +16,7 @@ FLOORS: dict[str, int] = {
     "derive.py": 95,
     "device.py": 95,
     "polling.py": 95,
+    "sequence.py": 95,
     "session.py": 95,
     "api/v2/mapper.py": 90,
     "config_flow.py": 100,

@@ -161,11 +161,53 @@
       }
     },
     "sensor": {
+      "camera_cooler_power": {
+        "name": "Cooler power"
+      },
+      "camera_gain": {
+        "name": "Gain"
+      },
+      "camera_offset": {
+        "name": "Offset"
+      },
+      "camera_state": {
+        "name": "State"
+      },
+      "camera_temperature": {
+        "name": "Temperature"
+      },
       "cloud_cover": {
         "name": "Cloud cover"
       },
       "dew_point": {
         "name": "Dew point"
+      },
+      "dome_shutter_status": {
+        "name": "Shutter status"
+      },
+      "flat_panel_cover_state": {
+        "name": "Cover state"
+      },
+      "focuser_position": {
+        "name": "Position"
+      },
+      "focuser_step_size": {
+        "name": "Step size"
+      },
+      "focuser_temperature": {
+        "name": "Temperature"
+      },
+      "guider_rms_dec": {
+        "name": "RMS declination"
+      },
+      "guider_rms_ra": {
+        "name": "RMS RA"
+      },
+      "guider_rms_total": {
+        "name": "RMS total"
+      },
+      "guider_status": {
+        "name": "Status"
       },
       "humidity": {
         "name": "Humidity"
@@ -191,11 +233,38 @@
       "last_image_target": {
         "name": "Last image target"
       },
+      "mount_altitude": {
+        "name": "Altitude"
+      },
+      "mount_azimuth": {
+        "name": "Azimuth"
+      },
+      "mount_declination": {
+        "name": "Declination"
+      },
+      "mount_right_ascension": {
+        "name": "Right ascension"
+      },
+      "mount_side_of_pier": {
+        "name": "Side of pier"
+      },
+      "mount_sidereal_time": {
+        "name": "Sidereal time"
+      },
+      "mount_time_to_meridian_flip": {
+        "name": "Time to meridian flip"
+      },
       "pressure": {
         "name": "Pressure"
       },
       "rain_rate": {
         "name": "Rain rate"
+      },
+      "sequence_progress": {
+        "name": "Sequence progress"
+      },
+      "sequence_target": {
+        "name": "Sequence target"
       },
       "session_avg_hfr": {
         "name": "Session avg HFR"
