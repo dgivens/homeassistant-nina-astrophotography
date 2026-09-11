@@ -14,6 +14,15 @@ uv sync                                                  # the `test` group only
 uv run pytest tests/unit -p no:homeassistant -q          # fast: well under a second
 uv run --group test-ha pytest tests/ha -q                # the Home Assistant suite; never -n auto
 uv run pytest tests/unit/test_api_envelope.py -v
+
+# The coverage floors, exactly as CI computes them: each suite records its own
+# data, `combine` merges them, and the script reads the JSON.
+uv run coverage run -m pytest tests/unit -p no:homeassistant -q
+uv run --group test-ha coverage run -m pytest tests/ha -q
+uv run coverage combine && uv run coverage json
+uv run python scripts/coverage_floors.py
+
+uv run python scripts/check_fixtures.py tests/fixtures/*.json   # the redaction guard
 ```
 
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
@@ -49,12 +58,32 @@ custom_components/nina_astrophotography/
   polling.py          HA-free polling decisions: restart, reseed, tiers, event ledger
   const.py            domain, config keys, service names, enums
   config_flow.py      UI setup
-  light.py            the flat panel (migrated); the other platforms are
-                      unregistered until phase C migrates them
+  binary_sensor.py sensor.py number.py select.py light.py switch.py
+                      migrated; each is a table of entity descriptors
+  button.py image.py             not migrated, not in PLATFORMS
 blueprints/automation/nina_astrophotography/   5 automation blueprints
 www/                                           5 Lovelace cards
 tests/unit/                                    HA-free; tests/ha/ under PHACC
+tests/scenarios/                               FakeRig — see its README
 ```
+
+`PLATFORMS` in `__init__.py` is the list that is actually loaded; a module on
+disk proves nothing.
+
+## Entity rules
+
+- **A platform is a descriptor table**, not a class per entity: a frozen
+  dataclass carrying `value` (a lambda over `NinaData`), `kind` (the child
+  device, `None` for the hub) and `verified`. Copy `binary_sensor.py`.
+- **An entity is created only once its `kind`'s model is non-`None`**, and a
+  listener adds the ones whose device appears later. A descriptor whose slot is
+  absent must not be registered: it would mint a nameless device and take the
+  wrong entity id.
+- **A surviving entity keeps its 1.4.5 `unique_id`** through
+  `unique_id_suffix`; only names and translation keys change. An orphaned
+  registry row silently breaks the automation pointing at it — which for the
+  safety monitor means a roof that does not close.
+- **Every platform PR appends its renames to `docs/2.0-renames.md`.**
 
 ## Branches
 
@@ -94,6 +123,15 @@ Two suites, run separately:
   imports `homeassistant`.
 - `tests/ha/` — `pytest-homeassistant-custom-component`. Covers config flow,
   setup/unload, the device and entity registries, availability, and actions.
+
+The Home Assistant suite drives a **fake rig**: `tests/scenarios/` serves the
+captured envelope for each endpoint to the real client, so the envelope
+classification, the `"NaN"` rule and the mapper all run against recorded bytes.
+`goto` and `advance` move it between named states, `push` feeds the event
+socket, and `rig.sent` records commands — which are answered `Success: true`
+and never confirm anything. Read `tests/scenarios/README.md` before writing a
+test. Wire data constructed rather than captured is marked
+`@pytest.mark.synthetic` and says in its docstring what it fabricates.
 
 Test through **public Home Assistant interfaces**: set up via
 `hass.config_entries.async_setup`, assert via `hass.states`, `hass.services`,
