@@ -1,63 +1,122 @@
 blueprint:
   name: "N.I.N.A. – Meridian Flip Warning"
   description: >
-    Sends a notification a configurable number of minutes before a meridian flip
-    is due, so you can monitor or prepare. Also fires an event when the flip completes.
+    Warns ahead of a meridian flip, again when N.I.N.A. commits to it, and once
+    more when it completes.
+
+    The flip itself is reported by N.I.N.A.'s own MOUNT-BEFORE-FLIP and
+    MOUNT-AFTER-FLIP events, so those two notifications need no threshold at
+    all. The early warning does, and a bare number is not portable: N.I.N.A.
+    flips when "time to meridian flip" reaches (Max − Min) minutes from the
+    profile's meridian settings, not zero — 10 minutes on one rig, something
+    else on the next. The warning window below is added to that offset, which
+    the flip sensor publishes as `flip_fires_at_minutes`.
   domain: automation
-  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography
+  author: dgivens
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/meridian_flip_warning.yaml
+  homeassistant:
+    min_version: "2024.10.0"
   input:
-    warning_minutes:
-      name: Warning Before Flip (minutes)
-      description: Notify when this many minutes remain until the meridian flip.
-      default: 10
-      selector:
-        number:
-          min: 1
-          max: 60
-          unit_of_measurement: min
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        flip_sensor:
+          name: Time to meridian flip
+          description: The rig's "Time to meridian flip" sensor.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              device_class: duration
 
-    notify_device:
-      name: Notify Device
-      description: Mobile device to send the warning to.
-      selector:
-        text:
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        warning_minutes:
+          name: Warning before the flip
+          description: >
+            How long before the flip to warn. Added to the profile's own flip
+            offset, so it means what it says on every rig.
+          default: 10
+          selector:
+            number:
+              min: 1
+              max: 60
+              unit_of_measurement: min
+        notify_device:
+          name: Notify service
+          description: The notify service to send to, without the `notify.` prefix.
+          selector:
+            text:
 
-# Inputs must be bound here before templates can reference them.
+mode: queued
+max_exceeded: silent
+
+# A template TRIGGER sees `trigger_variables` only, never `variables`.
+trigger_variables:
+  flip_sensor: !input flip_sensor
+  warning_minutes: !input warning_minutes
+
 variables:
+  flip_sensor: !input flip_sensor
   notify_device: !input notify_device
 
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.mount_time_to_meridian_flip
-    below: !input warning_minutes
+triggers:
+  # The early warning. `flip_fires_at_minutes` is the reading at which N.I.N.A.
+  # actually flips; it is 0 only if the profile has not been read yet.
+  - trigger: template
+    id: approaching
+    value_template: >
+      {% set minutes = states(flip_sensor) | float(-1) %}
+      {{ minutes >= 0 and minutes <= warning_minutes | float
+         + (state_attr(flip_sensor, 'flip_fires_at_minutes') | float(0)) }}
 
-condition:
-  - condition: state
-    entity_id: binary_sensor.mount_tracking
-    state: "on"
-  - condition: state
-    entity_id: binary_sensor.sequence_running
-    state: "on"
+  # N.I.N.A. has committed to the flip. Observed on the wire, not assumed.
+  - trigger: event
+    event_type: nina_mount_before_flip
+    id: committed
 
-action:
-  - service: "notify.{{ notify_device }}"
-    data:
-      title: "🔄 Meridian Flip Approaching"
-      message: >
-        Meridian flip in approximately
-        {{ states('sensor.mount_time_to_meridian_flip') | round(1) }} minutes.
-        Current target: {{ states('sensor.sequence_target_name') }}.
+  - trigger: event
+    event_type: nina_mount_after_flip
+    id: complete
 
-  - wait_for_trigger:
-      - platform: event
-        event_type: nina_mount_after_flip
-    timeout: "01:00:00"
-    continue_on_timeout: false
+conditions:
+  # The event types are shared by every configured rig, so an event trigger has
+  # to say which one it came from. The template trigger is already per-entity.
+  - condition: template
+    value_template: >
+      {{ trigger.id == 'approaching'
+         or trigger.event.data.entry_id == config_entry_id(flip_sensor) }}
 
-  - service: "notify.{{ notify_device }}"
-    data:
-      title: "✅ Meridian Flip Complete"
-      message: "N.I.N.A. has completed the meridian flip. Guiding and imaging resuming."
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: approaching
+        sequence:
+          - action: "notify.{{ notify_device }}"
+            data:
+              title: "🔄 Meridian flip approaching"
+              message: >
+                Meridian flip in about
+                {{ states(flip_sensor) | float(0) | round(1) }} minutes.
 
-mode: single
-max_exceeded: silent
+      - conditions:
+          - condition: trigger
+            id: committed
+        sequence:
+          - action: "notify.{{ notify_device }}"
+            data:
+              title: "🔄 Meridian flip starting"
+              message: "N.I.N.A. has begun the meridian flip."
+
+      - conditions:
+          - condition: trigger
+            id: complete
+        sequence:
+          - action: "notify.{{ notify_device }}"
+            data:
+              title: "✅ Meridian flip complete"
+              message: "The flip finished. Guiding and imaging resume."

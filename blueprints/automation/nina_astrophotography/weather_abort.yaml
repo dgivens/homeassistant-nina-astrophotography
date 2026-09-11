@@ -1,375 +1,267 @@
 blueprint:
-  name: "N.I.N.A. – Weather Abort & Safe Shutdown"
+  name: "N.I.N.A. – Unsafe Conditions Abort & Safe Shutdown"
   description: >
-    The most important safety automation for any automated observatory.
-    When the safety monitor reports unsafe conditions (cloud, wind, rain, dew)
-    this blueprint immediately stops any running sequence, parks the mount,
-    warms the camera, closes the dome, and sends a notification.
+    The most important safety automation for an automated observatory. When the
+    safety monitor reports UNSAFE, or the monitor itself drops out, this stops
+    the sequence, parks the mount, warms the camera and closes the dome.
 
-    Also supports threshold-based triggers from individual weather sensors
-    (wind speed, rain rate, cloud cover) if you don't have a safety monitor
-    but do have a weather station connected in N.I.N.A.
+    Two separate triggers, deliberately. The safety sensor uses Home Assistant's
+    SAFETY device class, so it is **on when conditions are unsafe** — an abort
+    written against `off` fires when the sky CLEARS. The second trigger is the
+    monitor's own connectivity sensor: it distinguishes "the monitor has stopped
+    reporting" from "Home Assistant is restarting", which a merged
+    `off/unavailable/unknown` state set cannot.
 
-    Can be triggered by:
-      • Safety monitor going unsafe (binary_sensor.observatory_safe turns ON
-        — meaning UNSAFE, per HA SAFETY device class convention)
-      • Wind speed exceeding a threshold
-      • Rain rate exceeding a threshold
-      • Cloud cover exceeding a threshold
-      • A manual service call (for testing)
+    Weather channels are **telemetry, not an abort authority**, so none of them
+    triggers this automation. A forecast-backed ObservingConditions source reads
+    0% cloud while you sit under a cloud. Weather belongs in the resume
+    conditions below, where it can hold a restart back but never authorise one.
   domain: automation
-  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography
+  author: dgivens
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/weather_abort.yaml
+  homeassistant:
+    min_version: "2024.10.0"
   input:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        nina_rig:
+          name: N.I.N.A. instance
+          description: The rig to shut down. Any of its devices identifies it.
+          selector:
+            device:
+              integration: nina_astrophotography
+        safety_entity:
+          name: Unsafe conditions
+          description: >
+            The rig's "Unsafe" sensor. It is ON when conditions are unsafe.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: safety
+        safety_connected_entity:
+          name: Safety monitor connected
+          description: >
+            The safety monitor's connectivity sensor. Going off means the
+            monitor itself has stopped reporting, which is its own abort reason.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: connectivity
+        mount_parked_entity:
+          name: Mount at park
+          description: >
+            Used to confirm the mount is parked before the dome closes. A roof
+            closing over an unparked telescope is how the mirror gets broken.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
 
-    # ── Trigger sources ──────────────────────────────────────────────────
-    use_safety_monitor:
-      name: Use Safety Monitor
-      description: >
-        Trigger on binary_sensor.observatory_safe going ON (unsafe).
-        Requires a safety monitor device connected in N.I.N.A.
-      default: true
-      selector:
-        boolean:
+    shutdown:
+      name: Shutdown steps
+      icon: mdi:power
+      input:
+        stop_sequence:
+          name: Stop the running sequence
+          default: true
+          selector:
+            boolean:
+        park_mount:
+          name: Park the mount
+          default: true
+          selector:
+            boolean:
+        warm_camera:
+          name: Warm the camera
+          description: Ramp the sensor back to ambient rather than cutting cooling.
+          default: true
+          selector:
+            boolean:
+        warming_minutes:
+          name: Camera warming time
+          default: 20
+          selector:
+            number:
+              min: 5
+              max: 60
+              unit_of_measurement: min
+        close_dome:
+          name: Close the dome
+          description: Only after the mount has parked.
+          default: false
+          selector:
+            boolean:
 
-    use_wind_threshold:
-      name: Use Wind Speed Threshold
-      description: Trigger if wind speed exceeds the limit below.
-      default: false
-      selector:
-        boolean:
+    recovery:
+      name: Recovery
+      icon: mdi:restart
+      collapsed: true
+      input:
+        auto_resume:
+          name: Resume when conditions clear
+          description: >
+            Restart the sequence when the safety monitor reports safe again.
+            Use with care — the target may no longer be usefully placed.
+          default: false
+          selector:
+            boolean:
+        resume_delay_minutes:
+          name: Wait after conditions clear
+          description: Lets cloud fully pass and equipment settle.
+          default: 15
+          selector:
+            number:
+              min: 5
+              max: 120
+              unit_of_measurement: min
+        resume_conditions:
+          name: Extra conditions before resuming
+          description: >
+            All must hold before the sequence restarts. Weather channels belong
+            here — they may hold a restart back, never authorise one.
+          default: []
+          selector:
+            condition:
 
-    wind_threshold_ms:
-      name: Wind Speed Limit (m/s)
-      description: Abort if wind exceeds this speed. Typical safe limit is 10–15 m/s.
-      default: 12
-      selector:
-        number:
-          min: 1
-          max: 50
-          unit_of_measurement: "m/s"
-
-    use_rain_threshold:
-      name: Use Rain Rate Threshold
-      description: Abort if rain is detected at any rate above zero.
-      default: true
-      selector:
-        boolean:
-
-    rain_threshold_mmh:
-      name: Rain Rate Limit (mm/h)
-      description: Abort if rain rate exceeds this value.
-      default: 0.1
-      selector:
-        number:
-          min: 0
-          max: 50
-          step: 0.1
-          unit_of_measurement: "mm/h"
-
-    use_cloud_threshold:
-      name: Use Cloud Cover Threshold
-      description: Abort if cloud cover exceeds the limit below.
-      default: false
-      selector:
-        boolean:
-
-    cloud_threshold_pct:
-      name: Cloud Cover Limit (%)
-      description: Abort if cloud cover exceeds this percentage.
-      default: 80
-      selector:
-        number:
-          min: 10
-          max: 100
-          unit_of_measurement: "%"
-
-    sustained_seconds:
-      name: Sustained Duration Before Abort (seconds)
-      description: >
-        How long the unsafe condition must persist before aborting.
-        Set to 0 to abort immediately. Increase to avoid aborting on brief
-        transient spikes. Does not apply to safety monitor triggers.
-      default: 30
-      selector:
-        number:
-          min: 0
-          max: 300
-          unit_of_measurement: s
-
-    # ── Shutdown actions ─────────────────────────────────────────────────
-    stop_sequence:
-      name: Stop Running Sequence
-      description: Stop any active imaging sequence before shutting down.
-      default: true
-      selector:
-        boolean:
-
-    park_mount:
-      name: Park Mount
-      description: Park the telescope mount.
-      default: true
-      selector:
-        boolean:
-
-    warm_camera:
-      name: Warm Camera
-      description: Gradually warm the camera sensor (prevents thermal shock).
-      default: true
-      selector:
-        boolean:
-
-    warming_minutes:
-      name: Camera Warming Time (minutes)
-      description: Time to ramp the camera back to ambient temperature.
-      default: 20
-      selector:
-        number:
-          min: 5
-          max: 60
-          unit_of_measurement: min
-
-    close_dome:
-      name: Close Dome
-      description: Close the dome shutter after parking.
-      default: false
-      selector:
-        boolean:
-
-    # ── Recovery ─────────────────────────────────────────────────────────
-    auto_resume:
-      name: Auto-Resume When Safe
-      description: >
-        If enabled, the automation will watch for conditions to clear and
-        automatically restart the sequence when the safety monitor reports
-        safe again. Only applies when "Use Safety Monitor" is enabled.
-        Use with caution — ensure your target will still be in a useful
-        position when conditions clear.
-      default: false
-      selector:
-        boolean:
-
-    resume_delay_minutes:
-      name: Wait After Safe Before Resuming (minutes)
-      description: >
-        Extra wait time after conditions clear before restarting.
-        Allows clouds to fully pass and equipment to stabilise.
-      default: 15
-      selector:
-        number:
-          min: 5
-          max: 120
-          unit_of_measurement: min
-
-    # ── Notifications ────────────────────────────────────────────────────
-    notify_device:
-      name: Notify Device (optional)
-      description: Mobile device to notify when abort fires and on recovery.
-      default: ""
-      selector:
-        text:
-
-# Inputs must be bound here before templates can reference them.
-variables:
-  auto_resume: !input auto_resume
-  close_dome: !input close_dome
-  notify_device: !input notify_device
-  park_mount: !input park_mount
-  resume_delay_minutes: !input resume_delay_minutes
-  stop_sequence: !input stop_sequence
-  use_cloud_threshold: !input use_cloud_threshold
-  use_rain_threshold: !input use_rain_threshold
-  use_safety_monitor: !input use_safety_monitor
-  use_wind_threshold: !input use_wind_threshold
-  warm_camera: !input warm_camera
-
-trigger:
-  # Safety monitor — fires immediately, no sustained delay
-  - platform: state
-    entity_id: binary_sensor.observatory_safe
-    to: "on"
-    id: safety_monitor
-
-  # Wind speed sustained threshold
-  - platform: numeric_state
-    entity_id: sensor.wind_speed
-    above: !input wind_threshold_ms
-    for:
-      seconds: !input sustained_seconds
-    id: wind
-
-  # Rain rate sustained threshold
-  - platform: numeric_state
-    entity_id: sensor.rain_rate
-    above: !input rain_threshold_mmh
-    for:
-      seconds: !input sustained_seconds
-    id: rain
-
-  # Cloud cover sustained threshold
-  - platform: numeric_state
-    entity_id: sensor.cloud_cover
-    above: !input cloud_threshold_pct
-    for:
-      seconds: !input sustained_seconds
-    id: cloud
-
-condition:
-  # Only act if the relevant trigger type is enabled
-  - condition: or
-    conditions:
-      - condition: and
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.id == 'safety_monitor' }}"
-          - condition: template
-            value_template: "{{ use_safety_monitor }}"
-      - condition: and
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.id == 'wind' }}"
-          - condition: template
-            value_template: "{{ use_wind_threshold }}"
-      - condition: and
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.id == 'rain' }}"
-          - condition: template
-            value_template: "{{ use_rain_threshold }}"
-      - condition: and
-        conditions:
-          - condition: template
-            value_template: "{{ trigger.id == 'cloud' }}"
-          - condition: template
-            value_template: "{{ use_cloud_threshold }}"
-
-action:
-  # ── Determine abort reason ─────────────────────────────────────────
-  - variables:
-      abort_reason: >
-        {% if trigger.id == 'safety_monitor' %}
-          Safety monitor: unsafe conditions detected
-        {% elif trigger.id == 'wind' %}
-          Wind speed {{ states('sensor.wind_speed') }} m/s exceeds limit
-        {% elif trigger.id == 'rain' %}
-          Rain detected: {{ states('sensor.rain_rate') }} mm/h
-        {% elif trigger.id == 'cloud' %}
-          Cloud cover {{ states('sensor.cloud_cover') }}% exceeds limit
-        {% else %}
-          Manual abort triggered
-        {% endif %}
-
-  # ── Notify immediately ─────────────────────────────────────────────
-  - if:
-      - condition: template
-        value_template: "{{ notify_device != '' }}"
-    then:
-      - service: "notify.{{ notify_device }}"
-        data:
-          title: "⛈ Observatory Abort"
-          message: >
-            {{ abort_reason }}.
-            Beginning safe shutdown procedure.
-            Frames this session: {{ states('sensor.frame_session_count') }}.
-
-  # ── Stop sequence ──────────────────────────────────────────────────
-  - if:
-      - condition: template
-        value_template: "{{ stop_sequence }}"
-      - condition: state
-        entity_id: binary_sensor.sequence_running
-        state: "on"
-    then:
-      - service: nina_astrophotography.sequence_stop
-      - delay: "00:00:10"
-
-  # ── Park mount ─────────────────────────────────────────────────────
-  - if:
-      - condition: template
-        value_template: "{{ park_mount }}"
-      - condition: state
-        entity_id: binary_sensor.mount_connected
-        state: "on"
-      - condition: state
-        entity_id: binary_sensor.mount_parked
-        state: "off"
-    then:
-      - service: nina_astrophotography.mount_park
-      - wait_template: "{{ is_state('binary_sensor.mount_parked', 'on') }}"
-        timeout: "00:03:00"
-        continue_on_timeout: true
-
-  # ── Warm camera ────────────────────────────────────────────────────
-  - if:
-      - condition: template
-        value_template: "{{ warm_camera }}"
-      - condition: state
-        entity_id: binary_sensor.camera_connected
-        state: "on"
-      - condition: state
-        entity_id: binary_sensor.camera_cooling_enabled
-        state: "on"
-    then:
-      - service: nina_astrophotography.camera_warm
-        data:
-          minutes: !input warming_minutes
-
-  # ── Close dome ─────────────────────────────────────────────────────
-  - if:
-      - condition: template
-        value_template: "{{ close_dome }}"
-      - condition: state
-        entity_id: binary_sensor.dome_connected
-        state: "on"
-      - condition: state
-        entity_id: binary_sensor.dome_shutter_open
-        state: "on"
-    then:
-      - service: nina_astrophotography.dome_close
-      - wait_template: "{{ is_state('binary_sensor.dome_shutter_open', 'off') }}"
-        timeout: "00:03:00"
-        continue_on_timeout: true
-
-  # ── Shutdown complete notification ─────────────────────────────────
-  - if:
-      - condition: template
-        value_template: "{{ notify_device != '' }}"
-    then:
-      - service: "notify.{{ notify_device }}"
-        data:
-          title: "✅ Shutdown Complete"
-          message: >
-            Safe shutdown complete.
-            Mount parked: {{ is_state('binary_sensor.mount_parked', 'on') }}.
-            Dome closed: {{ is_state('binary_sensor.dome_shutter_open', 'off') }}.
-
-  # ── Auto-resume watch ──────────────────────────────────────────────
-  - if:
-      - condition: template
-        value_template: "{{ auto_resume and use_safety_monitor }}"
-    then:
-      - wait_template: "{{ is_state('binary_sensor.observatory_safe', 'off') }}"
-        timeout: "06:00:00"
-        continue_on_timeout: false
-
-      - if:
-          - condition: template
-            value_template: "{{ wait.completed }}"
-        then:
-          - delay:
-              minutes: !input resume_delay_minutes
-
-          - if:
-              - condition: template
-                value_template: "{{ notify_device != '' }}"
-            then:
-              - service: "notify.{{ notify_device }}"
-                data:
-                  title: "🌟 Conditions Clear – Resuming"
-                  message: >
-                    Conditions are now safe. Restarting sequence after
-                    {{ resume_delay_minutes }} minute wait.
-
-          - service: nina_astrophotography.sequence_start
+    notifications:
+      name: Notifications
+      icon: mdi:bell
+      collapsed: true
+      input:
+        notify_device:
+          name: Notify service
+          description: >
+            The notify service to send to, without the `notify.` prefix.
+            Leave blank for no notification.
+          default: ""
+          selector:
+            text:
 
 mode: single
 max_exceeded: silent
+
+# Inputs must be bound here before templates can reference them.
+variables:
+  mount_parked: !input mount_parked_entity
+  notify_device: !input notify_device
+  resume_delay_minutes: !input resume_delay_minutes
+
+triggers:
+  # Conditions became unsafe. SAFETY device class: on = problem.
+  - trigger: state
+    entity_id: !input safety_entity
+    to: "on"
+    id: unsafe
+  # The monitor itself went away — what its connectivity sensor is retained
+  # for. Held for 30 s so a single missed poll is not an abort.
+  - trigger: state
+    entity_id: !input safety_connected_entity
+    to: "off"
+    for: "00:00:30"
+    id: monitor_lost
+
+actions:
+  - variables:
+      abort_reason: >
+        {% if trigger.id == 'monitor_lost' %}
+          The safety monitor has stopped reporting
+        {% else %}
+          The safety monitor reports unsafe conditions
+        {% endif %}
+
+  - alias: "Notify that the abort has begun"
+    if:
+      - condition: template
+        value_template: "{{ notify_device != '' }}"
+    then:
+      - action: "notify.{{ notify_device }}"
+        data:
+          title: "⛈ Observatory abort"
+          message: "{{ abort_reason }}. Beginning safe shutdown."
+
+  # Every step continues on error: a mount that refuses to park must not stop
+  # the dome from closing.
+  - alias: "Stop the sequence"
+    action: nina_astrophotography.sequence_stop
+    target:
+      device_id: !input nina_rig
+    continue_on_error: true
+    enabled: !input stop_sequence
+
+  - alias: "Park the mount"
+    action: nina_astrophotography.mount_park
+    target:
+      device_id: !input nina_rig
+    continue_on_error: true
+    enabled: !input park_mount
+
+  # `wait_template`, not `wait_for_trigger`: an already-parked mount publishes
+  # no state change, and waiting three minutes for one would delay the roof.
+  - alias: "Wait for the mount to reach its park position"
+    wait_template: "{{ is_state(mount_parked, 'on') }}"
+    timeout: "00:03:00"
+    continue_on_timeout: true
+    enabled: !input park_mount
+
+  - alias: "Warm the camera"
+    action: nina_astrophotography.camera_warm
+    target:
+      device_id: !input nina_rig
+    data:
+      minutes: !input warming_minutes
+    continue_on_error: true
+    enabled: !input warm_camera
+
+  - alias: "Close the dome"
+    action: nina_astrophotography.dome_close
+    target:
+      device_id: !input nina_rig
+    continue_on_error: true
+    enabled: !input close_dome
+
+  - alias: "Notify that the shutdown is complete"
+    if:
+      - condition: template
+        value_template: "{{ notify_device != '' }}"
+    then:
+      - action: "notify.{{ notify_device }}"
+        data:
+          title: "✅ Shutdown complete"
+          message: >
+            Safe shutdown finished.
+            Mount parked: {{ is_state(mount_parked, 'on') }}.
+
+  - alias: "Watch for conditions to clear, then resume"
+    enabled: !input auto_resume
+    sequence:
+      - wait_for_trigger:
+          - trigger: state
+            entity_id: !input safety_entity
+            to: "off"
+        timeout: "06:00:00"
+        continue_on_timeout: false
+
+      - delay:
+          minutes: !input resume_delay_minutes
+
+      - alias: "Resume only if the extra conditions also hold"
+        if: !input resume_conditions
+        then:
+          - action: nina_astrophotography.sequence_start
+            target:
+              device_id: !input nina_rig
+          - alias: "Notify that imaging has resumed"
+            if:
+              - condition: template
+                value_template: "{{ notify_device != '' }}"
+            then:
+              - action: "notify.{{ notify_device }}"
+                data:
+                  title: "🌟 Conditions clear – resuming"
+                  message: >
+                    Conditions were safe for {{ resume_delay_minutes }} minutes.
+                    The sequence has been restarted.
