@@ -146,6 +146,17 @@ def _dimmable(channel: dict) -> dict:
     return {**channel, "Id": 2, "Name": "Dew Heater A", "Maximum": 100, "Value": 50}
 
 
+def _gauge() -> dict:
+    """A captured binary channel as a read-only gauge.
+
+    `ReadonlySwitches` is empty in every capture — this rig's switch device is
+    a Home Assistant bridge exposing two mains outlets — so the one shape that
+    belongs on `sensor` has to be derived. A read-only channel carries no
+    range: that absence is the whole of the rule (§5.3.5).
+    """
+    return {"Id": 3, "Name": "Input Voltage", "Description": "", "Value": 12.1}
+
+
 # The image routes answer BYTES rather than an envelope, so there is nothing to
 # capture into a state: what the client keys on is the content type, and the
 # pixels are never read. A JPEG magic number is the whole of what matters.
@@ -366,6 +377,10 @@ STATES: dict[str, State] = {
         _IMAGING, "Switch",
         WritableSwitches=[{**_DAWN_CHANNELS[0], "Value": 0, "TargetValue": 1},
                           _DAWN_CHANNELS[1]],
+    ),
+    # A read-only gauge beside the two outlets, which belongs on `sensor`.
+    "switch_hub_with_a_readonly_channel": _with_readings(
+        _IMAGING, "Switch", ReadonlySwitches=[_gauge()],
     ),
     # The two channels numbered 5 and 6. `Id` is the API's own channel index
     # and every capture happens to number from 0 in list order, so nothing
