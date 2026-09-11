@@ -14,6 +14,12 @@
 
 const VERSION = "2.0.0";
 
+// A reading Home Assistant has no value for is not a number to print.
+function shown(value) {
+  return value === null || value === undefined || value === "—"
+    || value === "unknown" || value === "unavailable" ? "—" : value;
+}
+
 const FILTER_COLOURS = [
   "#7b8de8", "#5bcfcf", "#f4a261", "#57cc99",
   "#e76f51", "#a8dadc", "#c77dff", "#ffd166",
@@ -102,8 +108,15 @@ const DEFAULT_PREFIX = "n_i_n_a";
 // How many frames the sparklines keep.
 const MAX_SAMPLES = 60;
 
-// Half of one HFR step on a typical rig: below this the trend is noise.
-const TREND_EPSILON = 0.05;
+// Below 3% of the rolling mean the trend is noise. Relative, not absolute:
+// 0.05 px is coarse on a 1.3 px rig and meaningless on a 3.5 px one.
+const TREND_EPSILON = 0.03;
+
+function hfrTrend(recent, previous, delta) {
+  if (recent === null || previous === null) return "unknown";
+  if (Math.abs(delta) < TREND_EPSILON * recent) return "stable";
+  return delta < 0 ? "improving" : "degrading";
+}
 
 class NinaFrameStatsCard extends HTMLElement {
   constructor() {
@@ -143,14 +156,17 @@ class NinaFrameStatsCard extends HTMLElement {
   }
 
   // 2.0 publishes the newest frame's statistics rather than a per-frame
-  // history, so the card keeps its own series. The session frame count is the
-  // ticker rather than the HFR itself: two frames running can report the same
-  // HFR, and a calibration frame reports none at all. The series lives in the
-  // page, so a reload starts it over.
+  // history, so the card keeps its own series. The ticker is the session's
+  // LIGHT count, not its frame count: the frame count includes calibration,
+  // while the last-image sensors hold the last LIGHT — so ticking on frames
+  // would push one duplicate of the same light per flat, and a dawn run of 67
+  // flats would flush every real sample out of the window. Ticking on a count
+  // rather than on the HFR itself is what handles two frames running that
+  // report the same HFR. The series lives in the page, so a reload restarts it.
   _updateData() {
     const prefix = this._prefix;
-    const count = parseInt(
-      this._state(`sensor.${prefix}_session_image_count`, ""), 10);
+    const count = parseInt(this._attr(
+      `sensor.${prefix}_session_image_count`, "light_count", ""), 10);
     if (!Number.isFinite(count) || count === this._count) return;
     this._count = count;
 
@@ -159,12 +175,12 @@ class NinaFrameStatsCard extends HTMLElement {
     this._adu.push(this._number(`sensor.${prefix}_last_image_mean_adu`));
     this._filters.push(this._state(`sensor.${prefix}_last_image_filter`, null));
     for (const series of [this._hfr, this._stars, this._adu, this._filters]) {
-      while (series.length > MAX_SAMPLES) series.shift();
+      if (series.length > MAX_SAMPLES) series.shift();
     }
   }
 
   _mean(values) {
-    const known = values.filter((v) => v !== null && v !== undefined);
+    const known = values.filter((v) => v !== null);
     return known.length
       ? known.reduce((total, v) => total + v, 0) / known.length
       : null;
@@ -187,36 +203,33 @@ class NinaFrameStatsCard extends HTMLElement {
     // filter: {count, integration_hours, hfr_mean}.
     const byFilter = this._attr(`sensor.${prefix}_session_avg_hfr`, "by_filter", {}) || {};
 
-    // The last five frames against the five before them, as the deleted trend
-    // sensor computed it.
+    // The last five frames against the five before them. A filter change
+    // inside those ten reads as a trend: filters differ by tenths of a pixel.
     const rolling  = this._mean(this._hfr.slice(-10));
     const recent   = this._mean(this._hfr.slice(-5));
     const previous = this._mean(this._hfr.slice(-10, -5));
     const trendDelta = recent !== null && previous !== null ? recent - previous : 0;
-    const trend = recent === null || previous === null ? "unknown"
-      : Math.abs(trendDelta) < TREND_EPSILON ? "stable"
-      : trendDelta < 0 ? "improving" : "degrading";
+    const trend = hfrTrend(recent, previous, trendDelta);
     const rollingHfr = rolling === null ? "—" : rolling.toFixed(2);
 
     const trendIcon = trend === "improving" ? "↘" : trend === "degrading" ? "↗" : "→";
     const trendLabel = trend === "improving"
-      ? `${trendIcon} Improving (${trendDelta > 0 ? "+" : ""}${trendDelta.toFixed(3)} px)`
+      ? `${trendIcon} Improving (${trendDelta.toFixed(3)} px)`
       : trend === "degrading"
       ? `${trendIcon} Degrading (+${Math.abs(trendDelta).toFixed(3)} px)`
       : trend === "stable"
       ? `${trendIcon} Stable`
       : "—";
 
-    const hasData = this._hfr.filter(v => v !== null).length > 0;
+    const hasData = this._hfr.some(v => v !== null);
 
     // Build filter chip HTML
-    const filterEntries = Object.entries(byFilter)
-      .map(([name, row]) => [name, row.count]);
-    const filterChipsHtml = filterEntries.map(([name, count], i) => {
+    const filterEntries = Object.entries(byFilter);
+    const filterChipsHtml = filterEntries.map(([name, row], i) => {
       const colour = FILTER_COLOURS[i % FILTER_COLOURS.length];
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
-        <span>${name}: ${count}</span>
+        <span>${name}: ${row?.count ?? 0}</span>
       </div>`;
     }).join("");
 
@@ -227,7 +240,7 @@ class NinaFrameStatsCard extends HTMLElement {
           <span style="font-size:1.3rem">📊</span>
           <div>
             <div class="title">Frame Statistics</div>
-            <div class="subtitle">${frameCount} frames · ${integration} min · ${lastFilter}</div>
+            <div class="subtitle">${frameCount} frames · ${integration} h · ${lastFilter}</div>
           </div>
         </div>
         <div class="body">
@@ -247,7 +260,7 @@ class NinaFrameStatsCard extends HTMLElement {
               </div>
               <div class="stat-box">
                 <div class="label">Stars</div>
-                <div class="value">${lastStars}</div>
+                <div class="value">${shown(lastStars)}</div>
                 <div class="sub">Last frame</div>
               </div>
               <div class="stat-box">
@@ -368,18 +381,17 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Main line, coloured by filter
+    // Main line, coloured by filter. The name list is built once: it was
+    // rebuilt twice per segment, and a null filter — which a calibration frame
+    // pushes — used to index straight into a real filter's colour.
+    const names = [...new Set(filters.filter((name) => name !== null))];
     for (let i = 1; i < data.length; i++) {
       const y0 = yOf(data[i - 1]);
       const y1 = yOf(data[i]);
       if (y0 === null || y1 === null) continue;
-      const filterIdx = filters.length > 0
-        ? (FILTER_COLOURS.indexOf(FILTER_COLOURS[
-            [...new Set(filters)].indexOf(filters[i]) % FILTER_COLOURS.length
-          ]))
-        : -1;
-      const col = filterIdx >= 0
-        ? FILTER_COLOURS[[...new Set(filters)].indexOf(filters[i]) % FILTER_COLOURS.length]
+      const named = names.indexOf(filters[i]);
+      const col = named >= 0
+        ? FILTER_COLOURS[named % FILTER_COLOURS.length]
         : defaultColor;
       ctx.beginPath();
       ctx.moveTo(xOf(i - 1), y0);

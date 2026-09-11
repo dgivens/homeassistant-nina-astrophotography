@@ -40,17 +40,26 @@ function isOn(hass, entity_id) {
 }
 
 // A disconnected device makes its entities unavailable rather than publishing
-// an off state, so availability is what "connected" now reads from. The entity
-// named is whichever one that device always has.
+// an off state, so availability is what "connected" now reads from. Probe an
+// entity that ships ENABLED — a disabled one has no state object at all, and
+// would read as permanently disconnected.
+//
+// `unknown` counts as disconnected too: a state Home Assistant has never had a
+// value for is not evidence of a connection.
 function available(hass, entity_id) {
   const e = hass.states[entity_id];
-  return !!e && e.state !== "unavailable";
+  return !!e && e.state !== "unavailable" && e.state !== "unknown";
 }
 
 // Tracking is one of the mount's own rates, and `Stopped` is one of them.
 function isTracking(hass, entity_id) {
-  const rate = state(hass, entity_id, "Stopped");
-  return rate !== "Stopped" && rate !== "unavailable";
+  return available(hass, entity_id) && state(hass, entity_id) !== "Stopped";
+}
+
+// A reading Home Assistant has no value for is not a number to print.
+function shown(value) {
+  return value === null || value === undefined || value === "—"
+    || value === "unknown" || value === "unavailable" ? "—" : value;
 }
 
 function numState(hass, entity_id, decimals = 1, fallback = "—") {
@@ -310,16 +319,19 @@ class NinaObservatoryCard extends HTMLElement {
     const seqRunning  = isOn(h, `binary_sensor.${prefix}_sequence_running`);
     const camConnected = available(h, `sensor.${prefix}_camera_state`);
     const mntConnected = available(h, `sensor.${prefix}_mount_right_ascension`);
-    const focConnected = available(h, `sensor.${prefix}_focuser_position`);
+    const focConnected = available(h, `number.${prefix}_focuser_position`);
     const fwConnected  = available(h, `select.${prefix}_filter_wheel_filter`);
     const gdrConnected = available(h, `sensor.${prefix}_guider_status`);
-    const domeConnected = available(h, `sensor.${prefix}_dome_shutter_status`);
+    // The shutter-status sensor ships disabled, so the dome is probed on an
+    // entity that does not: without this the dome section never renders.
+    const domeConnected = available(h, `binary_sensor.${prefix}_dome_at_park`);
 
     const guiding      = isOn(h, `switch.${prefix}_guider`);
     const cooling      = isOn(h, `switch.${prefix}_camera_cooler`);
     const parked       = isOn(h, `binary_sensor.${prefix}_mount_at_park`);
     const tracking     = isTracking(h, `select.${prefix}_mount_tracking_rate`);
     // The shutter reports its own state; `Open` is the only one that is open.
+    // The sensor ships disabled, so this reads false unless it is enabled.
     const domeOpen     = state(h, `sensor.${prefix}_dome_shutter_status`) === "Open";
 
     const target       = state(h, `sensor.${prefix}_sequence_target`, "No target");
@@ -329,25 +341,33 @@ class NinaObservatoryCard extends HTMLElement {
     const camTemp      = numState(h, `sensor.${prefix}_camera_temperature`);
     const camTargTemp  = numState(h, `number.${prefix}_camera_target_temperature`);
     const coolerPwr    = numState(h, `sensor.${prefix}_camera_cooler_power`, 0);
-    const camGain      = state(h, `sensor.${prefix}_camera_gain`);
-    const camFilter    = state(h, `select.${prefix}_filter_wheel_filter`);
+    const camGain      = shown(state(h, `sensor.${prefix}_camera_gain`));
+    const camFilter    = shown(state(h, `select.${prefix}_filter_wheel_filter`));
 
     const mntRa        = numState(h, `sensor.${prefix}_mount_right_ascension`, 4);
     const mntDec       = numState(h, `sensor.${prefix}_mount_declination`, 3);
     const mntAlt       = numState(h, `sensor.${prefix}_mount_altitude`, 1);
     const mntAz        = numState(h, `sensor.${prefix}_mount_azimuth`, 1);
-    const ttf          = parseFloat(state(h, `sensor.${prefix}_mount_time_to_meridian_flip`, "999")) || 999;
+    // The flip fires when the reading reaches (Max - Min), not zero, and both
+    // bounds are per-profile — so the warning window is added to the offset
+    // the sensor publishes rather than to a bare number.
+    const ttf          = parseFloat(state(h, `sensor.${prefix}_mount_time_to_meridian_flip`, ""));
+    const flipFiresAt  = parseFloat(
+      attr(h, `sensor.${prefix}_mount_time_to_meridian_flip`, "flip_fires_at_minutes", "")) || 0;
 
-    const focPos       = state(h, `sensor.${prefix}_focuser_position`);
+    const focPos       = shown(state(h, `number.${prefix}_focuser_position`));
     const focTemp      = numState(h, `sensor.${prefix}_focuser_temperature`);
 
-    const rmsTotal     = parseFloat(numState(h, `sensor.${prefix}_guider_rms_total`, 2, "0"));
-    const rmsRa        = parseFloat(numState(h, `sensor.${prefix}_guider_rms_ra`, 2, "0"));
-    const rmsDec       = parseFloat(numState(h, `sensor.${prefix}_guider_rms_declination`, 2, "0"));
+    // NaN rather than 0 when there is no reading: a missing RMS rendered as
+    // 0.00" is indistinguishable from perfect guiding.
+    const rmsTotal     = parseFloat(state(h, `sensor.${prefix}_guider_rms_total`, ""));
+    const rmsRa        = parseFloat(state(h, `sensor.${prefix}_guider_rms_ra`, ""));
+    const rmsDec       = parseFloat(state(h, `sensor.${prefix}_guider_rms_declination`, ""));
+    const guided       = Number.isFinite(rmsTotal);
 
     const hfr          = numState(h, `sensor.${prefix}_last_image_hfr`, 2);
-    const stars        = state(h, `sensor.${prefix}_last_image_star_count`);
-    const meanAdu      = state(h, `sensor.${prefix}_last_image_mean_adu`);
+    const stars        = shown(state(h, `sensor.${prefix}_last_image_star_count`));
+    const meanAdu      = shown(state(h, `sensor.${prefix}_last_image_mean_adu`));
 
     // RMS bar widths (max = 4 arcsec = 100%)
     const rmsMax = 4;
@@ -355,7 +375,8 @@ class NinaObservatoryCard extends HTMLElement {
     const rmsClass = (v) => v > 3 ? "danger" : v > 1.5 ? "warn" : "";
 
     // Meridian flip warning
-    const showFlipWarning = tracking && ttf < 15 && ttf > 0;
+    const showFlipWarning =
+      tracking && Number.isFinite(ttf) && ttf > 0 && ttf < 15 + flipFiresAt;
 
     const html = `
       <style>${STYLE}</style>
@@ -439,23 +460,25 @@ class NinaObservatoryCard extends HTMLElement {
           <!-- Guiding section -->
           ${gdrConnected ? `
             <div class="section">
-              <div class="section-title">Guiding · ${guiding ? "Active" : "Stopped"}</div>
+              <div class="section-title">Guiding · ${guiding ? "Active" : "Stopped"} · bars full scale 4"</div>
               <div class="guider-meter">
                 <div style="font-size:0.72rem;color:var(--muted);">
-                  Total RMS: <strong style="color:var(--text)">${rmsTotal.toFixed(2)}"</strong>
+                  Total RMS: <strong style="color:var(--text)">${guided ? `${rmsTotal.toFixed(2)}"` : "—"}</strong>
                 </div>
-                <div class="rms-bars">
-                  <div class="rms-bar-wrap">
-                    <span class="rms-label">RA</span>
-                    <div class="rms-track"><div class="rms-fill ra ${rmsClass(rmsRa)}" style="width:${pct(rmsRa)}%"></div></div>
-                    <span class="rms-value">${rmsRa.toFixed(2)}"</span>
+                ${guided ? `
+                  <div class="rms-bars">
+                    <div class="rms-bar-wrap">
+                      <span class="rms-label">RA</span>
+                      <div class="rms-track"><div class="rms-fill ra ${rmsClass(rmsRa)}" style="width:${pct(rmsRa)}%"></div></div>
+                      <span class="rms-value">${rmsRa.toFixed(2)}"</span>
+                    </div>
+                    <div class="rms-bar-wrap">
+                      <span class="rms-label">Dec</span>
+                      <div class="rms-track"><div class="rms-fill dec ${rmsClass(rmsDec)}" style="width:${pct(rmsDec)}%"></div></div>
+                      <span class="rms-value">${rmsDec.toFixed(2)}"</span>
+                    </div>
                   </div>
-                  <div class="rms-bar-wrap">
-                    <span class="rms-label">Dec</span>
-                    <div class="rms-track"><div class="rms-fill dec ${rmsClass(rmsDec)}" style="width:${pct(rmsDec)}%"></div></div>
-                    <span class="rms-value">${rmsDec.toFixed(2)}"</span>
-                  </div>
-                </div>
+                ` : ""}
               </div>
             </div>
           ` : ""}

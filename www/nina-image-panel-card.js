@@ -1,5 +1,5 @@
 /**
- * N.I.N.A. Image Panel Card  v1.0.0
+ * N.I.N.A. Image Panel Card
  *
  * Displays the last captured image from N.I.N.A. using the Advanced API's
  * streaming image endpoint, with a live stats overlay, session image strip,
@@ -19,6 +19,7 @@
  * Card config:
  *   type: custom:nina-image-panel-card
  *   host: 192.168.1.100     # N.I.N.A. PC IP (required)
+ *   prefix: n_i_n_a         # the slugified instance name your entities carry
  *   port: 1888              # API port (default 1888)
  *   refresh_on_save: true   # auto-refresh when IMAGE-SAVE fires via HA event (default true)
  *   show_strip: true        # show recent-frames strip at bottom (default true)
@@ -29,6 +30,20 @@
  */
 
 const VERSION = "2.0.0";
+
+// Home Assistant slugifies an instance name the same way for the entity ids
+// and the event payload: `N.I.N.A.` becomes `n_i_n_a`.
+function slug(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+// Home Assistant publishes "unknown" for no reading and "unavailable" for a
+// device that is not connected. Neither is a number to print.
+function shown(value) {
+  return value === null || value === undefined || value === ""
+    || value === "unknown" || value === "unavailable" ? "—" : value;
+}
 
 // .NET writes NaN as the string "NaN", and an absent field is undefined.
 function finite(value) {
@@ -278,7 +293,8 @@ class NinaImagePanelCard extends HTMLElement {
       this._buildDOM();
       this._rendered = true;
       this._loadImage(0);
-      if (this._config.show_strip) this._loadStrip();
+      // Also when only the histogram is on: it reads what this fetches.
+      if (this._config.show_strip || this._config.show_histogram) this._loadStrip();
     }
 
     this._updateOverlay();
@@ -287,20 +303,29 @@ class NinaImagePanelCard extends HTMLElement {
 
     // Subscribe to nina_image_save HA event for auto-refresh
     if (first && this._config.refresh_on_save && hass.connection) {
+      // Every configured rig fires this event, so a two-rig dashboard would
+      // otherwise refresh both panels off whichever rig saved a frame.
       this._unsubHassEvent = hass.connection.subscribeEvents(
-        () => {
-          // Jump back to latest on new frame
+        (event) => {
+          const instance = event?.data?.instance;
+          if (instance && slug(instance) !== this._config.prefix) return;
           this._currentIndex = 0;
           this._loadImage(0, true);
-          if (this._config.show_strip) this._loadStrip();
+          this._loadStrip();
         },
         "nina_image_save"
-      ).then(unsub => { this._unsubHassEvent = unsub; });
+      );
     }
   }
 
   disconnectedCallback() {
-    if (typeof this._unsubHassEvent === "function") this._unsubHassEvent();
+    // `subscribeEvents` resolves to the unsubscribe function, so a card
+    // removed before it resolves must await the promise to unsubscribe at all.
+    Promise.resolve(this._unsubHassEvent)
+      .then((unsub) => { if (typeof unsub === "function") unsub(); })
+      .catch(() => {});
+    this._unsubHassEvent = null;
+    if (this._imgUrl) URL.revokeObjectURL(this._imgUrl);
   }
 
   _s(id, fallback = null) {
@@ -411,13 +436,16 @@ class NinaImagePanelCard extends HTMLElement {
 
   async _loadImage(index, silent = false) {
     if (this._loading && !silent) return;
-    this._loading = true;
-    this._currentIndex = index;
 
     const img    = this.shadowRoot?.getElementById("main-img");
     const spinner = this.shadowRoot?.getElementById("spinner");
     const noImg  = this.shadowRoot?.getElementById("no-image");
+    // Before the flag, not after: returning past it would wedge `_loading`
+    // true and block every later load.
     if (!img) return;
+
+    this._loading = true;
+    this._currentIndex = index;
 
     if (!silent) {
       img.classList.add("loading");
@@ -476,14 +504,18 @@ class NinaImagePanelCard extends HTMLElement {
       const resp = await fetch(`${this._apiBase}/image-history?all=true`);
       if (resp.ok) {
         const data = await resp.json();
-        meta = (data?.Response ?? []).slice(-count);
+        // An empty history answers `Response: ""` with `Index out of range`,
+        // over HTTP 200 — so `resp.ok` proves nothing about the shape.
+        const rows = data?.Response;
+        meta = Array.isArray(rows) ? rows.slice(-count) : [];
       }
     } catch (_) {}
 
     // Newest first, which is how the strip and `_currentIndex` count. The
-    // entities publish the NEWEST frame only, so this is the one source of
-    // statistics for a frame the user has browsed back to.
-    this._historyMeta = meta.slice().reverse();
+    // entities publish the NEWEST frame only, so this is where a frame the
+    // user has browsed back to gets its ADU range.
+    this._historyMeta = meta.reverse();
+    if (this._config.show_histogram) this._drawHistogram();
 
     strip.innerHTML = "";
     for (let i = 0; i < count; i++) {
@@ -532,11 +564,15 @@ class NinaImagePanelCard extends HTMLElement {
     const frame = this._frame();
     const mean = finite(frame.Mean) ?? this._f(
       `sensor.${this._config.prefix}_last_image_mean_adu`);
-    const min = finite(frame.Min) ?? 0;
-    const max = finite(frame.Max) ?? 0;
+    const min = finite(frame.Min);
+    const max = finite(frame.Max);
     const median = finite(frame.Median) ?? mean;
 
     const rangeEl = this.shadowRoot?.getElementById("hist-range");
+    if (min === null || max === null) {
+      if (rangeEl) rangeEl.textContent = "—";
+      return;
+    }
     if (rangeEl && max > 0) {
       rangeEl.textContent = `${Math.round(min)} – ${Math.round(max)} (mean ${Math.round(mean)})`;
     }
@@ -653,7 +689,7 @@ class NinaImagePanelCard extends HTMLElement {
     const exp   = this._f(`sensor.${this._config.prefix}_last_image_exposure`);
 
     set("st-hfr",   hfr  > 0 ? `${hfr.toFixed(2)} px`   : "—");
-    set("st-stars", stars !== "null" ? stars : "—");
+    set("st-stars", shown(stars));
     set("st-adu",   adu  > 0 ? Math.round(adu).toString() : "—");
     set("st-exp",   exp  > 0 ? `${exp.toFixed(0)} s`      : "—");
 
@@ -673,7 +709,9 @@ class NinaImagePanelCard extends HTMLElement {
 
     const count   = this._s(`sensor.${this._config.prefix}_session_image_count`, "0");
     const intTime = this._f(`sensor.${this._config.prefix}_session_integration_time`);
-    const exposing = this._hass?.states?.[`binary_sensor.${this._config.prefix}_camera_exposing`]?.state === "on";
+    const exposing = this._hass
+      ?.states?.[`binary_sensor.${this._config.prefix}_camera_exposing`]
+      ?.state === "on";
     // A disconnected camera makes its entities unavailable rather than
     // publishing an off state.
     const cameraState = this._hass
@@ -703,7 +741,7 @@ class NinaImagePanelCard extends HTMLElement {
       const parts = [];
       if (target && target !== "null") parts.push(target);
       if (filter && filter !== "null") parts.push(filter);
-      if (intTime > 0) parts.push(`${intTime.toFixed(1)} min`);
+      if (intTime > 0) parts.push(`${intTime.toFixed(1)} h`);
       sub.textContent = parts.join(" · ") || "Waiting for first frame…";
     }
   }

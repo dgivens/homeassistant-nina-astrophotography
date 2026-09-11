@@ -1,12 +1,12 @@
 blueprint:
   name: "N.I.N.A. – Guiding Quality Alert"
   description: >
-    Notifies, and optionally runs an autofocus, when total guiding RMS stays
-    above a threshold while the guider is running. Catches cloud, wind and
-    seeing degradation mid-session.
+    Notifies when total guiding RMS stays above a threshold while the guider is
+    actually guiding. Catches cloud, wind and seeing degradation mid-session.
 
-    The guider running is a condition rather than a trigger source: RMS is
-    reported through calibration and settling too, where a spike means nothing.
+    Guiding is a condition rather than a trigger source, and it keys on the
+    guider's own status: RMS is reported through calibration, looping and a
+    lost lock too, where a spike means nothing.
   domain: automation
   author: dgivens
   source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/guiding_alert.yaml
@@ -29,13 +29,15 @@ blueprint:
             entity:
               integration: nina_astrophotography
               domain: sensor
-        guider_entity:
-          name: Guider
-          description: The rig's guider switch, on while the guider is running.
+        guider_status:
+          name: Guider status
+          description: >
+            The rig's guider status sensor. `Guiding` is the only state where
+            an RMS figure means what it says.
           selector:
             entity:
               integration: nina_astrophotography
-              domain: switch
+              domain: sensor
 
     settings:
       name: Settings
@@ -62,7 +64,12 @@ blueprint:
               unit_of_measurement: min
         run_autofocus:
           name: Run an autofocus on alert
-          description: Helps when the cause is focus drift; useless when it is cloud.
+          description: >
+            Off by default, and think before enabling it: this is the imaging
+            tab's autofocus, run OUTSIDE the sequencer. The camera is shared,
+            so the sequence can take a sub at a defocused position while it
+            runs. A sequence's own autofocus triggers are the better tool, and
+            high RMS is more often cloud or wind than focus drift.
           default: false
           selector:
             boolean:
@@ -74,20 +81,22 @@ blueprint:
               min: 5
               max: 120
               unit_of_measurement: min
-        notify_device:
-          name: Notify service
-          description: The notify service to send to, without the `notify.` prefix.
+        notify_target:
+          name: Notify
           selector:
-            text:
+            entity:
+              domain: notify
+              multiple: true
 
-# `single` plus the closing delay is what implements the cooldown: the
-# automation stays running, so re-triggers are dropped until it elapses.
+# `single` plus the closing delay suppresses a dip-and-return inside the
+# cooldown window. A `numeric_state` trigger fires only on crossing the
+# threshold, so it does not re-fire while RMS simply stays high.
 mode: single
 max_exceeded: silent
 
 # Inputs must be bound here before templates can reference them.
 variables:
-  notify_device: !input notify_device
+  nina_rig: !input nina_rig
   rms_sensor: !input rms_sensor
   rms_threshold: !input rms_threshold
   sustained_minutes: !input sustained_minutes
@@ -100,17 +109,27 @@ triggers:
       minutes: !input sustained_minutes
 
 conditions:
-  - condition: state
-    entity_id: !input guider_entity
-    state: "on"
+  - alias: "The guider is actually guiding"
+    condition: state
+    entity_id: !input guider_status
+    state: "Guiding"
+  - alias: "The entities and the device name the same rig"
+    condition: template
+    value_template: >
+      {% set entry = config_entry_id(rms_sensor) %}
+      {% set rig = device_attr(nina_rig, 'config_entries') %}
+      {{ entry is none or rig is not iterable or entry in rig | list }}
 
 actions:
-  - action: "notify.{{ notify_device }}"
+  - action: notify.send_message
+    target:
+      entity_id: !input notify_target
     data:
       title: "⚠️ Guiding alert"
       message: >
         Guide RMS has been {{ states(rms_sensor) }}" for {{ sustained_minutes }}
         minutes (threshold {{ rms_threshold }}").
+    continue_on_error: true
 
   - alias: "Run an autofocus"
     action: nina_astrophotography.focuser_auto_focus

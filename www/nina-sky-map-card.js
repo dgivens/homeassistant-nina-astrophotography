@@ -1,5 +1,5 @@
 /**
- * N.I.N.A. Sky Map Card  v1.0.0
+ * N.I.N.A. Sky Map Card
  *
  * Displays a live all-sky stereographic projection showing where the
  * telescope is currently pointing, with altitude rings, cardinal directions,
@@ -13,13 +13,14 @@
  *   2. Add resource: /local/nina-sky-map-card.js  (JavaScript Module)
  *   3. Add card:  type: custom:nina-sky-map-card
  *      Optional config:
- *        latitude: 38.5    # your observing latitude (improves horizon shading)
+ *        latitude: 38.5    # your observing latitude — REQUIRED in practice:
+ *                          # it projects the whole star field, and defaults
+ *                          # to 40, which is the wrong sky for most people
  *        trail_length: 60  # number of historical positions to keep (default 60)
- *        show_constellations: true
  *        prefix: n_i_n_a   # the slugified instance name your entities carry
  */
 
-const VERSION = "1.0.0";
+const VERSION = "2.0.0";
 
 /* ── Notable stars with alt/az computed at runtime from RA/Dec + observer lat ──
    We store as { name, ra_h, dec_deg } and project at render time using
@@ -214,7 +215,6 @@ class NinaSkyMapCard extends HTMLElement {
     this._config = {
       latitude: 40,
       trail_length: 60,
-      show_constellations: true,
       map_size: 320,
       ...config,
     };
@@ -251,14 +251,15 @@ class NinaSkyMapCard extends HTMLElement {
 
   // A device that is disconnected makes its entities unavailable rather than
   // publishing an off state, so availability is what "connected" reads from.
+  // `unknown` counts as disconnected too: a state Home Assistant has never
+  // had a value for is not evidence of a connection.
   _available(id) {
     const value = this._s(id);
-    return value !== null && value !== "unavailable";
+    return value !== null && value !== "unavailable" && value !== "unknown";
   }
   // Tracking is one of the mount's own rates, and `Stopped` is one of them.
-  _tracking(prefix) {
-    const rate = this._s(`select.${prefix}_mount_tracking_rate`);
-    return rate !== null && rate !== "Stopped" && rate !== "unavailable";
+  _tracking(id) {
+    return this._available(id) && this._s(id) !== "Stopped";
   }
 
   _updateTrail() {
@@ -342,7 +343,7 @@ class NinaSkyMapCard extends HTMLElement {
     if (!bar) return;
     const prefix = this._prefix;
     const connected = this._available(`sensor.${prefix}_mount_right_ascension`);
-    const tracking  = this._tracking(prefix);
+    const tracking  = this._tracking(`select.${prefix}_mount_tracking_rate`);
     const parked    = this._on(`binary_sensor.${prefix}_mount_at_park`);
 
     const chips = [];
@@ -469,8 +470,13 @@ class NinaSkyMapCard extends HTMLElement {
     }
 
     // ── Meridian line (azimuth 0° N–S through zenith) ─────────────────
+    // (Max - Min) from the profile, published by the sensor: the reading at
+    // which N.I.N.A. actually flips is not zero, and not the same on two rigs.
     const ttf = this._f(`sensor.${prefix}_mount_time_to_meridian_flip`, 999);
-    const meridianColor = ttf < 15 && ttf > 0
+    const firesAt = parseFloat(this._hass?.states?.[
+      `sensor.${prefix}_mount_time_to_meridian_flip`]
+      ?.attributes?.flip_fires_at_minutes) || 0;
+    const meridianColor = ttf < 15 + firesAt && ttf > 0
       ? `rgba(244, 162, 97, ${0.5 + 0.4 * Math.sin(Date.now() / 400)})`
       : "rgba(123,141,232,0.25)";
     ctx.beginPath();
@@ -541,7 +547,7 @@ class NinaSkyMapCard extends HTMLElement {
     const alt = this._f(`sensor.${prefix}_mount_altitude`);
     const az  = this._f(`sensor.${prefix}_mount_azimuth`);
     const isParked   = this._on(`binary_sensor.${prefix}_mount_at_park`);
-    const isTracking = this._tracking(prefix);
+    const isTracking = this._tracking(`select.${prefix}_mount_tracking_rate`);
     const isMounted  = this._available(`sensor.${prefix}_mount_right_ascension`);
 
     if (isMounted && alt >= 0) {

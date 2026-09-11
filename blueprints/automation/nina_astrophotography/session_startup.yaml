@@ -1,8 +1,12 @@
 blueprint:
   name: "N.I.N.A. – Session Startup"
   description: >
-    Unparks the mount, enables tracking, optionally opens the dome, cools the
-    camera, and then loads and starts a sequence.
+    Unparks the mount, optionally opens the dome, cools the camera, and then
+    loads and starts a sequence.
+
+    The safety monitor is checked before anything opens: the abort blueprint
+    fires on the TRANSITION to unsafe, so a roof opened into conditions that
+    are already unsafe is never closed again by it.
 
     The sequence is named, not a path: the API loads a sequence by the name
     N.I.N.A. lists it under.
@@ -21,6 +25,16 @@ blueprint:
           selector:
             device:
               integration: nina_astrophotography
+        safety_unsafe:
+          name: Unsafe conditions
+          description: >
+            The rig's "Unsafe" sensor — ON when conditions are unsafe. Nothing
+            opens or starts unless this reads off.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: safety
 
     schedule:
       name: Schedule
@@ -75,42 +89,54 @@ blueprint:
           default: ""
           selector:
             text:
-        notify_device:
-          name: Notify service
-          description: >
-            The notify service to send to, without the `notify.` prefix.
-            Leave blank for no notification.
-          default: ""
+        notify_target:
+          name: Notify
+          description: Notify entities to alert. Leave empty for none.
+          default: []
           selector:
-            text:
+            entity:
+              domain: notify
+              multiple: true
 
 mode: single
+max_exceeded: silent
 
 # Inputs must be bound here before templates can reference them.
 variables:
   cooling_ramp_minutes: !input cooling_ramp_minutes
   cooling_wait_minutes: !input cooling_wait_minutes
-  notify_device: !input notify_device
+  nina_rig: !input nina_rig
+  safety_unsafe: !input safety_unsafe
   sequence_name: !input sequence_name
 
 triggers:
   - trigger: time
     at: !input trigger_time
 
+conditions:
+  # Nothing opens into conditions that are already unsafe. `unknown` and
+  # `unavailable` count as unsafe: an unread monitor is not a safe one.
+  - alias: "Conditions are safe"
+    condition: state
+    entity_id: !input safety_unsafe
+    state: "off"
+  # Selectors cannot cross-filter, so the entity and the device above can name
+  # different rigs. Only blocks when they positively disagree.
+  - alias: "The entity and the device name the same rig"
+    condition: template
+    value_template: >
+      {% set entry = config_entry_id(safety_unsafe) %}
+      {% set rig = device_attr(nina_rig, 'config_entries') %}
+      {{ entry is none or rig is not iterable or entry in rig | list }}
+
 actions:
+  # Tracking is deliberately not enabled here: N.I.N.A.'s own slew enables it,
+  # and a mount tracking from the park position for twenty minutes drifts
+  # toward a pier limit on some mounts.
   - alias: "Unpark the mount"
     action: nina_astrophotography.mount_unpark
     target:
       device_id: !input nina_rig
-
-  - delay: "00:00:05"
-
-  - alias: "Enable tracking"
-    action: nina_astrophotography.mount_set_tracking
-    target:
-      device_id: !input nina_rig
-    data:
-      enabled: true
 
   - alias: "Open the dome"
     action: nina_astrophotography.dome_open
@@ -130,6 +156,11 @@ actions:
     delay:
       minutes: "{{ cooling_ramp_minutes | int + cooling_wait_minutes | int }}"
 
+  - alias: "Re-check that conditions are still safe"
+    condition: state
+    entity_id: !input safety_unsafe
+    state: "off"
+
   - alias: "Load the sequence, if one was named"
     if:
       - condition: template
@@ -140,7 +171,8 @@ actions:
           device_id: !input nina_rig
         data:
           sequence_name: !input sequence_name
-      - delay: "00:00:03"
+      # A large Target Scheduler tree takes a while to deserialize.
+      - delay: "00:00:10"
 
   - alias: "Start the sequence"
     action: nina_astrophotography.sequence_start
@@ -148,11 +180,10 @@ actions:
       device_id: !input nina_rig
 
   - alias: "Notify that the session has started"
-    if:
-      - condition: template
-        value_template: "{{ notify_device != '' }}"
-    then:
-      - action: "notify.{{ notify_device }}"
-        data:
-          title: "🔭 N.I.N.A. session started"
-          message: "The imaging sequence has been started."
+    action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "🔭 N.I.N.A. session started"
+      message: "The imaging sequence has been started."
+    continue_on_error: true
