@@ -46,3 +46,9 @@ def test_an_unmeasured_file_fails_rather_than_passing_silently(
     monkeypatch.setattr(coverage_floors, "FLOORS", FLOORS)
     _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0})
     assert coverage_floors.main() == 1
+
+
+def test_no_floor_is_still_waiting_to_be_enforced() -> None:
+    """A pending floor is unenforced by design while the module it names is
+    being built. Shipping with one left is shipping an unguarded module."""
+    assert coverage_floors.PENDING == {}

@@ -1,12 +1,15 @@
 {
   "domain": "nina_astrophotography",
   "name": "N.I.N.A. Astrophotography",
-  "codeowners": [],
+  "codeowners": [
+    "@dgivens"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/dgivens/homeassistant-nina-astrophotography",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/dgivens/homeassistant-nina-astrophotography/issues",
+  "quality_scale": "bronze",
   "requirements": [],
-  "version": "1.4.5"
+  "version": "2.0.0"
 }

@@ -1,6 +1,6 @@
 [project]
 name = "nina-astrophotography"
-version = "1.4.5"
+version = "2.0.0"
 description = "Home Assistant integration for the N.I.N.A. Advanced API"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
