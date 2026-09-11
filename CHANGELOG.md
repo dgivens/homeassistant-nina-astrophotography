@@ -46,20 +46,101 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   snake_case (`frame.hfr`, `frame.stars`). `trigger.event.data.event` is
   unchanged.
 
+- **Three actions changed their parameters**, because in 1.4.5 each silently
+  did nothing. `camera_capture` takes `duration`, not `exposure` — the API
+  reads `duration`, so the exposure length was ignored and defaulted — and no
+  longer offers `binning` or `filter_index`, which bind nothing on the wire.
+  `sequence_load` takes `sequence_name`, the name N.I.N.A. lists, not `path`.
+  `mount_slew` takes `ra_degrees` and `dec_degrees` in **J2000 degrees**, where
+  1.4.5 took RA in hours and converted.
+- **All five blueprints were rewritten** and their inputs renamed, so an
+  automation built from one has to be rebuilt. Every one of them hardcoded
+  entity ids this release renames or removes, so all five were inert on 2.0
+  either way.
+- **The Lovelace cards take a `prefix:`** — the slugified instance name their
+  entity ids carry, `n_i_n_a` by default. Without it a card reads nothing.
+
 ### Added
 
 - **A session rollover hour**, under **Configure**: `rollover_hour`, 0–23,
   default 12. It is read in the RIG's local hours, so a rig whose Windows clock
   runs UTC can put the boundary at a real midday on site rather than in the
   middle of its dawn flats.
+- **One device per piece of equipment**, each linked to a hub device, with the
+  driver name and version in the device registry rather than in entity
+  attributes. Equipment a rig has never reported creates no device, and one you
+  have sold can be deleted from its device page.
+- **Every action takes a device target**, so a second rig is reachable. 1.4.5
+  resolved "the first configured entry", which made the second unreachable from
+  every action however it was targeted. An untargeted call still works while one
+  instance is loaded, and is refused rather than guessed at once two are.
+- **Actions are registered at startup** rather than per config entry, so an
+  automation referencing one validates even when the entry is unloaded.
+- `event.<instance>_error` for plate-solve, download-timeout and autofocus-
+  timeout failures. Best-effort: N.I.N.A.'s `ERROR-*` events are log scrapes and
+  `ERROR-PLATESOLVE` matches ASTAP only.
+- `image.<instance>_livestack`, and the three `flats_*` sensors — the latter
+  disabled by default, since `/flats/status` observes only flats started
+  through the API.
+- Session statistics carry a `by_target` and `by_filter` breakdown as attributes
+  on `sensor.<instance>_session_avg_hfr`.
+- `sensor.<instance>_mount_time_to_meridian_flip` carries
+  `flip_fires_at_minutes`: the reading at which N.I.N.A. actually flips, which
+  is `(Max − Min)` from the profile rather than zero.
+- Home Assistant bus events name the instance they came from (`instance` and
+  `entry_id`). The event types are shared, so an unfiltered automation fired for
+  every configured rig.
 
 ### Changed
 
+- **Polling costs about an eighth of what it did**: a measured ~297 MB a night
+  becomes ~37 MB. Six tiers behind one coordinator replace polling everything
+  every ten seconds — the full equipment snapshot stays fast, the sequence tree
+  drops to 30 s while imaging and 5 minutes otherwise, and the rest is fetched
+  when an event says it changed.
+- **The event socket is the primary source**, with polling as the backstop:
+  the manifest declares `local_push`.
 - `nina_websocket_connected` and `nina_websocket_disconnected` now fire on
   connection **transitions** only; 1.4.x re-fired `disconnected` on every failed
   reconnect attempt, so an automation counting them will see far fewer.
   `disconnected` also fires when the integration is unloaded or reloaded while
   the socket was connected.
+- Out-of-range input to an action is refused with a validation error naming the
+  limits. N.I.N.A. clamps silently and reports success, so nothing downstream
+  ever reported it.
+- A refused command now reads as a refusal — a disconnected mount is not a
+  defect in this integration, and was being reported as one, with a traceback
+  and an offer to file a bug.
+- Ranges come from the driver: flat panel brightness scales to the panel's own
+  `MinBrightness`–`MaxBrightness`, and the tracking select offers the modes the
+  mount reports.
+
+### Fixed
+
+- **`Last Image HFR` no longer reads `0` after a flat run.** Calibration frames
+  report `HFR 0` and `Stars -1` as sentinels; those are now `unknown`, and the
+  session aggregates exclude them instead of averaging zeros into the night.
+- **The flat panel no longer jumps to full output** when switched on. 1.4.5 sent
+  Home Assistant's 0–255 brightness straight to a driver whose scale is its own.
+- `"NaN"` — which .NET writes as a JSON *string* — is mapped to `unknown` on
+  every numeric field rather than corrupting long-term statistics.
+- The 24-hour "time to meridian flip" a mount reports when tracking is off is
+  no longer published as a real countdown.
+- Session integration time sums actual exposures. Multiplying a frame count by a
+  nominal length was out by 2.25× on one observed night.
+- An empty image history — which the API answers with `Index out of range` —
+  no longer surfaces as an error.
+
+### Removed
+
+- **`*_connected` binary sensors for equipment.** A disconnected device makes
+  its entities `unavailable` instead. The safety monitor keeps its connected
+  sensor: availability cannot distinguish a monitor that has stopped reporting
+  from Home Assistant restarting, and a roof-close automation must.
+- Entities that mirrored another entity's state, and the per-frame trend and
+  sparkline sensors — the frame-statistics family. The cards compute what they
+  need from the last-frame sensors and `/image-history`.
+- `binary_sensor.<instance>_mount_slewing`.
 
 ---
 

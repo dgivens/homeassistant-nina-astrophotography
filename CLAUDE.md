@@ -49,7 +49,10 @@ redaction, hassfest, HACS); no linter or formatter is configured.
 
 ```
 custom_components/nina_astrophotography/
-  __init__.py         entry setup and unload, the socket wiring, the services
+  __init__.py         entry setup and unload, the socket wiring, and the
+                      actions — registered in `async_setup`, so they exist
+                      whether or not an entry is loaded, and resolve which rig
+                      they mean from the device targeted
   api/                the version-independent seam: errors.py, models.py (THE CONTRACT)
   api/v2/             client.py (the only module that talks to N.I.N.A.), mapper.py
                       (wire → models; every sentinel dies here), schema.py (generated),
@@ -61,13 +64,18 @@ custom_components/nina_astrophotography/
   derive.py           pure maths; session.py the pure session fold;
                       sequence.py the pure /sequence/json walks
   polling.py          HA-free polling decisions: restart, reseed, tiers, event ledger
-  const.py            domain, config keys, service names, enums
+  const.py            domain, config keys, action names, enums
   config_flow.py      UI setup
+  services.yaml       the action schemas the UI reads; strings.json and
+                      translations/en.json must agree with it, field for field
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
-blueprints/automation/nina_astrophotography/   5 automation blueprints
-www/                                           5 Lovelace cards
+blueprints/automation/nina_astrophotography/   5 automation blueprints; entities
+                      come from typed `!input` selectors, never hardcoded, and
+                      each is instantiated for real in tests/ha/test_blueprints.py
+www/                                           5 Lovelace cards; each builds its
+                      entity ids from a configured instance prefix
 tests/unit/                                    HA-free; tests/ha/ under PHACC
 tests/scenarios/                               FakeRig — see its README
 ```
@@ -94,7 +102,8 @@ disk proves nothing.
   it from new installs while leaving upgraded registry rows enabled — and abort
   exposure is the emergency stop. Applies to abort exposure, clear guider
   calibration, park, dome close, sequence stop and the flat panel.
-- **Every platform PR appends its renames to `docs/2.0-renames.md`.**
+- **Every PR that renames anything a user references — an entity, an action
+  field, a blueprint input — appends to `docs/2.0-renames.md`.**
 - **`tests/ha/__snapshots__/` is the contract.** `test_snapshots.ambr` is the
   authoritative rename record and `entity_ids.txt` the plain list phase D reads.
   Regenerate them in their own commit, and reconcile both directions against
@@ -103,16 +112,17 @@ disk proves nothing.
 
 ## Branches
 
-- `main` — the shipping line, at 1.4.5
+- `main` — the shipping line, at 1.4.5 until 2.0 merges
 - `v2` — the 2.0 integration branch; work lands as stacked task PRs onto it
   (stack #17). **Every `gh stack` command needs `GH_REPO=<your fork>` and
   `--remote origin`**: it auto-detects `upstream` and will try to create
   duplicate PRs there. `gh repo set-default` covers `gh pr`, not `gh stack`.
   One branch per task, `v2-<phase><NN>-<slug>`; each phase ends with a
   `<phase>NN-phase-<x>-gate-fixes` branch carrying the review findings.
-- **`wip/v2.0` — a read-only reference. Never merge or rebase it.** It predates
-  every fix on `main` and has no tests; its value is the API audit in its
-  CHANGELOG and README, which `docs/v2.0-design.md` supersedes.
+- **`wip/v2.0` — a read-only reference, deleted when 2.0 tags. Never merge or
+  rebase it.** It predates every fix on `main` and has no tests; its value is
+  the API audit in its CHANGELOG and README, which `docs/v2.0-design.md`
+  supersedes.
 
 ## Quality bar
 
@@ -301,4 +311,9 @@ not.
   `MaxBrightness` and varies by hardware; mount tracking modes come from
   `TrackingModes` and differ by mount. Never hardcode either.
 - **Out-of-range input is silently clamped** and answers `Success: true`.
-  Validate client-side and raise `ServiceValidationError`.
+  Validate client-side and raise `ServiceValidationError` — schema validation
+  raising `vol.Invalid` is not the same thing, and Home Assistant re-raises it
+  as-is.
+- **An action must not confirm from a command's own response.** It returns when
+  N.I.N.A. accepts the command; the equipment moves seconds later, and no
+  operation handle exists to wait on.
