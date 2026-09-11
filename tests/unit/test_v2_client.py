@@ -285,19 +285,100 @@ async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) 
 # Never generate these from the spec.
 
 
-async def test_set_flat_light_sends_on_not_True() -> None:
+@pytest.mark.parametrize(
+    ("call", "path", "params"),
+    [
+        # camera
+        (lambda c: c.cool_camera(-10.0), "/equipment/camera/cool",
+         {"temperature": -10.0, "minutes": -1}),
+        (lambda c: c.warm_camera(), "/equipment/camera/warm", {"minutes": -1}),
+        (lambda c: c.set_target_temperature(-10.0), "/equipment/camera/cool",
+         {"temperature": -10.0}),
+        (lambda c: c.set_target_temperature(-10.0, minutes=5), "/equipment/camera/cool",
+         {"temperature": -10.0, "minutes": 5}),
+        (lambda c: c.set_cooler(True, -10.0), "/equipment/camera/cool",
+         {"temperature": -10.0, "minutes": -1}),
+        (lambda c: c.set_cooler(False, -10.0), "/equipment/camera/warm",
+         {"minutes": -1}),
+        (lambda c: c.set_dew_heater(True), "/equipment/camera/dew-heater",
+         {"power": "true"}),
+        (lambda c: c.set_usb_limit(40), "/equipment/camera/usb-limit", {"limit": 40}),
+        (lambda c: c.capture_image(30), "/equipment/camera/capture",
+         {"duration": 30, "save": "false"}),
+        (lambda c: c.capture_image(5, gain=100, save=True), "/equipment/camera/capture",
+         {"duration": 5, "save": "true", "gain": 100}),
+        (lambda c: c.abort_capture(), "/equipment/camera/abort-exposure", None),
+        # mount
+        (lambda c: c.slew_mount(331.07, 56.6), "/equipment/mount/slew",
+         {"ra": 331.07, "dec": 56.6}),
+        (lambda c: c.park_mount(), "/equipment/mount/park", None),
+        (lambda c: c.unpark_mount(), "/equipment/mount/unpark", None),
+        (lambda c: c.find_home(), "/equipment/mount/home", None),
+        (lambda c: c.set_tracking_mode(0), "/equipment/mount/tracking", {"mode": 0}),
+        # focuser
+        (lambda c: c.move_focuser(12000), "/equipment/focuser/move",
+         {"position": 12000}),
+        (lambda c: c.auto_focus(), "/equipment/focuser/auto-focus", None),
+        # filter wheel
+        (lambda c: c.change_filter(3), "/equipment/filterwheel/change-filter",
+         {"filterId": 3}),
+        # guider
+        (lambda c: c.start_guiding(), "/equipment/guider/start",
+         {"calibrate": "false"}),
+        (lambda c: c.start_guiding(force_calibration=True), "/equipment/guider/start",
+         {"calibrate": "true"}),
+        (lambda c: c.stop_guiding(), "/equipment/guider/stop", None),
+        (lambda c: c.clear_guider_calibration(),
+         "/equipment/guider/clear-calibration", None),
+        # rotator
+        (lambda c: c.move_rotator(90.0), "/equipment/rotator/move",
+         {"position": 90.0}),
+        (lambda c: c.set_rotator_reverse(True), "/equipment/rotator/reverse",
+         {"reverseDirection": "true"}),
+        # dome
+        (lambda c: c.open_dome(), "/equipment/dome/open", None),
+        (lambda c: c.close_dome(), "/equipment/dome/close", None),
+        (lambda c: c.park_dome(), "/equipment/dome/park", None),
+        (lambda c: c.home_dome(), "/equipment/dome/home", None),
+        (lambda c: c.set_dome_follow(True), "/equipment/dome/set-follow",
+         {"enabled": "true"}),
+        # flat device
+        (lambda c: c.set_flat_light(True), "/equipment/flatdevice/set-light",
+         {"on": "true"}),
+        (lambda c: c.set_flat_brightness(2048), "/equipment/flatdevice/set-brightness",
+         {"brightness": 2048}),
+        (lambda c: c.open_flat_cover(), "/equipment/flatdevice/set-cover",
+         {"closed": "false"}),
+        (lambda c: c.close_flat_cover(), "/equipment/flatdevice/set-cover",
+         {"closed": "true"}),
+        # switch
+        (lambda c: c.set_switch_value(2, 1.0), "/equipment/switch/set",
+         {"index": 2, "value": 1.0}),
+        # sequence
+        (lambda c: c.start_sequence(), "/sequence/start", None),
+        (lambda c: c.stop_sequence(), "/sequence/stop", None),
+        (lambda c: c.load_sequence("Autumn"), "/sequence/load",
+         {"sequenceName": "Autumn"}),
+        # livestack
+        (lambda c: c.start_livestack(), "/livestack/start", None),
+        (lambda c: c.stop_livestack(), "/livestack/stop", None),
+    ],
+    ids=lambda value: value if isinstance(value, str) else None,
+)
+async def test_command_parameter_names_are_pinned(call, path, params) -> None:
     session = FakeSession()
-    await _client(session).set_flat_light(True)
-    url, params = session.requests[-1]
-    assert "/equipment/flatdevice/set-light" in url
-    assert params == {"on": "true"}
+    await call(_client(session))
+    url, sent = session.requests[-1]
+    assert path in url
+    assert sent == params
 
 
-async def test_set_flat_brightness_sends_brightness() -> None:
-    session = FakeSession()
-    await _client(session).set_flat_brightness(2048)
-    _, params = session.requests[-1]
-    assert params == {"brightness": 2048}
+async def test_a_refused_command_raises_rather_than_reporting_success() -> None:
+    """Every command shares the envelope path, so none of them can be checked
+    by a caller reading a return value: they all return None."""
+    session = FakeSession({"mount/park": failure("Telescope not connected", 409)})
+    with pytest.raises(NinaCommandError):
+        await _client(session).park_mount()
 
 
 async def test_image_history_all_sends_all_true() -> None:

@@ -65,6 +65,12 @@ _NOT_SERVED = (404, 405, 501)
 _NO_DATA_MESSAGES = ("index out of range", "sequence is not initialized")
 
 
+def _boolean(value: bool) -> str:
+    """Query booleans go on the wire as lowercase strings: aiohttp refuses a
+    bare bool as a parameter value, and `str(True)` binds to nothing."""
+    return "true" if value else "false"
+
+
 class NinaClientV2:
     """Async client for ninaAPI v2 (2.2.15.x)."""
 
@@ -282,10 +288,190 @@ class NinaClientV2:
     # default silently, values are clamped silently, and the state changes
     # seconds later. Read state back from the poll.
 
+    # camera
+
+    async def cool_camera(self, temperature: float, *, minutes: float = -1) -> None:
+        """`minutes` is the cooling ramp, not a timeout; -1 asks for the
+        profile's own duration."""
+        await self._get("/equipment/camera/cool",
+                        {"temperature": temperature, "minutes": minutes})
+
+    async def warm_camera(self, *, minutes: float = -1) -> None:
+        await self._get("/equipment/camera/warm", {"minutes": minutes})
+
+    async def set_target_temperature(self, temperature: float, *,
+                                     minutes: float | None = None) -> None:
+        """There is no setpoint endpoint: changing the target is a cool-down to
+        the new value. Omitting `minutes` leaves the ramp to the API."""
+        params: dict[str, Any] = {"temperature": temperature}
+        if minutes is not None:
+            params["minutes"] = minutes
+        await self._get("/equipment/camera/cool", params)
+
+    async def set_cooler(self, on: bool, temperature: float, *,
+                         minutes: float = -1) -> None:
+        """The API has no cooler toggle: cooling starts with /cool and stops
+        with /warm, so the two branches are different endpoints.
+
+        `temperature` is the setpoint /cool requires — there is no "resume at
+        the existing target" form — and is unused when switching off.
+        """
+        if on:
+            await self.cool_camera(temperature, minutes=minutes)
+        else:
+            await self.warm_camera(minutes=minutes)
+
+    async def set_dew_heater(self, on: bool) -> None:
+        """The parameter is `power`, not `on` or `enabled`."""
+        await self._get("/equipment/camera/dew-heater", {"power": _boolean(on)})
+
+    async def set_usb_limit(self, limit: int) -> None:
+        """An integer bounded by USBLimitMin/USBLimitMax, per camera. The spec
+        types it as a string with the example `2x2`, which is set-binning's."""
+        await self._get("/equipment/camera/usb-limit", {"limit": limit})
+
+    async def capture_image(self, duration: float, *, gain: int | None = None,
+                            save: bool = False) -> None:
+        """The parameter is `duration`. 1.4.5 sent `time`, so exposure time was
+        silently ignored — the API defaulted it and answered Success: true.
+
+        `binning` and `filter_index` are deliberately absent: they bind nothing,
+        and a parameter that looks like it works is worse than no parameter.
+        """
+        params: dict[str, Any] = {"duration": duration, "save": _boolean(save)}
+        if gain is not None:
+            params["gain"] = gain
+        await self._get("/equipment/camera/capture", params)
+
+    async def abort_capture(self) -> None:
+        await self._get("/equipment/camera/abort-exposure")
+
+    # mount
+
+    async def slew_mount(self, ra_degrees: float, dec_degrees: float) -> None:
+        """Slew to J2000 coordinates, in DEGREES.
+
+        All three branches construct
+        `new Coordinates(Angle.ByDegree(ra), Angle.ByDegree(dec), Epoch.J2000)`
+        and N.I.N.A. transforms to the mount's own EquatorialSystem internally.
+        Never pre-transform.
+
+        The round trip is asymmetric: MountInfo.Coordinates / RightAscension are
+        reported in the MOUNT's epoch (JNOW here) and in HOURS. Feeding a
+        reported RA back into slew is wrong twice — a 15x unit error and a
+        precession error — and 22.07 is a valid RA read either way, so nothing
+        catches it.
+        """
+        await self._get("/equipment/mount/slew", {"ra": ra_degrees, "dec": dec_degrees})
+
+    async def park_mount(self) -> None:
+        await self._get("/equipment/mount/park")
+
+    async def unpark_mount(self) -> None:
+        await self._get("/equipment/mount/unpark")
+
+    async def find_home(self) -> None:
+        await self._get("/equipment/mount/home")
+
+    async def set_tracking_mode(self, mode: int) -> None:
+        """`mode` is the index 0 Sidereal, 1 Lunar, 2 Solar, 3 King, 4 Stopped.
+        Which of them a mount actually offers comes from its `TrackingModes`;
+        the full range is not universally available."""
+        await self._get("/equipment/mount/tracking", {"mode": mode})
+
+    # focuser
+
+    async def move_focuser(self, position: int) -> None:
+        await self._get("/equipment/focuser/move", {"position": position})
+
+    async def auto_focus(self) -> None:
+        await self._get("/equipment/focuser/auto-focus")
+
+    # filter wheel
+
+    async def change_filter(self, index: int) -> None:
+        """The parameter is `filterId`, not `filter` or `index`."""
+        await self._get("/equipment/filterwheel/change-filter", {"filterId": index})
+
+    # guider
+
+    async def start_guiding(self, *, force_calibration: bool = False) -> None:
+        await self._get("/equipment/guider/start",
+                        {"calibrate": _boolean(force_calibration)})
+
+    async def stop_guiding(self) -> None:
+        await self._get("/equipment/guider/stop")
+
+    async def clear_guider_calibration(self) -> None:
+        await self._get("/equipment/guider/clear-calibration")
+
+    # rotator
+
+    async def move_rotator(self, position: float) -> None:
+        """`position` is the SKY angle in degrees; the mechanical angle is a
+        different endpoint, /equipment/rotator/move-mechanical."""
+        await self._get("/equipment/rotator/move", {"position": position})
+
+    async def set_rotator_reverse(self, on: bool) -> None:
+        """The parameter is `reverseDirection`."""
+        await self._get("/equipment/rotator/reverse", {"reverseDirection": _boolean(on)})
+
+    # dome
+
+    async def open_dome(self) -> None:
+        await self._get("/equipment/dome/open")
+
+    async def close_dome(self) -> None:
+        await self._get("/equipment/dome/close")
+
+    async def park_dome(self) -> None:
+        await self._get("/equipment/dome/park")
+
+    async def home_dome(self) -> None:
+        await self._get("/equipment/dome/home")
+
+    async def set_dome_follow(self, on: bool) -> None:
+        """The parameter is `enabled`."""
+        await self._get("/equipment/dome/set-follow", {"enabled": _boolean(on)})
+
+    # flat device
+
     async def set_flat_light(self, on: bool) -> None:
-        await self._get("/equipment/flatdevice/set-light",
-                        {"on": "true" if on else "false"})
+        await self._get("/equipment/flatdevice/set-light", {"on": _boolean(on)})
 
     async def set_flat_brightness(self, brightness: int) -> None:
         await self._get("/equipment/flatdevice/set-brightness",
                         {"brightness": brightness})
+
+    async def open_flat_cover(self) -> None:
+        """The parameter is `closed` and it is inverted: opening sends false."""
+        await self._get("/equipment/flatdevice/set-cover", {"closed": "false"})
+
+    async def close_flat_cover(self) -> None:
+        await self._get("/equipment/flatdevice/set-cover", {"closed": "true"})
+
+    # switch
+
+    async def set_switch_value(self, index: int, value: float) -> None:
+        await self._get("/equipment/switch/set", {"index": index, "value": value})
+
+    # sequence
+
+    async def start_sequence(self) -> None:
+        await self._get("/sequence/start")
+
+    async def stop_sequence(self) -> None:
+        await self._get("/sequence/stop")
+
+    async def load_sequence(self, sequence_name: str) -> None:
+        """The parameter is `sequenceName`, and it is a NAME, not a path.
+        1.4.5 sent `path`, so the sequence never loaded."""
+        await self._get("/sequence/load", {"sequenceName": sequence_name})
+
+    # livestack
+
+    async def start_livestack(self) -> None:
+        await self._get("/livestack/start")
+
+    async def stop_livestack(self) -> None:
+        await self._get("/livestack/stop")
