@@ -47,6 +47,15 @@ frame of the captured `?all=true` list, in an envelope of our own, because the
 dawn capture predates the bare path. `imaging_guiding` serves the real capture —
 a single-element **list**, not the bare object that assembly produces.
 
+The two image routes — `/image/0` and `/livestack/image/{target}/{filter}` —
+answer **bytes**, so there is nothing to capture into a state: what the client
+keys on is the content type, and the pixels are never read. A JPEG magic number
+stands in. The livestack path is keyed by the pair the state's newest
+`STACK-UPDATED` names, url-quoted as the client sends it, so it is the one
+endpoint that differs between states rather than being shared: a state whose
+event history holds no stack serves no such path and creates no
+`image.livestack`.
+
 ## Awaiting capture
 
 No **endpoint** awaits capture any more: `imaging_guiding` serves every path the

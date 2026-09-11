@@ -47,6 +47,7 @@ from .api.models import (
     ProfileSettings,
     SequenceNode,
     SessionStats,
+    StackState,
     VersionInfo,
 )
 from .api.v2 import NinaClientV2
@@ -59,7 +60,12 @@ from .polling import (
     TierSchedule,
     imaging,
 )
-from .session import DEFAULT_AUTOFOCUS_TIMEOUT, fold
+from .session import (
+    DEFAULT_AUTOFOCUS_TIMEOUT,
+    fold,
+    latest_stack,
+    newest_frame,
+)
 
 if TYPE_CHECKING:
     from .api.v2.events import NinaEventStream
@@ -107,6 +113,13 @@ class NinaData:
     sequence: SequenceNode | None
     flats: FlatsStatus
     livestack: LivestackStatus
+    stack: StackState | None
+    """The pair `image.livestack` fetches; None until a stack has updated."""
+    newest_frame: Frame | None
+    """The newest frame of any type this process saved — what `/image/0` serves,
+    and so `image.last_frame`'s timestamp. `session.last_frame` is the newest
+    LIGHT inside the session window: after a dawn flat run, and at any hour
+    after the noon rollover, the two name different frames or none at all."""
     profile: ProfileSettings
     generation: str | None
     version: VersionInfo
@@ -613,6 +626,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             sequence=self._sequence,
             flats=self._flats,
             livestack=self._livestack,
+            stack=latest_stack(self.events, self.generation),
+            newest_frame=newest_frame(self.frames.values(), self.generation),
             profile=self._profile,
             generation=self.generation,
             version=self._version,

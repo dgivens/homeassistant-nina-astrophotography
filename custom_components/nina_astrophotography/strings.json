@@ -116,6 +116,14 @@
         "name": "Sequence stop"
       }
     },
+    "image": {
+      "last_frame": {
+        "name": "Last frame"
+      },
+      "livestack": {
+        "name": "Livestack"
+      }
+    },
     "light": {
       "flat_panel_light": {
         "name": "Light"

@@ -406,6 +406,17 @@ async def test_an_image_arrives_as_bytes() -> None:
     assert await _client(session).get_image_bytes(0) == b"\xff\xd8"
 
 
+async def test_the_livestack_route_quotes_its_two_path_segments() -> None:
+    """Target and filter are PATH segments, and a target name carries spaces
+    and ampersands — unquoted they truncate the path rather than 404."""
+    session = FakeSession({"/livestack/image/":
+                           FakeResponse(b"\xff\xd8", content_type="image/jpeg")})
+    await _client(session).get_livestack_image_bytes("Lobster & Bubble", "S II")
+    url, params = session.requests[-1]
+    assert url.endswith("/livestack/image/Lobster%20%26%20Bubble/S%20II")
+    assert params == {"stream": "true", "quality": 85}
+
+
 async def test_an_image_refusal_arrives_as_a_json_envelope() -> None:
     """With stream=true a refusal is still HTTP 200, carrying the envelope."""
     session = FakeSession({"/image/": failure("No image at index", 400)})

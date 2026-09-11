@@ -1,118 +1,147 @@
-"""HA Image entity for N.I.N.A. latest captured frame.
+"""Images: the last saved frame, and the accumulating livestack.
 
-Exposes the last captured frame as a native Home Assistant image entity.
-This means it can be used in the built-in Picture Entity Card as well as
-the custom nina-image-panel-card.
+Both routes answer HTTP 200 whatever happens — a rendered frame as `image/*`,
+a refusal as the JSON envelope — so the client separates them on content type
+and raises rather than handing the envelope back as image bytes. Nothing is
+cached here: serving the previous frame under a fresh timestamp is worse than
+serving nothing, because a dashboard cannot tell the two apart.
 
-The image is fetched from the Advanced API's streaming endpoint:
-  GET /v2/api/image/0?stream=true&autoPrepare=true
-
-The entity updates whenever the IMAGE-SAVE WebSocket event fires, so the
-HA image state reflects the last saved frame within a second of capture.
+The timestamp is the state, and Home Assistant refetches only when it moves.
+`image.last_frame` takes it from the newest frame in the fold — never
+`utcnow()`, which reports the moment the integration loaded as the moment a
+frame was captured — and `image.livestack` from the `STACK-UPDATED` that named
+its target and filter.
 """
 from __future__ import annotations
 
-import logging
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime
 
-from homeassistant.components.image import ImageEntity
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util import dt as dt_util
+from homeassistant.components.image import ImageEntity, ImageEntityDescription
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .legacy_api import NinaApiClient, NinaApiError, NinaConnectionError
-from .const import DOMAIN
-from .coordinator import NinaDataCoordinator
+from .api.errors import NinaError
+from .api.v2.client import NinaClientV2
+from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .entity import NinaEntity
 
-_LOGGER = logging.getLogger(__name__)
+# Reads only, and both entities fetch on demand rather than on a schedule.
+PARALLEL_UPDATES = 0
+
+# quality is what makes the route answer JPEG; omitted, it renders PNG, which is
+# several times the bytes for a stretched preview.
+_QUALITY = 85
 
 
-class NinaLatestImageEntity(ImageEntity):
-    """HA Image entity backed by the N.I.N.A. streaming image endpoint.
+@dataclass(frozen=True, kw_only=True)
+class NinaImageDescription(ImageEntityDescription):
+    """An image, plus where its bytes and its timestamp come from.
 
-    The image bytes are fetched on demand when HA or a frontend requests them.
-    The entity's image_last_updated timestamp is bumped on every IMAGE-SAVE
-    WebSocket event so frontends know to refresh.
+    `observed` is the §5.2.2 first-sight rule: the last frame exists from the
+    start because `/image/0` is served whether or not anything has been
+    captured, while the livestack pair is only knowable once a stack has
+    reported one.
     """
 
-    _attr_name = "Latest Captured Frame"
-    _attr_icon = "mdi:image-star"
+    stamp: Callable[[NinaData], datetime | None]
+    fetch: Callable[[NinaClientV2, NinaData], Awaitable[bytes]]
+    observed: Callable[[NinaData], bool] = lambda data: True
+    unique_id_suffix: str | None = None
+    """The 1.4.5 key, where it differs from `key`."""
+
+
+DESCRIPTIONS: tuple[NinaImageDescription, ...] = (
+    NinaImageDescription(
+        key="last_frame",
+        translation_key="last_frame",
+        unique_id_suffix="latest_image",
+        stamp=lambda data: (
+            None if data.newest_frame is None else data.newest_frame.date
+        ),
+        fetch=lambda client, _data: client.get_image_bytes(0, quality=_QUALITY),
+    ),
+    NinaImageDescription(
+        key="livestack",
+        translation_key="livestack",
+        stamp=lambda data: None if data.stack is None else data.stack.updated,
+        fetch=lambda client, data: client.get_livestack_image_bytes(
+            data.stack.target, data.stack.filter_name, quality=_QUALITY
+        ),
+        observed=lambda data: data.stack is not None,
+    ),
+)
+
+
+class NinaImage(NinaEntity, ImageEntity):
+    """One descriptor's frame, fetched when something asks for it."""
+
+    entity_description: NinaImageDescription
     _attr_content_type = "image/jpeg"
-    _attr_should_poll = False
 
     def __init__(
         self,
         hass: HomeAssistant,
-        client: NinaApiClient,
-        ws_client,
-        entry_id: str,
+        coordinator: NinaCoordinator,
+        entry: NinaConfigEntry,
+        description: NinaImageDescription,
     ) -> None:
-        super().__init__(hass)
-        self._client = client
-        self._ws_client = ws_client
-        self._unsubscribe = None
-        self._attr_unique_id = f"{entry_id}_latest_image"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry_id)},
-            "name": "N.I.N.A. Astrophotography",
-            "manufacturer": "Nighttime Imaging 'N' Astronomy",
-            "model": "Advanced API v2",
-        }
-        self._image_bytes: bytes | None = None
-        # None until a frame actually arrives. Home Assistant renders this as
-        # the entity state, so seeding it with the current time reports the
-        # moment the integration loaded as the moment a frame was captured.
-        self._last_updated: datetime | None = None
+        super().__init__(
+            coordinator, entry, description.unique_id_suffix or description.key
+        )
+        ImageEntity.__init__(self, hass)
+        self.entity_description = description
 
     @property
     def image_last_updated(self) -> datetime | None:
-        return self._last_updated
+        """The state. None reads as `unknown` — nothing has been captured."""
+        return self.entity_description.stamp(self.coordinator.data)
 
     async def async_image(self) -> bytes | None:
-        """Fetch and return the latest image bytes."""
+        """Fetch the bytes. None where the rig has nothing to render.
+
+        A refusal is not an error worth raising: Home Assistant's image view
+        turns either into the same "unable to get image", and this route
+        answers one on every ordinary idle rig.
+        """
+        if self.image_last_updated is None:
+            return None
         try:
-            data = await self._client.get_image_bytes(index=0, quality=85, stretch=True)
-            self._image_bytes = data
-            return data
-        except (NinaApiError, NinaConnectionError) as exc:
-            _LOGGER.debug("Could not fetch N.I.N.A. image: %s", exc)
-            return self._image_bytes  # return cached bytes on failure
-
-    async def async_added_to_hass(self) -> None:
-        """Subscribe to IMAGE-SAVE events.
-
-        Here rather than in async_setup_entry so hass is set before an event
-        can arrive, and so the unsubscribe is paired with removal.
-        """
-        await super().async_added_to_hass()
-        self._unsubscribe = self._ws_client.add_listener(
-            "IMAGE-SAVE", lambda _response: self._mark_updated()
-        )
-
-    async def async_will_remove_from_hass(self) -> None:
-        if self._unsubscribe:
-            self._unsubscribe()
-            self._unsubscribe = None
-
-    def _mark_updated(self) -> None:
-        """A new frame was saved; bump the timestamp so frontends refetch.
-
-        Timezone-aware, because the frontend reads a naive value as local time.
-        """
-        self._last_updated = dt_util.utcnow()
-        self.async_write_ha_state()
+            return await self.entity_description.fetch(
+                self.coordinator.client, self.coordinator.data
+            )
+        except NinaError:
+            return None
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    entry: NinaConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    entry_data = hass.data[DOMAIN][entry.entry_id]
-    client: NinaApiClient = entry_data["client"]
-    ws_client = entry_data["ws_client"]
+    coordinator = entry.runtime_data.coordinator
+    added: set[str] = set()
 
-    async_add_entities(
-        [NinaLatestImageEntity(hass, client, ws_client, entry.entry_id)]
-    )
+    @callback
+    def _add_observed() -> None:
+        """Create the images whose source the snapshot now carries.
+
+        Re-run on every publish, so a stack that starts hours after Home
+        Assistant did still gets its entity (Gold `dynamic-devices`).
+        """
+        descriptions = [
+            description
+            for description in DESCRIPTIONS
+            if description.key not in added and description.observed(coordinator.data)
+        ]
+        if not descriptions:
+            return
+        added.update(description.key for description in descriptions)
+        async_add_entities(
+            NinaImage(hass, coordinator, entry, description)
+            for description in descriptions
+        )
+
+    _add_observed()
+    entry.async_on_unload(coordinator.async_add_listener(_add_observed))

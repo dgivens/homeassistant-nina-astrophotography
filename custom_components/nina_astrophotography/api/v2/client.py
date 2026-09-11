@@ -20,6 +20,7 @@ import json
 import logging
 from datetime import timedelta
 from typing import Any
+from urllib.parse import quote
 
 import aiohttp
 
@@ -256,10 +257,32 @@ class NinaClientV2:
         autoPrepare, not useAutoStretch: an unknown parameter binds nothing and
         is not rejected, so the request succeeds and returns the linear frame.
         """
-        path = f"/image/{index}"
         params: dict[str, Any] = {"stream": "true", "quality": quality}
         if auto_prepare:
             params["autoPrepare"] = "true"
+        return await self._image_bytes(f"/image/{index}", params)
+
+    async def get_livestack_image_bytes(self, target: str, filter_name: str, *,
+                                        quality: int = 85) -> bytes:
+        """Fetch the accumulated stack for one target and filter.
+
+        Both halves are PATH segments and a target name carries spaces and
+        ampersands, so they are quoted here rather than passed through.
+
+        No `autoPrepare`: the plugin stacks already-stretched frames, and the
+        route takes no such parameter — an unknown one binds nothing and is not
+        rejected, so sending it would look like it worked.
+        """
+        path = f"/livestack/image/{quote(target, safe='')}/{quote(filter_name, safe='')}"
+        return await self._image_bytes(path, {"stream": "true", "quality": quality})
+
+    async def _image_bytes(self, path: str, params: dict[str, Any]) -> bytes:
+        """The shared body of the two image routes.
+
+        Both answer 200 either way: a rendered frame arrives as `image/*`, and
+        a refusal as the JSON envelope. Content type is what separates them, so
+        the envelope is unwrapped for its error rather than served as bytes.
+        """
         url = self.base_url + path
         try:
             async with self._session.get(url, params=params,

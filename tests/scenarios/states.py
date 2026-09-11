@@ -25,7 +25,7 @@ import json
 from typing import Any
 
 import aiohttp
-from helpers import FIXTURES, load_envelope, ok
+from helpers import FIXTURES, FakeResponse, load_envelope, ok
 
 State = dict[str, Any]
 
@@ -146,6 +146,17 @@ def _dimmable(channel: dict) -> dict:
     return {**channel, "Id": 2, "Name": "Dew Heater A", "Maximum": 100, "Value": 50}
 
 
+# The image routes answer BYTES rather than an envelope, so there is nothing to
+# capture into a state: what the client keys on is the content type, and the
+# pixels are never read. A JPEG magic number is the whole of what matters.
+_JPEG = FakeResponse(b"\xff\xd8\xff\xe0 not a frame", content_type="image/jpeg")
+
+# `/livestack/image/{target}/{filter}` is keyed by the pair the state's newest
+# STACK-UPDATED names, url-quoted as the client sends it. A state whose event
+# history holds no stack serves no such path, and creates no `image.livestack`.
+_DAWN_STACK = "/livestack/image/NGC%20281/S"
+_GUIDING_STACK = "/livestack/image/NGC%20281/H"
+
 _IMAGING: State = {
     **_versions(),
     # No /application-start was captured beside the dawn corpus. The generation
@@ -158,6 +169,8 @@ _IMAGING: State = {
     "/event-history": load_envelope("dawn_event_history.json"),
     "/sequence/json": load_envelope("dawn_sequence_complete.json"),
     "/flats/status": load_envelope("dawn_flats_status_idle.json"),
+    "/image/0": _JPEG,
+    _DAWN_STACK: _JPEG,
 }
 
 # 01:45 rig-local, 4.2 h into a session that began with a restart at 17:27: the
@@ -177,6 +190,8 @@ _IMAGING_GUIDING: State = {
     "/livestack/status": load_envelope("imaging_guiding_livestack_status.json"),
     "/profile/show?active=true": load_envelope("imaging_guiding_profile.json"),
     "/equipment/focuser/last-af": load_envelope("imaging_guiding_last_af.json"),
+    "/image/0": _JPEG,
+    _GUIDING_STACK: _JPEG,
 }
 
 # The dawn rig's two writable switch channels, both binary (0-1 step 1): a
@@ -198,6 +213,9 @@ _RESTARTED: State = {
     "/sequence/json": load_envelope("startup_sequence_not_initialized.json"),
     # An idle flat wizard is idle whatever else the rig is doing.
     "/flats/status": load_envelope("dawn_flats_status_idle.json"),
+    # An empty history has no frame 0 either, and answers the same envelope the
+    # bare path does.
+    "/image/0": load_envelope("restart_image_history_empty_index_error.json"),
 }
 
 # ClientError, not ClientConnectorError: a crashed N.I.N.A. raises

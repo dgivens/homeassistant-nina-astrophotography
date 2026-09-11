@@ -398,6 +398,23 @@ class FlatsStatus:
 
 
 @dataclass(frozen=True, slots=True)
+class StackState:
+    """The stack `STACK-UPDATED` last reported.
+
+    `/livestack/image/{target}/{filter}` needs a pair to fetch, and the event
+    names the one currently accumulating. `/livestack/image/available` lists
+    every pair the plugin holds without saying which is current, and the event
+    is already folded, so nothing extra is polled for this.
+    """
+
+    target: str
+    filter_name: str
+    count: int
+    """`StackCount` — how many subs are in the stack."""
+    updated: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class LivestackStatus:
     running: bool
     raw_state: str

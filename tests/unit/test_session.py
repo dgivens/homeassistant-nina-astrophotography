@@ -9,7 +9,11 @@ from helpers import load_fixture
 
 from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
-from nina_astrophotography.session import fold
+from nina_astrophotography.session import fold, latest_stack, newest_frame
+
+# Noon the day after the dawn corpus: every one of its frames is by then in
+# the previous session.
+_AFTER_THE_ROLLOVER = datetime.fromisoformat("2026-09-05T13:00:00-05:00")
 
 
 @pytest.fixture
@@ -302,3 +306,35 @@ def test_events_from_a_previous_session_do_not_report_an_autofocus(night_events)
     tomorrow = max(e.time for e in night_events) + timedelta(days=1)
     stats = fold([], night_events, generation="g1", now=tomorrow)
     assert stats.autofocus == AutoFocusState(None, None, False)
+
+
+def test_the_newest_frame_ignores_the_session_window(night) -> None:
+    """The rig's image history does not roll over at local noon, so what
+    `/image/0` renders long after the rollover is still last night's frame —
+    which `fold`'s own `last_frame` has by then dropped."""
+    newest = newest_frame(night, "g1")
+    assert newest.date == max(f.date for f in night)
+    assert fold(night, [], "g1", now=_AFTER_THE_ROLLOVER).last_frame is None
+
+
+def test_the_newest_frame_of_another_process_is_not_offered(night) -> None:
+    assert newest_frame(night, "g2") is None
+
+
+def test_the_stack_is_the_pair_the_newest_update_named(night_events) -> None:
+    stack = latest_stack(night_events, "g1")
+    assert (stack.target, stack.filter_name, stack.count) == ("NGC 281", "S", 24)
+
+
+@pytest.mark.parametrize("missing", ["Target", "Filter"])
+def test_a_stack_update_missing_half_its_pair_names_nothing(missing: str) -> None:
+    """Both halves are path segments, and `/livestack/image//O` is not a route."""
+    payload = {"Event": "STACK-UPDATED", "Time": "2026-09-04T04:25:58-05:00",
+               "Target": "NGC 281", "Filter": "S", "StackCount": 24}
+    del payload[missing]
+    assert latest_stack([map_event(payload, "g1")], "g1") is None
+
+
+def test_no_stack_update_is_no_stack(night_events) -> None:
+    assert latest_stack([e for e in night_events if e.name != "STACK-UPDATED"],
+                        "g1") is None
