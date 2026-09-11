@@ -117,6 +117,9 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("camera", "binning_modes", ("1x1", "2x2", "3x3", "4x4")),
         ("camera", "target_temperature", 0.0),
         ("camera", "battery", None),            # Battery -1 with HasBattery false
+        # Per-camera, and narrower than the 0-100 a range-free reading suggests.
+        ("camera", "usb_limit_min", 40),
+        ("camera", "usb_limit_max", 100),
         ("mount", "epoch", "JNOW"),
         ("mount", "tracking_modes", ("Sidereal", "Lunar", "Solar", "Stopped")),
         ("focuser", "position", 2332),

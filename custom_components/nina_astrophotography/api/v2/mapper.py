@@ -213,6 +213,8 @@ def map_camera(wire: dict) -> CameraModel:
         gain=_integer(readings, "Gain"),
         offset=_integer(readings, "Offset"),
         usb_limit=_integer(readings, "USBLimit"),
+        usb_limit_min=_integer(wire, "USBLimitMin"),
+        usb_limit_max=_integer(wire, "USBLimitMax"),
         camera_state=_text(readings, "CameraState"),
         is_exposing=_flag(readings, "IsExposing"),
         pixel_size=_number(readings, "PixelSize"),
