@@ -18,8 +18,8 @@ from pathlib import Path
 
 import yaml
 
+from nina_astrophotography.api.v2.client import NinaClientV2
 from nina_astrophotography.api.v2.events import NinaEventStream
-from nina_astrophotography.legacy_api import NinaApiClient
 
 COMPONENT = (
     Path(__file__).resolve().parents[2]
@@ -29,7 +29,7 @@ COMPONENT = (
 
 
 def test_the_client_offers_no_dither_call() -> None:
-    assert not hasattr(NinaApiClient, "dither")
+    assert not hasattr(NinaClientV2, "dither")
 
 
 def test_no_dither_service_is_declared() -> None:

@@ -71,7 +71,6 @@ from .session import (
 
 if TYPE_CHECKING:
     from .api.v2.events import NinaEventStream
-    from .legacy_api import NinaApiClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -647,15 +646,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
 
 @dataclass
 class NinaRuntimeData:
-    """Everything setup builds, hung on `entry.runtime_data` (Bronze).
-
-    `service_client` is the 1.4.x client the unmigrated services still call;
-    phase D retires it.
-    """
+    """Everything setup builds, hung on `entry.runtime_data` (Bronze)."""
 
     client: NinaClientV2
     coordinator: NinaCoordinator
-    service_client: NinaApiClient
     instance_name: str
     events: NinaEventStream
 

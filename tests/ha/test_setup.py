@@ -1,6 +1,6 @@
 """Setup and unload, through public interfaces only."""
 from datetime import timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntryState
@@ -60,21 +60,14 @@ async def test_a_build_that_does_not_serve_the_api_fails_the_entry(
 
 
 async def test_the_services_still_reach_a_client_after_the_move_to_runtime_data(
-    hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig
 ) -> None:
-    """Moving off hass.data[DOMAIN] empties what _get_client iterates.
-
-    Without this test the 19 services fail silently from phase A until phase C.
-    """
+    """Moving off hass.data[DOMAIN] empties what _get_client iterates."""
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    with patch(
-        "custom_components.nina_astrophotography.legacy_api.NinaApiClient.park_mount",
-        new_callable=AsyncMock,
-    ) as park:
-        await hass.services.async_call(DOMAIN, "mount_park", {}, blocking=True)
-    assert park.called
+    await hass.services.async_call(DOMAIN, "mount_park", {}, blocking=True)
+    assert ("/equipment/mount/park", None) in rig.sent
 
 
 async def test_unload_leaves_no_state_behind(

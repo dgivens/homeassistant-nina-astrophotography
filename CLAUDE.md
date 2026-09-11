@@ -49,7 +49,6 @@ custom_components/nina_astrophotography/
   api/v2/             client.py (the only module that talks to N.I.N.A.), mapper.py
                       (wire → models; every sentinel dies here), schema.py (generated),
                       events.py (the event socket inside the seam; emits NinaEvent)
-  legacy_api.py       the 1.4.x client the unmigrated services still use
   coordinator.py      DataUpdateCoordinator publishing NinaData; owns frames/events
   entity.py           the shared entity base
   device.py           the hub and one device per equipment type; the only
