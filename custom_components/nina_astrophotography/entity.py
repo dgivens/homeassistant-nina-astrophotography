@@ -8,8 +8,9 @@ from __future__ import annotations
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .api.models import SwitchChannelModel
 from .coordinator import NinaConfigEntry, NinaCoordinator
-from .device import device_identifiers
+from .device import channel_key, channel_name, channel_of, device_identifiers
 
 
 class NinaEntity(CoordinatorEntity[NinaCoordinator]):
@@ -63,3 +64,52 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
             return True
         device = getattr(self.coordinator.data.snapshot, self._kind)
         return device is not None and device.connected
+
+
+class NinaChannelEntity(NinaEntity):
+    """Base for one channel of the N.I.N.A. switch device.
+
+    A channel is not one of the eleven equipment slots: it is a row of the
+    switch device's own list, so it is keyed on the channel's `Id` and named by
+    the driver. The shape the driver reports decides which platform takes it —
+    read-only is a `sensor`, one-step is a `switch`, anything wider is a
+    `number` (§5.3.5).
+    """
+
+    def __init__(
+        self,
+        coordinator: NinaCoordinator,
+        entry: NinaConfigEntry,
+        channel: SwitchChannelModel,
+    ) -> None:
+        super().__init__(
+            coordinator, entry, channel_key(channel), kind="switch_device"
+        )
+        self._index = channel.index
+        # Named by the driver, so there is no translation key to name it by.
+        self._attr_name = channel_name(channel)
+
+    @property
+    def channel(self) -> SwitchChannelModel | None:
+        """This channel as the newest snapshot reports it; `None` once the
+        driver stops reporting it, which the entity outlives."""
+        return channel_of(self.coordinator.data, self._index)
+
+    @property
+    def channel_value(self) -> float | None:
+        """`Value` is where the channel IS; `TargetValue` is only what it was
+        last asked for."""
+        channel = self.channel
+        return None if channel is None else channel.value
+
+    @property
+    def available(self) -> bool:
+        """A channel the driver has stopped reporting is genuinely unavailable.
+
+        `NinaEntity.available` asks whether the switch DEVICE is connected,
+        which is still true — so without this the entity reads `unknown` and
+        stays clickable, and a tap sends a command for an index that no longer
+        exists. Nothing refuses it: this API answers `Success: true` to a `set`
+        it did not act on.
+        """
+        return super().available and self.channel is not None

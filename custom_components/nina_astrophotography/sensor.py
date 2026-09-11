@@ -58,11 +58,11 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api.models import Frame, SwitchChannelModel, TargetBreakdown
+from .api.models import Frame, TargetBreakdown
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channel_name, channel_of
-from .entity import NinaEntity
+from .device import channel_key, channels_of, observed, read_field
+from .entity import NinaChannelEntity, NinaEntity
 from .sequence import progress_percent
 
 # Read-only: nothing here commands the rig, so there is nothing to serialize.
@@ -127,19 +127,6 @@ def _breakdown(field: str) -> Callable[[NinaData], Mapping[str, Any]]:
             }
             for row in rows
         }
-
-    return value
-
-
-def _device(kind: str, field: str) -> Callable[[NinaData], Any]:
-    """One reading off one equipment model, `None` while the device is absent.
-
-    A disconnected device's readings are already `None` from the mapper, so
-    this yields `unknown` rather than a driver template default.
-    """
-    def value(data: NinaData) -> Any:
-        device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
 
     return value
 
@@ -332,7 +319,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         kind="camera",
-        value=_device("camera", "temperature"),
+        value=read_field("camera", "temperature"),
     ),
     NinaSensorDescription(
         key="camera_cooler_power",
@@ -344,7 +331,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         kind="camera",
         # Transiently `NaN` on a warm camera, so it is NOT under §5.2.2's
         # create-on-sight rule: a rig configured by day must keep the entity.
-        value=_device("camera", "cooler_power"),
+        value=read_field("camera", "cooler_power"),
     ),
     NinaSensorDescription(
         key="camera_gain",
@@ -352,7 +339,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="camera",
-        value=_device("camera", "gain"),
+        value=read_field("camera", "gain"),
     ),
     NinaSensorDescription(
         key="camera_offset",
@@ -360,7 +347,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="camera",
-        value=_device("camera", "offset"),
+        value=read_field("camera", "offset"),
     ),
     NinaSensorDescription(
         key="camera_state",
@@ -368,11 +355,12 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         unique_id_suffix="camera_status",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="camera",
-        # Retained beside `binary_sensor.camera_is_exposing` for the same
-        # reason `guider_status` is retained beside `switch.guider` (§5.2.3):
-        # the flag answers "is it exposing", while `Downloading`, `Waiting` and
-        # `Error` are the states an automation about a stalled camera needs.
-        value=_device("camera", "camera_state"),
+        # Retained beside `binary_sensor.<instance>_camera_exposing` for the
+        # same reason `guider_status` is retained beside `switch.guider`
+        # (§5.2.3): the flag answers "is it exposing", while `Reading`,
+        # `Download`, `Waiting` and `Error` are the states an automation about
+        # a stalled camera needs.
+        value=read_field("camera", "camera_state"),
     ),
     # ── Mount ────────────────────────────────────────────────────────────
     NinaSensorDescription(
@@ -385,7 +373,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         kind="mount",
         # In the MOUNT's epoch — JNOW on this rig — never J2000, and in hours.
         # Feeding it back into a slew is wrong twice (§3.7).
-        value=_device("mount", "right_ascension"),
+        value=read_field("mount", "right_ascension"),
     ),
     NinaSensorDescription(
         key="mount_declination",
@@ -395,7 +383,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=4,
         kind="mount",
-        value=_device("mount", "declination"),
+        value=read_field("mount", "declination"),
     ),
     NinaSensorDescription(
         key="mount_altitude",
@@ -404,7 +392,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind="mount",
-        value=_device("mount", "altitude"),
+        value=read_field("mount", "altitude"),
     ),
     NinaSensorDescription(
         key="mount_azimuth",
@@ -413,7 +401,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind="mount",
-        value=_device("mount", "azimuth"),
+        value=read_field("mount", "azimuth"),
     ),
     NinaSensorDescription(
         key="mount_sidereal_time",
@@ -423,16 +411,17 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         suggested_display_precision=4,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="mount",
-        value=_device("mount", "sidereal_time"),
+        value=read_field("mount", "sidereal_time"),
     ),
     NinaSensorDescription(
         key="mount_side_of_pier",
         translation_key="mount_side_of_pier",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="mount",
-        # New. The meridian-flip maths needs it (§11), and it is the one field
-        # that says whether a flip has already happened.
-        value=_device("mount", "side_of_pier"),
+        # New. One of the two inputs to §11's pier-side windows. It does NOT
+        # say whether a flip has happened: that needs the EXPECTED side from
+        # ASCOM's `DestinationSideOfPier`, which this API does not expose.
+        value=read_field("mount", "side_of_pier"),
     ),
     NinaSensorDescription(
         key="mount_time_to_meridian_flip",
@@ -456,7 +445,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         # carries no `state_class`, and position against temperature is the
         # standard temp-comp-slope diagnostic — which this rig needs, because
         # it reports `TempCompAvailable: false`.
-        value=_device("focuser", "position"),
+        value=read_field("focuser", "position"),
     ),
     NinaSensorDescription(
         key="focuser_temperature",
@@ -466,7 +455,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         kind="focuser",
-        value=_device("focuser", "temperature"),
+        value=read_field("focuser", "temperature"),
     ),
     NinaSensorDescription(
         key="focuser_step_size",
@@ -477,7 +466,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         kind="focuser",
         # A driver constant, not a reading: no `state_class`, because a
         # statistic over an unchanging number is noise.
-        value=_device("focuser", "step_size"),
+        value=read_field("focuser", "step_size"),
     ),
     # ── Guider ───────────────────────────────────────────────────────────
     NinaSensorDescription(
@@ -487,7 +476,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         # Retained (§5.2.3). `switch.guider` is on for every state but
         # `Stopped` — the guider is RUNNING — so it cannot tell a lost lock
         # from a settled one, and that is what this reports.
-        value=_device("guider", "state"),
+        value=read_field("guider", "state"),
     ),
     NinaSensorDescription(
         key="guider_rms_total",
@@ -498,7 +487,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         kind="guider",
         # Arcseconds, not pixels: comparable across rigs, and the same
         # convention as `sensor.last_image_rms`.
-        value=_device("guider", "rms_total"),
+        value=read_field("guider", "rms_total"),
     ),
     NinaSensorDescription(
         key="guider_rms_ra",
@@ -508,7 +497,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="guider",
-        value=_device("guider", "rms_ra"),
+        value=read_field("guider", "rms_ra"),
     ),
     NinaSensorDescription(
         key="guider_rms_dec",
@@ -518,7 +507,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         suggested_display_precision=2,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="guider",
-        value=_device("guider", "rms_dec"),
+        value=read_field("guider", "rms_dec"),
     ),
     # ── Flat panel ───────────────────────────────────────────────────────
     NinaSensorDescription(
@@ -527,9 +516,9 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="flat_device",
         # Retained beside `switch.flat_panel_cover`: `CoverState` is
-        # Open | Closed | NeitherOpenNorClosed | Unknown | Error, and a switch
-        # cannot express a cover that is stuck between the two.
-        value=_device("flat_device", "cover_state"),
+        # Open | Closed | NeitherOpenNorClosed | NotPresent | Unknown | Error,
+        # and a switch cannot express a cover stuck between the two.
+        value=read_field("flat_device", "cover_state"),
     ),
     # ── Sequence ─────────────────────────────────────────────────────────
     # On the hub: sequence control is rig-scoped, not any one device's.
@@ -566,7 +555,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
-        value=_device("dome", "shutter_status"),
+        value=read_field("dome", "shutter_status"),
     ),
 )
 
@@ -825,7 +814,7 @@ class NinaWeatherSensor(NinaSensor):
         )
 
 
-class NinaSensorChannel(NinaEntity, SensorEntity):
+class NinaSensorChannel(NinaChannelEntity, SensorEntity):
     """One read-only channel of the N.I.N.A. switch device.
 
     No unit and no device class: `ReadonlySwitches` carry neither, and a guess
@@ -835,23 +824,9 @@ class NinaSensorChannel(NinaEntity, SensorEntity):
 
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(
-        self,
-        coordinator: NinaCoordinator,
-        entry: NinaConfigEntry,
-        channel: SwitchChannelModel,
-    ) -> None:
-        super().__init__(
-            coordinator, entry, channel_key(channel), kind="switch_device"
-        )
-        self._index = channel.index
-        # Named by the driver, so there is no translation key to name it by.
-        self._attr_name = channel_name(channel)
-
     @property
     def native_value(self) -> float | None:
-        channel = channel_of(self.coordinator.data, self._index)
-        return None if channel is None else channel.value
+        return self.channel_value
 
 
 def _established_channels(
@@ -893,39 +868,39 @@ async def async_setup_entry(
     def _add_observed() -> None:
         """Create the entities whose equipment the snapshot now carries.
 
-        Gated on the slot being non-`None`, because an identifiers-only
-        `DeviceInfo` naming a kind `device.py` has not created leaves the entity
-        platform to create a nameless device. Re-run on every publish, so
-        equipment that connects hours after Home Assistant started still gets
-        its entities; a slot never returns to `None`, so nothing is removed.
+        Re-run on every publish, so equipment that connects hours after Home
+        Assistant started still gets its entities; a slot never returns to
+        `None`, so nothing is removed here.
         """
-        new: list[NinaSensor | NinaSensorChannel] = [
-            NinaSensor(coordinator, entry, description)
+        descriptions = [
+            description
             for description in DESCRIPTIONS
             if description.key not in added
-            and (
-                description.kind is None
-                or getattr(coordinator.data.snapshot, description.kind) is not None
-            )
+            and observed(coordinator.data, description.kind)
         ]
-        added.update(
-            sensor.entity_description.key for sensor in new
-        )
-        device = coordinator.data.snapshot.switch_device
         gauges = [
             channel
-            for channel in (device.channels if device is not None else ())
+            for channel in channels_of(coordinator.data)
             if not channel.writable and channel_key(channel) not in added
         ]
-        added.update(channel_key(channel) for channel in gauges)
-        new += [NinaSensorChannel(coordinator, entry, c) for c in gauges]
-        if not new:
+        if not descriptions and not gauges:
             return
-        async_add_entities(new)
+        added.update(description.key for description in descriptions)
+        added.update(channel_key(channel) for channel in gauges)
+        async_add_entities(
+            [NinaSensor(coordinator, entry, d) for d in descriptions]
+            + [NinaSensorChannel(coordinator, entry, c) for c in gauges]
+        )
 
     _add_observed()
     entry.async_on_unload(coordinator.async_add_listener(_add_observed))
 
+    # The one path that does not gate on `observed()`. It cannot: the registry
+    # rows exist precisely because setup runs before any poll, and a source
+    # that is down at Home Assistant's start leaves `snapshot.weather` None
+    # while its channels are still this entry's. The device is not minted
+    # nameless because the device registry has kept the row from the run that
+    # created these entities — the same row this is reading them out of.
     established = _established_channels(er.async_get(hass), entry)
     channels = set(established)
     async_add_entities(

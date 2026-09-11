@@ -23,8 +23,8 @@ not created leaves the entity platform to create a nameless device.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
@@ -55,11 +55,63 @@ KINDS: Mapping[str, str] = {
 }
 
 
+def observed(data: NinaData, kind: str | None) -> bool:
+    """Whether the equipment an entity hangs off has ever been seen.
+
+    `None` is the hub, which always exists. A platform MUST gate entity
+    creation on this: an identifiers-only `DeviceInfo` naming a kind this
+    module has not created leaves the entity platform to mint a nameless one.
+    """
+    return kind is None or getattr(data.snapshot, kind) is not None
+
+
+def read_field(kind: str, field: str) -> Callable[[NinaData], Any]:
+    """One reading off one equipment model, `None` while the device is absent.
+
+    A disconnected device's readings are already `None` from the mapper, so
+    this yields `unknown` rather than a driver template default.
+    """
+    def value(data: NinaData) -> Any:
+        device = getattr(data.snapshot, kind)
+        return None if device is None else getattr(device, field)
+
+    return value
+
+
+def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
+    """Every channel the N.I.N.A. switch device reports, empty while it is
+    absent — the device is one of eleven slots, not one of the channels."""
+    device = data.snapshot.switch_device
+    return device.channels if device is not None else ()
+
+
+def unplaced_channels(data: NinaData) -> tuple[SwitchChannelModel, ...]:
+    """Channels no platform will claim, so the absence can be reported.
+
+    The three platforms partition by shape (§5.3.5) — read-only is a `sensor`,
+    one step is a `switch`, a wider range is a `number` — and that partition
+    has a hole: a WRITABLE channel whose `Minimum`/`Maximum`/`StepSize` are
+    absent or arrive as `"NaN"` is none of the three. Without this it simply
+    does not appear in Home Assistant, and the operator has a switch device
+    with fewer channels than the driver reports and nothing to diagnose it
+    with.
+    """
+    return tuple(
+        channel
+        for channel in channels_of(data)
+        if channel.writable
+        and not channel.binary
+        and (channel.minimum is None or channel.maximum is None)
+    )
+
+
 def channel_key(channel: SwitchChannelModel) -> str:
     """The `unique_id` suffix for one N.I.N.A. switch-device channel.
 
-    Keyed on the channel's own `Id`, never its position: a channel the driver
-    adds later would otherwise renumber every entity after it.
+    Keyed on the channel's own `Id` rather than its position, so a channel the
+    driver adds later does not renumber every entity after it. A channel with
+    no `Id` at all falls back to a synthesized index, offset per list so the
+    two cannot collide.
     """
     return f"switch_channel_{channel.index}"
 
@@ -77,9 +129,7 @@ def channel_name(channel: SwitchChannelModel) -> str:
 def channel_of(data: NinaData, index: int) -> SwitchChannelModel | None:
     """The channel with this `Id` in the published snapshot, if it is still
     there — a driver may stop reporting one, and the entity outlives it."""
-    device = data.snapshot.switch_device
-    channels = device.channels if device is not None else ()
-    return next((c for c in channels if c.index == index), None)
+    return next((c for c in channels_of(data) if c.index == index), None)
 
 
 def device_identifiers(entry_id: str, kind: str | None = None) -> set[tuple[str, str]]:

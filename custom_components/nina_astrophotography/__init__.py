@@ -1,7 +1,9 @@
 """N.I.N.A. Astrophotography integration for Home Assistant."""
 from __future__ import annotations
 
+import functools
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict
 from datetime import timedelta
 
@@ -12,6 +14,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import (
     ConfigEntryError,
     ConfigEntryNotReady,
+    HomeAssistantError,
     ServiceValidationError,
 )
 from homeassistant.helpers import config_validation as cv
@@ -22,6 +25,7 @@ from .api.errors import (
     NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
+    NinaError,
     NinaRequestError,
     NinaUnavailableError,
 )
@@ -56,18 +60,13 @@ from .const import (
     SERVICE_SEQUENCE_LOAD,
     SERVICE_SEQUENCE_START,
     SERVICE_SEQUENCE_STOP,
+    TrackingMode,
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
-from .const import TrackingMode
 from .device import async_sync_devices, kind_of
 
 _LOGGER = logging.getLogger(__name__)
 
-# A platform is registered only once it reads NinaData: Home Assistant imports
-# every listed platform module during entry setup, so listing one that still
-# speaks the 1.4.x coordinator fails the entry. Each remaining platform is
-# re-added by the phase-C PR that migrates it; until then it stays on disk,
-# unregistered.
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
@@ -182,7 +181,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     # later setup step fails, which is what keeps the reconnect task from
     # outliving a failed entry.
     entry.async_on_unload(events.stop)
-    await events.start()
 
     # Before the platforms: an entity's `via_device` needs the hub to exist,
     # and a child device created here rather than by an entity is what lets a
@@ -195,6 +193,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # AFTER the platforms, so nothing dispatches into a window where the
+    # subscribers do not exist yet. `event.nina_error` subscribes in
+    # `async_added_to_hass` (Bronze entity-event-setup), and replay
+    # deliberately does not re-fire — so an ERROR-* arriving while nine
+    # platforms set themselves up would be lost for good, on every reload.
+    await events.start()
 
     _register_services(hass)
 
@@ -249,6 +254,30 @@ def _get_client(hass: HomeAssistant) -> NinaClientV2:
     raise ServiceValidationError("No N.I.N.A. instance is configured")
 
 
+def _service(handler: Callable[[ServiceCall], Awaitable[None]]):
+    """Wrap a handler so a refusal reads as a refusal.
+
+    `NinaError` subclasses `Exception` alone — deliberately, to keep the API
+    layer free of Home Assistant — so one escaping a service handler is treated
+    by Home Assistant as an integration DEFECT: the automation step fails with
+    a traceback and the frontend offers to file a bug. A disconnected mount is
+    not a bug in this integration. Every platform already does this at its own
+    boundary; the services are the last place that did not.
+    """
+    @functools.wraps(handler)
+    async def wrapped(call: ServiceCall) -> None:
+        try:
+            await handler(call)
+        except NinaError as exc:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="command_failed",
+                translation_placeholders={"error": str(exc)},
+            ) from exc
+
+    return wrapped
+
+
 def _register_services(hass: HomeAssistant) -> None:
     """Register all HA services for N.I.N.A. control."""
 
@@ -262,7 +291,7 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_CAMERA_COOL,
-        handle_camera_cool,
+        _service(handle_camera_cool),
         schema=vol.Schema(
             {
                 vol.Required("temperature"): vol.Coerce(float),
@@ -278,16 +307,14 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_CAMERA_WARM,
-        handle_camera_warm,
+        _service(handle_camera_warm),
         schema=vol.Schema({vol.Optional("minutes", default=10): vol.Coerce(float)}),
     )
 
     async def handle_capture(call: ServiceCall) -> None:
-        # `filter_index` and `binning` are accepted and not sent: they bound
-        # nothing on the old client either — `/equipment/camera/capture` takes
-        # neither — so dropping them changes no behaviour. Phase D removes them
-        # from the schema. `exposure` now binds for the first time: 1.4.5 sent
-        # it as `time`, which the API ignored and defaulted.
+        # `filter_index` and `binning` are still accepted and deliberately not
+        # sent: `/equipment/camera/capture` takes neither. Phase D removes them
+        # from the schema.
         await _get_client(hass).capture_image(
             call.data["exposure"],
             gain=call.data.get("gain"),
@@ -297,7 +324,7 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_CAMERA_CAPTURE,
-        handle_capture,
+        _service(handle_capture),
         schema=vol.Schema(
             {
                 vol.Required("exposure"): vol.Coerce(float),
@@ -312,14 +339,14 @@ def _register_services(hass: HomeAssistant) -> None:
     async def handle_abort_capture(call: ServiceCall) -> None:
         await _get_client(hass).abort_capture()
 
-    hass.services.async_register(DOMAIN, SERVICE_CAMERA_ABORT_CAPTURE, handle_abort_capture)
+    hass.services.async_register(DOMAIN, SERVICE_CAMERA_ABORT_CAPTURE,
+        _service(handle_abort_capture))
 
     # ── Mount ────────────────────────────────────────────────────────────────
 
     async def handle_slew(call: ServiceCall) -> None:
         # The service takes RA in HOURS, because every RA N.I.N.A. hands out is
-        # in hours; the endpoint reads degrees. The conversion moved out of the
-        # client, which now takes degrees and says so. Phase D redesigns this.
+        # in hours; the endpoint reads degrees. Phase D redesigns this.
         await _get_client(hass).slew_mount(
             call.data["ra"] * 15.0, call.data["dec"]
         )
@@ -327,11 +354,17 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_MOUNT_SLEW,
-        handle_slew,
+        _service(handle_slew),
+        # `services.yaml`'s selectors are a UI hint and bind nothing from a
+        # script, an automation or the REST API — and out-of-range input is
+        # silently clamped and answered `Success: true`, so the schema is the
+        # only thing between a typo and a mount slewing somewhere real.
         schema=vol.Schema(
             {
-                vol.Required("ra"): vol.Coerce(float),
-                vol.Required("dec"): vol.Coerce(float),
+                vol.Required("ra"): vol.All(vol.Coerce(float), vol.Range(min=0, max=24)),
+                vol.Required("dec"): vol.All(
+                    vol.Coerce(float), vol.Range(min=-90, max=90)
+                ),
             }
         ),
     )
@@ -339,12 +372,14 @@ def _register_services(hass: HomeAssistant) -> None:
     async def handle_park(call: ServiceCall) -> None:
         await _get_client(hass).park_mount()
 
-    hass.services.async_register(DOMAIN, SERVICE_MOUNT_PARK, handle_park)
+    hass.services.async_register(DOMAIN, SERVICE_MOUNT_PARK,
+        _service(handle_park))
 
     async def handle_unpark(call: ServiceCall) -> None:
         await _get_client(hass).unpark_mount()
 
-    hass.services.async_register(DOMAIN, SERVICE_MOUNT_UNPARK, handle_unpark)
+    hass.services.async_register(DOMAIN, SERVICE_MOUNT_UNPARK,
+        _service(handle_unpark))
 
     async def handle_tracking(call: ServiceCall) -> None:
         mode = TrackingMode.SIDEREAL if call.data["enabled"] else TrackingMode.STOPPED
@@ -353,7 +388,7 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_MOUNT_TRACKING,
-        handle_tracking,
+        _service(handle_tracking),
         schema=vol.Schema({vol.Required("enabled"): cv.boolean}),
     )
 
@@ -365,14 +400,17 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_FOCUSER_MOVE,
-        handle_focuser_move,
-        schema=vol.Schema({vol.Required("position"): vol.Coerce(int)}),
+        _service(handle_focuser_move),
+        schema=vol.Schema(
+            {vol.Required("position"): vol.All(vol.Coerce(int), vol.Range(min=0))}
+        ),
     )
 
     async def handle_autofocus(call: ServiceCall) -> None:
         await _get_client(hass).auto_focus()
 
-    hass.services.async_register(DOMAIN, SERVICE_FOCUSER_AUTO_FOCUS, handle_autofocus)
+    hass.services.async_register(DOMAIN, SERVICE_FOCUSER_AUTO_FOCUS,
+        _service(handle_autofocus))
 
     # ── Filter Wheel ─────────────────────────────────────────────────────────
 
@@ -382,8 +420,10 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_FILTERWHEEL_CHANGE,
-        handle_filter_change,
-        schema=vol.Schema({vol.Required("filter_index"): vol.Coerce(int)}),
+        _service(handle_filter_change),
+        schema=vol.Schema(
+            {vol.Required("filter_index"): vol.All(vol.Coerce(int), vol.Range(min=0))}
+        ),
     )
 
     # ── Guider ───────────────────────────────────────────────────────────────
@@ -395,7 +435,7 @@ def _register_services(hass: HomeAssistant) -> None:
     hass.services.async_register(
         DOMAIN,
         SERVICE_GUIDER_START,
-        handle_guider_start,
+        _service(handle_guider_start),
         schema=vol.Schema(
             {vol.Optional("force_calibration", default=False): cv.boolean}
         ),
@@ -404,46 +444,51 @@ def _register_services(hass: HomeAssistant) -> None:
     async def handle_guider_stop(call: ServiceCall) -> None:
         await _get_client(hass).stop_guiding()
 
-    hass.services.async_register(DOMAIN, SERVICE_GUIDER_STOP, handle_guider_stop)
+    hass.services.async_register(DOMAIN, SERVICE_GUIDER_STOP,
+        _service(handle_guider_stop))
 
     # ── Dome ─────────────────────────────────────────────────────────────────
 
     async def handle_dome_open(call: ServiceCall) -> None:
         await _get_client(hass).open_dome()
 
-    hass.services.async_register(DOMAIN, SERVICE_DOME_OPEN, handle_dome_open)
+    hass.services.async_register(DOMAIN, SERVICE_DOME_OPEN,
+        _service(handle_dome_open))
 
     async def handle_dome_close(call: ServiceCall) -> None:
         await _get_client(hass).close_dome()
 
-    hass.services.async_register(DOMAIN, SERVICE_DOME_CLOSE, handle_dome_close)
+    hass.services.async_register(DOMAIN, SERVICE_DOME_CLOSE,
+        _service(handle_dome_close))
 
     async def handle_dome_park(call: ServiceCall) -> None:
         await _get_client(hass).park_dome()
 
-    hass.services.async_register(DOMAIN, SERVICE_DOME_PARK, handle_dome_park)
+    hass.services.async_register(DOMAIN, SERVICE_DOME_PARK,
+        _service(handle_dome_park))
 
     # ── Sequence ─────────────────────────────────────────────────────────────
 
     async def handle_seq_start(call: ServiceCall) -> None:
         await _get_client(hass).start_sequence()
 
-    hass.services.async_register(DOMAIN, SERVICE_SEQUENCE_START, handle_seq_start)
+    hass.services.async_register(DOMAIN, SERVICE_SEQUENCE_START,
+        _service(handle_seq_start))
 
     async def handle_seq_stop(call: ServiceCall) -> None:
         await _get_client(hass).stop_sequence()
 
-    hass.services.async_register(DOMAIN, SERVICE_SEQUENCE_STOP, handle_seq_stop)
+    hass.services.async_register(DOMAIN, SERVICE_SEQUENCE_STOP,
+        _service(handle_seq_stop))
 
     async def handle_seq_load(call: ServiceCall) -> None:
-        # The field is still called `path`, and is now sent as `sequenceName`
-        # — which is what the API reads, and why 1.4.5 never loaded anything.
-        # Phase D renames the field.
+        # The service field is `path`, but the API wants a sequence NAME, not a
+        # path. Phase D renames the field.
         await _get_client(hass).load_sequence(call.data["path"])
 
     hass.services.async_register(
         DOMAIN,
         SERVICE_SEQUENCE_LOAD,
-        handle_seq_load,
+        _service(handle_seq_load),
         schema=vol.Schema({vol.Required("path"): cv.string}),
     )

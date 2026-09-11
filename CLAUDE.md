@@ -28,6 +28,11 @@ uv run python scripts/check_fixtures.py tests/fixtures/*.json   # the redaction 
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
 collection; always name the suite.
 
+**Never pass `-p no:logging` to `tests/ha`.** It disables the plugin PHACC's
+`caplog` fixture wraps, and every test using `caplog` then ERRORS with
+"recursive dependency involving fixture 'caplog'" — which reads like a broken
+test rather than a bad flag.
+
 Dependencies and pytest config live in `pyproject.toml`; there is no
 `requirements*.txt` and no `pytest.ini`. Groups: `test` (lean, HA-free),
 `test-ha` (`pytest-homeassistant-custom-component`, pinned — add with
@@ -90,11 +95,21 @@ disk proves nothing.
   exposure is the emergency stop. Applies to abort exposure, clear guider
   calibration, park, dome close, sequence stop and the flat panel.
 - **Every platform PR appends its renames to `docs/2.0-renames.md`.**
+- **`tests/ha/__snapshots__/` is the contract.** `test_snapshots.ambr` is the
+  authoritative rename record and `entity_ids.txt` the plain list phase D reads.
+  Regenerate them in their own commit, and reconcile both directions against
+  `docs/2.0-renames.md` — ids the doc promises but the snapshot lacks are only
+  legitimate for dome hardware and `"NaN"` weather channels.
 
 ## Branches
 
 - `main` — the shipping line, at 1.4.5
 - `v2` — the 2.0 integration branch; work lands as stacked task PRs onto it
+  (stack #17). **Every `gh stack` command needs `GH_REPO=<your fork>` and
+  `--remote origin`**: it auto-detects `upstream` and will try to create
+  duplicate PRs there. `gh repo set-default` covers `gh pr`, not `gh stack`.
+  One branch per task, `v2-<phase><NN>-<slug>`; each phase ends with a
+  `<phase>NN-phase-<x>-gate-fixes` branch carrying the review findings.
 - **`wip/v2.0` — a read-only reference. Never merge or rebase it.** It predates
   every fix on `main` and has no tests; its value is the API audit in its
   CHANGELOG and README, which `docs/v2.0-design.md` supersedes.
@@ -139,10 +154,27 @@ and never confirm anything. Read `tests/scenarios/README.md` before writing a
 test. Wire data constructed rather than captured is marked
 `@pytest.mark.synthetic` and says in its docstring what it fabricates.
 
+**`advance()` cannot reach a state that differs only in a tier-polled
+endpoint** — `/profile/show`, `/livestack/status`,
+`/equipment/focuser/last-af`. Every state but `imaging_guiding` withholds
+those, so the coordinator's not-served latch fires at setup and one refresh
+will not retry. Set the entry up with the rig already in the state instead
+(`_set_up_at` in `tests/ha/test_binary_sensor.py`). The same applies to
+`/event-history`, which is replayed once.
+
 Test through **public Home Assistant interfaces**: set up via
 `hass.config_entries.async_setup`, assert via `hass.states`, `hass.services`,
 and the registries. Do not reach into coordinator internals — tests that do stop
 surviving refactors, which defeats the point during a restructure.
+
+**Registry snapshots live in `tests/ha/snapshots/`, and the extension is pinned
+in `tests/ha/conftest.py`.** Syrupy and `pytest-homeassistant-custom-component`
+both register a plugin fixture named `snapshot`, and pytest settles the clash by
+entry-point load order — which is not stable across machines. Syrupy winning
+stores under `__snapshots__/`, PHACC winning under `snapshots/`, so an unpinned
+corpus recorded on one host is invisible on the next: every read misses, and the
+same snapshots are reported both "does not exist" and "unused". Keep the
+conftest fixture, which outranks both plugins.
 
 ### Keep tests tightly scoped
 

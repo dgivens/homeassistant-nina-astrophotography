@@ -16,8 +16,9 @@ but `Stopped`. `State == "Guiding"` reads *off* through `LostLock` and
 **The cooler is two endpoints, not a toggle.** `/equipment/camera/cool` takes
 the setpoint and has no "resume at the existing target" form, so cooling starts
 at the temperature the camera reports as its own target; a camera that reports
-none — `TargetTemp: "NaN"`, which is what a camera with no cooling sends — is
-refused rather than cooled to a guessed temperature.
+none is refused rather than cooled to a guessed temperature. `"NaN"` is how a
+camera with no cooling would report the field; no capture in the corpus holds
+one, so the rig state exercising it is derived.
 
 **A channel of the N.I.N.A. switch device belongs here only when it is
 binary** — `Max - Min == StepSize` (§5.3.5) — and its on/off values are that
@@ -26,6 +27,7 @@ never `TargetValue`, which is only what the channel was last asked for.
 """
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -41,8 +43,16 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channel_name, channel_of
-from .entity import NinaEntity
+from .device import (
+    channel_key,
+    channels_of,
+    observed,
+    read_field,
+    unplaced_channels,
+)
+from .entity import NinaChannelEntity, NinaEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 # One in-flight command per platform: these switch hardware.
 PARALLEL_UPDATES = 1
@@ -80,27 +90,12 @@ class NinaSwitchDescription(SwitchEntityDescription):
     `{entry_id}_{unique_id_suffix or key}`."""
 
 
-def _read(kind: str, field: str) -> Callable[[NinaData], bool | None]:
-    """One flag off one equipment model, `None` while the device is absent."""
-    def value(data: NinaData) -> bool | None:
-        device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
-
-    return value
-
-
 def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
     def supported(data: NinaData) -> bool:
         device = getattr(data.snapshot, kind)
         return device is not None and bool(getattr(device, field))
 
     return supported
-
-
-def channel_key(channel: SwitchChannelModel) -> str:
-    """Keyed on the channel's own `Id`, so a channel the driver adds later does
-    not renumber the entities already registered."""
-    return f"switch_channel_{channel.index}"
 
 
 def _guider_running(data: NinaData) -> bool | None:
@@ -174,14 +169,14 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         translation_key="camera_cooler",
         unique_id_suffix="camera_cooler_switch",
         kind="camera",
-        value=_read("camera", "cooler_on"),
+        value=read_field("camera", "cooler_on"),
         command=_set_cooler,
     ),
     NinaSwitchDescription(
         key="camera_dew_heater",
         translation_key="camera_dew_heater",
         kind="camera",
-        value=_read("camera", "dew_heater_on"),
+        value=read_field("camera", "dew_heater_on"),
         command=_toggle("set_dew_heater"),
     ),
     NinaSwitchDescription(
@@ -195,8 +190,11 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
     NinaSwitchDescription(
         key="livestack",
         translation_key="livestack",
-        # Session-scoped, and the endpoint answers whether or not the plugin is
-        # installed, so it hangs off the hub and always exists.
+        # Session-scoped, so it hangs off the hub. It always exists because
+        # the model has an empty default, not because the endpoint always
+        # answers: a build without the plugin 404s, the coordinator latches
+        # that and stops asking, and the switch then reads `off` — where
+        # turning it on raises.
         kind=None,
         value=lambda data: data.livestack.running,
         command=_either("start_livestack", "stop_livestack"),
@@ -207,7 +205,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="rotator",
-        value=_read("rotator", "reverse"),
+        value=read_field("rotator", "reverse"),
         command=_toggle("set_rotator_reverse"),
     ),
     # Spec-derived and untested against hardware (§5.3.1): a bare field read,
@@ -219,7 +217,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
-        value=_read("dome", "following"),
+        value=read_field("dome", "following"),
         command=_toggle("set_dome_follow"),
     ),
 )
@@ -264,7 +262,7 @@ class NinaSwitch(NinaEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
 
-class NinaSwitchChannel(NinaEntity, SwitchEntity):
+class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
     """One binary channel of the N.I.N.A. switch device.
 
     The on and off values are the channel's own range ends, held from creation:
@@ -279,23 +277,13 @@ class NinaSwitchChannel(NinaEntity, SwitchEntity):
         entry: NinaConfigEntry,
         channel: SwitchChannelModel,
     ) -> None:
-        super().__init__(
-            coordinator, entry, channel_key(channel), kind="switch_device"
-        )
-        self._index = channel.index
+        super().__init__(coordinator, entry, channel)
         self._off_value = channel.minimum
         self._on_value = channel.maximum
-        # Named by the driver, so there is no translation key to name it by.
-        self._attr_name = channel_name(channel)
-
-    @property
-    def _channel(self) -> SwitchChannelModel | None:
-        return channel_of(self.coordinator.data, self._index)
 
     @property
     def is_on(self) -> bool | None:
-        channel = self._channel
-        value = channel.value if channel is not None else None
+        value = self.channel_value
         return None if value is None else value == self._on_value
 
     async def async_turn_on(self, **kwargs: Any) -> None:
@@ -305,6 +293,14 @@ class NinaSwitchChannel(NinaEntity, SwitchEntity):
         await self._send(self._off_value)
 
     async def _send(self, value: float) -> None:
+        if self.channel is None:
+            # The API answers `Success: true` to a `set` for an index it does
+            # not have, so nothing downstream would report this.
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="channel_gone",
+                translation_placeholders={"channel": self.name or str(self._index)},
+            )
         try:
             await self.coordinator.client.set_switch_value(self._index, value)
         except NinaError as exc:
@@ -312,11 +308,11 @@ class NinaSwitchChannel(NinaEntity, SwitchEntity):
         await self.coordinator.async_request_refresh()
 
 
-def _observed(data: NinaData, description: NinaSwitchDescription) -> bool:
+def _usable(data: NinaData, description: NinaSwitchDescription) -> bool:
     """The device has been seen, and reports the capability the switch drives."""
-    if description.kind is not None and getattr(data.snapshot, description.kind) is None:
-        return False
-    return description.supported is None or description.supported(data)
+    return observed(data, description.kind) and (
+        description.supported is None or description.supported(data)
+    )
 
 
 async def async_setup_entry(
@@ -326,6 +322,26 @@ async def async_setup_entry(
 ) -> None:
     coordinator = entry.runtime_data.coordinator
     added: set[str] = set()
+    warned: set[int] = set()
+
+    @callback
+    def _warn_about_unplaced() -> None:
+        """Say so when a channel falls through all three platforms.
+
+        Once per channel: the switch device is polled on the fast tier, and a
+        driver that reports no range will go on doing it all night.
+        """
+        for channel in unplaced_channels(coordinator.data):
+            if channel.index in warned:
+                continue
+            warned.add(channel.index)
+            _LOGGER.warning(
+                "N.I.N.A. switch channel %s (%r) is writable but reports no "
+                "usable range (min=%s max=%s step=%s), so no entity was "
+                "created for it",
+                channel.index, channel.name,
+                channel.minimum, channel.maximum, channel.step_size,
+            )
 
     @callback
     def _add_observed() -> None:
@@ -340,12 +356,11 @@ async def async_setup_entry(
             description
             for description in DESCRIPTIONS
             if description.key not in added
-            and _observed(coordinator.data, description)
+            and _usable(coordinator.data, description)
         ]
-        device = coordinator.data.snapshot.switch_device
         channels = [
             channel
-            for channel in (device.channels if device is not None else ())
+            for channel in channels_of(coordinator.data)
             if channel.binary
             and channel.writable
             and channel_key(channel) not in added
@@ -360,4 +375,6 @@ async def async_setup_entry(
         )
 
     _add_observed()
+    _warn_about_unplaced()
     entry.async_on_unload(coordinator.async_add_listener(_add_observed))
+    entry.async_on_unload(coordinator.async_add_listener(_warn_about_unplaced))

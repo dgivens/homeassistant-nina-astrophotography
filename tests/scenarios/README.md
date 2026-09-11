@@ -77,5 +77,16 @@ rig actually sends.
 
 If the corpus cannot show the state, add its name to `AWAITING_CAPTURE` with a
 line saying what a capture must contain, and leave the tests that need it to
-skip. `advance()` skips them by name. A state must never be faked into
-existence to turn a skip green.
+skip. `advance()` skips them by name.
+
+**Never fabricate a wire SHAPE; a reading may be derived.** The rule this
+narrows once read "a state must never be faked into existence to turn a skip
+green", which is not what the states below do and not what is wanted: a
+captured block with one reading moved — a guider `State`, a channel's
+`Maximum`, an autofocus R² — still exercises the mapper against the shape the
+driver actually sends, and is how every branch a single night cannot produce
+gets covered. What stays banned is inventing the document: a hand-written
+envelope, a key set no capture shows, a device block assembled from the spec.
+A state that needs one of those belongs in `AWAITING_CAPTURE`, and every test
+reading a derived state carries `@pytest.mark.synthetic` and says in its
+docstring what was moved.

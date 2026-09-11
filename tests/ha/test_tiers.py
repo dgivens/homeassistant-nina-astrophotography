@@ -103,15 +103,14 @@ async def test_an_endpoint_this_build_does_not_serve_is_asked_once(
     hass, tiers, freezer
 ) -> None:
     """A 404 cannot start working, and the floor would otherwise ask three
-    times an hour for the life of the entry. `/equipment/focuser/last-af` is
-    asked for zero times: it has no model until phase C.
+    times an hour for the life of the entry.
 
     The setup traffic is counted here — that is the one request each is
     allowed."""
     rig = await tiers(clear=False)
     for _ in range(3):
         await tick(hass, freezer, TierSchedule.FLOOR)
-    assert [rig.reads(path) for path in NOT_SERVED] == [1, 1, 0]
+    assert [rig.reads(path) for path in NOT_SERVED] == [1, 1, 1]
 
 
 async def test_a_safety_event_refetches_without_waiting_for_a_tier(

@@ -31,6 +31,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .device import observed, read_field
 from .entity import NinaEntity
 
 # Read-only: nothing here commands the rig, so there is nothing to serialize.
@@ -64,25 +65,40 @@ class NinaBinarySensorDescription(BinarySensorEntityDescription):
     `{entry_id}_{unique_id_suffix or key}`."""
 
 
-def _read(kind: str, field: str) -> Callable[[NinaData], bool | None]:
-    """One flag off one equipment model, `None` while the device is absent.
-
-    A disconnected device's readings are already `None` from the mapper, so
-    this yields `unknown` rather than a template default.
-    """
-    def value(data: NinaData) -> bool | None:
-        device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
-
-    return value
-
-
 def _unsafe(data: NinaData) -> bool | None:
     """`on` means UNSAFE, which is HA's `SAFETY` convention and the blueprint's."""
     monitor = data.snapshot.safety_monitor
     if monitor is None or monitor.is_safe is None:
         return None
     return not monitor.is_safe
+
+
+def _autofocus_failed(data: NinaData) -> bool | None:
+    """`on` for either way an autofocus fails, which look nothing alike.
+
+    A HUNG run is an absence — a start no finish answers, past the profile's
+    timeout — and the fold decides it (§4.4).
+
+    A REJECTED run finishes normally and is invisible in the event stream: the
+    report N.I.N.A. writes carries no verdict, so the only evidence is its R²
+    falling under the profile's `RSquaredThreshold`. That is the case that
+    costs a night, because the focuser stays where it was and the subs are soft
+    with nothing raised.
+
+    The report outlives the session, so it is believed only while it is newer
+    than the session start — otherwise a bad run from a previous night would
+    read as a problem the moment Home Assistant restarted.
+    """
+    if data.session.autofocus.failed:
+        return True
+    report = data.autofocus_report
+    threshold = data.profile.r_squared_threshold
+    if report is None or report.r_squared is None or threshold is None:
+        return False
+    start = data.session.session_start
+    if report.timestamp is None or (start is not None and report.timestamp < start):
+        return False
+    return report.r_squared < threshold
 
 
 DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
@@ -102,27 +118,27 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="safety_monitor",
         survives_disconnect=True,
-        value=_read("safety_monitor", "connected"),
+        value=read_field("safety_monitor", "connected"),
     ),
     NinaBinarySensorDescription(
         key="camera_is_exposing",
         translation_key="camera_is_exposing",
         unique_id_suffix="camera_exposing",
         kind="camera",
-        value=_read("camera", "is_exposing"),
+        value=read_field("camera", "is_exposing"),
     ),
     NinaBinarySensorDescription(
         key="mount_at_park",
         translation_key="mount_at_park",
         unique_id_suffix="mount_parked",
         kind="mount",
-        value=_read("mount", "at_park"),
+        value=read_field("mount", "at_park"),
     ),
     NinaBinarySensorDescription(
         key="mount_at_home",
         translation_key="mount_at_home",
         kind="mount",
-        value=_read("mount", "at_home"),
+        value=read_field("mount", "at_home"),
     ),
     NinaBinarySensorDescription(
         key="autofocus_failed",
@@ -130,7 +146,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.PROBLEM,
         kind="focuser",
         # Derived from the folded event set on read — there is no timer to leak.
-        value=lambda data: data.session.autofocus.failed,
+        value=_autofocus_failed,
     ),
     NinaBinarySensorDescription(
         key="sequence_running",
@@ -149,7 +165,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="focuser",
-        value=_read("focuser", "is_moving"),
+        value=read_field("focuser", "is_moving"),
     ),
     NinaBinarySensorDescription(
         key="filterwheel_is_moving",
@@ -158,7 +174,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="filter_wheel",
-        value=_read("filter_wheel", "is_moving"),
+        value=read_field("filter_wheel", "is_moving"),
     ),
     NinaBinarySensorDescription(
         key="rotator_is_moving",
@@ -167,7 +183,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="rotator",
-        value=_read("rotator", "is_moving"),
+        value=read_field("rotator", "is_moving"),
     ),
     NinaBinarySensorDescription(
         key="rotator_synced",
@@ -177,7 +193,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         kind="rotator",
         # Retained (§5.2.3): unsynced, sky-PA `Position` degenerates toward
         # `MechanicalPosition`, so the position sensors mean nothing without it.
-        value=_read("rotator", "synced"),
+        value=read_field("rotator", "synced"),
     ),
     # The dome is spec-derived and untested against hardware (§5.3.1): bare
     # field reads, no derived state, and `verified=False` on every one.
@@ -188,7 +204,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
-        value=_read("dome", "at_park"),
+        value=read_field("dome", "at_park"),
     ),
     NinaBinarySensorDescription(
         key="dome_at_home",
@@ -197,7 +213,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
-        value=_read("dome", "at_home"),
+        value=read_field("dome", "at_home"),
     ),
     NinaBinarySensorDescription(
         key="dome_slewing",
@@ -206,7 +222,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
-        value=_read("dome", "slewing"),
+        value=read_field("dome", "slewing"),
     ),
 )
 
@@ -248,21 +264,15 @@ async def async_setup_entry(
     def _add_observed() -> None:
         """Create the entities whose equipment the snapshot now carries.
 
-        Gated on the slot being non-`None`, because an identifiers-only
-        `DeviceInfo` naming a kind `device.py` has not created leaves the entity
-        platform to create a nameless device. Re-run on every publish, so
-        equipment that connects hours after Home Assistant started still gets
-        its entities (Gold `dynamic-devices`); a slot never returns to `None`,
-        so nothing is ever removed here.
+        Re-run on every publish, so equipment that connects hours after Home
+        Assistant started still gets its entities (Gold `dynamic-devices`); a
+        slot never returns to `None`, so nothing is ever removed here.
         """
         new = [
             NinaBinarySensor(coordinator, entry, description)
             for description in DESCRIPTIONS
             if description.key not in added
-            and (
-                description.kind is None
-                or getattr(coordinator.data.snapshot, description.kind) is not None
-            )
+            and observed(coordinator.data, description.kind)
         ]
         if not new:
             return
