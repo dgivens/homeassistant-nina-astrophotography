@@ -52,6 +52,36 @@
     },
     "light": {
       "flat_panel_light": { "name": "Light" }
+    },
+    "sensor": {
+      "cloud_cover": { "name": "Cloud cover" },
+      "dew_point": { "name": "Dew point" },
+      "humidity": { "name": "Humidity" },
+      "last_image_exposure": { "name": "Last image exposure" },
+      "last_image_filter": { "name": "Last image filter" },
+      "last_image_hfr": { "name": "Last image HFR" },
+      "last_image_mean_adu": { "name": "Last image mean ADU" },
+      "last_image_rms": { "name": "Last image RMS" },
+      "last_image_star_count": { "name": "Last image star count" },
+      "last_image_target": { "name": "Last image target" },
+      "pressure": { "name": "Pressure" },
+      "rain_rate": { "name": "Rain rate" },
+      "session_avg_hfr": { "name": "Session avg HFR" },
+      "session_avg_stars": { "name": "Session avg stars" },
+      "session_best_hfr": { "name": "Session best HFR" },
+      "session_image_count": { "name": "Session image count" },
+      "session_integration_time": { "name": "Session integration time" },
+      "session_start": { "name": "Session start" },
+      "session_worst_hfr": { "name": "Session worst HFR" },
+      "sky_brightness": { "name": "Sky brightness" },
+      "sky_quality": { "name": "Sky quality" },
+      "sky_temperature": { "name": "Sky temperature" },
+      "star_fwhm": { "name": "Star FWHM" },
+      "temperature": { "name": "Temperature" },
+      "weather_source": { "name": "Weather source" },
+      "wind_direction": { "name": "Wind direction" },
+      "wind_gust": { "name": "Wind gust" },
+      "wind_speed": { "name": "Wind speed" }
     }
   },
   "services": {
