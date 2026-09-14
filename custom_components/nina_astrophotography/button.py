@@ -31,7 +31,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .api.errors import NinaError
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
-from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .coordinator import NinaConfigEntry, NinaCoordinator
+from .device import observed
 from .entity import NinaEntity
 
 # One in-flight command per platform: these move hardware.
@@ -190,14 +191,6 @@ class NinaButton(NinaEntity, ButtonEntity):
             ) from exc
 
 
-def _observed(data: NinaData, description: NinaButtonDescription) -> bool:
-    """The device this button commands has been seen at least once."""
-    return (
-        description.kind is None
-        or getattr(data.snapshot, description.kind) is not None
-    )
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: NinaConfigEntry,
@@ -218,7 +211,7 @@ async def async_setup_entry(
             description
             for description in DESCRIPTIONS
             if description.key not in added
-            and _observed(coordinator.data, description)
+            and observed(coordinator.data, description.kind)
         ]
         if not descriptions:
             return

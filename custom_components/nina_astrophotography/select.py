@@ -6,7 +6,7 @@ filters a wheel does not carry.
 
 **The tracking index is the API's own enum, never the position in the options
 list.** `mode` is `0 Sidereal, 1 Lunar, 2 Solar, 3 King, 4 Stopped`, and a mount
-that offers no King — this one — reports four modes with `Stopped` third.
+that offers no King — this one — reports four modes with `Stopped` at index 3.
 Indexing the list would start King tracking on a mount asked to stop. The
 spec spells the first mode `Siderial`; the wire spells it `Sidereal`, and the
 wire is what the options carry.
@@ -28,6 +28,7 @@ from .api.errors import NinaError
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN, TrackingMode
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .device import observed, read_field
 from .entity import NinaEntity
 
 # One in-flight command per platform: these move hardware.
@@ -38,8 +39,9 @@ PARALLEL_UPDATES = 1
 class NinaSelectDescription(SelectEntityDescription):
     """A select, plus how to read its options, its current one, and set it.
 
-    `select` receives the option and the option list as it stands, because the
-    wire wants an index and only the list can supply one.
+    `select` receives the option and the whole snapshot: the wire wants a
+    number, and neither the tracking enum nor the wheel's slot id is the
+    option's position in the list.
 
     **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
     `unique_id_suffix` where the new `key` reads better than the old one. Home
@@ -49,21 +51,12 @@ class NinaSelectDescription(SelectEntityDescription):
 
     choices: Callable[[NinaData], tuple[str, ...]]
     current: Callable[[NinaData], str | None]
-    select: Callable[[NinaClientV2, str, list[str]], Awaitable[None]]
+    select: Callable[[NinaClientV2, str, NinaData], Awaitable[None]]
     kind: str
     verified: bool = True
     unique_id_suffix: str | None = None
     """The 1.4.5 key, where it differs from `key`. `unique_id` is
     `{entry_id}_{unique_id_suffix or key}`."""
-
-
-def _read(kind: str, field: str) -> Callable[[NinaData], str | None]:
-    """One field off one equipment model, `None` while the device is absent."""
-    def value(data: NinaData) -> str | None:
-        device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
-
-    return value
 
 
 def _options(kind: str, field: str) -> Callable[[NinaData], tuple[str, ...]]:
@@ -75,7 +68,7 @@ def _options(kind: str, field: str) -> Callable[[NinaData], tuple[str, ...]]:
 
 
 async def _set_tracking_mode(
-    client: NinaClientV2, option: str, options: list[str]
+    client: NinaClientV2, option: str, data: NinaData
 ) -> None:
     """`mode` is the API's enum value, which the option's position is not."""
     try:
@@ -89,10 +82,24 @@ async def _set_tracking_mode(
     await client.set_tracking_mode(mode.value)
 
 
-async def _change_filter(client: NinaClientV2, option: str, options: list[str]) -> None:
-    """`filterId` is the filter's slot, which is its position in the wheel's own
-    `AvailableFilters` — the list the wire reports in slot order."""
-    await client.change_filter(options.index(option))
+async def _change_filter(
+    client: NinaClientV2, option: str, data: NinaData
+) -> None:
+    """`filterId` is the wheel's own slot `Id`, not the option's position.
+
+    Every wheel in the corpus numbers its slots from zero in list order, so the
+    two agree here — but a wheel is free not to, and a wrong slot changes to
+    the wrong filter and answers `Success: true`, which costs the sub.
+    """
+    wheel = data.snapshot.filter_wheel
+    slot = None if wheel is None else wheel.filter_slots.get(option)
+    if slot is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="unknown_filter",
+            translation_placeholders={"option": option},
+        )
+    await client.change_filter(slot)
 
 
 DESCRIPTIONS: tuple[NinaSelectDescription, ...] = (
@@ -104,7 +111,7 @@ DESCRIPTIONS: tuple[NinaSelectDescription, ...] = (
         # The ACTUAL rate, not the last one commanded (§5.2.3). `Stopped` is one
         # of the rates, which is why this replaces `binary_sensor.mount_tracking`.
         choices=_options("mount", "tracking_modes"),
-        current=_read("mount", "tracking_mode"),
+        current=read_field("mount", "tracking_mode"),
         select=_set_tracking_mode,
     ),
     NinaSelectDescription(
@@ -113,7 +120,7 @@ DESCRIPTIONS: tuple[NinaSelectDescription, ...] = (
         unique_id_suffix="filterwheel_select",
         kind="filter_wheel",
         choices=_options("filter_wheel", "available_filters"),
-        current=_read("filter_wheel", "selected_filter"),
+        current=read_field("filter_wheel", "selected_filter"),
         select=_change_filter,
     ),
 )
@@ -152,7 +159,7 @@ class NinaSelect(NinaEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         try:
             await self.entity_description.select(
-                self.coordinator.client, option, self.options
+                self.coordinator.client, option, self.coordinator.data
             )
         except NinaError as exc:
             raise HomeAssistantError(f"N.I.N.A. refused the command: {exc}") from exc
@@ -179,7 +186,7 @@ async def async_setup_entry(
             NinaSelect(coordinator, entry, description)
             for description in DESCRIPTIONS
             if description.key not in added
-            and getattr(coordinator.data.snapshot, description.kind) is not None
+            and observed(coordinator.data, description.kind)
         ]
         if not new:
             return

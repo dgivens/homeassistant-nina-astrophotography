@@ -46,6 +46,7 @@ from .api.models import (
     NinaEvent,
     ProfileSettings,
     SequenceNode,
+    AutoFocusReport,
     SessionStats,
     StackState,
     VersionInfo,
@@ -77,18 +78,21 @@ _LOGGER = logging.getLogger(__name__)
 FAST_INTERVAL = timedelta(seconds=10)
 
 # endpoint -> (the attribute the model is stored on, the client getter).
-# `/equipment/focuser/last-af` is deliberately absent: phase C adds its model,
-# and there is nothing to store until then.
 _TIER_READS: dict[str, tuple[str, str]] = {
     "/sequence/json": ("_sequence", "get_sequence"),
     "/flats/status": ("_flats", "get_flats"),
     "/livestack/status": ("_livestack", "get_livestack"),
     "/profile/show": ("_profile", "get_profile"),
+    "/equipment/focuser/last-af": ("_last_autofocus", "get_last_autofocus"),
 }
 
 # The floor backstops the event-driven set. `/flats/status` has no event at
 # all — the FLAT-* events are panel hardware, not the flat wizard.
-_FLOOR_ENDPOINTS = ("/flats/status", "/livestack/status", "/profile/show")
+# `/equipment/focuser/last-af` is here as well as on AUTOFOCUS-FINISHED: the
+# report is the only evidence a completed run was REJECTED, so a missed event
+# must not leave the verdict unread for the night.
+_FLOOR_ENDPOINTS = ("/flats/status", "/livestack/status", "/profile/show",
+                    "/equipment/focuser/last-af")
 
 # What a tier publishes before its endpoint has ever answered, and what it goes
 # on publishing if the build does not serve it.
@@ -122,6 +126,10 @@ class NinaData:
     `session.last_frame.target_name`, which is what was shot LAST — the two
     differ across a target change, and only this one moves before the first
     sub."""
+    autofocus_report: AutoFocusReport | None
+    """The newest `/equipment/focuser/last-af`, or `None` on a rig that has
+    never run one. Dated against the session before it is believed — the report
+    survives a restart, so an old bad run is not tonight's problem."""
     newest_frame: Frame | None
     """The newest frame of any type this process saved — what `/image/0` serves,
     and so `image.last_frame`'s timestamp. `session.last_frame` is the newest
@@ -189,6 +197,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._flats = _NO_FLATS
         self._livestack = _NO_LIVESTACK
         self._profile = _NO_PROFILE
+        self._last_autofocus: AutoFocusReport | None = None
         self._not_served: set[str] = set()
         self._tier_warned: set[str] = set()
         self._last_image_save: float | None = None
@@ -300,8 +309,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def _react_to(self, event: NinaEvent) -> None:
         """Queue what one event's own payload cannot answer.
 
-        AUTOFOCUS-FINISHED queues nothing yet: /equipment/focuser/last-af has
-        no model until phase C. TS-* queue nothing by design — TS-TARGETSTART
+        TS-* queue nothing by design — TS-TARGETSTART
         fires once per exposure and its payload already carries TargetName,
         ProjectName, Rotation and TargetEndTime (§6.1).
         """
@@ -325,6 +333,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._schedule.add_pending("/sequence/json")
         elif name.startswith("PROFILE-"):
             self._schedule.add_pending("/profile/show")
+        elif name == "AUTOFOCUS-FINISHED":
+            # A FINISHED is the report, not a verdict: the run may have been
+            # rejected on its curve fit, and only /last-af carries the R² that
+            # says so.
+            self._schedule.add_pending("/equipment/focuser/last-af")
         elif name == "STACK-STATUS":
             # The payload's `Status` is the transition the plugin announced,
             # not the server's own state, and only /livestack/status reports
@@ -636,6 +649,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             stack=latest_stack(self.events, self.generation),
             target=(latest_target(self.events, self.generation)
                     or target_name(self._sequence)),
+            autofocus_report=self._last_autofocus,
             newest_frame=newest_frame(self.frames.values(), self.generation),
             profile=self._profile,
             generation=self.generation,

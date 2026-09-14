@@ -28,10 +28,12 @@ from ..errors import (
     NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
+    NinaNoImageError,
     NinaRequestError,
     NinaUnavailableError,
 )
 from ..models import (
+    AutoFocusReport,
     EquipmentSnapshot,
     FlatsStatus,
     Frame,
@@ -46,6 +48,7 @@ from .mapper import (
     map_event,
     map_flats_status,
     map_frame,
+    map_last_autofocus,
     map_livestack_status,
     map_profile,
     map_sequence,
@@ -243,6 +246,15 @@ class NinaClientV2:
     async def get_flats(self) -> FlatsStatus:
         return map_flats_status(await self._get("/flats/status") or {})
 
+    async def get_last_autofocus(self) -> AutoFocusReport | None:
+        """The newest autofocus report. `None` where the rig has never run one.
+
+        Reports SUCCESS ONLY in the sense that matters least: the file is
+        written per attempt, before the verdict, so a rejected run is here too
+        with nothing marking it rejected (§4.4).
+        """
+        return map_last_autofocus(await self._get("/equipment/focuser/last-af") or {})
+
     async def get_livestack(self) -> LivestackStatus:
         # No `or {}`: the Response is a bare string, and "" is falsy.
         return map_livestack_status(await self._get("/livestack/status") or "")
@@ -294,8 +306,14 @@ class NinaClientV2:
                 body = await resp.text()
                 if resp.status != 200:
                     raise self._pre_handler_error(path, resp.status, body)
-                self._unwrap(path, self._decode(path, body))
-                raise NinaUnavailableError(f"{path} returned no image")
+                # `_unwrap` answers None for the "no data yet" sentinels — an
+                # empty history's `Index out of range` — which is the idle
+                # rig's ordinary state, not an outage.
+                if self._unwrap(path, self._decode(path, body)) is None:
+                    raise NinaNoImageError(f"{path} has no image to render")
+                raise NinaUnavailableError(
+                    f"{path} answered an envelope, not image bytes"
+                )
         except TimeoutError as exc:
             raise NinaConnectionError(f"Timeout fetching {url}") from exc
         except aiohttp.ClientError as exc:
@@ -303,8 +321,9 @@ class NinaClientV2:
 
     # ── commands ─────────────────────────────────────────────────────────────
     #
-    # Parameter names are verified by live probe and pinned by test. The spec
-    # declares set-light's parameter as literally `True`; `set-light?True=true`
+    # Parameter names are verified by live probe and pinned by test. The
+    # PUBLISHED documentation renames set-light's parameter to `True` — the
+    # committed spec and the wire both read `on` — and `set-light?True=true`
     # answers Success: true and leaves the panel alone. Never generate these.
     #
     # No command on this API can be confirmed from its own response: parameters

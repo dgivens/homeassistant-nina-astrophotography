@@ -128,6 +128,16 @@ class FilterWheelModel:
     meta: DeviceMeta
     selected_filter: str | None
     available_filters: tuple[str, ...]
+    """Names, in the order the wheel reports them — the select's options."""
+    filter_slots: Mapping[str, int]
+    """Name → the wheel's own `Id`, which is what `change-filter` takes.
+
+    Carried rather than derived from the option's position: a wheel is free to
+    number its slots non-contiguously, and a filter whose `Name` is not a
+    string drops out of the name list and shifts every position after it. A
+    wrong slot changes to the wrong filter, answers `Success: true`, and costs
+    the sub — the disagreement only shows up on the next poll.
+    """
     is_moving: bool | None
 
 
@@ -229,10 +239,15 @@ class SwitchChannelModel:
 
     @property
     def binary(self) -> bool:
-        """A one-step range is an on/off channel, and belongs on `switch`."""
+        """A one-step range is an on/off channel, and belongs on `switch`.
+
+        A zero step is not one step: `Min 0 / Max 0 / Step 0` satisfies the
+        arithmetic and is what a DISCONNECTED device reports, so without the
+        guard it mints a switch whose on and off values are both 0.
+        """
         if self.minimum is None or self.maximum is None or self.step_size is None:
             return False
-        return self.maximum - self.minimum == self.step_size
+        return self.step_size > 0 and self.maximum - self.minimum == self.step_size
 
 
 @dataclass(frozen=True, slots=True)
@@ -335,13 +350,49 @@ class AutoFocusState:
 
     last_finished_at: datetime | None
     """The newest FINISHED. A FINISHED is the report, not a verdict: an
-    autofocus that found no focus still reports. Whether it succeeded is read
-    from `/equipment/focuser/last-af` — R² against the profile's
-    `RSquaredThreshold` — once phase C consumes it.
+    autofocus that found no focus still reports, so the verdict comes from
+    `AutoFocusReport.r_squared` against the profile's `RSquaredThreshold`.
     """
     running_since: datetime | None
     """The newest STARTING with nothing answering it yet."""
     failed: bool
+
+
+@dataclass(frozen=True, slots=True)
+class AutoFocusReport:
+    """The newest `/equipment/focuser/last-af`.
+
+    **Success only, and not even that.** The report file is written per
+    ATTEMPT, before the verdict, and the endpoint returns the newest — so a run
+    N.I.N.A. rejected overwrites the last good one carrying no failure flag.
+    `r_squared` against the profile's `RSquaredThreshold` is the only judge
+    there is (§4.4).
+
+    The report also survives a restart, so it must be dated against the session
+    before it is believed: a bad run from three nights ago is not tonight's
+    problem.
+    """
+
+    timestamp: datetime | None
+    filter_name: str | None
+    temperature: float | None
+    """Focuser temperature at the run — the other half of a temp-comp slope."""
+    method: str | None
+    """`STARHFR` or `CONTRASTDETECTION`."""
+    fitting: str | None
+    """Which curve was fitted: `TRENDPARABOLIC`, `HYPERBOLIC`, and so on."""
+    position: int | None
+    """Where the run left the focuser."""
+    hfr: float | None
+    """The fitted minimum — the HFR the curve predicts at `position`."""
+    r_squared: float | None
+    """The WORST fit in the report, which is what a threshold must judge.
+
+    N.I.N.A. computes an R² only for the fittings it actually used and sends
+    `"NaN"` for the rest — a `TRENDPARABOLIC` run carries Quadratic, LeftTrend
+    and RightTrend and a `"NaN"` Hyperbolic — so taking the minimum of what
+    survives the `"NaN"` rule needs no table of which fitting uses which.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -405,12 +456,13 @@ class StackState:
     names the one currently accumulating. `/livestack/image/available` lists
     every pair the plugin holds without saying which is current, and the event
     is already folded, so nothing extra is polled for this.
+
+    `StackCount` rides the same event and is deliberately absent: nothing
+    consumes it, and this module is closed to fields nothing consumes.
     """
 
     target: str
     filter_name: str
-    count: int
-    """`StackCount` — how many subs are in the stack."""
     updated: datetime
 
 

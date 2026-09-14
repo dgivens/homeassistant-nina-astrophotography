@@ -328,15 +328,22 @@ def test_the_newest_frame_of_another_process_is_not_offered(night) -> None:
 
 def test_the_stack_is_the_pair_the_newest_update_named(night_events) -> None:
     stack = latest_stack(night_events, "g1")
-    assert (stack.target, stack.filter_name, stack.count) == ("NGC 281", "S", 24)
+    assert (stack.target, stack.filter_name) == ("NGC 281", "S")
 
 
-@pytest.mark.parametrize("missing", ["Target", "Filter"])
-def test_a_stack_update_missing_half_its_pair_names_nothing(missing: str) -> None:
-    """Both halves are path segments, and `/livestack/image//O` is not a route."""
+@pytest.mark.parametrize("half", ["Target", "Filter"])
+@pytest.mark.parametrize("how", ["absent", "empty"], ids=["absent", "empty"])
+def test_a_stack_update_missing_half_its_pair_names_nothing(
+    half: str, how: str
+) -> None:
+    """Both halves are path segments, and `/livestack/image//O` is not a route
+    — so an empty string has to be refused as firmly as a missing key."""
     payload = {"Event": "STACK-UPDATED", "Time": "2026-09-04T04:25:58-05:00",
-               "Target": "NGC 281", "Filter": "S", "StackCount": 24}
-    del payload[missing]
+               "Target": "NGC 281", "Filter": "S"}
+    if how == "absent":
+        del payload[half]
+    else:
+        payload[half] = ""
     assert latest_stack([map_event(payload, "g1")], "g1") is None
 
 

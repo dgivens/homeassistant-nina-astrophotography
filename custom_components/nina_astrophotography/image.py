@@ -14,18 +14,23 @@ its target and filter.
 """
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+import logging
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from homeassistant.components.image import ImageEntity, ImageEntityDescription
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api.errors import NinaError
+from .api.errors import NinaCommandError, NinaError, NinaNoImageError
 from .api.v2.client import NinaClientV2
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .entity import NinaEntity
+
+_LOGGER = logging.getLogger(__name__)
 
 # Reads only, and both entities fetch on demand rather than on a schedule.
 PARALLEL_UPDATES = 0
@@ -39,15 +44,16 @@ _QUALITY = 85
 class NinaImageDescription(ImageEntityDescription):
     """An image, plus where its bytes and its timestamp come from.
 
-    `observed` is the §5.2.2 first-sight rule: the last frame exists from the
-    start because `/image/0` is served whether or not anything has been
-    captured, while the livestack pair is only knowable once a stack has
-    reported one.
+    `observed` is the §5.2.2 first-sight rule. The last frame exists from the
+    start because its identity does not depend on the poll — with no frame
+    yet the timestamp is `None` and `async_image` never asks — while the
+    livestack pair is only knowable once a stack has reported one.
     """
 
     stamp: Callable[[NinaData], datetime | None]
     fetch: Callable[[NinaClientV2, NinaData], Awaitable[bytes]]
     observed: Callable[[NinaData], bool] = lambda data: True
+    attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
     unique_id_suffix: str | None = None
     """The 1.4.5 key, where it differs from `key`."""
 
@@ -70,6 +76,14 @@ DESCRIPTIONS: tuple[NinaImageDescription, ...] = (
             data.stack.target, data.stack.filter_name, quality=_QUALITY
         ),
         observed=lambda data: data.stack is not None,
+        # Which stack is on screen. On a mono rig the plugin holds one stack
+        # per filter and this entity follows whichever updated last, so
+        # without these a dashboard shows an Ha frame and then an SII one with
+        # nothing explaining the jump.
+        attributes=lambda data: {
+            "target": None if data.stack is None else data.stack.target,
+            "filter": None if data.stack is None else data.stack.filter_name,
+        },
     ),
 )
 
@@ -94,16 +108,25 @@ class NinaImage(NinaEntity, ImageEntity):
         self.entity_description = description
 
     @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        build = self.entity_description.attributes
+        return None if build is None else build(self.coordinator.data)
+
+    @property
     def image_last_updated(self) -> datetime | None:
         """The state. None reads as `unknown` — nothing has been captured."""
         return self.entity_description.stamp(self.coordinator.data)
 
     async def async_image(self) -> bytes | None:
-        """Fetch the bytes. None where the rig has nothing to render.
+        """Fetch the bytes.
 
-        A refusal is not an error worth raising: Home Assistant's image view
-        turns either into the same "unable to get image", and this route
-        answers one on every ordinary idle rig.
+        Two outcomes, and they must not look alike. A rig with nothing to
+        render answers `None` — no frame yet is not an error, and the timestamp
+        has already said so. Anything else is a real failure and is RAISED, so
+        the cause reaches the log: Home Assistant renders both as the same
+        "unable to get image", and a swallowed one leaves a fresh timestamp
+        beside a permanently blank card with nothing naming the route, the
+        envelope or the reason.
         """
         if self.image_last_updated is None:
             return None
@@ -111,8 +134,16 @@ class NinaImage(NinaEntity, ImageEntity):
             return await self.entity_description.fetch(
                 self.coordinator.client, self.coordinator.data
             )
-        except NinaError:
+        except (NinaNoImageError, NinaCommandError) as exc:
+            # Nothing to render, or the handler declined — an empty history,
+            # an index it no longer holds, a stack the plugin has dropped. All
+            # ordinary, and not worth a traceback on a dashboard render.
+            _LOGGER.debug("N.I.N.A. has no image for %s: %s", self.entity_id, exc)
             return None
+        except NinaError as exc:
+            raise HomeAssistantError(
+                f"Could not fetch {self.entity_id} from N.I.N.A.: {exc}"
+            ) from exc
 
 
 async def async_setup_entry(

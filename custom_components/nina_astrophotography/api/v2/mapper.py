@@ -54,6 +54,7 @@ from types import MappingProxyType
 from typing import Any
 
 from ..models import (
+    AutoFocusReport,
     CameraModel,
     DeviceMeta,
     DomeModel,
@@ -80,6 +81,9 @@ _MERIDIAN_IDLE_SENTINEL = 24.0
 _IDLE_ITERATIONS_SENTINEL = -1
 _NO_STARS_SENTINEL = -1
 _CALIBRATION_TYPES = frozenset({"FLAT", "DARK", "BIAS", "DARKFLAT"})
+# Far above any plausible ASCOM switch id, so a synthesized read-only index
+# can never collide with a real one from either list.
+_READONLY_INDEX_BASE = 10_000
 
 # Event-name PREFIX → the timezone a naive `Time` is in. Mediator events are
 # offset-aware and need no entry; TS-* are naive UTC; log-scraped ERROR-* are
@@ -164,6 +168,23 @@ def _timestamp(raw: Any) -> datetime | None:
         return datetime.fromisoformat(raw)
     except ValueError:
         return None
+
+
+def _slots(entries: Any) -> Mapping[str, int]:
+    """Filter name → the wheel's own `Id`, for the entries that carry both.
+
+    A name with no usable `Id` is simply absent, so the platform refuses the
+    change rather than guessing a slot for it.
+    """
+    if not isinstance(entries, list):
+        return MappingProxyType({})
+    return MappingProxyType({
+        entry["Name"]: index
+        for entry in entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("Name"), str)
+        and (index := _integer(entry, "Id")) is not None
+    })
 
 
 def _names(entries: Any) -> tuple[str, ...]:
@@ -275,6 +296,7 @@ def map_filter_wheel(wire: dict) -> FilterWheelModel:
         meta=_meta(wire),
         selected_filter=_text(readings, "SelectedFilter", "Name"),
         available_filters=_names(wire.get("AvailableFilters")),
+        filter_slots=_slots(wire.get("AvailableFilters")),
         is_moving=_flag(readings, "IsMoving"),
     )
 
@@ -361,6 +383,17 @@ def map_safety_monitor(wire: dict) -> SafetyMonitorModel:
     )
 
 
+def _fallback_index(key: str, position: int) -> int:
+    """A synthetic channel index for an entry the driver gave no `Id`.
+
+    Offset per list so the two cannot collide. The value is only ever a key —
+    `switch_channel_{index}` and the `set` parameter — and a channel with no
+    `Id` cannot be commanded anyway, so a number no real `Id` will reach is
+    strictly better than one that can be reached twice.
+    """
+    return position + (_READONLY_INDEX_BASE if key == "ReadonlySwitches" else 0)
+
+
 def map_switch(wire: dict) -> SwitchDeviceModel:
     """The channel list is the device's capability, so it survives a disconnect
     the way every other block's option lists and ranges do; only `value` is a
@@ -372,7 +405,12 @@ def map_switch(wire: dict) -> SwitchDeviceModel:
         for position, entry in enumerate(wire.get(key) or ()):
             index = _integer(entry, "Id")
             channels.append(SwitchChannelModel(
-                index=index if index is not None else position,
+                # The fallback is namespaced per list: `position` restarts at
+                # zero for the second one, so a writable and a read-only
+                # channel both missing `Id` would otherwise land on the same
+                # index — and `channel_of` resolves by index, so the read-only
+                # gauge would render the writable channel's value.
+                index=index if index is not None else _fallback_index(key, position),
                 name=_text(entry, "Name") or "",
                 description=_text(entry, "Description") or "",
                 value=_number(entry, "Value") if connected else None,
@@ -589,6 +627,35 @@ def map_flats_status(wire: dict) -> FlatsStatus:
         state=_text(wire, "State"),
         total_iterations=_iterations(wire, "TotalIterations"),
         completed_iterations=_iterations(wire, "CompletedIterations"),
+    )
+
+
+def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
+    """The newest autofocus report, or `None` where the rig has never run one.
+
+    `RSquares` carries one entry per fitting N.I.N.A. knows and `"NaN"` for
+    every fitting this run did not use, so the minimum of what survives the
+    `"NaN"` rule is the worst fit actually computed — which is what the
+    profile's threshold has to judge. No fitting-to-R² table is needed, and
+    none is guessed at.
+    """
+    if not wire:
+        return None
+    squares = wire.get("RSquares")
+    fits = [
+        value
+        for value in (nan_to_none(v) for v in (squares or {}).values())
+        if isinstance(value, (int, float))
+    ] if isinstance(squares, dict) else []
+    return AutoFocusReport(
+        timestamp=_timestamp(wire.get("Timestamp")),
+        filter_name=_text(wire, "Filter") or None,
+        temperature=_number(wire, "Temperature"),
+        method=_text(wire, "Method"),
+        fitting=_text(wire, "Fitting"),
+        position=_integer(wire, "CalculatedFocusPoint", "Position"),
+        hfr=_number(wire, "CalculatedFocusPoint", "Value"),
+        r_squared=min(fits) if fits else None,
     )
 
 

@@ -193,6 +193,17 @@ def push(config_entry):
 
 
 @pytest.fixture
+def inside_the_guiding_session(freezer):
+    """02:00 on the rig, inside the night `imaging_guiding` was captured from.
+
+    The session began at the previous local noon, so the 01:10 autofocus report
+    that capture carries is inside it — which is what makes the report
+    believable at all (§4.4).
+    """
+    freezer.move_to("2026-09-05T07:00:00+00:00")
+
+
+@pytest.fixture
 def inside_the_dawn_session(freezer):
     """07:30 on the rig — after its dawn flats, before its noon rollover — so
     the 122 captured frames and anything pushed are all the same session."""

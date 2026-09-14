@@ -146,6 +146,47 @@ def _dimmable(channel: dict) -> dict:
     return {**channel, "Id": 2, "Name": "Dew Heater A", "Maximum": 100, "Value": 50}
 
 
+def _rejected_autofocus(name: str, *, r_squared: float) -> dict:
+    """The captured autofocus report with its curve fit degraded.
+
+    N.I.N.A. writes the report per ATTEMPT, before the verdict, so a run it
+    REJECTED is on the wire looking exactly like a good one bar its R² (§4.4).
+    The corpus holds only successful runs — every captured `RSquares` is above
+    the profile's 0.7 threshold — so the rejected case has to be derived, and
+    only the R² values move. `Hyperbolic` stays `"NaN"`: this run fitted
+    `TRENDPARABOLIC`, and an unused fitting reports no R² at all.
+    """
+    envelope = load_envelope(name)
+    squares = envelope["Response"]["RSquares"]
+    return {**envelope, "Response": {**envelope["Response"], "RSquares": {
+        key: (value if value == "NaN" else r_squared)
+        for key, value in squares.items()
+    }}}
+
+
+def _rangeless(channel: dict) -> dict:
+    """A writable channel whose driver reports no usable range.
+
+    `"NaN"` is how this API sends a number it does not have, and every capture
+    has both outlets reporting a real 0-1 range — so the shape that falls
+    through all three platforms has to be derived.
+    """
+    return {**channel, "Id": 4, "Name": "Aux Port",
+            "Minimum": "NaN", "Maximum": "NaN", "StepSize": "NaN"}
+
+
+def _degenerate(channel: dict) -> dict:
+    """A channel reporting `Min 0 / Max 0 / Step 0`.
+
+    What a DISCONNECTED device sends for a range, which `number.py` already
+    documents for the flat panel. `Max - Min == Step` holds, so without a
+    zero-step guard it reads as binary and mints a switch whose on and off
+    values are both 0.
+    """
+    return {**channel, "Id": 5, "Name": "Stuck Outlet",
+            "Minimum": 0, "Maximum": 0, "StepSize": 0, "Value": 0}
+
+
 def _gauge() -> dict:
     """A captured binary channel as a read-only gauge.
 
@@ -355,6 +396,15 @@ STATES: dict[str, State] = {
     # `GuiderInfo.State` is Looping | LostLock | Guiding | Stopped | Calibrating
     # and the corpus holds only `Guiding` — a guider that is down carries no
     # `State` at all — so both are synthetic in that one string.
+    # An autofocus that FINISHED and was rejected on its curve fit: the profile
+    # threshold is 0.7 and this run fitted 0.42. Invisible in the event stream
+    # — the only evidence is the report's own R².
+    "autofocus_rejected_on_r_squared": {
+        **_IMAGING_GUIDING,
+        "/equipment/focuser/last-af": _rejected_autofocus(
+            "imaging_guiding_last_af.json", r_squared=0.42
+        ),
+    },
     "guider_lost_lock": _with_readings(_IMAGING_GUIDING, "Guider", State="LostLock"),
     "guider_stopped": _with_readings(_IMAGING_GUIDING, "Guider", State="Stopped"),
     # A camera cooling to -10 °C, and one that reports no setpoint at all.
@@ -377,6 +427,33 @@ STATES: dict[str, State] = {
         _IMAGING, "Switch",
         WritableSwitches=[{**_DAWN_CHANNELS[0], "Value": 0, "TargetValue": 1},
                           _DAWN_CHANNELS[1]],
+    ),
+    # A writable channel with no range, which belongs on no platform at all.
+    "switch_hub_with_a_rangeless_channel": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[*_DAWN_CHANNELS, _rangeless(_DAWN_CHANNELS[0])],
+    ),
+    # A channel whose range is `0-0 step 0` — the arithmetic a zero-step guard
+    # exists to refuse.
+    "switch_hub_with_a_degenerate_channel": _with_readings(
+        _IMAGING, "Switch",
+        WritableSwitches=[*_DAWN_CHANNELS, _degenerate(_DAWN_CHANNELS[0])],
+    ),
+    # The flat panel outlet gone from the driver's list, which the entity
+    # created for it outlives.
+    "switch_channel_no_longer_reported": _with_readings(
+        _IMAGING, "Switch", WritableSwitches=[_DAWN_CHANNELS[1]],
+    ),
+    # A wheel whose slots are numbered from 4, so a position and an `Id` can
+    # be told apart. Every capture numbers from zero in list order, which is
+    # exactly why nothing else can show which one is sent.
+    "filter_wheel_numbered_from_four": _with_readings(
+        _IMAGING_GUIDING, "FilterWheel",
+        AvailableFilters=[
+            {**entry, "Id": entry["Id"] + 4}
+            for entry in _IMAGING_GUIDING["/equipment/info"]["Response"]
+            ["FilterWheel"]["AvailableFilters"]
+        ],
     ),
     # A read-only gauge beside the two outlets, which belongs on `sensor`.
     "switch_hub_with_a_readonly_channel": _with_readings(
