@@ -1,4 +1,5 @@
-"""Sensors: the session family, and the weather channels.
+"""Sensors: the equipment readings, the session family, the sequence and the
+weather channels.
 
 **One session family, fed by both paths (§5.2.4).** 1.4.5 shipped two — a
 polled set read off `/image-history` and a pushed set fed by `IMAGE-SAVE` — and
@@ -56,6 +57,7 @@ from .api.models import Frame, TargetBreakdown
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .entity import NinaEntity
+from .sequence import progress_percent
 
 # Read-only: nothing here commands the rig, so there is nothing to serialize.
 PARALLEL_UPDATES = 0
@@ -121,6 +123,32 @@ def _breakdown(field: str) -> Callable[[NinaData], Mapping[str, Any]]:
         }
 
     return value
+
+
+def _device(kind: str, field: str) -> Callable[[NinaData], Any]:
+    """One reading off one equipment model, `None` while the device is absent.
+
+    A disconnected device's readings are already `None` from the mapper, so
+    this yields `unknown` rather than a driver template default.
+    """
+    def value(data: NinaData) -> Any:
+        device = getattr(data.snapshot, kind)
+        return None if device is None else getattr(device, field)
+
+    return value
+
+
+def _minutes_to_meridian_flip(data: NinaData) -> float | None:
+    """`TimeToMeridianFlip` is HOURS; minutes is the useful unit for a flip
+    warning, and is what 1.4.5 published.
+
+    The 24-hour untracked sentinel is already `None` from the mapper. Twelve
+    hours is not: a mount inside a pier-side window reports it legitimately.
+    """
+    mount = data.snapshot.mount
+    if mount is None or mount.time_to_meridian_flip is None:
+        return None
+    return mount.time_to_meridian_flip * 60.0
 
 
 def _weather_source(data: NinaData) -> str | None:
@@ -287,10 +315,259 @@ SESSION: tuple[NinaSensorDescription, ...] = (
     ),
 )
 
+
+EQUIPMENT: tuple[NinaSensorDescription, ...] = (
+    # ── Camera ───────────────────────────────────────────────────────────
+    NinaSensorDescription(
+        key="camera_temperature",
+        translation_key="camera_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        kind="camera",
+        value=_device("camera", "temperature"),
+    ),
+    NinaSensorDescription(
+        key="camera_cooler_power",
+        translation_key="camera_cooler_power",
+        # No device class: Home Assistant has none for a cooler duty cycle.
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        kind="camera",
+        # Transiently `NaN` on a warm camera, so it is NOT under §5.2.2's
+        # create-on-sight rule: a rig configured by day must keep the entity.
+        value=_device("camera", "cooler_power"),
+    ),
+    NinaSensorDescription(
+        key="camera_gain",
+        translation_key="camera_gain",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="camera",
+        value=_device("camera", "gain"),
+    ),
+    NinaSensorDescription(
+        key="camera_offset",
+        translation_key="camera_offset",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="camera",
+        value=_device("camera", "offset"),
+    ),
+    NinaSensorDescription(
+        key="camera_state",
+        translation_key="camera_state",
+        unique_id_suffix="camera_status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="camera",
+        # Retained beside `binary_sensor.camera_is_exposing` for the same
+        # reason `guider_status` is retained beside `switch.guider` (§5.2.3):
+        # the flag answers "is it exposing", while `Downloading`, `Waiting` and
+        # `Error` are the states an automation about a stalled camera needs.
+        value=_device("camera", "camera_state"),
+    ),
+    # ── Mount ────────────────────────────────────────────────────────────
+    NinaSensorDescription(
+        key="mount_right_ascension",
+        translation_key="mount_right_ascension",
+        unique_id_suffix="mount_ra",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=4,
+        kind="mount",
+        # In the MOUNT's epoch — JNOW on this rig — never J2000, and in hours.
+        # Feeding it back into a slew is wrong twice (§3.7).
+        value=_device("mount", "right_ascension"),
+    ),
+    NinaSensorDescription(
+        key="mount_declination",
+        translation_key="mount_declination",
+        unique_id_suffix="mount_dec",
+        native_unit_of_measurement=DEGREE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=4,
+        kind="mount",
+        value=_device("mount", "declination"),
+    ),
+    NinaSensorDescription(
+        key="mount_altitude",
+        translation_key="mount_altitude",
+        native_unit_of_measurement=DEGREE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        kind="mount",
+        value=_device("mount", "altitude"),
+    ),
+    NinaSensorDescription(
+        key="mount_azimuth",
+        translation_key="mount_azimuth",
+        native_unit_of_measurement=DEGREE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        kind="mount",
+        value=_device("mount", "azimuth"),
+    ),
+    NinaSensorDescription(
+        key="mount_sidereal_time",
+        translation_key="mount_sidereal_time",
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=4,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="mount",
+        value=_device("mount", "sidereal_time"),
+    ),
+    NinaSensorDescription(
+        key="mount_side_of_pier",
+        translation_key="mount_side_of_pier",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="mount",
+        # New. The meridian-flip maths needs it (§11), and it is the one field
+        # that says whether a flip has already happened.
+        value=_device("mount", "side_of_pier"),
+    ),
+    NinaSensorDescription(
+        key="mount_time_to_meridian_flip",
+        translation_key="mount_time_to_meridian_flip",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        kind="mount",
+        value=_minutes_to_meridian_flip,
+    ),
+    # ── Focuser ──────────────────────────────────────────────────────────
+    NinaSensorDescription(
+        key="focuser_position",
+        translation_key="focuser_position",
+        native_unit_of_measurement="steps",
+        state_class=SensorStateClass.MEASUREMENT,
+        entity_registry_enabled_default=False,
+        kind="focuser",
+        # Reinstated beside `number.focuser_position` (§5.2.3): NumberEntity
+        # carries no `state_class`, and position against temperature is the
+        # standard temp-comp-slope diagnostic — which this rig needs, because
+        # it reports `TempCompAvailable: false`.
+        value=_device("focuser", "position"),
+    ),
+    NinaSensorDescription(
+        key="focuser_temperature",
+        translation_key="focuser_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        kind="focuser",
+        value=_device("focuser", "temperature"),
+    ),
+    NinaSensorDescription(
+        key="focuser_step_size",
+        translation_key="focuser_step_size",
+        native_unit_of_measurement="µm",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="focuser",
+        # A driver constant, not a reading: no `state_class`, because a
+        # statistic over an unchanging number is noise.
+        value=_device("focuser", "step_size"),
+    ),
+    # ── Guider ───────────────────────────────────────────────────────────
+    NinaSensorDescription(
+        key="guider_status",
+        translation_key="guider_status",
+        kind="guider",
+        # Retained (§5.2.3). `switch.guider` is on for every state but
+        # `Stopped` — the guider is RUNNING — so it cannot tell a lost lock
+        # from a settled one, and that is what this reports.
+        value=_device("guider", "state"),
+    ),
+    NinaSensorDescription(
+        key="guider_rms_total",
+        translation_key="guider_rms_total",
+        native_unit_of_measurement="arcsec",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        kind="guider",
+        # Arcseconds, not pixels: comparable across rigs, and the same
+        # convention as `sensor.last_image_rms`.
+        value=_device("guider", "rms_total"),
+    ),
+    NinaSensorDescription(
+        key="guider_rms_ra",
+        translation_key="guider_rms_ra",
+        native_unit_of_measurement="arcsec",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="guider",
+        value=_device("guider", "rms_ra"),
+    ),
+    NinaSensorDescription(
+        key="guider_rms_dec",
+        translation_key="guider_rms_dec",
+        native_unit_of_measurement="arcsec",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="guider",
+        value=_device("guider", "rms_dec"),
+    ),
+    # ── Flat panel ───────────────────────────────────────────────────────
+    NinaSensorDescription(
+        key="flat_panel_cover_state",
+        translation_key="flat_panel_cover_state",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="flat_device",
+        # Retained beside `switch.flat_panel_cover`: `CoverState` is
+        # Open | Closed | NeitherOpenNorClosed | Unknown | Error, and a switch
+        # cannot express a cover that is stuck between the two.
+        value=_device("flat_device", "cover_state"),
+    ),
+    # ── Sequence ─────────────────────────────────────────────────────────
+    # On the hub: sequence control is rig-scoped, not any one device's.
+    NinaSensorDescription(
+        key="sequence_target",
+        translation_key="sequence_target",
+        unique_id_suffix="sequence_target_name",
+        kind=None,
+        # What is being shot NOW, where `last_image_target` is what was shot
+        # last: across a target change the two disagree, and before the first
+        # sub only this one has a name at all.
+        value=lambda data: data.target,
+    ),
+    NinaSensorDescription(
+        key="sequence_progress",
+        translation_key="sequence_progress",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        kind=None,
+        # `unknown` on a Target Scheduler rig, which keeps its target list
+        # inside the imaging container and publishes no iteration count. That
+        # is what this API exposes, and inventing a percentage from the node
+        # statuses would be worse (§6.2).
+        value=lambda data: progress_percent(data.sequence),
+    ),
+    # ── Dome ─────────────────────────────────────────────────────────────
+    # Spec-derived and untested against hardware (§5.3.1): a bare field read,
+    # no derived state, `verified=False`.
+    NinaSensorDescription(
+        key="dome_shutter_status",
+        translation_key="dome_shutter_status",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        value=_device("dome", "shutter_status"),
+    ),
+)
+
 # The table `async_setup_entry` creates statically, gated on the entity's
-# equipment having been observed. C6 extends it with the equipment sensors;
-# the weather channels are not here because they have their own lifecycle.
-DESCRIPTIONS: tuple[NinaSensorDescription, ...] = SESSION
+# equipment having been observed. The weather channels are not here: they are
+# created per channel rather than per device, and have their own lifecycle.
+DESCRIPTIONS: tuple[NinaSensorDescription, ...] = SESSION + EQUIPMENT
 
 
 def _channel(key: str) -> Callable[[NinaData], float | None]:
