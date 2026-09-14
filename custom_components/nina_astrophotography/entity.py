@@ -26,6 +26,10 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
 
     _attr_has_entity_name = True
 
+    # §7.3's one exception: an entity that REPORTS its own device being down
+    # must not be made unavailable by it. Set per entity from its descriptor.
+    _survives_disconnect = False
+
     def __init__(
         self,
         coordinator: NinaCoordinator,
@@ -49,13 +53,13 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
         own and stops there. Level 3, a sentinel reading `unknown` rather than
         `unavailable`, is a value concern of the platform.
 
-        §7.3's one exception must override this: the safety monitor's own
-        connectivity sensor stays available while the monitor is down, or a
+        §7.3's one exception is `_survives_disconnect`: the safety monitor's
+        own connectivity sensor stays available while the monitor is down, or a
         roof-close automation triggering on `to: "off"` never fires.
         """
         if not super().available:
             return False
-        if self._kind is None:
+        if self._kind is None or self._survives_disconnect:
             return True
         device = getattr(self.coordinator.data.snapshot, self._kind)
         return device is not None and device.connected

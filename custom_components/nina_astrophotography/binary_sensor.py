@@ -1,243 +1,273 @@
-"""Binary sensors for N.I.N.A. Astrophotography — corrected for v2.2.15 API."""
+"""Binary sensors.
+
+Ten `*_connected` sensors are gone: a disconnected device makes its entities
+unavailable, which is observable in automations (§5.2.1). The safety monitor is
+the exception — a disconnected safety monitor would make `safety_unsafe`
+unavailable, so a roof-close automation on `to: "off"` never fires, and
+`to: "unavailable"` cannot substitute because it conflates
+device-disconnected, N.I.N.A.-unreachable, HA-restarting and coordinator-failed.
+
+Read-only mirrors of a switch, number or select are gone too; the survivor's
+state is the ACTUAL value, not the last commanded one. `rotator_synced` stays
+because sky-PA `Position` is meaningful only when synced.
+
+**`safety_unsafe` is `on` when conditions are UNSAFE.** That is Home
+Assistant's `SAFETY` device class — `on` means problem — and it is what the
+shipped abort blueprint triggers on. An entity named for safety that reads `on`
+for safe is a trap every user hits exactly once, at the worst possible moment.
+"""
 from __future__ import annotations
 
-import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
-from .coordinator import NinaDataCoordinator
+from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .entity import NinaEntity
 
-_LOGGER = logging.getLogger(__name__)
+# Read-only: nothing here commands the rig, so there is nothing to serialize.
+PARALLEL_UPDATES = 0
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class NinaBinarySensorDescription(BinarySensorEntityDescription):
-    value_fn: Any = None
+    """A binary sensor, plus how to read it out of the snapshot.
+
+    `kind` names the child device the entity hangs off (§5.1); `None` puts it on
+    the hub. `verified` is False only for the dome, which cannot be validated
+    against hardware — a test asserts every dome descriptor carries the marker.
+    `survives_disconnect` drops §7.3's level 2 for the one entity whose job is
+    to report that its own device is down.
+
+    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
+    `unique_id_suffix` where the new `key` reads better than the old one. Home
+    Assistant keys the registry on `unique_id`, so changing it mints a fresh
+    entity and strands the old row as `unavailable` — a roof-close automation
+    pointing at the 1.4.5 safety entity would stop working on upgrade. Renaming
+    is the user's to do, never the upgrade's.
+    """
+
+    value: Callable[[NinaData], bool | None]
+    kind: str | None
+    verified: bool = True
+    survives_disconnect: bool = False
+    unique_id_suffix: str | None = None
+    """The 1.4.5 key, where it differs from `key`. `unique_id` is
+    `{entry_id}_{unique_id_suffix or key}`."""
 
 
-def _safe(data, *keys, default=None):
-    d = data
-    for k in keys:
-        if not isinstance(d, dict):
-            return default
-        d = d.get(k, default)
-    return d
+def _read(kind: str, field: str) -> Callable[[NinaData], bool | None]:
+    """One flag off one equipment model, `None` while the device is absent.
+
+    A disconnected device's readings are already `None` from the mapper, so
+    this yields `unknown` rather than a template default.
+    """
+    def value(data: NinaData) -> bool | None:
+        device = getattr(data.snapshot, kind)
+        return None if device is None else getattr(device, field)
+
+    return value
 
 
-def _bool(data, *keys):
-    """Return bool from nested key, treating None/missing as False."""
-    v = _safe(data, *keys)
-    if v is None:
-        return False
-    return bool(v)
+def _unsafe(data: NinaData) -> bool | None:
+    """`on` means UNSAFE, which is HA's `SAFETY` convention and the blueprint's."""
+    monitor = data.snapshot.safety_monitor
+    if monitor is None or monitor.is_safe is None:
+        return None
+    return not monitor.is_safe
 
 
-BINARY_SENSOR_DESCRIPTIONS: list[NinaBinarySensorDescription] = [
-
-    # ── Camera ────────────────────────────────────────────────────────────
+DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
-        key="camera_connected",
-        name="Camera Connected",
+        key="safety_unsafe",
+        translation_key="safety_unsafe",
+        unique_id_suffix="safetymonitor_is_safe",
+        device_class=BinarySensorDeviceClass.SAFETY,
+        kind="safety_monitor",
+        value=_unsafe,
+    ),
+    NinaBinarySensorDescription(
+        key="safety_monitor_connected",
+        translation_key="safety_monitor_connected",
+        unique_id_suffix="safetymonitor_connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:camera",
-        value_fn=lambda d: _bool(d, "camera", "Response", "Connected"),
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="safety_monitor",
+        survives_disconnect=True,
+        value=_read("safety_monitor", "connected"),
     ),
     NinaBinarySensorDescription(
-        key="camera_cooling_enabled",
-        name="Camera Cooling",
-        icon="mdi:snowflake",
-        # API key confirmed: "CoolerOn"
-        value_fn=lambda d: _bool(d, "camera", "Response", "CoolerOn"),
+        key="camera_is_exposing",
+        translation_key="camera_is_exposing",
+        unique_id_suffix="camera_exposing",
+        kind="camera",
+        value=_read("camera", "is_exposing"),
     ),
     NinaBinarySensorDescription(
-        key="camera_exposing",
-        name="Camera Exposing",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        icon="mdi:camera-burst",
-        # API key confirmed: "IsExposing"
-        value_fn=lambda d: _bool(d, "camera", "Response", "IsExposing"),
-    ),
-
-    # ── Mount ─────────────────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="mount_connected",
-        name="Mount Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:telescope",
-        value_fn=lambda d: _bool(d, "mount", "Response", "Connected"),
-    ),
-    NinaBinarySensorDescription(
-        key="mount_parked",
-        name="Mount Parked",
-        icon="mdi:parking",
-        # API key: "AtPark"
-        value_fn=lambda d: _bool(d, "mount", "Response", "AtPark"),
-    ),
-    NinaBinarySensorDescription(
-        key="mount_tracking",
-        name="Mount Tracking",
-        icon="mdi:orbit",
-        # API key: "TrackingEnabled"
-        value_fn=lambda d: _bool(d, "mount", "Response", "TrackingEnabled"),
-    ),
-    NinaBinarySensorDescription(
-        key="mount_slewing",
-        name="Mount Slewing",
-        device_class=BinarySensorDeviceClass.MOVING,
-        icon="mdi:rotate-3d-variant",
-        value_fn=lambda d: _bool(d, "mount", "Response", "Slewing"),
+        key="mount_at_park",
+        translation_key="mount_at_park",
+        unique_id_suffix="mount_parked",
+        kind="mount",
+        value=_read("mount", "at_park"),
     ),
     NinaBinarySensorDescription(
         key="mount_at_home",
-        name="Mount At Home",
-        icon="mdi:home",
-        value_fn=lambda d: _bool(d, "mount", "Response", "AtHome"),
+        translation_key="mount_at_home",
+        kind="mount",
+        value=_read("mount", "at_home"),
     ),
-
-    # ── Focuser ───────────────────────────────────────────────────────────
     NinaBinarySensorDescription(
-        key="focuser_connected",
-        name="Focuser Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:focus-field",
-        value_fn=lambda d: _bool(d, "focuser", "Response", "Connected"),
+        key="autofocus_failed",
+        translation_key="autofocus_failed",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        kind="focuser",
+        # Derived from the folded event set on read — there is no timer to leak.
+        value=lambda data: data.session.autofocus.failed,
+    ),
+    NinaBinarySensorDescription(
+        key="sequence_running",
+        translation_key="sequence_running",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        kind=None,
+        # The §6.2 activity heuristic, never `/sequence/json` node status: node
+        # `Status` persists from the loaded file and from prior runs, so an
+        # idle rig reports RUNNING nodes with nothing happening.
+        value=lambda data: data.imaging,
     ),
     NinaBinarySensorDescription(
         key="focuser_is_moving",
-        name="Focuser Moving",
+        translation_key="focuser_is_moving",
         device_class=BinarySensorDeviceClass.MOVING,
-        icon="mdi:arrow-expand-horizontal",
-        value_fn=lambda d: _bool(d, "focuser", "Response", "IsMoving"),
-    ),
-
-    # ── Filter Wheel ──────────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="filterwheel_connected",
-        name="Filter Wheel Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:filter",
-        value_fn=lambda d: _bool(d, "filterwheel", "Response", "Connected"),
-    ),
-
-    # ── Guider ────────────────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="guider_connected",
-        name="Guider Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:crosshairs",
-        value_fn=lambda d: _bool(d, "guider", "Response", "Connected"),
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="focuser",
+        value=_read("focuser", "is_moving"),
     ),
     NinaBinarySensorDescription(
-        key="guider_is_guiding",
-        name="Guider Active",
-        icon="mdi:crosshairs-gps",
-        value_fn=lambda d: _safe(d, "guider", "Response", "State") == "Guiding",
-    ),
-
-    # ── Dome ──────────────────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="dome_connected",
-        name="Dome Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:home-circle",
-        value_fn=lambda d: _bool(d, "dome", "Response", "Connected"),
+        key="filterwheel_is_moving",
+        translation_key="filterwheel_is_moving",
+        device_class=BinarySensorDeviceClass.MOVING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="filter_wheel",
+        value=_read("filter_wheel", "is_moving"),
     ),
     NinaBinarySensorDescription(
-        key="dome_shutter_open",
-        name="Dome Shutter Open",
-        device_class=BinarySensorDeviceClass.OPENING,
-        icon="mdi:home-circle-outline",
-        # ShutterStatus: 0=Open, 1=Closed, 2=Opening, 3=Closing, 4=Error
-        value_fn=lambda d: _safe(d, "dome", "Response", "ShutterStatus") == 0,
-    ),
-
-    # ── Flat Device ───────────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="flatdevice_connected",
-        name="Flat Device Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:lightbulb",
-        value_fn=lambda d: _bool(d, "flatdevice", "Response", "Connected"),
-    ),
-
-    # ── Sequence ──────────────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="sequence_running",
-        name="Sequence Running",
-        device_class=BinarySensorDeviceClass.RUNNING,
-        icon="mdi:play-circle",
-        value_fn=lambda d: _safe(d, "sequence", "Response", "Status") == "Running",
-    ),
-
-    # ── Weather station ───────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="weather_connected",
-        name="Weather Station Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:weather-partly-cloudy",
-        value_fn=lambda d: _bool(d, "weather", "Response", "Connected"),
-    ),
-
-    # ── Safety monitor ────────────────────────────────────────────────────
-    NinaBinarySensorDescription(
-        key="safetymonitor_connected",
-        name="Safety Monitor Connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        icon="mdi:shield-check",
-        value_fn=lambda d: _bool(d, "safetymonitor", "Response", "Connected"),
+        key="rotator_is_moving",
+        translation_key="rotator_is_moving",
+        device_class=BinarySensorDeviceClass.MOVING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="rotator",
+        value=_read("rotator", "is_moving"),
     ),
     NinaBinarySensorDescription(
-        key="safetymonitor_is_safe",
-        name="Observatory Safe",
-        device_class=BinarySensorDeviceClass.SAFETY,
-        icon="mdi:shield-check-outline",
-        # IsSafe=True means conditions are SAFE (binary_sensor "on" = problem by HA convention
-        # for SAFETY class, but we invert: on = safe so the icon makes sense in dashboards)
-        # Using SAFETY device class: on = unsafe. We flip: store !IsSafe so "on" means UNSAFE
-        # so HA's red alert icon fires correctly when conditions turn bad.
-        value_fn=lambda d: not _bool(d, "safetymonitor", "Response", "IsSafe"),
+        key="rotator_synced",
+        translation_key="rotator_synced",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="rotator",
+        # Retained (§5.2.3): unsynced, sky-PA `Position` degenerates toward
+        # `MechanicalPosition`, so the position sensors mean nothing without it.
+        value=_read("rotator", "synced"),
     ),
-]
+    # The dome is spec-derived and untested against hardware (§5.3.1): bare
+    # field reads, no derived state, and `verified=False` on every one.
+    NinaBinarySensorDescription(
+        key="dome_at_park",
+        translation_key="dome_at_park",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        value=_read("dome", "at_park"),
+    ),
+    NinaBinarySensorDescription(
+        key="dome_at_home",
+        translation_key="dome_at_home",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        value=_read("dome", "at_home"),
+    ),
+    NinaBinarySensorDescription(
+        key="dome_slewing",
+        translation_key="dome_slewing",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="dome",
+        verified=False,
+        value=_read("dome", "slewing"),
+    ),
+)
 
 
-class NinaBinarySensor(CoordinatorEntity[NinaDataCoordinator], BinarySensorEntity):
+class NinaBinarySensor(NinaEntity, BinarySensorEntity):
+    """One descriptor, read out of the published snapshot."""
+
     entity_description: NinaBinarySensorDescription
 
-    def __init__(self, coordinator, description, entry_id):
-        super().__init__(coordinator)
+    def __init__(
+        self,
+        coordinator: NinaCoordinator,
+        entry: NinaConfigEntry,
+        description: NinaBinarySensorDescription,
+    ) -> None:
+        super().__init__(
+            coordinator,
+            entry,
+            description.unique_id_suffix or description.key,
+            kind=description.kind,
+        )
         self.entity_description = description
-        self._attr_unique_id = f"{entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry_id)},
-            "name": "N.I.N.A. Astrophotography",
-            "manufacturer": "Nighttime Imaging 'N' Astronomy",
-            "model": "Advanced API v2",
-        }
+        self._survives_disconnect = description.survives_disconnect
 
     @property
-    def is_on(self):
-        if self.entity_description.value_fn and self.coordinator.data:
-            try:
-                return self.entity_description.value_fn(self.coordinator.data)
-            except Exception:
-                return None
-        return None
+    def is_on(self) -> bool | None:
+        return self.entity_description.value(self.coordinator.data)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    async_add_entities(
-        NinaBinarySensor(coordinator, description, entry.entry_id)
-        for description in BINARY_SENSOR_DESCRIPTIONS
-    )
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: NinaConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    coordinator = entry.runtime_data.coordinator
+    added: set[str] = set()
+
+    @callback
+    def _add_observed() -> None:
+        """Create the entities whose equipment the snapshot now carries.
+
+        Gated on the slot being non-`None`, because an identifiers-only
+        `DeviceInfo` naming a kind `device.py` has not created leaves the entity
+        platform to create a nameless device. Re-run on every publish, so
+        equipment that connects hours after Home Assistant started still gets
+        its entities (Gold `dynamic-devices`); a slot never returns to `None`,
+        so nothing is ever removed here.
+        """
+        new = [
+            NinaBinarySensor(coordinator, entry, description)
+            for description in DESCRIPTIONS
+            if description.key not in added
+            and (
+                description.kind is None
+                or getattr(coordinator.data.snapshot, description.kind) is not None
+            )
+        ]
+        if not new:
+            return
+        added.update(sensor.entity_description.key for sensor in new)
+        async_add_entities(new)
+
+    _add_observed()
+    entry.async_on_unload(coordinator.async_add_listener(_add_observed))

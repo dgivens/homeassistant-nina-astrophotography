@@ -34,6 +34,22 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "autofocus_failed": { "name": "Autofocus failed" },
+      "camera_is_exposing": { "name": "Exposing" },
+      "dome_at_home": { "name": "At home" },
+      "dome_at_park": { "name": "At park" },
+      "dome_slewing": { "name": "Slewing" },
+      "filterwheel_is_moving": { "name": "Moving" },
+      "focuser_is_moving": { "name": "Moving" },
+      "mount_at_home": { "name": "At home" },
+      "mount_at_park": { "name": "At park" },
+      "rotator_is_moving": { "name": "Moving" },
+      "rotator_synced": { "name": "Synced" },
+      "safety_monitor_connected": { "name": "Connected" },
+      "safety_unsafe": { "name": "Unsafe" },
+      "sequence_running": { "name": "Sequence running" }
+    },
     "light": {
       "flat_panel_light": { "name": "Light" }
     }
