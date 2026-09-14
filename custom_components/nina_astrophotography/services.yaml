@@ -2,6 +2,14 @@ camera_cool:
   name: Cool Camera
   description: Start cooling the camera sensor to a target temperature.
   fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
     temperature:
       name: Target Temperature (°C)
       description: Target sensor temperature in degrees Celsius (e.g. -10).
@@ -27,6 +35,14 @@ camera_warm:
   name: Warm Camera
   description: Gradually warm the camera sensor back to ambient temperature.
   fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
     minutes:
       name: Ramp Time
       description: Minutes over which to ramp back to ambient.
@@ -42,7 +58,15 @@ camera_capture:
   name: Capture Image
   description: Take a single camera exposure.
   fields:
-    exposure:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+    duration:
       name: Exposure
       description: Exposure duration in seconds.
       required: true
@@ -62,25 +86,6 @@ camera_capture:
           min: 0
           max: 5000
           mode: box
-    filter_index:
-      name: Filter Index
-      description: Zero-based filter wheel index (optional).
-      example: 0
-      selector:
-        number:
-          min: 0
-          max: 20
-    binning:
-      name: Binning
-      description: Camera binning factor.
-      default: 1
-      selector:
-        select:
-          options:
-            - "1"
-            - "2"
-            - "3"
-            - "4"
     save:
       name: Save to Disk
       description: Whether to save the captured image to disk.
@@ -91,26 +96,44 @@ camera_capture:
 camera_abort_capture:
   name: Abort Capture
   description: Abort the current camera exposure immediately.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 mount_slew:
   name: Slew Mount
   description: Slew the telescope mount to J2000 RA/Dec coordinates.
   fields:
-    ra:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+    ra_degrees:
       name: Right Ascension
-      description: Target RA in decimal hours (0–24).
+      description: Target J2000 RA in decimal degrees (0–360).
       required: true
-      example: 5.5755
+      example: 83.6324
       selector:
         number:
           min: 0
-          max: 24
+          max: 360
           step: "any"
-          unit_of_measurement: h
+          unit_of_measurement: "°"
           mode: box
-    dec:
+    dec_degrees:
       name: Declination
-      description: Target Dec in decimal degrees (−90 to +90).
+      description: Target J2000 Dec in decimal degrees (−90 to +90).
       required: true
       example: -5.3911
       selector:
@@ -124,15 +147,43 @@ mount_slew:
 mount_park:
   name: Park Mount
   description: Send the telescope mount to its park position.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 mount_unpark:
   name: Unpark Mount
   description: Unpark the telescope mount.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 mount_set_tracking:
   name: Set Tracking
   description: Enable or disable sidereal tracking.
   fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
     enabled:
       name: Tracking Enabled
       required: true
@@ -143,6 +194,14 @@ focuser_move:
   name: Move Focuser
   description: Move the focuser to an absolute step position.
   fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
     position:
       name: Position
       description: Absolute focuser position in steps.
@@ -158,11 +217,29 @@ focuser_move:
 focuser_auto_focus:
   name: Auto Focus
   description: Trigger an autofocus routine using the configured method.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 filterwheel_change_filter:
   name: Change Filter
   description: Rotate the filter wheel to the specified filter slot.
   fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
     filter_index:
       name: Filter Index
       description: Zero-based index of the target filter slot.
@@ -177,6 +254,14 @@ guider_start:
   name: Start Guiding
   description: Start the autoguider.
   fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
     force_calibration:
       name: Force Calibration
       description: Force a new calibration run before guiding begins.
@@ -187,35 +272,105 @@ guider_start:
 guider_stop:
   name: Stop Guiding
   description: Stop the autoguider.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 dome_open:
   name: Open Dome
   description: Open the dome shutter.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 dome_close:
   name: Close Dome
   description: Close the dome shutter.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 dome_park:
   name: Park Dome
   description: Park the dome.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 sequence_start:
   name: Start Sequence
   description: Start the currently loaded imaging sequence.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 sequence_stop:
   name: Stop Sequence
   description: Stop the currently running sequence.
+  fields:
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+
 
 sequence_load:
   name: Load Sequence
-  description: Load a sequence file from disk (does not start it).
+  description: Load a sequence by name (does not start it).
   fields:
-    path:
-      name: Sequence File Path
-      description: Full Windows path to the .ninasequence file on the N.I.N.A. host.
+    device_id:
+      name: Rig
+      description: >-
+        Which N.I.N.A. instance to act on. Optional while one instance is
+        configured, and required once a second is.
+      selector:
+        device:
+          integration: nina_astrophotography
+    sequence_name:
+      name: Sequence Name
+      description: >-
+        The sequence's name as N.I.N.A. lists it, without the .ninasequence
+        extension. Not a path.
       required: true
-      example: "C:\\Users\\Me\\Documents\\nina\\sequences\\M42.ninasequence"
+      example: "M42"
       selector:
         text:
