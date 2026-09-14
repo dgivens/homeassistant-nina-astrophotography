@@ -8,8 +8,12 @@ from typing import NamedTuple
 import pytest
 from helpers import load_fixture
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.syrupy import (
+    HomeAssistantSnapshotExtension,
+)
 from scenarios.fake_rig import FakeRig
 from scenarios.states import AWAITING_CAPTURE, STATES
+from syrupy.assertion import SnapshotAssertion
 
 import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.api.v2 import NinaEventStream
@@ -20,6 +24,19 @@ from custom_components.nina_astrophotography.const import (
     CONF_PORT,
     DOMAIN,
 )
+
+
+@pytest.fixture
+def snapshot(snapshot: SnapshotAssertion) -> SnapshotAssertion:
+    """Pin the Home Assistant snapshot extension, and with it `snapshots/`.
+
+    Syrupy and PHACC both register a plugin fixture named `snapshot`, and the
+    winner is decided by pytest's entry-point load order — which is not stable
+    across machines. Syrupy winning writes `__snapshots__/`, PHACC winning
+    writes `snapshots/`, so a corpus recorded on one host is invisible on the
+    other. A conftest fixture outranks both plugins everywhere.
+    """
+    return snapshot.use_extension(HomeAssistantSnapshotExtension)
 
 
 def pytest_collection_modifyitems(config, items):

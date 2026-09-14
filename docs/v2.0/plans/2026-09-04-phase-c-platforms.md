@@ -115,7 +115,7 @@ and dew-heater setters; `button` needs `auto_focus`, `park_mount` and
 `clear_guider_calibration`. Phase A shipped only `set_flat_light` and
 `set_flat_brightness`.
 
-- [ ] **Step 1: Carry 1.4.5's parameter corrections across verbatim**
+- [x] **Step 1: Carry 1.4.5's parameter corrections across verbatim**
 
 These were bought with a live rig and a near-miss; do not retype them from the
 spec, which is wrong about request parameter names (§3.2).
@@ -160,7 +160,7 @@ spec, which is wrong about request parameter names (§3.2).
         await self._get("/sequence/load", {"sequenceName": sequence_name})
 ```
 
-- [ ] **Step 2: Pin every parameter name by test**
+- [x] **Step 2: Pin every parameter name by test**
 
 A wrong name is a silent no-op that answers `Success: true`, so a table over
 every command is the only thing standing between the integration and a service
@@ -197,7 +197,7 @@ async def test_command_parameter_names_are_pinned(call, path, params) -> None:
     assert sent == params
 ```
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 ```bash
 uv run pytest tests/unit/test_v2_client.py -v
@@ -267,7 +267,7 @@ every user hits exactly once, at the worst possible moment. **Amend §5.2.1 and
 | `autofocus_failed` | `problem` | — | **New** (§5.4). From the fold, not a timer |
 | `sequence_running` | `running` | — | From the activity heuristic, never node status |
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """binary_sensor: the cuts, and the two entities whose absence would be unsafe."""
@@ -334,7 +334,7 @@ async def test_every_dome_descriptor_is_marked_unverified(hass) -> None:
     assert all(d.verified is False for d in DESCRIPTIONS if d.kind == "dome")
 ```
 
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
 
 ```bash
 uv run pytest tests/ha/test_binary_sensor.py -v
@@ -342,7 +342,7 @@ uv run pytest tests/ha/test_binary_sensor.py -v
 
 Expected: FAIL — the platform still reads dicts.
 
-- [ ] **Step 3: Rewrite the platform**
+- [x] **Step 3: Rewrite the platform**
 
 ```python
 """Binary sensors.
@@ -415,7 +415,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
 )
 ```
 
-- [ ] **Step 4: Re-add the platform and run**
+- [x] **Step 4: Re-add the platform and run**
 
 ```python
 PLATFORMS = [Platform.LIGHT, Platform.BINARY_SENSOR]
@@ -426,7 +426,7 @@ uv run pytest tests/ha/test_binary_sensor.py -v
 uv run pytest tests/unit -p no:homeassistant -q
 ```
 
-- [ ] **Step 5: Append the renames and commit**
+- [x] **Step 5: Append the renames and commit**
 
 ```bash
 git add custom_components/nina_astrophotography/binary_sensor.py \
@@ -453,7 +453,7 @@ git commit -m "feat: rebuild binary sensors on models, cutting mirrors and conne
   `flat_panel_brightness`; and `select.mount_tracking_rate`,
   `select.filter`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """number and select: per-device ranges, and client-side validation."""
@@ -514,13 +514,13 @@ async def test_the_focuser_position_number_and_sensor_both_exist(
     assert entry.disabled_by is not None
 ```
 
-- [ ] **Step 2: Run, implement, run**
+- [x] **Step 2: Run, implement, run**
 
 The `select` platform is **not enumerated** in §5.5's baseline — the arithmetic
 there is a floor, not an exact count. Do not try to reconcile it; the
 authoritative count is the registry snapshot (Task C10).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add custom_components/nina_astrophotography/number.py \
@@ -545,7 +545,7 @@ git commit -m "feat: rebuild number and select on models, with per-device ranges
   channel of the N.I.N.A. switch device (Task C8 adds the non-binary ones as
   numbers and sensors).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """switch: state is the actual value, read back from the poll."""
@@ -608,14 +608,14 @@ async def test_switch_channels_read_value_not_target_value(hass, loaded_entry) -
     assert hass.states.get("switch.n_i_n_a_outlet_1").state == "on"
 ```
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 Livestack specifics (§5.3.2): state from `/livestack/status`, `turn_on` →
 `/livestack/start`, `turn_off` → `/livestack/stop`; **compare the status string
 case-insensitively** — the OpenAPI enum is `[running, stopped]` and a live rig
 returned `"Stopped"`; refetch on `STACK-STATUS` with the floor tier as backstop.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add custom_components/nina_astrophotography/switch.py \
@@ -639,7 +639,7 @@ git commit -m "feat: rebuild switches on models and keep the livestack switch"
   `button.dome_close`, `button.dome_park`, `button.dome_home`,
   `button.guider_clear_calibration`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """button: fire-and-forget, with a real error surfaced as a real error."""
@@ -677,7 +677,7 @@ async def test_success_false_from_clear_calibration_is_not_an_error(
         {"entity_id": "button.n_i_n_a_guider_clear_calibration"}, blocking=True)
 ```
 
-- [ ] **Step 2: Implement, run, commit**
+- [x] **Step 2: Implement, run, commit**
 
 ```bash
 git add custom_components/nina_astrophotography/button.py \
@@ -699,7 +699,7 @@ git commit -m "feat: rebuild buttons on the v2 client"
 - Produces: `image.last_frame` and `image.livestack` (§5.3.2 — the accumulating
   stack is a better dashboard image than the last raw sub).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """image: the last frame, and the accumulating stack."""
@@ -738,7 +738,7 @@ async def test_a_refusal_arriving_as_a_200_envelope_is_not_served_as_an_image(
     assert hass.states.get("image.n_i_n_a_last_frame").state == "unavailable"
 ```
 
-- [ ] **Step 2: Implement, run, commit**
+- [x] **Step 2: Implement, run, commit**
 
 ```bash
 git add custom_components/nina_astrophotography/image.py \
@@ -763,7 +763,7 @@ git commit -m "feat: rebuild the image platform and add the livestack image"
   filter wheel selected filter, guider status and RMS, rotator position, dome
   azimuth and shutter status, flat panel cover state, safety monitor.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """sensor: sentinels are unknown, never a number."""
@@ -804,7 +804,7 @@ async def test_the_rotator_position_sensors_are_gone(hass, loaded_entry) -> None
     assert hass.states.get("sensor.n_i_n_a_rotator_mechanical_position") is None
 ```
 
-- [ ] **Step 2: Implement, run, commit**
+- [x] **Step 2: Implement, run, commit**
 
 ```bash
 git add custom_components/nina_astrophotography/sensor.py \
@@ -832,7 +832,7 @@ git commit -m "feat: rebuild equipment sensors on models"
   `sensor.last_image_filter`, `sensor.weather_source`, and one sensor per
   observed weather channel.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """The session family: one family, fed by both paths."""
@@ -937,7 +937,7 @@ async def test_the_active_weather_source_is_inspectable(hass, loaded_entry, adva
     assert hass.states.get("sensor.n_i_n_a_weather_source").state != "unknown"
 ```
 
-- [ ] **Step 2: Implement the weather channel lifecycle**
+- [x] **Step 2: Implement the weather channel lifecycle**
 
 This is the least mechanical code in the phase. Two granularities, one shared
 helper (§5.2.2): devices persist through the **device** registry, weather
@@ -1046,7 +1046,7 @@ warm at setup must not lose its cooler-power entity.
 Document the cold start in the README (D1): configuring in daylight yields no
 weather entities until dusk.
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 ```bash
 uv run pytest tests/ha -q
@@ -1078,7 +1078,7 @@ exist natively — accepted, the same entity through two integrations is ordinar
 The normal case is a real ASCOM switch (a Pegasus Powerbox and its outlets, dew
 heaters and voltage/current channels), which the default should serve.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """Switch-device channels split across three platforms by shape."""
@@ -1106,7 +1106,7 @@ async def test_channels_are_enabled_by_default(hass, loaded_entry, entity_regist
     assert entity_registry.async_get("switch.n_i_n_a_outlet_1").disabled_by is None
 ```
 
-- [ ] **Step 2: Implement, run, commit**
+- [x] **Step 2: Implement, run, commit**
 
 ```bash
 git add -A custom_components/nina_astrophotography tests/ha/test_switch_device.py \
@@ -1130,7 +1130,7 @@ git commit -m "feat: expose the N.I.N.A. switch device's channels by shape"
   `sensor.flats_completed_iterations` — all `DIAGNOSTIC` and **disabled by
   default**.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 """event.nina_error: discrete occurrences with no state to hold."""
@@ -1173,7 +1173,7 @@ async def test_the_idle_iteration_sentinel_is_unknown(hass, loaded_entry, entity
 `event.nina_error` is best-effort and solver-specific: `ERROR-PLATESOLVE` matches
 ASTAP only and `ERROR-AF` appears dead (§3.4). Document that in the README (D1).
 
-- [ ] **Step 2: Implement, run, commit**
+- [x] **Step 2: Implement, run, commit**
 
 ```bash
 git add custom_components/nina_astrophotography/event.py \
@@ -1202,7 +1202,7 @@ every one of which imports `homeassistant`, so it cannot run under
 - Produces: a test asserting **every** dome descriptor across every platform
   carries `verified: False`.
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 ```python
 """Dome ships untested — the marker is enforced, not merely documented.
@@ -1245,7 +1245,7 @@ def test_a_synthetic_connected_dome_maps_without_raising() -> None:
     assert snapshot.dome.connected is True
 ```
 
-- [ ] **Step 2: Build the synthetic fixture**
+- [x] **Step 2: Build the synthetic fixture**
 
 Take `restart_equipment_partial_connect.json`'s `DomeInfo` block — a real
 *disconnected* capture — and flip `Connected` to `true`, replacing `"NaN"`
@@ -1265,7 +1265,7 @@ mistakes.
 | `dome_connected.json` | No dome is available and none is in prospect (§5.3.1) |
 ```
 
-- [ ] **Step 3: Run and commit**
+- [x] **Step 3: Run and commit**
 
 ```bash
 uv run pytest tests/unit/test_dome_marker.py -v
@@ -1297,7 +1297,7 @@ This PR **ports the service call sites mechanically** — same behaviour, new
 client. Phase D redesigns and trims them. Do the two separately: a port and a
 redesign in one PR makes the diff unreviewable.
 
-- [ ] **Step 1: Move the command methods onto `NinaClientV2`**
+- [x] **Step 1: Move the command methods onto `NinaClientV2`**
 
 Carry across 1.4.5's hard-won parameter corrections verbatim, with their
 docstrings:
@@ -1319,7 +1319,7 @@ docstrings:
         await self._get("/equipment/mount/slew", {"ra": ra_degrees, "dec": dec_degrees})
 ```
 
-- [ ] **Step 2: Merge the API tests**
+- [x] **Step 2: Merge the API tests**
 
 Move every assertion from the nine `test_api_*.py` files plus `test_poll_all.py`
 into `tests/unit/test_v2_client.py`, adapting the client name and dropping any
@@ -1327,7 +1327,7 @@ that tested `poll_all`'s failure-aggregation — the tiers replaced it. Keep
 `test_no_dither_command.py`, `test_card_image_urls.py` and `test_blueprints.py`
 as they are (§8.0).
 
-- [ ] **Step 3: Delete**
+- [x] **Step 3: Delete**
 
 ```bash
 git rm custom_components/nina_astrophotography/api.py
@@ -1342,7 +1342,7 @@ Then strip the 53 dead `ENDPOINT_*` constants from `const.py` — the paths live
 in `api/v2/client.py` now — and delete `CONF_API_VERSION` / `DEFAULT_API_VERSION`
 with them.
 
-- [ ] **Step 4: Prove nothing references it**
+- [x] **Step 4: Prove nothing references it**
 
 ```bash
 grep -rn "from .api import\|from \.api import NinaApiClient\|ENDPOINT_" \
@@ -1351,7 +1351,7 @@ grep -rn "from .api import\|from \.api import NinaApiClient\|ENDPOINT_" \
 
 Expected: no output.
 
-- [ ] **Step 5: Run everything**
+- [x] **Step 5: Run everything**
 
 ```bash
 uv run pytest tests/unit -p no:homeassistant -q
@@ -1359,7 +1359,7 @@ uv run pytest tests/ha -q
 uv run coverage combine && uv run coverage json && uv run python scripts/coverage_floors.py
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -1382,7 +1382,7 @@ The **entity registry** is the rename artifact — `unique_id`, `entity_id`,
 `hass.states`: the disabled long tail has no state, so a state snapshot omits
 exactly the entities most likely to be misconfigured.
 
-- [ ] **Step 1: Write the snapshot test**
+- [x] **Step 1: Write the snapshot test**
 
 ```python
 """One .ambr per platform, sorted by unique_id.
@@ -1432,7 +1432,7 @@ async def test_a_small_state_snapshot_pins_the_value_contracts(
     assert {e: hass.states.get(e).state for e in watched} == snapshot
 ```
 
-- [ ] **Step 2: Emit `entity_ids.txt` alongside the snapshots**
+- [x] **Step 2: Emit `entity_ids.txt` alongside the snapshots**
 
 The blueprint and card tests in phase D need the entity list, and scraping it
 out of syrupy's `.ambr` format couples them to a snapshot serialization. Write a
@@ -1454,7 +1454,7 @@ async def test_entity_id_inventory_is_current(hass, loaded_entry) -> None:
         pytest.fail("entity_ids.txt regenerated — review and commit it")
 ```
 
-- [ ] **Step 3: Generate, and review the diff by eye**
+- [x] **Step 3: Generate, and review the diff by eye**
 
 ```bash
 uv run pytest tests/ha/test_snapshots.py --snapshot-update
@@ -1471,11 +1471,11 @@ Compare against §5.5's ≈172. **The snapshot is authoritative**, not the table
 but a large divergence means a platform was missed. If the count settles far
 from 172, amend §5.5's arithmetic in this PR with the real number.
 
-- [ ] **Step 4: Reconcile `docs/2.0-renames.md` against the snapshot**
+- [x] **Step 4: Reconcile `docs/2.0-renames.md` against the snapshot**
 
 Every renamed entity in the snapshot must appear in the file, and vice versa.
 
-- [ ] **Step 5: Commit the snapshots on their own**
+- [x] **Step 5: Commit the snapshots on their own**
 
 ```bash
 git add tests/ha/test_snapshots.py
@@ -1505,14 +1505,33 @@ table — which is why they are acceptable here and C7 above is not.
 If any of these turns out to need a design decision rather than a table, stop
 and amend the plan — that is the signal that it was mis-classified here.
 
+## What was built differently from this plan
+
+Recorded here rather than silently, so a reader of the plan is not misled by
+it. Each was a design decision the plan's own "stop and amend" rule asks for.
+
+| Task | The plan said | What was built, and why |
+|---|---|---|
+| C5 | `image.livestack`'s target/filter pairs come from `/livestack/image/available` | The pair comes from the newest `STACK-UPDATED`, which is already folded and names the stack *currently accumulating* — `available` lists every pair the plugin holds without saying which is current, and costs a poll. The event is in the captured corpus; the endpoint is not. |
+| C5 | `image.last_frame`'s timestamp is unspecified | The newest frame of ANY type this process saved, from a new `NinaData.newest_frame` — outside the session window, because the rig's image history does not roll over at local noon. `session.last_frame` is the newest LIGHT and is a different frame after a dawn flat run. |
+| C6 | "…filter wheel selected filter… rotator position, dome azimuth" | All three are §5.2.3 read-only mirrors of the `select` and the two `number`s that survive them, and the task's own tests assert the rotator pair is gone. Cut, with `sensor.camera_target_temperature` on the same rule. |
+| C6 | nothing about the sequence family | No phase-C task claimed `sensor.sequence_status`, `sequence_target_name` or `sequence_progress`, and phase A had deferred the `/sequence/json` walk to "the platform that displays it". The target and progress sensors are reinstated in C6 on a new pure `sequence.py`; `sequence_status` is not, because node `Status` persists from prior runs (§6.2). |
+| C9 | `event.nina_error` fires `autofocus_timeout` from an `advance("autofocus_timed_out")` | Replay folds `/event-history` into the coordinator without reaching subscribers, so a rig state cannot produce the transition. The arm watches the RISING EDGE of the fold's verdict and seeds itself from the first published one, so a failure that predates Home Assistant is history rather than an alarm. |
+| C12 | one `.ambr` per platform under `tests/ha/snapshots/` | Syrupy writes one `.ambr` per test module under `__snapshots__/`; the per-platform split is a parametrize inside it. `entity_ids.txt` sits in the same directory. |
+
+`/livestack/image/available` and `get_livestack_available()` are therefore not
+implemented. Nothing consumes them.
+
 ## Phase C exit criteria
 
-- [ ] Every platform is on `models.py`; no dict access above `api/`.
-- [ ] `api.py`, `frame_statistics.py`, `frame_stats_sensor.py` and
+- [x] Every platform is on `models.py`; no dict access above `api/`.
+- [x] `api.py`, `frame_statistics.py`, `frame_stats_sensor.py` and
       `websocket.py` are all deleted, and the 53 dead `ENDPOINT_*` are gone.
-- [ ] Both suites green; six CI jobs green; every coverage floor met.
-- [ ] The entity registry snapshot exists, has been read line by line, and
+- [x] Both suites green (475 unit, 388 HA); every coverage floor met.
+      Four of the six CI jobs verified locally — the two suites, the floors
+      and the fixture redaction guard; hassfest and HACS run only in Actions.
+- [x] The entity registry snapshot exists, has been read line by line, and
       matches `docs/2.0-renames.md`.
-- [ ] Every dome descriptor carries `verified: False`, enforced by test.
-- [ ] `grep -rn "hass.data\[DOMAIN\]" custom_components/` returns nothing.
-- [ ] The entity count is recorded; §5.5 amended if it diverged materially.
+- [x] Every dome descriptor carries `verified: False`, enforced by test.
+- [x] `grep -rn "hass.data\[DOMAIN\]" custom_components/` returns nothing.
+- [x] The entity count is recorded; §5.5 amended if it diverged materially.
