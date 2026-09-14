@@ -23,12 +23,20 @@ from datetime import datetime, timedelta
 from math import fsum
 from statistics import fmean
 
-from .api.models import AutoFocusState, Frame, NinaEvent, SessionStats, TargetBreakdown
+from .api.models import (
+    AutoFocusState,
+    Frame,
+    NinaEvent,
+    SessionStats,
+    StackState,
+    TargetBreakdown,
+)
 from .derive import session_start
 
 _LIGHT = "LIGHT"
 _AUTOFOCUS_STARTING = "AUTOFOCUS-STARTING"
 _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
+_STACK_UPDATED = "STACK-UPDATED"
 
 # Only a fallback: the rig's own `FocuserSettings.AutoFocusTimeoutSeconds` is
 # polled from /profile/show and is 600 on the captured rig, so folding against
@@ -168,3 +176,47 @@ def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
         autofocus=_autofocus((e for e in kept_events if e.time >= start),
                              moment, autofocus_timeout_seconds),
     )
+
+
+def latest_stack(events: Iterable[NinaEvent],
+                 generation: str | None) -> StackState | None:
+    """The stack `STACK-UPDATED` last reported, or None if none has.
+
+    Generation-filtered like the fold, so a stack from the previous N.I.N.A.
+    process is not offered as the current one — the plugin's stacks do not
+    survive a restart.
+
+    A payload missing `Target` or `Filter` yields None rather than a pair with
+    an empty half: both are path segments, and `/livestack/image//O` is a route
+    that does not exist.
+    """
+    updates = [e for e in events
+               if e.name == _STACK_UPDATED and e.generation == generation]
+    if not updates:
+        return None
+    newest = max(updates, key=lambda e: e.time)
+    target = newest.data.get("Target")
+    filter_name = newest.data.get("Filter")
+    if not isinstance(target, str) or not isinstance(filter_name, str):
+        return None
+    if not target or not filter_name:
+        return None
+    count = newest.data.get("StackCount")
+    return StackState(
+        target=target,
+        filter_name=filter_name,
+        count=int(count) if isinstance(count, (int, float)) else 0,
+        updated=newest.time,
+    )
+
+
+def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | None:
+    """The newest frame this process saved, of any type — what `/image/0`
+    serves.
+
+    Deliberately outside the session window that `fold` applies: the rig's
+    image history does not roll over at local noon, so the frame the route
+    renders at 13:00 is still last night's.
+    """
+    kept = [f for f in frames if f.generation == generation]
+    return max(kept, key=_identity, default=None)
