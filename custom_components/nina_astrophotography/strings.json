@@ -116,6 +116,11 @@
         "name": "Sequence stop"
       }
     },
+    "event": {
+      "nina_error": {
+        "name": "Error"
+      }
+    },
     "image": {
       "last_frame": {
         "name": "Last frame"
@@ -187,6 +192,15 @@
       },
       "flat_panel_cover_state": {
         "name": "Cover state"
+      },
+      "flats_completed_iterations": {
+        "name": "Flats completed iterations"
+      },
+      "flats_state": {
+        "name": "Flats state"
+      },
+      "flats_total_iterations": {
+        "name": "Flats total iterations"
       },
       "focuser_position": {
         "name": "Position"
