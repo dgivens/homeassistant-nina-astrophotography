@@ -20,6 +20,9 @@ async def test_a_pushed_event_reaches_the_bus_under_both_names(
     assert fired["named"] == fired["catch_all"]
     assert fired["named"]["event"] == "IMAGE-SAVE"
     assert fired["named"]["time"]
+    # The event types are shared, so a two-rig install needs the payload to say
+    # which instance fired.
+    assert fired["named"]["entry_id"] == loaded_entry.entry_id
     assert fired["named"]["frame"]["filename"] == "frame_0000.fits"
 
 

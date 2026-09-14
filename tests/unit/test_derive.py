@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta, timezone
 import pytest
 
 from nina_astrophotography.derive import (
-    flip_threshold_minutes,
+    flip_offset_minutes,
     hfr_arcsec,
     hours_to_meridian,
     image_scale_arcsec_per_px,
@@ -110,7 +110,7 @@ def test_time_to_meridian_flip_adds_the_profile_offset_and_wraps(
     ) == pytest.approx(expected, abs=1e-4)
 
 
-def test_the_flip_warning_threshold_is_not_a_bare_number() -> None:
-    """The flip fires at (Max − Min), not zero, so `below: 10` warns AT the flip."""
-    assert flip_threshold_minutes(warning_minutes=10, min_minutes_after=5,
-                                  max_minutes_after=15) == 20
+def test_the_flip_fires_before_the_reading_reaches_zero() -> None:
+    """It fires at (Max − Min), so a warning written as `below: 10` fires AT
+    the flip rather than ten minutes ahead of it."""
+    assert flip_offset_minutes(min_minutes_after=5, max_minutes_after=15) == 10

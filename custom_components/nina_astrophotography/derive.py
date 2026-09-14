@@ -84,12 +84,12 @@ def time_to_meridian_flip(hours_to_meridian_value: float,
     return (hours_to_meridian_value + max_minutes_after_meridian / 60) % 12
 
 
-def flip_threshold_minutes(warning_minutes: float, min_minutes_after: float,
-                           max_minutes_after: float) -> float:
-    """Minutes-to-flip at which a warning should fire.
+def flip_offset_minutes(min_minutes_after: float,
+                        max_minutes_after: float) -> float:
+    """The `TimeToMeridianFlip` reading at which the flip actually fires.
 
-    The flip fires when TimeToMeridianFlip reaches (Max − Min), not zero, so a
-    bare `below: 10` warns exactly at the flip. Both bounds are per-profile, so
-    a bare numeric threshold is not portable between rigs.
+    It is (Max − Min), not zero, so a warning written as a bare `below: 10`
+    fires exactly AT the flip. Both bounds are per-profile, which is why the
+    number is published as an attribute rather than baked into a blueprint.
     """
-    return warning_minutes + (max_minutes_after - min_minutes_after)
+    return max_minutes_after - min_minutes_after

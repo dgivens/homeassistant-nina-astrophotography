@@ -1,139 +1,158 @@
 blueprint:
   name: "N.I.N.A. – Session Startup"
   description: >
-    Performs a full observatory startup routine at a configurable time or trigger.
-    Unparks the mount, enables tracking, cools the camera to a target temperature,
-    optionally opens the dome, and then loads and starts an imaging sequence.
+    Unparks the mount, enables tracking, optionally opens the dome, cools the
+    camera, and then loads and starts a sequence.
+
+    The sequence is named, not a path: the API loads a sequence by the name
+    N.I.N.A. lists it under.
   domain: automation
-  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography
+  author: dgivens
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/session_startup.yaml
+  homeassistant:
+    min_version: "2024.10.0"
   input:
-    trigger_time:
-      name: Start Time
-      description: Time of day to begin the startup routine (leave blank to trigger manually).
-      default: "21:00:00"
-      selector:
-        time:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        nina_rig:
+          name: N.I.N.A. instance
+          selector:
+            device:
+              integration: nina_astrophotography
 
-    camera_target_temp:
-      name: Camera Target Temperature (°C)
-      description: Temperature to cool the sensor to before starting.
-      default: -10
-      selector:
-        number:
-          min: -30
-          max: 0
-          unit_of_measurement: "°C"
+    schedule:
+      name: Schedule
+      icon: mdi:clock-outline
+      input:
+        trigger_time:
+          name: Start time
+          default: "21:00:00"
+          selector:
+            time:
 
-    cooling_ramp_minutes:
-      name: Cooling Ramp Time (minutes)
-      description: How many minutes to take to ramp to the target temperature.
-      default: 15
-      selector:
-        number:
-          min: 1
-          max: 60
-          unit_of_measurement: min
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        camera_target_temp:
+          name: Camera target temperature
+          default: -10
+          selector:
+            number:
+              min: -30
+              max: 0
+              unit_of_measurement: "°C"
+        cooling_ramp_minutes:
+          name: Cooling ramp time
+          description: Minutes over which N.I.N.A. ramps the sensor to target.
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 60
+              unit_of_measurement: min
+        cooling_wait_minutes:
+          name: Wait after cooling
+          description: Extra settling time before the sequence starts.
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 30
+              unit_of_measurement: min
+        open_dome:
+          name: Open the dome
+          default: false
+          selector:
+            boolean:
+        sequence_name:
+          name: Sequence name
+          description: >
+            The sequence's name as N.I.N.A. lists it, without the
+            .ninasequence extension. Leave blank to start whatever is loaded.
+          default: ""
+          selector:
+            text:
+        notify_device:
+          name: Notify service
+          description: >
+            The notify service to send to, without the `notify.` prefix.
+            Leave blank for no notification.
+          default: ""
+          selector:
+            text:
 
-    cooling_wait_minutes:
-      name: Wait After Cooling (minutes)
-      description: Additional wait after reaching target temp before starting sequence.
-      default: 5
-      selector:
-        number:
-          min: 0
-          max: 30
-          unit_of_measurement: min
-
-    open_dome:
-      name: Open Dome
-      description: Open the dome shutter before starting.
-      default: false
-      selector:
-        boolean:
-
-    sequence_path:
-      name: Sequence File Path
-      description: >
-        Full Windows path to the .ninasequence file to load and start.
-        Leave blank to start whatever is already loaded.
-      default: ""
-      selector:
-        text:
-
-    notify_device:
-      name: Notify Device (optional)
-      description: Mobile device to send a notification to when the session starts.
-      default: ""
-      selector:
-        text:
+mode: single
 
 # Inputs must be bound here before templates can reference them.
 variables:
   cooling_ramp_minutes: !input cooling_ramp_minutes
   cooling_wait_minutes: !input cooling_wait_minutes
   notify_device: !input notify_device
-  open_dome: !input open_dome
-  sequence_path: !input sequence_path
+  sequence_name: !input sequence_name
 
-trigger:
-  - platform: time
+triggers:
+  - trigger: time
     at: !input trigger_time
 
-condition: []
-
-action:
-  - alias: "Unpark mount and enable tracking"
-    service: nina_astrophotography.mount_unpark
+actions:
+  - alias: "Unpark the mount"
+    action: nina_astrophotography.mount_unpark
+    target:
+      device_id: !input nina_rig
 
   - delay: "00:00:05"
 
-  - service: nina_astrophotography.mount_set_tracking
+  - alias: "Enable tracking"
+    action: nina_astrophotography.mount_set_tracking
+    target:
+      device_id: !input nina_rig
     data:
       enabled: true
 
-  - alias: "Conditionally open dome"
-    choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ open_dome }}"
-        sequence:
-          - service: nina_astrophotography.dome_open
-          - delay: "00:00:30"
+  - alias: "Open the dome"
+    action: nina_astrophotography.dome_open
+    target:
+      device_id: !input nina_rig
+    enabled: !input open_dome
 
-  - alias: "Start camera cooling"
-    service: nina_astrophotography.camera_cool
+  - alias: "Start the camera cooling"
+    action: nina_astrophotography.camera_cool
+    target:
+      device_id: !input nina_rig
     data:
       temperature: !input camera_target_temp
       minutes: !input cooling_ramp_minutes
 
-  - alias: "Wait for cooling ramp + extra buffer"
+  - alias: "Wait out the cooling ramp, plus the settling time"
     delay:
       minutes: "{{ cooling_ramp_minutes | int + cooling_wait_minutes | int }}"
 
-  - alias: "Load sequence if path provided"
-    choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ sequence_path != '' }}"
-        sequence:
-          - service: nina_astrophotography.sequence_load
-            data:
-              path: !input sequence_path
-          - delay: "00:00:03"
+  - alias: "Load the sequence, if one was named"
+    if:
+      - condition: template
+        value_template: "{{ sequence_name != '' }}"
+    then:
+      - action: nina_astrophotography.sequence_load
+        target:
+          device_id: !input nina_rig
+        data:
+          sequence_name: !input sequence_name
+      - delay: "00:00:03"
 
-  - service: nina_astrophotography.sequence_start
+  - alias: "Start the sequence"
+    action: nina_astrophotography.sequence_start
+    target:
+      device_id: !input nina_rig
 
-  - alias: "Send notification if device configured"
-    choose:
-      - conditions:
-          - condition: template
-            value_template: "{{ notify_device != '' }}"
-        sequence:
-          - service: "notify.{{ notify_device }}"
-            data:
-              title: "🔭 N.I.N.A. Session Started"
-              message: >
-                Imaging sequence started.
-                Camera at {{ states('sensor.camera_temperature') }}°C.
-
-mode: single
+  - alias: "Notify that the session has started"
+    if:
+      - condition: template
+        value_template: "{{ notify_device != '' }}"
+    then:
+      - action: "notify.{{ notify_device }}"
+        data:
+          title: "🔭 N.I.N.A. session started"
+          message: "The imaging sequence has been started."
