@@ -9,9 +9,19 @@
  *        Type: JavaScript Module
  *   3. Add the card to a dashboard:
  *        type: custom:nina-observatory-card
+ *        prefix: n_i_n_a     # the slugified instance name your entities carry
+ *        device_id: abc123   # the rig the buttons act on; needed for two rigs
  */
 
-const VERSION = "1.0.0";
+const VERSION = "2.0.0";
+
+// Home Assistant has no per-press confirmation for a custom card's own
+// buttons, and a mis-tap on any of these costs the rest of the night.
+const CONFIRM = {
+  sequence_stop: "Stop the running sequence?",
+  mount_park: "Park the mount? Imaging stops.",
+  dome_close: "Close the dome?",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -27,6 +37,20 @@ function attr(hass, entity_id, attribute, fallback = "—") {
 
 function isOn(hass, entity_id) {
   return state(hass, entity_id) === "on";
+}
+
+// A disconnected device makes its entities unavailable rather than publishing
+// an off state, so availability is what "connected" now reads from. The entity
+// named is whichever one that device always has.
+function available(hass, entity_id) {
+  const e = hass.states[entity_id];
+  return !!e && e.state !== "unavailable";
+}
+
+// Tracking is one of the mount's own rates, and `Stopped` is one of them.
+function isTracking(hass, entity_id) {
+  const rate = state(hass, entity_id, "Stopped");
+  return rate !== "Stopped" && rate !== "unavailable";
 }
 
 function numState(hass, entity_id, decimals = 1, fallback = "—") {
@@ -245,6 +269,15 @@ const STYLE = `
 
 // ─── Card class ──────────────────────────────────────────────────────────────
 
+// 2.0 entity ids carry the instance name, so the card is told the prefix
+// rather than guessing it: it is the instance name from the config flow,
+// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
+// renamed instance, or for the second rig.
+//
+// Repeated in each card on purpose: the cards are copied into `www/` one file
+// at a time, and a shared module would break a card whose neighbour was missed.
+const DEFAULT_PREFIX = "n_i_n_a";
+
 class NinaObservatoryCard extends HTMLElement {
   constructor() {
     super();
@@ -253,6 +286,7 @@ class NinaObservatoryCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
+    this._prefix = this._config.prefix || DEFAULT_PREFIX;
   }
 
   set hass(hass) {
@@ -261,53 +295,59 @@ class NinaObservatoryCard extends HTMLElement {
   }
 
   _callService(domain, service, data = {}) {
-    this._hass.callService(domain, service, data);
+    // The actions resolve which rig they mean from the device targeted; an
+    // untargeted call is refused as soon as a second instance is configured.
+    const device_id = this._config.device_id;
+    this._hass.callService(domain, service,
+                           device_id ? { ...data, device_id } : data);
   }
 
   _render() {
     const h = this._hass;
     if (!h) return;
+    const prefix = this._prefix;
 
-    const seqRunning  = isOn(h, "binary_sensor.sequence_running");
-    const camConnected = isOn(h, "binary_sensor.camera_connected");
-    const mntConnected = isOn(h, "binary_sensor.mount_connected");
-    const focConnected = isOn(h, "binary_sensor.focuser_connected");
-    const fwConnected  = isOn(h, "binary_sensor.filterwheel_connected");
-    const gdrConnected = isOn(h, "binary_sensor.guider_connected");
-    const domeConnected = isOn(h, "binary_sensor.dome_connected");
+    const seqRunning  = isOn(h, `binary_sensor.${prefix}_sequence_running`);
+    const camConnected = available(h, `sensor.${prefix}_camera_state`);
+    const mntConnected = available(h, `sensor.${prefix}_mount_right_ascension`);
+    const focConnected = available(h, `sensor.${prefix}_focuser_position`);
+    const fwConnected  = available(h, `select.${prefix}_filter_wheel_filter`);
+    const gdrConnected = available(h, `sensor.${prefix}_guider_status`);
+    const domeConnected = available(h, `sensor.${prefix}_dome_shutter_status`);
 
-    const guiding      = isOn(h, "binary_sensor.guider_is_guiding");
-    const cooling      = isOn(h, "binary_sensor.camera_cooling_enabled");
-    const parked       = isOn(h, "binary_sensor.mount_parked");
-    const tracking     = isOn(h, "binary_sensor.mount_tracking");
-    const domeOpen     = isOn(h, "binary_sensor.dome_shutter_open");
+    const guiding      = isOn(h, `switch.${prefix}_guider`);
+    const cooling      = isOn(h, `switch.${prefix}_camera_cooler`);
+    const parked       = isOn(h, `binary_sensor.${prefix}_mount_at_park`);
+    const tracking     = isTracking(h, `select.${prefix}_mount_tracking_rate`);
+    // The shutter reports its own state; `Open` is the only one that is open.
+    const domeOpen     = state(h, `sensor.${prefix}_dome_shutter_status`) === "Open";
 
-    const target       = state(h, "sensor.sequence_target_name", "No target");
-    const progress     = parseFloat(state(h, "sensor.sequence_progress", "0")) || 0;
-    const frameCount   = state(h, "sensor.image_count", "0");
+    const target       = state(h, `sensor.${prefix}_sequence_target`, "No target");
+    const progress     = parseFloat(state(h, `sensor.${prefix}_sequence_progress`, "0")) || 0;
+    const frameCount   = state(h, `sensor.${prefix}_session_image_count`, "0");
 
-    const camTemp      = numState(h, "sensor.camera_temperature");
-    const camTargTemp  = numState(h, "sensor.camera_target_temperature");
-    const coolerPwr    = numState(h, "sensor.camera_cooler_power", 0);
-    const camGain      = state(h, "sensor.camera_gain");
-    const camFilter    = state(h, "sensor.camera_current_filter");
+    const camTemp      = numState(h, `sensor.${prefix}_camera_temperature`);
+    const camTargTemp  = numState(h, `number.${prefix}_camera_target_temperature`);
+    const coolerPwr    = numState(h, `sensor.${prefix}_camera_cooler_power`, 0);
+    const camGain      = state(h, `sensor.${prefix}_camera_gain`);
+    const camFilter    = state(h, `select.${prefix}_filter_wheel_filter`);
 
-    const mntRa        = numState(h, "sensor.mount_ra", 4);
-    const mntDec       = numState(h, "sensor.mount_dec", 3);
-    const mntAlt       = numState(h, "sensor.mount_altitude", 1);
-    const mntAz        = numState(h, "sensor.mount_azimuth", 1);
-    const ttf          = parseFloat(state(h, "sensor.mount_time_to_meridian_flip", "999")) || 999;
+    const mntRa        = numState(h, `sensor.${prefix}_mount_right_ascension`, 4);
+    const mntDec       = numState(h, `sensor.${prefix}_mount_declination`, 3);
+    const mntAlt       = numState(h, `sensor.${prefix}_mount_altitude`, 1);
+    const mntAz        = numState(h, `sensor.${prefix}_mount_azimuth`, 1);
+    const ttf          = parseFloat(state(h, `sensor.${prefix}_mount_time_to_meridian_flip`, "999")) || 999;
 
-    const focPos       = state(h, "sensor.focuser_position");
-    const focTemp      = numState(h, "sensor.focuser_temperature");
+    const focPos       = state(h, `sensor.${prefix}_focuser_position`);
+    const focTemp      = numState(h, `sensor.${prefix}_focuser_temperature`);
 
-    const rmsTotal     = parseFloat(numState(h, "sensor.guider_rms_total", 2, "0"));
-    const rmsRa        = parseFloat(numState(h, "sensor.guider_rms_ra", 2, "0"));
-    const rmsDec       = parseFloat(numState(h, "sensor.guider_rms_dec", 2, "0"));
+    const rmsTotal     = parseFloat(numState(h, `sensor.${prefix}_guider_rms_total`, 2, "0"));
+    const rmsRa        = parseFloat(numState(h, `sensor.${prefix}_guider_rms_ra`, 2, "0"));
+    const rmsDec       = parseFloat(numState(h, `sensor.${prefix}_guider_rms_declination`, 2, "0"));
 
-    const hfr          = numState(h, "sensor.image_last_hfr", 2);
-    const stars        = state(h, "sensor.image_last_star_count");
-    const meanAdu      = state(h, "sensor.image_last_mean_adu");
+    const hfr          = numState(h, `sensor.${prefix}_last_image_hfr`, 2);
+    const stars        = state(h, `sensor.${prefix}_last_image_star_count`);
+    const meanAdu      = state(h, `sensor.${prefix}_last_image_mean_adu`);
 
     // RMS bar widths (max = 4 arcsec = 100%)
     const rmsMax = 4;
@@ -475,7 +515,10 @@ class NinaObservatoryCard extends HTMLElement {
       const el = this.shadowRoot.getElementById(id);
       if (el) el.addEventListener("click", fn);
     };
-    const svc = (s, d) => this._callService("nina_astrophotography", s, d);
+    const svc = (s, d) => {
+      if (CONFIRM[s] && !window.confirm(CONFIRM[s])) return;
+      this._callService("nina_astrophotography", s, d);
+    };
 
     bind("btn-start",      () => svc("sequence_start"));
     bind("btn-stop",       () => svc("sequence_stop"));

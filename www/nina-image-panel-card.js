@@ -11,11 +11,10 @@
  *   GET /v2/api/image-history?all=true              → image history metadata
  *
  * Reads HA sensors for the overlay:
- *   sensor.last_frame_hfr, sensor.last_frame_stars, sensor.last_frame_mean_adu
- *   sensor.last_frame_filter, sensor.last_frame_exposure, sensor.last_frame_guide_rms
- *   sensor.last_frame_target, sensor.frame_session_count, sensor.session_integration_time
- *   binary_sensor.camera_connected, binary_sensor.camera_exposing
- *   sensor.frame_sparkline_data (for histogram data from extra attributes)
+ *   The newest frame's HFR, star count, mean ADU, filter, exposure, guide RMS
+ *   and target, the session frame count and integration time, and whether the
+ *   camera is exposing. Per-frame history — including the ADU range the
+ *   histogram draws — comes from /image-history directly.
  *
  * Card config:
  *   type: custom:nina-image-panel-card
@@ -29,7 +28,13 @@
  *   strip_count: 6          # number of thumbnails in the recent strip (default 6)
  */
 
-const VERSION = "1.0.0";
+const VERSION = "2.0.0";
+
+// .NET writes NaN as the string "NaN", and an absent field is undefined.
+function finite(value) {
+  const number = typeof value === "number" ? value : parseFloat(value);
+  return Number.isFinite(number) ? number : null;
+}
 
 const STYLE = `
   :host {
@@ -227,6 +232,15 @@ const STYLE = `
   }
 `;
 
+// 2.0 entity ids carry the instance name, so the card is told the prefix
+// rather than guessing it: it is the instance name from the config flow,
+// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
+// renamed instance, or for the second rig.
+//
+// Repeated in each card on purpose: the cards are copied into `www/` one file
+// at a time, and a shared module would break a card whose neighbour was missed.
+const DEFAULT_PREFIX = "n_i_n_a";
+
 class NinaImagePanelCard extends HTMLElement {
   constructor() {
     super();
@@ -251,6 +265,7 @@ class NinaImagePanelCard extends HTMLElement {
       quality: config.quality ?? 85,
       stretch: config.stretch ?? true,
       strip_count: config.strip_count ?? 6,
+      prefix: config.prefix ?? DEFAULT_PREFIX,
     };
     this._apiBase = `http://${this._config.host}:${this._config.port}/v2/api`;
   }
@@ -293,6 +308,10 @@ class NinaImagePanelCard extends HTMLElement {
     return e ? e.state : fallback;
   }
   _f(id, fallback = 0) { return parseFloat(this._s(id)) || fallback; }
+
+  // The frame on screen, from `/image-history`. Index 0 is the newest, which
+  // is the one the entities describe.
+  _frame() { return this._historyMeta[this._currentIndex] || {}; }
   _attr(id, attr, fallback = null) {
     const e = this._hass?.states?.[id];
     return e?.attributes?.[attr] ?? fallback;
@@ -461,9 +480,10 @@ class NinaImagePanelCard extends HTMLElement {
       }
     } catch (_) {}
 
-    // Also pull from our frame stats sensor for richer metadata
-    const filterTimeline = this._attr("sensor.frame_sparkline_data", "filter_timeline", []) || [];
-    const hfrSparkline   = this._attr("sensor.frame_sparkline_data", "hfr_sparkline", [])   || [];
+    // Newest first, which is how the strip and `_currentIndex` count. The
+    // entities publish the NEWEST frame only, so this is the one source of
+    // statistics for a frame the user has browsed back to.
+    this._historyMeta = meta.slice().reverse();
 
     strip.innerHTML = "";
     for (let i = 0; i < count; i++) {
@@ -478,9 +498,7 @@ class NinaImagePanelCard extends HTMLElement {
       thumb.appendChild(img);
 
       // Filter label from history metadata or sparkline
-      const filterName = meta[i]?.Filter
-        ?? filterTimeline[filterTimeline.length - 1 - i]
-        ?? "";
+      const filterName = this._historyMeta[i]?.Filter ?? "";
       if (filterName) {
         const lbl = document.createElement("div");
         lbl.className = "strip-filter";
@@ -509,10 +527,14 @@ class NinaImagePanelCard extends HTMLElement {
     const canvas = this.shadowRoot?.getElementById("hist-canvas");
     if (!canvas) return;
 
-    const min = this._f("sensor.last_frame_min_adu");
-    const max = this._f("sensor.last_frame_max_adu");
-    const mean = this._f("sensor.last_frame_mean_adu");
-    const median = this._f("sensor.last_frame_median_adu") || mean;
+    // Min, Max and Median are per-frame history fields: 2.0 publishes the
+    // mean alone, the one an operator watches for a saturated flat.
+    const frame = this._frame();
+    const mean = finite(frame.Mean) ?? this._f(
+      `sensor.${this._config.prefix}_last_image_mean_adu`);
+    const min = finite(frame.Min) ?? 0;
+    const max = finite(frame.Max) ?? 0;
+    const median = finite(frame.Median) ?? mean;
 
     const rangeEl = this.shadowRoot?.getElementById("hist-range");
     if (rangeEl && max > 0) {
@@ -592,11 +614,11 @@ class NinaImagePanelCard extends HTMLElement {
     const overlay = this.shadowRoot?.getElementById("overlay");
     if (!overlay) return;
 
-    const hfr    = this._f("sensor.last_frame_hfr");
-    const stars  = this._s("sensor.last_frame_stars");
-    const filter = this._s("sensor.last_frame_filter");
-    const rms    = this._s("sensor.last_frame_guide_rms");
-    const target = this._s("sensor.last_frame_target");
+    const hfr    = this._f(`sensor.${this._config.prefix}_last_image_hfr`);
+    const stars  = this._s(`sensor.${this._config.prefix}_last_image_star_count`);
+    const filter = this._s(`sensor.${this._config.prefix}_last_image_filter`);
+    const rms    = this._s(`sensor.${this._config.prefix}_last_image_rms`);
+    const target = this._s(`sensor.${this._config.prefix}_last_image_target`);
 
     const pills = [];
     if (filter && filter !== "null") {
@@ -625,10 +647,10 @@ class NinaImagePanelCard extends HTMLElement {
       const el = this.shadowRoot?.getElementById(id);
       if (el) el.textContent = val;
     };
-    const hfr  = this._f("sensor.last_frame_hfr");
-    const stars = this._s("sensor.last_frame_stars", "—");
-    const adu   = this._f("sensor.last_frame_mean_adu");
-    const exp   = this._f("sensor.last_frame_exposure");
+    const hfr  = this._f(`sensor.${this._config.prefix}_last_image_hfr`);
+    const stars = this._s(`sensor.${this._config.prefix}_last_image_star_count`, "—");
+    const adu   = this._f(`sensor.${this._config.prefix}_last_image_mean_adu`);
+    const exp   = this._f(`sensor.${this._config.prefix}_last_image_exposure`);
 
     set("st-hfr",   hfr  > 0 ? `${hfr.toFixed(2)} px`   : "—");
     set("st-stars", stars !== "null" ? stars : "—");
@@ -649,12 +671,16 @@ class NinaImagePanelCard extends HTMLElement {
     const expBar = this.shadowRoot?.getElementById("exposing-bar");
     if (!badge) return;
 
-    const count   = this._s("sensor.frame_session_count", "0");
-    const intTime = this._f("sensor.session_integration_time");
-    const exposing = this._hass?.states?.["binary_sensor.camera_exposing"]?.state === "on";
-    const connected = this._hass?.states?.["binary_sensor.camera_connected"]?.state === "on";
-    const target = this._s("sensor.last_frame_target", "");
-    const filter = this._s("sensor.last_frame_filter", "");
+    const count   = this._s(`sensor.${this._config.prefix}_session_image_count`, "0");
+    const intTime = this._f(`sensor.${this._config.prefix}_session_integration_time`);
+    const exposing = this._hass?.states?.[`binary_sensor.${this._config.prefix}_camera_exposing`]?.state === "on";
+    // A disconnected camera makes its entities unavailable rather than
+    // publishing an off state.
+    const cameraState = this._hass
+      ?.states?.[`sensor.${this._config.prefix}_camera_state`]?.state;
+    const connected = cameraState !== undefined && cameraState !== "unavailable";
+    const target = this._s(`sensor.${this._config.prefix}_last_image_target`, "");
+    const filter = this._s(`sensor.${this._config.prefix}_last_image_filter`, "");
     const index  = this._currentIndex;
 
     if (!connected) {
