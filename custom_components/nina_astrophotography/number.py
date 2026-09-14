@@ -19,6 +19,12 @@ clamps to something else while answering `Success: true`. What Home Assistant
 cannot know is a driver reporting no usable range at all — `Min 0 / Max 0`,
 which every value is "inside" — and that refusal lives here.
 
+**A channel of the N.I.N.A. switch device belongs here when it is writable and
+its range spans more than one step** (§5.3.5) — a Pegasus dew heater at 0-100,
+where a mains outlet at 0-1 is a `switch` and a voltage gauge is a `sensor`. Its
+range is the channel's own, and it reads `Value`, never `TargetValue`, which is
+only what the channel was last asked for.
+
 **A number never confirms itself from the command response** (§3.5). The state
 is the next poll's reading; `flat_panel_brightness` in particular is raw driver
 units, not the `light`'s HA 0–255, and setting it does not toggle the light —
@@ -41,9 +47,11 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api.errors import NinaError
+from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .device import channel_key, channel_name, channel_of
 from .entity import NinaEntity
 
 # One in-flight command per platform: these move hardware.
@@ -270,6 +278,46 @@ class NinaNumber(NinaEntity, NumberEntity):
         await self.coordinator.async_request_refresh()
 
 
+class NinaNumberChannel(NinaEntity, NumberEntity):
+    """One writable, non-binary channel of the N.I.N.A. switch device.
+
+    The range is held from creation: it is capability metadata rather than a
+    reading, so it survives the device disconnecting, and `binary` has already
+    proved both ends are present.
+    """
+
+    _attr_mode = NumberMode.SLIDER
+
+    def __init__(
+        self,
+        coordinator: NinaCoordinator,
+        entry: NinaConfigEntry,
+        channel: SwitchChannelModel,
+    ) -> None:
+        super().__init__(
+            coordinator, entry, channel_key(channel), kind="switch_device"
+        )
+        self._index = channel.index
+        self._attr_native_min_value = channel.minimum
+        self._attr_native_max_value = channel.maximum
+        self._attr_native_step = channel.step_size
+        # Named by the driver, so there is no translation key to name it by.
+        self._attr_name = channel_name(channel)
+
+    @property
+    def native_value(self) -> float | None:
+        """`Value` is where the channel IS; `TargetValue` is where it is going."""
+        channel = channel_of(self.coordinator.data, self._index)
+        return None if channel is None else channel.value
+
+    async def async_set_native_value(self, value: float) -> None:
+        try:
+            await self.coordinator.client.set_switch_value(self._index, value)
+        except NinaError as exc:
+            raise HomeAssistantError(f"N.I.N.A. refused the command: {exc}") from exc
+        await self.coordinator.async_request_refresh()
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: NinaConfigEntry,
@@ -286,16 +334,30 @@ async def async_setup_entry(
         Assistant started still gets its entities (Gold `dynamic-devices`); a
         slot never returns to `None`, so nothing is ever removed here.
         """
-        new = [
-            NinaNumber(coordinator, entry, description)
+        descriptions = [
+            description
             for description in DESCRIPTIONS
             if description.key not in added
             and getattr(coordinator.data.snapshot, description.kind) is not None
         ]
-        if not new:
+        device = coordinator.data.snapshot.switch_device
+        channels = [
+            channel
+            for channel in (device.channels if device is not None else ())
+            if channel.writable
+            and not channel.binary
+            and channel.minimum is not None
+            and channel.maximum is not None
+            and channel_key(channel) not in added
+        ]
+        if not descriptions and not channels:
             return
-        added.update(number.entity_description.key for number in new)
-        async_add_entities(new)
+        added.update(description.key for description in descriptions)
+        added.update(channel_key(channel) for channel in channels)
+        async_add_entities(
+            [NinaNumber(coordinator, entry, d) for d in descriptions]
+            + [NinaNumberChannel(coordinator, entry, c) for c in channels]
+        )
 
     _add_observed()
     entry.async_on_unload(coordinator.async_add_listener(_add_observed))

@@ -10,6 +10,11 @@ zero looks like a measurement. Every aggregate here but `session_image_count`
 is over LIGHT frames only, and all of it comes from one stateless fold, so
 push, poll and `/event-history` replay produce the same numbers.
 
+**A channel of the N.I.N.A. switch device belongs here when it is read-only**
+(§5.3.5) — a Pegasus voltage or current gauge. `ReadonlySwitches` carry no
+range, which is what separates them from the writable channels the `number` and
+`switch` platforms take.
+
 **Weather channels are created on sight and kept (§5.2.2).** A channel exists
 for this entry once it has produced one non-`NaN` reading; thereafter it reads
 `unavailable` whenever the ACTIVE source is not the one that established it.
@@ -53,9 +58,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api.models import Frame, TargetBreakdown
+from .api.models import Frame, SwitchChannelModel, TargetBreakdown
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .device import channel_key, channel_name, channel_of
 from .entity import NinaEntity
 from .sequence import progress_percent
 
@@ -784,6 +790,35 @@ class NinaWeatherSensor(NinaSensor):
         )
 
 
+class NinaSensorChannel(NinaEntity, SensorEntity):
+    """One read-only channel of the N.I.N.A. switch device.
+
+    No unit and no device class: `ReadonlySwitches` carry neither, and a guess
+    — volts for anything named "voltage" — would mislabel every channel the
+    guess is wrong about.
+    """
+
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        coordinator: NinaCoordinator,
+        entry: NinaConfigEntry,
+        channel: SwitchChannelModel,
+    ) -> None:
+        super().__init__(
+            coordinator, entry, channel_key(channel), kind="switch_device"
+        )
+        self._index = channel.index
+        # Named by the driver, so there is no translation key to name it by.
+        self._attr_name = channel_name(channel)
+
+    @property
+    def native_value(self) -> float | None:
+        channel = channel_of(self.coordinator.data, self._index)
+        return None if channel is None else channel.value
+
+
 def _established_channels(
     registry: er.EntityRegistry, entry: NinaConfigEntry
 ) -> dict[str, str | None]:
@@ -829,7 +864,7 @@ async def async_setup_entry(
         equipment that connects hours after Home Assistant started still gets
         its entities; a slot never returns to `None`, so nothing is removed.
         """
-        new = [
+        new: list[NinaSensor | NinaSensorChannel] = [
             NinaSensor(coordinator, entry, description)
             for description in DESCRIPTIONS
             if description.key not in added
@@ -838,9 +873,19 @@ async def async_setup_entry(
                 or getattr(coordinator.data.snapshot, description.kind) is not None
             )
         ]
+        added.update(
+            sensor.entity_description.key for sensor in new
+        )
+        device = coordinator.data.snapshot.switch_device
+        gauges = [
+            channel
+            for channel in (device.channels if device is not None else ())
+            if not channel.writable and channel_key(channel) not in added
+        ]
+        added.update(channel_key(channel) for channel in gauges)
+        new += [NinaSensorChannel(coordinator, entry, c) for c in gauges]
         if not new:
             return
-        added.update(sensor.entity_description.key for sensor in new)
         async_add_entities(new)
 
     _add_observed()

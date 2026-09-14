@@ -41,6 +41,7 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .device import channel_key, channel_name, channel_of
 from .entity import NinaEntity
 
 # One in-flight command per platform: these switch hardware.
@@ -96,7 +97,7 @@ def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
     return supported
 
 
-def _channel_key(channel: SwitchChannelModel) -> str:
+def channel_key(channel: SwitchChannelModel) -> str:
     """Keyed on the channel's own `Id`, so a channel the driver adds later does
     not renumber the entities already registered."""
     return f"switch_channel_{channel.index}"
@@ -279,22 +280,17 @@ class NinaSwitchChannel(NinaEntity, SwitchEntity):
         channel: SwitchChannelModel,
     ) -> None:
         super().__init__(
-            coordinator, entry, _channel_key(channel), kind="switch_device"
+            coordinator, entry, channel_key(channel), kind="switch_device"
         )
         self._index = channel.index
         self._off_value = channel.minimum
         self._on_value = channel.maximum
-        # Named by the driver, so there is no translation key to name it by —
-        # and a driver need not name a channel at all. An empty name resolves
-        # to the device's own under `has_entity_name`, which would collapse
-        # every unnamed channel onto one entity id.
-        self._attr_name = channel.name or f"Channel {channel.index}"
+        # Named by the driver, so there is no translation key to name it by.
+        self._attr_name = channel_name(channel)
 
     @property
     def _channel(self) -> SwitchChannelModel | None:
-        device = self.coordinator.data.snapshot.switch_device
-        channels = device.channels if device is not None else ()
-        return next((c for c in channels if c.index == self._index), None)
+        return channel_of(self.coordinator.data, self._index)
 
     @property
     def is_on(self) -> bool | None:
@@ -352,12 +348,12 @@ async def async_setup_entry(
             for channel in (device.channels if device is not None else ())
             if channel.binary
             and channel.writable
-            and _channel_key(channel) not in added
+            and channel_key(channel) not in added
         ]
         if not descriptions and not channels:
             return
         added.update(description.key for description in descriptions)
-        added.update(_channel_key(channel) for channel in channels)
+        added.update(channel_key(channel) for channel in channels)
         async_add_entities(
             [NinaSwitch(coordinator, entry, d) for d in descriptions]
             + [NinaSwitchChannel(coordinator, entry, c) for c in channels]
