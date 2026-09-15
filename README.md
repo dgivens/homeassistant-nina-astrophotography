@@ -143,8 +143,14 @@ sky quality or star FWHM adds one each.
 | Hub | session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequence running (`binary_sensor`); sequence start/stop (`button`); livestack (`switch`) |
 
 Some entities ship **disabled by default**: the three flat-wizard sensors (see
-[Flats](#flats)) and diagnostics you are unlikely to want on a dashboard.
-Enable them from the entity page.
+[Flats](#flats)), `sequence_progress`, and diagnostics you are unlikely to want
+on a dashboard. Enable them from the entity page.
+
+`sensor.<instance>_sequence_progress` is disabled because it reads `unknown` on
+a Target Scheduler rig: the scheduler chooses targets as the night goes and
+publishes no count to measure progress against. Enable it only if you run a
+plain Advanced Sequencer sequence with looping containers. The observatory card
+omits its progress bar while the sensor has no value.
 
 `sensor.<instance>_session_start` is one of those diagnostics. It is not when
 N.I.N.A. started: it is the boundary the session statistics count from, the
