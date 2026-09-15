@@ -520,8 +520,8 @@
       'unique_id': '01JTESTENTRY0000000000000_sequence_target_name',
     }),
     dict({
-      'enabled_default': True,
-      'entity_category': None,
+      'enabled_default': False,
+      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
       'entity_id': 'sensor.n_i_n_a_session_start',
       'original_name': 'Session start',
       'unique_id': '01JTESTENTRY0000000000000_session_start',

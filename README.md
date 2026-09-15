@@ -146,6 +146,13 @@ Some entities ship **disabled by default**: the three flat-wizard sensors (see
 [Flats](#flats)) and diagnostics you are unlikely to want on a dashboard.
 Enable them from the entity page.
 
+`sensor.<instance>_session_start` is one of those diagnostics. It is not when
+N.I.N.A. started: it is the boundary the session statistics count from, the
+most recent `rollover_hour` (noon by default) in the rig's local time, so it
+reads the same time every day and does not move when N.I.N.A. or the PC
+restarts. Enable it if a night's statistics look split in two — any hour other
+than your `rollover_hour` means the rig's clock offset is not being picked up.
+
 `sensor.<instance>_session_avg_hfr` carries `by_target` and `by_filter`
 attributes: a per-target and per-filter breakdown of count, integration hours
 and mean HFR.

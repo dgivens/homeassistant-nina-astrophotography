@@ -244,9 +244,13 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         key="session_start",
         translation_key="session_start",
         device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         kind=None,
         # The most recent rollover in the RIG's local time, not Home
         # Assistant's: 12:00 UTC is 07:00 on a UTC-5 rig, inside its dawn flats.
+        # Diagnostic because a healthy rig always reads `rollover_hour` today;
+        # any other hour means the rig's clock offset is not being honoured.
         value=lambda data: data.session.session_start,
     ),
     NinaSensorDescription(
