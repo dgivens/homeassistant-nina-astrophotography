@@ -78,10 +78,13 @@ async def test_the_breakdowns_are_attributes_not_entities(
 
 
 async def test_the_session_start_sensor_is_the_most_recent_local_noon(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, entity_registry
 ) -> None:
     """Frames at 2026-09-03T21:39 and 2026-09-04T02:35 are one session; a
     midnight rollover would have split the night in two."""
+    entity_registry.async_update_entity(SESSION_START, disabled_by=None)
+    await hass.config_entries.async_reload(loaded_entry.entry_id)
+    await hass.async_block_till_done()
     await advance("dawn_flats")
     assert dt_util.parse_datetime(hass.states.get(SESSION_START).state) == datetime(
         2026, 9, 3, 12, 0, tzinfo=RIG
