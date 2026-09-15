@@ -335,7 +335,9 @@ class NinaObservatoryCard extends HTMLElement {
     const domeOpen     = state(h, `sensor.${prefix}_dome_shutter_status`) === "Open";
 
     const target       = state(h, `sensor.${prefix}_sequence_target`, "No target");
-    const progress     = parseFloat(state(h, `sensor.${prefix}_sequence_progress`, "0")) || 0;
+    // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
+    // would claim a count the rig never published, so the bar is omitted.
+    const progress     = parseFloat(state(h, `sensor.${prefix}_sequence_progress`, ""));
     const frameCount   = state(h, `sensor.${prefix}_session_image_count`, "0");
 
     const camTemp      = numState(h, `sensor.${prefix}_camera_temperature`);
@@ -400,10 +402,11 @@ class NinaObservatoryCard extends HTMLElement {
               <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${seqRunning ? "Imaging" : "Sequence not running"}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+              ${isNaN(progress) ? "" : `
               <div class="progress-track">
                 <div class="progress-fill" style="width:${progress}%"></div>
-              </div>
-              <div class="frame-count">${progress.toFixed(0)}% · ${frameCount} frames</div>
+              </div>`}
+              <div class="frame-count">${isNaN(progress) ? "" : `${progress.toFixed(0)}% · `}${frameCount} frames</div>
             </div>
           </div>
 
