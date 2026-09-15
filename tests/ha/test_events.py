@@ -20,9 +20,6 @@ async def test_a_pushed_event_reaches_the_bus_under_both_names(
     assert fired["named"] == fired["catch_all"]
     assert fired["named"]["event"] == "IMAGE-SAVE"
     assert fired["named"]["time"]
-    # The event types are shared, so a two-rig install needs the payload to say
-    # which instance fired.
-    assert fired["named"]["entry_id"] == loaded_entry.entry_id
     assert fired["named"]["frame"]["filename"] == "frame_0000.fits"
 
 
@@ -54,3 +51,23 @@ async def test_unloading_stops_the_event_stream(
 
     assert stopped == [stream]
     assert stream.connected is False
+
+
+async def test_a_pushed_event_says_which_rig_it_came_from(
+    hass: HomeAssistant, two_rigs, nina_responses
+) -> None:
+    """The event types are shared by every instance, so an automation with two
+    rigs configured needs the payload to discriminate — which is what the flip
+    blueprint filters on."""
+    fired: list[dict] = []
+    hass.bus.async_listen("nina_image_save", lambda e: fired.append(e.data))
+
+    second = two_rigs.entries[1]
+    second.runtime_data.events._dispatch(
+        nina_responses("live_image_save_push.json"),
+        second.runtime_data.coordinator.generation,
+    )
+    await hass.async_block_till_done()
+
+    assert [event["entry_id"] for event in fired] == [second.entry_id]
+    assert fired[0]["instance"] == second.title

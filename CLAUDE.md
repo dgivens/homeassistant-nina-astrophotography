@@ -104,7 +104,7 @@ disk proves nothing.
   calibration, park, dome close, sequence stop and the flat panel.
 - **Every PR that renames anything a user references — an entity, an action
   field, a blueprint input — appends to `docs/2.0-renames.md`.**
-- **`tests/ha/__snapshots__/` is the contract.** `test_snapshots.ambr` is the
+- **`tests/ha/snapshots/` is the contract.** `test_snapshots.ambr` is the
   authoritative rename record and `entity_ids.txt` the plain list phase D reads.
   Regenerate them in their own commit, and reconcile both directions against
   `docs/2.0-renames.md` — ids the doc promises but the snapshot lacks are only

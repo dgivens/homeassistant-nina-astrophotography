@@ -116,8 +116,6 @@ def test_every_declared_input_is_read(path: Path) -> None:
     text = templates(raw)
 
     read = {name for name, line in referenced if line not in skip} | {
-        name for name in declared(doc) if re.search(rf"\b{re.escape(name)}\b", text)
-    } | {
         source for alias, source in bindings(doc).items()
         if re.search(rf"\b{re.escape(alias)}\b", text)
     }
@@ -149,35 +147,33 @@ def _blueprint(name: str) -> dict:
     return doc
 
 
-def test_the_abort_fires_on_unsafe_not_on_safe() -> None:
-    """Home Assistant's SAFETY device class is on = problem, so an abort
-    triggering on `to: "off"` fires when the sky CLEARS. The failure is silent
-    and its cost is an open roof under cloud."""
-    unsafe = [t for t in _blueprint("weather_abort.yaml")["triggers"]
-              if t.get("id") == "unsafe"]
+def test_the_abort_triggers_on_the_safety_signals_and_nothing_else() -> None:
+    """Four things at once, because they are one decision.
 
-    assert unsafe and unsafe[0]["to"] == "on"
-
-
-def test_the_abort_also_fires_when_the_monitor_itself_disappears() -> None:
-    """A separate trigger, not a merged state set: `unavailable` on the safety
-    entity fires on every Home Assistant restart."""
-    assert any(t.get("id") == "monitor_lost"
-               for t in _blueprint("weather_abort.yaml")["triggers"])
-
-
-def test_the_abort_triggers_on_no_weather_channel() -> None:
-    """Weather is telemetry, not an abort authority: a forecast-backed source
-    reads 0% cloud while you sit under a cloud."""
+    `on` is UNSAFE — the SAFETY device class — so an abort written `to: "off"`
+    fires when the sky CLEARS. The monitor's own dropout is a second trigger,
+    held 30 s so one missed poll is not an abort, and `from: "on"` because that
+    sensor reads `off` all day: without it every restart in daylight would park
+    the mount. An unreachable rig only notifies. And no weather channel
+    triggers any of it — a forecast source reads 0% cloud under cloud.
+    """
     triggers = _blueprint("weather_abort.yaml")["triggers"]
 
-    assert all(t["trigger"] == "state" for t in triggers)
+    assert [(t["id"], t["entity_id"], t.get("from"), t["to"], t.get("for"))
+            for t in triggers] == [
+        ("unsafe", "safety_unsafe", None, "on", None),
+        ("monitor_lost", "safety_connected", "on", "off", "00:00:30"),
+        ("rig_unreachable", "safety_connected", None, "unavailable", "00:02:00"),
+    ]
 
 
 def test_the_meridian_warning_triggers_on_the_flip_event() -> None:
-    """The flip fires when the reading reaches (Max - Min), not zero, and both
-    bounds are per-profile — so N.I.N.A.'s own event is the reliable signal."""
-    events = {t.get("event_type")
-              for t in _blueprint("meridian_flip_warning.yaml")["triggers"]}
+    """The flip fires somewhere between the reading reaching (Max - Min) and
+    reaching zero, and both bounds are per-profile — so N.I.N.A.'s own event is
+    the only reliable signal that it is happening."""
+    ids = [t["id"] for t in _blueprint("meridian_flip_warning.yaml")["triggers"]]
+    events = [t.get("event_type")
+              for t in _blueprint("meridian_flip_warning.yaml")["triggers"]]
 
-    assert "nina_mount_before_flip" in events
+    assert ids == ["approaching", "committed", "complete"]
+    assert events == [None, "nina_mount_before_flip", "nina_mount_after_flip"]

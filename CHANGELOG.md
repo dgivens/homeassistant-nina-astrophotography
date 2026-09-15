@@ -33,7 +33,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   An entry already storing a longer interval keeps polling at that rate, and
   has to be lowered to 60 or less the next time the options form is submitted.
 - Home Assistant bus events keep their names (`nina_<event>` and the catch-all
-  `nina_event`) but the payload is now `event` / `time` / `data` / `frame`
+  `nina_event`) but the payload is now `event` / `time` / `instance` /
+  `entry_id` / `data` / `frame`
   instead of the raw `response` dict: the event socket emits models, and a wire
   dict must not cross the API seam. Only the wrapper changed — `data` carries
   the event's own scalar fields under the wire's own key names (`IsSafe` on
@@ -46,6 +47,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   snake_case (`frame.hfr`, `frame.stars`). `trigger.event.data.event` is
   unchanged.
 
+- **Long-term statistics restart for two session sensors.**
+  `sensor.<instance>_session_integration_time` moves from `min` to `h` and from
+  `state_class: total_increasing` to `measurement`, gaining
+  `device_class: duration`; `sensor.<instance>_session_image_count` likewise
+  becomes `measurement`. Both keep their `unique_id`, so an upgraded install
+  keeps the entity and loses the recorded series: a `total_increasing` and a
+  `measurement` statistic are different types and are not migrated between.
+  `sensor.<instance>_mount_time_to_meridian_flip` gains `device_class: duration`
+  and is unit-converted on display.
+- **Gain, offset and binning are no longer settable.** `number.<instance>_camera_gain`,
+  `_camera_offset` and `_camera_binning` are removed; the 2.0 `sensor` entities
+  of the same names are read-only. The API's capture endpoint binds no binning,
+  and the profile owns gain and offset.
 - **Three actions changed their parameters**, because in 1.4.5 each silently
   did nothing. `camera_capture` takes `duration`, not `exposure` — the API
   reads `duration`, so the exposure length was ignored and defaulted — and no
@@ -118,8 +132,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Fixed
 
 - **`Last Image HFR` no longer reads `0` after a flat run.** Calibration frames
-  report `HFR 0` and `Stars -1` as sentinels; those are now `unknown`, and the
-  session aggregates exclude them instead of averaging zeros into the night.
+  report `HFR 0` and `Stars -1` as sentinels; those are `unknown` now, the
+  session aggregates exclude them instead of averaging zeros into the night,
+  and the last-image sensors report the last **light** — so a flat run leaves
+  your imaging readouts where they were rather than blanking them.
 - **The flat panel no longer jumps to full output** when switched on. 1.4.5 sent
   Home Assistant's 0–255 brightness straight to a driver whose scale is its own.
 - `"NaN"` — which .NET writes as a JSON *string* — is mapped to `unknown` on
@@ -140,7 +156,16 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - Entities that mirrored another entity's state, and the per-frame trend and
   sparkline sensors — the frame-statistics family. The cards compute what they
   need from the last-frame sensors and `/image-history`.
-- `binary_sensor.<instance>_mount_slewing`.
+- Controls with a survivor elsewhere: `button.*_start_guiding` and
+  `*_stop_guiding` (now `switch.<instance>_guider`), `switch.*_mount_tracking`
+  (now `select.<instance>_mount_tracking_rate`), and
+  `binary_sensor.*_dome_shutter_open` (now `sensor.<instance>_dome_shutter_status`,
+  which reports five states rather than two).
+- `sensor.*_sequence_status`, and the `*_camera_name` / `*_mount_name` /
+  `*_safety_monitor_name` metadata sensors — the driver's identity is in the
+  device registry now. An automation or dashboard row pointing at one of these
+  breaks silently.
+- `binary_sensor.n_i_n_a_astrophotography_mount_slewing`.
 
 ---
 

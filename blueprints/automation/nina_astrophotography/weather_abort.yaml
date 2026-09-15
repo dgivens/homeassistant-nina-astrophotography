@@ -3,7 +3,8 @@ blueprint:
   description: >
     The most important safety automation for an automated observatory. When the
     safety monitor reports UNSAFE, or the monitor itself drops out, this stops
-    the sequence, parks the mount, warms the camera and closes the dome.
+    the sequence, parks the mount and warms the camera — and closes the dome, if
+    you enable that below and the mount confirms it has parked.
 
     Two separate triggers, deliberately. The safety sensor uses Home Assistant's
     SAFETY device class, so it is **on when conditions are unsafe** — an abort
@@ -16,6 +17,11 @@ blueprint:
     triggers this automation. A forecast-backed ObservingConditions source reads
     0% cloud while you sit under a cloud. Weather belongs in the resume
     conditions below, where it can hold a restart back but never authorise one.
+    If your weather station ships an ASCOM SafetyMonitor, connect it in N.I.N.A.
+    — that is the device this blueprint keys on.
+
+    It cannot help when N.I.N.A. itself becomes unreachable: every entity goes
+    unavailable and no command can reach the rig. It notifies instead.
   domain: automation
   author: dgivens
   source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/weather_abort.yaml
@@ -32,7 +38,7 @@ blueprint:
           selector:
             device:
               integration: nina_astrophotography
-        safety_entity:
+        safety_unsafe:
           name: Unsafe conditions
           description: >
             The rig's "Unsafe" sensor. It is ON when conditions are unsafe.
@@ -41,7 +47,7 @@ blueprint:
               integration: nina_astrophotography
               domain: binary_sensor
               device_class: safety
-        safety_connected_entity:
+        safety_connected:
           name: Safety monitor connected
           description: >
             The safety monitor's connectivity sensor. Going off means the
@@ -51,11 +57,11 @@ blueprint:
               integration: nina_astrophotography
               domain: binary_sensor
               device_class: connectivity
-        mount_parked_entity:
+        mount_parked:
           name: Mount at park
           description: >
-            Used to confirm the mount is parked before the dome closes. A roof
-            closing over an unparked telescope is how the mirror gets broken.
+            The dome closes only once this reads on. A roof closing over an
+            unparked telescope is how the mirror gets broken.
           selector:
             entity:
               integration: nina_astrophotography
@@ -75,6 +81,15 @@ blueprint:
           default: true
           selector:
             boolean:
+        close_dome:
+          name: Close the dome
+          description: >
+            Off by default — most rigs have no dome, and a roll-off roof that
+            closes at the wrong moment is worse than one left open. Only ever
+            closes over a mount that has confirmed park.
+          default: false
+          selector:
+            boolean:
         warm_camera:
           name: Warm the camera
           description: Ramp the sensor back to ambient rather than cutting cooling.
@@ -89,12 +104,6 @@ blueprint:
               min: 5
               max: 60
               unit_of_measurement: min
-        close_dome:
-          name: Close the dome
-          description: Only after the mount has parked.
-          default: false
-          selector:
-            boolean:
 
     recovery:
       name: Recovery
@@ -104,13 +113,16 @@ blueprint:
         auto_resume:
           name: Resume when conditions clear
           description: >
-            Restart the sequence when the safety monitor reports safe again.
-            Use with care — the target may no longer be usefully placed.
+            Restart the sequence once conditions have been safe for the wait
+            below. Use with care: the target may no longer be usefully placed,
+            and N.I.N.A. RESUMES a stopped sequence rather than re-running it,
+            so its start-up instructions do not run again — the mount stays
+            parked and the dome stays shut unless your sequence handles that.
           default: false
           selector:
             boolean:
         resume_delay_minutes:
-          name: Wait after conditions clear
+          name: Conditions must stay safe for
           description: Lets cloud fully pass and equipment settle.
           default: 15
           selector:
@@ -132,37 +144,71 @@ blueprint:
       icon: mdi:bell
       collapsed: true
       input:
-        notify_device:
-          name: Notify service
+        notify_target:
+          name: Notify
           description: >
-            The notify service to send to, without the `notify.` prefix.
-            Leave blank for no notification.
-          default: ""
+            Notify entities to alert. Leave empty for none — but an abort you
+            are not told about is one you find out about at dawn.
+          default: []
           selector:
-            text:
+            entity:
+              domain: notify
+              multiple: true
 
-mode: single
-max_exceeded: silent
+# `restart`, not `single`: conditions going unsafe again while this is still
+# running — most likely during the resume wait — must pre-empt it rather than
+# being silently dropped. Every step below is idempotent.
+mode: restart
 
 # Inputs must be bound here before templates can reference them.
 variables:
-  mount_parked: !input mount_parked_entity
-  notify_device: !input notify_device
-  resume_delay_minutes: !input resume_delay_minutes
+  mount_parked: !input mount_parked
+  nina_rig: !input nina_rig
+  safety_unsafe: !input safety_unsafe
 
 triggers:
   # Conditions became unsafe. SAFETY device class: on = problem.
+  #
+  # No `from:` here, deliberately: a state trigger with `to: "on"` and no
+  # `from:` also matches the entity being created, which is what re-arms the
+  # abort when Home Assistant restarts into conditions that are already unsafe.
   - trigger: state
-    entity_id: !input safety_entity
+    entity_id: !input safety_unsafe
     to: "on"
     id: unsafe
   # The monitor itself went away — what its connectivity sensor is retained
   # for. Held for 30 s so a single missed poll is not an abort.
+  #
+  # `from: "on"` IS required here: the sensor survives disconnection and
+  # publishes `off` whenever the monitor is not connected in N.I.N.A., which is
+  # the normal daytime state — so without it, every Home Assistant restart in
+  # daylight would park the mount and close the roof 30 seconds later.
   - trigger: state
-    entity_id: !input safety_connected_entity
+    entity_id: !input safety_connected
+    from: "on"
     to: "off"
     for: "00:00:30"
     id: monitor_lost
+  # N.I.N.A. itself unreachable — a crashed imaging PC, a dropped tunnel. Every
+  # entity goes unavailable and no command can reach the rig, so there is
+  # nothing to abort WITH; this arm only tells someone.
+  - trigger: state
+    entity_id: !input safety_connected
+    to: "unavailable"
+    for: "00:02:00"
+    id: rig_unreachable
+
+conditions:
+  # Selectors cannot cross-filter, so on a two-rig install the entities above
+  # and the device below can name different rigs — which would park the wrong
+  # telescope. Only blocks when they positively disagree: a template that
+  # cannot resolve must never hold up an abort.
+  - alias: "The entities and the device name the same rig"
+    condition: template
+    value_template: >
+      {% set entry = config_entry_id(safety_unsafe) %}
+      {% set rig = device_attr(nina_rig, 'config_entries') %}
+      {{ entry is none or rig is not iterable or entry in rig | list }}
 
 actions:
   - variables:
@@ -173,18 +219,37 @@ actions:
           The safety monitor reports unsafe conditions
         {% endif %}
 
-  - alias: "Notify that the abort has begun"
+  - alias: "Report an unreachable rig, and stop — nothing can be commanded"
     if:
-      - condition: template
-        value_template: "{{ notify_device != '' }}"
+      - condition: trigger
+        id: rig_unreachable
     then:
-      - action: "notify.{{ notify_device }}"
+      - action: notify.send_message
+        target:
+          entity_id: !input notify_target
         data:
-          title: "⛈ Observatory abort"
-          message: "{{ abort_reason }}. Beginning safe shutdown."
+          title: "⚠️ N.I.N.A. unreachable"
+          message: >
+            Home Assistant cannot reach N.I.N.A., so the observatory is not
+            under automation and no shutdown was attempted.
+        continue_on_error: true
+      - stop: "The rig is unreachable"
+
+  # `notify.send_message` against a notify ENTITY, never `notify.<service>`
+  # built from text: a service name that does not exist raises ServiceNotFound,
+  # which `continue_on_error` does not suppress — so a typo in the notify
+  # target would abort the abort, and nothing below here would run.
+  - alias: "Notify that the abort has begun"
+    action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "⛈ Observatory abort"
+      message: "{{ abort_reason }}. Beginning safe shutdown."
+    continue_on_error: true
 
   # Every step continues on error: a mount that refuses to park must not stop
-  # the dome from closing.
+  # the dome from closing, or the camera from warming.
   - alias: "Stop the sequence"
     action: nina_astrophotography.sequence_stop
     target:
@@ -207,6 +272,31 @@ actions:
     continue_on_timeout: true
     enabled: !input park_mount
 
+  # The roof comes before the camera: warming is a comfort, an open roof under
+  # cloud is not. The close is gated on the park being CONFIRMED — the wait
+  # above times out rather than failing, and a disconnected mount never
+  # publishes `on` at all.
+  - alias: "Close the dome, but only over a parked mount"
+    enabled: !input close_dome
+    if:
+      - condition: template
+        value_template: "{{ is_state(mount_parked, 'on') }}"
+    then:
+      - action: nina_astrophotography.dome_close
+        target:
+          device_id: !input nina_rig
+        continue_on_error: true
+    else:
+      - action: notify.send_message
+        target:
+          entity_id: !input notify_target
+        data:
+          title: "🚨 Roof left open"
+          message: >
+            The mount did not confirm park, so the dome was NOT closed.
+            Manual intervention needed.
+        continue_on_error: true
+
   - alias: "Warm the camera"
     action: nina_astrophotography.camera_warm
     target:
@@ -216,37 +306,39 @@ actions:
     continue_on_error: true
     enabled: !input warm_camera
 
-  - alias: "Close the dome"
-    action: nina_astrophotography.dome_close
-    target:
-      device_id: !input nina_rig
-    continue_on_error: true
-    enabled: !input close_dome
-
   - alias: "Notify that the shutdown is complete"
-    if:
-      - condition: template
-        value_template: "{{ notify_device != '' }}"
-    then:
-      - action: "notify.{{ notify_device }}"
-        data:
-          title: "✅ Shutdown complete"
-          message: >
-            Safe shutdown finished.
-            Mount parked: {{ is_state(mount_parked, 'on') }}.
+    action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "✅ Shutdown complete"
+      message: >
+        Mount parked: {{ is_state(mount_parked, 'on') }}.
+        Conditions are still {{ 'unsafe' if is_state(safety_unsafe, 'on') else 'clearing' }}.
+    continue_on_error: true
 
   - alias: "Watch for conditions to clear, then resume"
     enabled: !input auto_resume
     sequence:
+      # The wait itself carries the sustain: waiting for the instant of `off`
+      # and then sleeping would resume after conditions had gone unsafe again.
       - wait_for_trigger:
           - trigger: state
-            entity_id: !input safety_entity
+            entity_id: !input safety_unsafe
             to: "off"
+            for:
+              minutes: !input resume_delay_minutes
         timeout: "06:00:00"
         continue_on_timeout: false
 
-      - delay:
-          minutes: !input resume_delay_minutes
+      # Bare conditions: a false one stops the run, which is the right outcome
+      # when the only thing left to do is restart imaging.
+      - condition: state
+        entity_id: !input safety_unsafe
+        state: "off"
+      - condition: state
+        entity_id: !input safety_connected
+        state: "on"
 
       - alias: "Resume only if the extra conditions also hold"
         if: !input resume_conditions
@@ -254,14 +346,12 @@ actions:
           - action: nina_astrophotography.sequence_start
             target:
               device_id: !input nina_rig
-          - alias: "Notify that imaging has resumed"
-            if:
-              - condition: template
-                value_template: "{{ notify_device != '' }}"
-            then:
-              - action: "notify.{{ notify_device }}"
-                data:
-                  title: "🌟 Conditions clear – resuming"
-                  message: >
-                    Conditions were safe for {{ resume_delay_minutes }} minutes.
-                    The sequence has been restarted.
+          - action: notify.send_message
+            target:
+              entity_id: !input notify_target
+            data:
+              title: "🌟 Conditions clear – resuming"
+              message: >
+                Conditions have been safe for the full wait. The sequence has
+                been restarted; check that the mount unparked.
+            continue_on_error: true
