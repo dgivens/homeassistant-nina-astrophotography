@@ -222,7 +222,8 @@ Two suppressions to know about:
   safety input empty only if the rig has no safety monitor. On a rig that has
   one, an empty input means an alert through every weather hold.
 - **`night_only` is on by default**, so the daytime wait for darkness is not a
-  stall. Turn it off if you image the sun.
+  stall. Turn it off if you image the sun. It reads `sun.sun`; without that
+  entity it does not suppress anything.
 
 Guiding has its own blueprint, `guiding_alert.yaml`, and this one does not
 duplicate it: a lost guide star that stops the frames shows up here as a stall,
@@ -231,7 +232,8 @@ with the guider state in the message.
 The alert is a persistent notification plus a message to your notify entity. It
 reads from bed: minutes quiet, the last frame's target and filter, camera state,
 temperature and cooler power, guider, mount park and home, autofocus, the newest
-error. It reminds you every 60 minutes, at most twice. After that it stays quiet
+error. It reminds you every 60 minutes, at most twice (set reminders to 0 for
+none). After that it stays quiet
 but keeps waiting, so when a frame lands or the sequencer stops it dismisses the
 notification and says which of the two happened. A clear is never sent without
 an alert before it. A sequence that finishes looks the same as one stopped by

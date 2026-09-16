@@ -321,7 +321,9 @@ blueprint:
           name: Only alert at night
           description: >-
             On by default: a sequence's twelve-hour daytime wait for darkness
-            is not a stall. Turn it off if you image the sun.
+            is not a stall. Turn it off if you image the sun. Reads `sun.sun`;
+            if that entity is missing, the gate stays open rather than muting
+            every alert.
           default: true
           selector:
             boolean:
@@ -358,7 +360,7 @@ blueprint:
           default: 2
           selector:
             number:
-              min: 1
+              min: 0
               max: 10
 
 # `single`, not `restart`: the quiet arm ticks every minute, and under `restart`
@@ -397,6 +399,7 @@ variables:
   longest_exposure_seconds: !input longest_exposure_seconds
   grace_minutes: !input grace_minutes
   escalations: !input escalations
+  notify_target: !input notify_target
   # Added, never multiplied — see the input description.
   stale_after_seconds: >
     {{ longest_exposure_seconds | float(600) + grace_minutes | float(30) * 60 }}
@@ -533,13 +536,17 @@ conditions:
                  and (now() - waiting.last_changed).total_seconds()
                      > settle_minutes | float(15) * 60 }}
 
+          # "Not above", never "is below": with the sun integration removed or
+          # the entity renamed, "is below" is false forever and silently mutes
+          # the quiet arm. A daytime alert is noisy but visible.
+          #
           # A template rather than `enabled: !input` on a state condition:
           # `enabled` is honoured on a script action, and these are nested
           # conditions rather than actions.
           - alias: "Night only, unless the user images the sun"
             condition: template
             value_template: >
-              {{ not night_only or is_state('sun.sun', 'below_horizon') }}
+              {{ not night_only or not is_state('sun.sun', 'above_horizon') }}
 
           - alias: "Frames really have stopped"
             condition: or
@@ -636,15 +643,20 @@ actions:
 
   # `notify.send_message` against a notify ENTITY, never `notify.<service>`
   # built from text: a service name that does not exist raises ServiceNotFound,
-  # which `continue_on_error` does not suppress.
+  # which `continue_on_error` does not suppress. Each call is also skipped when
+  # no target is set, because then the notify integration may not be loaded,
+  # and a ServiceNotFound here would end the run before anything could dismiss
+  # the persistent notification.
   - alias: "Tell someone"
-    action: notify.send_message
-    target:
-      entity_id: !input notify_target
-    data:
-      title: "🛑 {{ rig_name }} imaging stalled"
-      message: "{{ reason }} {{ detail }}"
-    continue_on_error: true
+    if: "{{ notify_target | count > 0 }}"
+    then:
+      - action: notify.send_message
+        target:
+          entity_id: !input notify_target
+        data:
+          title: "🛑 {{ rig_name }} imaging stalled"
+          message: "{{ reason }} {{ detail }}"
+        continue_on_error: true
 
   # The run stays alive until the stall actually resolves. Ending it after the
   # last reminder would hand the next minute tick an open gate and a fresh
@@ -676,7 +688,8 @@ actions:
           if:
             - condition: template
               value_template: >
-                {{ not wait.completed and repeat.index <= escalations | int(2) }}
+                {{ not wait.completed and repeat.index <= escalations | int(2)
+                   and notify_target | count > 0 }}
           then:
             - action: notify.send_message
               target:
@@ -712,16 +725,18 @@ actions:
     continue_on_error: true
 
   - alias: "Say what ended it"
-    action: notify.send_message
-    target:
-      entity_id: !input notify_target
-    data:
-      title: "✅ {{ rig_name }} imaging resumed"
-      message: >-
-        {%- if wait.trigger.id == 'frame' %}
-        A frame has landed — the rig is producing again.
-        {%- else %}
-        The sequencer stopped. That is either the end of the night or a manual
-        stop; nothing distinguishes them.
-        {%- endif %}
-    continue_on_error: true
+    if: "{{ notify_target | count > 0 }}"
+    then:
+      - action: notify.send_message
+        target:
+          entity_id: !input notify_target
+        data:
+          title: "✅ {{ rig_name }} imaging resumed"
+          message: >-
+            {%- if wait.trigger.id == 'frame' %}
+            A frame has landed — the rig is producing again.
+            {%- else %}
+            The sequencer stopped. That is either the end of the night or a manual
+            stop; nothing distinguishes them.
+            {%- endif %}
+        continue_on_error: true

@@ -23,7 +23,10 @@ from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
+from pytest_homeassistant_custom_component.common import (
+    async_fire_time_changed,
+    async_mock_service,
+)
 
 from tests.ha.conftest import BLUEPRINTS
 
@@ -123,15 +126,17 @@ async def watching(hass: HomeAssistant, installed, freezer):
     """Set the blueprint up over a rig whose sequencer is not running yet.
 
     Returns the clock, and takes input overrides for the cases that turn on an
-    input rather than on a state.
+    input rather than on a state. `notify=False` leaves the notify integration
+    unloaded, so `notify.send_message` does not exist.
     """
-    async def _set_up(**overrides):
+    async def _set_up(notify: bool = True, **overrides):
         freezer.move_to(T0)
         hass.states.async_set("sun.sun", "below_horizon")
         for entity, state in RIG.items():
             hass.states.async_set(entity, state)
         assert await async_setup_component(hass, "persistent_notification", {})
-        assert await async_setup_component(hass, "notify", {})
+        if notify:
+            assert await async_setup_component(hass, "notify", {})
         assert await async_setup_component(hass, AUTOMATION_DOMAIN, {
             AUTOMATION_DOMAIN: {"use_blueprint": {
                 "path": f"nina_astrophotography/{BLUEPRINT}",
@@ -322,3 +327,59 @@ async def test_an_unreachable_rig_reports_only_what_it_knows(
     message = alert(hass)["message"]
     assert "Nothing further can be read" in message
     assert "mount" not in message
+
+
+async def test_a_missing_sun_does_not_mute_the_alarm(
+    hass: HomeAssistant, watching
+) -> None:
+    """With `sun.sun` gone, "is below the horizon" would be false forever and
+    `night_only` would silence the quiet arm without a word."""
+    clock = await watching()
+    hass.states.async_remove("sun.sun")
+    await start_sequence(hass, clock)
+
+    clock.move_to(T0 + STALLED)
+    await tick(hass, T0 + STALLED)
+
+    assert alert(hass) is not None
+
+
+async def test_an_alert_with_no_notify_target_still_clears(
+    hass: HomeAssistant, watching
+) -> None:
+    """With no target and no notify integration, calling `notify.send_message`
+    raises ServiceNotFound, which ends the run and strands the notification."""
+    clock = await watching(notify=False)
+    await start_sequence(hass, clock)
+    clock.move_to(T0 + STALLED)
+    await tick(hass, T0 + STALLED)
+    assert alert(hass) is not None
+
+    hass.states.async_set("sensor.rig_last_frame_at", (T0 + STALLED).isoformat())
+    await hass.async_block_till_done()
+
+    assert alert(hass) is None
+
+
+@pytest.mark.parametrize("escalations", [0, 1])
+async def test_reminders_stop_at_the_configured_count(
+    hass: HomeAssistant, watching, escalations: int
+) -> None:
+    """Zero is a valid count: an operator can ask for one alert and no more."""
+    sent = async_mock_service(hass, "notify", "send_message")
+    clock = await watching(notify=False, notify_target=["notify.phone"],
+                           escalations=escalations)
+    await start_sequence(hass, clock)
+    now = T0 + STALLED
+    clock.move_to(now)
+    await tick(hass, now)
+
+    for _ in range(3):
+        now += timedelta(minutes=DEFAULTS["escalate_minutes"] + 1)
+        clock.move_to(now)
+        async_fire_time_changed(hass, now)
+        for _ in range(200):
+            await asyncio.sleep(0)
+
+    reminders = [c for c in sent if "still stalled" in c.data["title"]]
+    assert len(reminders) == escalations
