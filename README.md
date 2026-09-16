@@ -140,7 +140,7 @@ sky quality or star FWHM adds one each.
 | Safety Monitor | unsafe, connected (`binary_sensor`) |
 | Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing (`binary_sensor`); open, close, park, home (`button`) |
 | Switch | one entity per channel the driver reports, by shape: read-only becomes a `sensor`, an on/off channel a `switch`, a range a `number` |
-| Hub | session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequencer running and imaging (`binary_sensor`); sequence start/stop (`button`); livestack (`switch`) |
+| Hub | session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequencer running, imaging and scheduler waiting (`binary_sensor`); wait ends at, last frame at; sequence start/stop (`button`); livestack (`switch`) |
 
 Some entities ship **disabled by default**: the three flat-wizard sensors (see
 [Flats](#flats)), `sequence_progress`, and diagnostics you are unlikely to want
@@ -164,6 +164,42 @@ automation using it meant. The old row goes unavailable on upgrade — delete it
 and point each automation at whichever of the two it actually wanted. The
 shipped **session shutdown** blueprint wants *sequencer running*: on *imaging*
 it would shut the rig down during any wait.
+
+### Knowing the rig is working
+
+Three entities describe why frames may not be arriving:
+
+- **`binary_sensor.<instance>_sequencer_running`** — the sequencer is executing.
+- **`binary_sensor.<instance>_scheduler_waiting`** — Target Scheduler is
+  waiting, with **`sensor.<instance>_wait_ends_at`** saying until when. The
+  event carries a time and no reason, so darkness, moon separation, target
+  altitude and a meridian window all look the same here. A **safety** wait is
+  not one of them: when the sequence loops waiting for conditions to clear,
+  that is a N.I.N.A. container and this entity stays `off` —
+  `binary_sensor.<instance>_safety_monitor_unsafe` is what covers it.
+- **`sensor.<instance>_last_frame_at`** — when the newest frame of any type was
+  saved, dawn flats included. It is `unknown` until the first frame of the
+  process.
+
+**Detecting a stall needs more care than it looks**, and the recorded nights
+say why:
+
+| Observed | Where |
+|---|---|
+| **31.5 min** between consecutive lights | a normal night, nothing wrong |
+| **116 min** with no frame at all | conditions went unsafe at 04:26 and the sequence looped until dawn |
+| **11.6 min** after a wait ends before the first frame | slew, rotation, filter change, guider settle |
+
+The safety case is the one that catches people: `scheduler_waiting` is `off`
+throughout, because the loop is a N.I.N.A. container rather than a Target
+Scheduler wait. `Date` on a frame is when it was *saved*, so the clock also
+starts a full exposure behind.
+
+So a usable rule is *longest exposure + ~25 minutes*, only while running, not
+waiting and safe, and guarded for `last_frame_at` being `unknown` — which it is
+after every N.I.N.A. restart, since the image history is process-scoped. A
+blueprint shipping that is the next piece of work. A one-line template
+condition is how you get woken at 5am by a passing cloud.
 
 `sensor.<instance>_sequence_progress` is disabled because it reads `unknown` on
 a Target Scheduler rig: the scheduler chooses targets as the night goes and

@@ -16,6 +16,7 @@ AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
 SEQUENCER_RUNNING = "binary_sensor.n_i_n_a_sequencer_running"
 IMAGING = "binary_sensor.n_i_n_a_imaging"
+SCHEDULER_WAITING = "binary_sensor.n_i_n_a_scheduler_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 
 
@@ -152,6 +153,22 @@ async def test_imaging_follows_activity_and_not_node_status(
     RUNNING throughout and takes nothing."""
     await advance(state)
     assert hass.states.get(IMAGING).state == expected
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [("scheduler_waiting", "on"), ("sequence_stopped", "off")],
+    ids=["waiting until 21:05", "stopped, with the wait still in the history"],
+)
+async def test_the_waiting_sensor_clears_when_the_sequence_stops(
+    hass: HomeAssistant, config_entry, rig, during_the_scheduler_wait,
+    state: str, expected: str
+) -> None:
+    """There is no TS-WAITSTOP: `sequence_stopped` still holds two TS-WAITSTART
+    naming 21:05, so a sensor keyed on the newest wait alone would report a
+    stopped rig as waiting."""
+    await _set_up_at(hass, config_entry, rig, state)
+    assert hass.states.get(SCHEDULER_WAITING).state == expected
 
 
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(

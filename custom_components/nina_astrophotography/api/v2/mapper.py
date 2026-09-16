@@ -90,6 +90,8 @@ _READONLY_INDEX_BASE = 10_000
 # naive local. Anything else naive is treated as local.
 EVENT_TIMEZONES: Mapping[str, str] = MappingProxyType({"TS-": "utc", "ERROR-": "local"})
 
+_SCHEDULER_WAIT_STARTED = "TS-WAITSTART"
+
 # WeatherData channel → model key. AveragePeriod is a driver setting, not a
 # reading, and is deliberately absent.
 _WEATHER_CHANNELS: Mapping[str, str] = MappingProxyType({
@@ -556,6 +558,24 @@ def _event_time(name: str, wire: dict, frame: Frame | None,
     return parsed.replace(tzinfo=timezone(offset))
 
 
+def _wait_end(name: str, wire: dict, offset: timedelta | None) -> datetime | None:
+    """`TS-WAITSTART`'s `WaitEndTime`, which is the rig's LOCAL time.
+
+    The same payload's `Time` is naive UTC (`EVENT_TIMEZONES`), so the two
+    fields of one event follow different conventions and reading this one by
+    the `Time` rule puts the wait hours out. Every captured value carries an
+    offset; a naive one needs the rig's clock, and without it there is no
+    reading — unlike `_event_time`, which falls back to UTC so that events
+    always sort.
+    """
+    if name != _SCHEDULER_WAIT_STARTED:
+        return None
+    parsed = _timestamp(wire.get("WaitEndTime"))
+    if parsed is None or parsed.tzinfo is not None:
+        return parsed
+    return None if offset is None else parsed.replace(tzinfo=timezone(offset))
+
+
 def map_event(wire: dict, generation: str | None, *,
               rig_offset: timedelta | None = None) -> NinaEvent:
     """One socket push or `/event-history` entry.
@@ -575,6 +595,7 @@ def map_event(wire: dict, generation: str | None, *,
               and not isinstance(value, (dict, list))},
         generation=generation,
         frame=frame,
+        wait_end=_wait_end(name, wire, rig_offset),
     )
 
 

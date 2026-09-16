@@ -210,6 +210,34 @@ def inside_the_dawn_session(freezer):
     freezer.move_to("2026-09-04T12:30:00+00:00")
 
 
+@pytest.fixture
+def set_up_at():
+    """Set the entry up with the rig ALREADY in a state.
+
+    `/event-history` is replayed once, at setup, and the tier-polled endpoints
+    latch as not-served on the states that withhold them — so a state that
+    differs in either has to be in force before the entry loads. Advancing on
+    to it arrives too late for both.
+    """
+    async def go(hass, entry, rig, state: str) -> None:
+        rig.goto(state)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    return go
+
+
+@pytest.fixture
+def during_the_scheduler_wait(freezer):
+    """20:45 on the rig, inside the 20:33 → 21:05 wait the capture announces.
+
+    A wait is over once its end has passed, so these states report waiting only
+    against a clock that has not reached 21:05.
+    """
+    freezer.move_to("2026-09-16T01:45:00+00:00")
+
+
 async def _async(value):
     return value
 

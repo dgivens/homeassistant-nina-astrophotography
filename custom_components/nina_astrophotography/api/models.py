@@ -320,6 +320,13 @@ class NinaEvent:
     generation: str | None
     frame: Frame | None = None
     """Set on `IMAGE-SAVE`, whose payload is a frame the socket already mapped."""
+    wait_end: datetime | None = None
+    """Set on `TS-WAITSTART`: when Target Scheduler expects to resume.
+
+    Typed here rather than left in `data` because `data` is forwarded verbatim
+    onto the Home Assistant event bus, where a datetime would replace the wire
+    string automations read.
+    """
 
 
 @dataclass(frozen=True, slots=True)

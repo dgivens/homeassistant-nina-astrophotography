@@ -22,6 +22,8 @@ from custom_components.nina_astrophotography.const import DOMAIN
 FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip"
 FOCUSER_POSITION = "sensor.n_i_n_a_focuser_position"
 SEQUENCE_PROGRESS = "sensor.n_i_n_a_sequence_progress"
+WAIT_ENDS_AT = "sensor.n_i_n_a_wait_ends_at"
+LAST_FRAME_AT = "sensor.n_i_n_a_last_frame_at"
 
 
 def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
@@ -152,3 +154,23 @@ def test_the_blueprint_reads_the_attribute_by_that_name() -> None:
                  / "nina_astrophotography" / "meridian_flip_warning.yaml")
 
     assert "flip_fires_at_minutes" in blueprint.read_text(encoding="utf-8")
+
+
+async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
+    hass: HomeAssistant, config_entry, rig, set_up_at, during_the_scheduler_wait
+) -> None:
+    """21:05:40 on a UTC−5 rig. A TIMESTAMP sensor stores UTC, so the local
+    time the wire sent is only visible here as its instant — which is what a
+    `time` trigger with an offset needs."""
+    await set_up_at(hass, config_entry, rig, "scheduler_waiting")
+    assert hass.states.get(WAIT_ENDS_AT).state == "2026-09-16T02:05:40+00:00"
+
+
+async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(
+    hass: HomeAssistant, loaded_entry, advance
+) -> None:
+    """`now() - last_frame_at` is what a stall looks like, and a dawn flat run
+    is the rig working — so this is the 06:26 FLAT, not the 04:25 LIGHT that
+    `sensor.last_image_*` reports."""
+    await advance("dawn_flats")
+    assert hass.states.get(LAST_FRAME_AT).state == "2026-09-04T11:26:34+00:00"
