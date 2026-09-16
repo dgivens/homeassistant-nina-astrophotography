@@ -554,6 +554,25 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         value=lambda data: data.target,
     ),
     NinaSensorDescription(
+        key="wait_ends_at",
+        translation_key="wait_ends_at",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        kind=None,
+        # A timestamp rather than minutes remaining: `at: {entity_id: …}` takes
+        # one directly, and nothing has to tick.
+        value=lambda data: data.wait_ends_at,
+    ),
+    NinaSensorDescription(
+        key="last_frame_at",
+        translation_key="last_frame_at",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        kind=None,
+        # The newest frame of ANY type, so dawn flats count as the rig working.
+        # `now() - last_frame_at` is what a stall looks like, and it needs a
+        # timestamp the seven other `last_image_*` sensors do not carry.
+        value=lambda data: None if data.newest_frame is None else data.newest_frame.date,
+    ),
+    NinaSensorDescription(
         key="sequence_progress",
         translation_key="sequence_progress",
         native_unit_of_measurement=PERCENTAGE,

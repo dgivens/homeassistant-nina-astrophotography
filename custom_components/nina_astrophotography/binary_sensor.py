@@ -161,6 +161,14 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         value=lambda data: data.running,
     ),
     NinaBinarySensorDescription(
+        key="scheduler_waiting",
+        translation_key="scheduler_waiting",
+        kind=None,
+        # No device class: HA has none for waiting, and RUNNING here would read
+        # as a third opinion on whether the sequence is going.
+        value=lambda data: data.wait_ends_at is not None,
+    ),
+    NinaBinarySensorDescription(
         key="imaging",
         translation_key="imaging",
         device_class=BinarySensorDeviceClass.RUNNING,

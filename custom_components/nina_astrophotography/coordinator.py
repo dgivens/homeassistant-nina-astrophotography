@@ -67,6 +67,7 @@ from .session import (
     fold,
     latest_stack,
     latest_target,
+    scheduler_wait,
     newest_frame,
 )
 
@@ -146,6 +147,9 @@ class NinaData:
     """Whether the SEQUENCER is executing, which a rig waiting out a target's
     start window is while `imaging` is false. From the root containers, with
     `SEQUENCE-STARTING`/`-FINISHED` breaking a tie — see `sequence.running`."""
+    wait_ends_at: datetime | None
+    """When the wait Target Scheduler is in ends, or None if it is not waiting.
+    The event names no reason, so neither can this."""
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
@@ -633,7 +637,13 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return dt_util.utcnow().astimezone(timezone(offset))
 
     def _assemble(self, snapshot: EquipmentSnapshot) -> NinaData:
-        """Freeze the live sets into one snapshot. Synchronous by design."""
+        """Freeze the live sets into one snapshot. Synchronous by design.
+
+        One clock reading for the whole snapshot: the session boundary and the
+        scheduler wait are both measured against it, and two readings could
+        straddle a second.
+        """
+        moment = self._now()
         return NinaData(
             snapshot=snapshot,
             session=fold(
@@ -644,7 +654,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                     self._profile.autofocus_timeout_seconds
                     or DEFAULT_AUTOFOCUS_TIMEOUT
                 ),
-                now=self._now(),
+                now=moment,
                 rollover_hour=self._rollover_hour,
             ),
             sequence=self._sequence,
@@ -660,6 +670,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             version=self._version,
             imaging=self._imaging,
             running=running(self._sequence, self.events, self.generation),
+            wait_ends_at=scheduler_wait(self.events, self.generation, now=moment),
         )
 
 

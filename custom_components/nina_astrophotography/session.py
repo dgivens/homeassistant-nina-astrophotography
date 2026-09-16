@@ -18,7 +18,7 @@ exists, and loses events arriving during the refetch.
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Container, Iterable, Sequence
 from datetime import datetime, timedelta
 from math import fsum
 from statistics import fmean
@@ -37,9 +37,16 @@ _LIGHT = "LIGHT"
 _AUTOFOCUS_STARTING = "AUTOFOCUS-STARTING"
 _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
 _STACK_UPDATED = "STACK-UPDATED"
+# Announced with the time it expects to resume; nothing announces its end.
+_SCHEDULER_WAIT_STARTED = "TS-WAITSTART"
+_SEQUENCE_FINISHED = "SEQUENCE-FINISHED"
 # Target Scheduler announces a target twice: NEWTARGETSTART when it changes,
 # TARGETSTART once per exposure. Both name it, so both count.
 _TARGET_STARTED = frozenset({"TS-TARGETSTART", "TS-NEWTARGETSTART"})
+
+# What ends a wait, there being no TS-WAITSTOP: the scheduler moving on, or the
+# sequence stopping — `SEQUENCE-FINISHED` fires on a manual stop too.
+_WAIT_ENDED_BY = _TARGET_STARTED | {"SEQUENCE-FINISHED"}
 
 # Only a fallback: the rig's own `FocuserSettings.AutoFocusTimeoutSeconds` is
 # polled from /profile/show and is 600 on the captured rig, so folding against
@@ -186,6 +193,40 @@ def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
     )
 
 
+def _newest(events: Iterable[NinaEvent], names: Container[str],
+            generation: str | None) -> NinaEvent | None:
+    """The newest event this generation named, or None if it named none."""
+    matching = [event for event in events
+                if event.name in names and event.generation == generation]
+    return max(matching, key=lambda event: event.time, default=None)
+
+
+def scheduler_wait(events: Iterable[NinaEvent], generation: str | None, *,
+                   now: datetime) -> datetime | None:
+    """When the wait Target Scheduler is currently in ends, or None if it is
+    not waiting.
+
+    `TS-WAITSTART` announces the time it expects to resume and **there is no
+    matching stop event**, so the wait is ended by what follows it: a target
+    start, a `SEQUENCE-FINISHED` (a stop leaves the announcement in the history
+    still naming a future time), or the time itself passing. Target Scheduler
+    re-announces a wait it re-plans, so the newest is the live one.
+
+    It names no reason. Darkness, a target's altitude, moon separation and a
+    meridian window all arrive as the same event, so nothing above this can say
+    why the rig is waiting.
+    """
+    wait = _newest(events, {_SCHEDULER_WAIT_STARTED}, generation)
+    if wait is None or wait.wait_end is None or wait.wait_end <= now:
+        return None
+    ended = _newest(events, _WAIT_ENDED_BY, generation)
+    # Strictly after: the announcement and the event that ends it never share a
+    # timestamp, and a wait that ended itself would be a contradiction.
+    if ended is not None and ended.time > wait.time:
+        return None
+    return wait.wait_end
+
+
 def latest_stack(events: Iterable[NinaEvent],
                  generation: str | None) -> StackState | None:
     """The stack `STACK-UPDATED` last reported, or None if none has.
@@ -198,11 +239,9 @@ def latest_stack(events: Iterable[NinaEvent],
     an empty half: both are path segments, and `/livestack/image//O` is a route
     that does not exist.
     """
-    updates = [e for e in events
-               if e.name == _STACK_UPDATED and e.generation == generation]
-    if not updates:
+    newest = _newest(events, {_STACK_UPDATED}, generation)
+    if newest is None:
         return None
-    newest = max(updates, key=lambda e: e.time)
     target = newest.data.get("Target")
     filter_name = newest.data.get("Filter")
     if not isinstance(target, str) or not isinstance(filter_name, str):
@@ -233,9 +272,8 @@ def latest_target(events: Iterable[NinaEvent],
     Target Scheduler only: a plain N.I.N.A. sequence emits no such event and
     names its target in the `/sequence/json` tree instead (`sequence.py`).
     """
-    starts = [e for e in events
-              if e.name in _TARGET_STARTED and e.generation == generation]
-    if not starts:
+    start = _newest(events, _TARGET_STARTED, generation)
+    if start is None:
         return None
-    name = max(starts, key=lambda e: e.time).data.get("TargetName")
+    name = start.data.get("TargetName")
     return name if isinstance(name, str) and name else None

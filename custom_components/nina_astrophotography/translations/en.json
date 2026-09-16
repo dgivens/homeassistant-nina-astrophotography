@@ -87,6 +87,9 @@
       "imaging": {
         "name": "Imaging"
       },
+      "scheduler_waiting": {
+        "name": "Scheduler waiting"
+      },
       "sequencer_running": {
         "name": "Sequencer running"
       }
@@ -286,6 +289,12 @@
       },
       "rain_rate": {
         "name": "Rain rate"
+      },
+      "last_frame_at": {
+        "name": "Last frame at"
+      },
+      "wait_ends_at": {
+        "name": "Wait ends at"
       },
       "sequence_progress": {
         "name": "Sequence progress"

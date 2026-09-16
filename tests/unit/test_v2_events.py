@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from helpers import FakeSession, load_envelope, load_fixture
 
 from nina_astrophotography.api.models import NinaEvent
+from nina_astrophotography.api.v2.mapper import map_event
 from nina_astrophotography.api.v2 import events as events_module
 from nina_astrophotography.api.v2.client import NinaClientV2
 from nina_astrophotography.api.v2.events import NinaEventStream
@@ -158,3 +159,36 @@ async def test_stopping_a_stream_cancels_its_receive_loop() -> None:
     await socket.stop()
     assert task.cancelled()
     assert socket._task is None
+
+
+def test_a_scheduler_wait_carries_its_end_as_rig_local_time() -> None:
+    """One TS payload mixes conventions: `Time` is naive UTC while
+    `WaitEndTime` carries the rig's own offset. Read by the `Time` rule the
+    wait would end five hours late."""
+    wire = next(e for e in load_fixture("scheduler_waiting_event_history.json")
+                if e["Event"] == "TS-WAITSTART")
+    event = map_event(wire, generation="g1")
+    assert event.wait_end == datetime(2026, 9, 15, 21, 5, 40, 808306,
+                                      tzinfo=timezone(timedelta(hours=-5)))
+
+
+@pytest.mark.parametrize(
+    ("payload", "offset", "expected"),
+    [
+        ({"WaitEndTime": "2026-09-15T21:05:40"}, timedelta(hours=-5),
+         datetime(2026, 9, 15, 21, 5, 40, tzinfo=timezone(timedelta(hours=-5)))),
+        ({"WaitEndTime": "2026-09-15T21:05:40"}, None, None),
+        ({}, timedelta(hours=-5), None),
+    ],
+    ids=["naive resolves against the rig clock", "naive without a clock is nothing",
+         "no WaitEndTime at all"],
+)
+@pytest.mark.synthetic
+def test_a_naive_wait_end_needs_the_rigs_clock(
+    payload: dict, offset: timedelta | None, expected: datetime | None
+) -> None:
+    """Every captured `WaitEndTime` is offset-aware; the naive case is
+    fabricated. Guessing UTC would put the wait five hours out on this rig, so
+    an unresolvable one is no reading."""
+    wire = {"Event": "TS-WAITSTART", "Time": "2026-09-16T01:33:37", **payload}
+    assert map_event(wire, generation="g1", rig_offset=offset).wait_end == expected

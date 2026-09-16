@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from helpers import load_fixture
@@ -10,6 +10,7 @@ from helpers import load_fixture
 from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import (
+    scheduler_wait,
     fold,
     latest_stack,
     latest_target,
@@ -362,3 +363,52 @@ def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> Non
     """A plain N.I.N.A. sequence emits no TS-* event; its target is in the tree."""
     assert latest_target([e for e in night_events
                           if not e.name.startswith("TS-")], "g1") is None
+
+
+# The rig's own offset; every N.I.N.A. timestamp is local to its clock.
+RIG = timezone(timedelta(hours=-5))
+WAIT_END = datetime(2026, 9, 15, 21, 5, 40, tzinfo=RIG)
+WAITING_AT = datetime(2026, 9, 15, 20, 45, tzinfo=RIG)
+
+
+def _waiting_events(*ending: str, at: int = 40,
+                    wait_end: datetime | None = WAIT_END) -> list[NinaEvent]:
+    """`TS-WAITSTART` at 20:33 announcing 21:05, plus whatever ends it."""
+    return [
+        NinaEvent(name="TS-WAITSTART", time=datetime(2026, 9, 15, 20, 33, tzinfo=RIG),
+                  data={}, generation="g1", wait_end=wait_end),
+        *(NinaEvent(name=name, time=datetime(2026, 9, 15, 20, at, tzinfo=RIG),
+                    data={}, generation="g1")
+          for name in ending),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("events", "now", "expected"),
+    [
+        (_waiting_events(), WAITING_AT, WAIT_END),
+        (_waiting_events("TS-TARGETSTART"), WAITING_AT, None),
+        (_waiting_events("SEQUENCE-FINISHED"), WAITING_AT, None),
+        (_waiting_events(), datetime(2026, 9, 15, 21, 30, tzinfo=RIG), None),
+        ([], WAITING_AT, None),
+        (_waiting_events("TS-TARGETSTART", at=30), WAITING_AT, WAIT_END),
+        (_waiting_events(wait_end=None), WAITING_AT, None),
+    ],
+    ids=["waiting", "a target started", "the sequence was stopped",
+         "the wait end has passed", "no wait announced",
+         "the target start came BEFORE the wait", "the rig clock was unknown"],
+)
+@pytest.mark.synthetic
+def test_a_wait_ends_at_its_time_or_when_something_supersedes_it(
+    events: list[NinaEvent], now: datetime, expected: datetime | None
+) -> None:
+    """There is no TS-WAITSTOP, and a stop leaves the announcement in the
+    history still naming a future time — so a wait has to be ended by what
+    follows it rather than waited out. `TS-TARGETSTART` fires once per
+    exposure, so the previous target's starts are always in the buffer and only
+    a LATER one can end a wait.
+
+    An unknown rig clock reports not-waiting rather than guessing, which is the
+    conservative way round for the dashboard and the alarming way round for a
+    stall rule built on it."""
+    assert scheduler_wait(events, "g1", now=now) == expected
