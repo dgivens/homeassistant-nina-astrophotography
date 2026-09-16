@@ -93,6 +93,13 @@ blueprint:
           description: >-
             A mount that parked itself while the sequencer is running has
             already ended the night.
+
+            Required, where the guider and meridian sensors below are optional,
+            and the difference is deliberate: a rig without a guider is
+            ordinary, a rig without a mount is not an imaging rig. This one
+            also drives an alert arm rather than a line of the message, so
+            leaving it empty would delete one of the three ways a stall is
+            noticed instead of shortening a sentence.
           selector:
             entity:
               integration: nina_astrophotography
@@ -415,6 +422,16 @@ variables:
     {% else %}
       {{ sequencer_on_seconds | float(0) | round(0) }}
     {% endif %}
+  # Whether the floor is what `quiet_seconds` ended up measuring. The first
+  # alert of a night usually reports the sequencer's uptime, not the age of a
+  # frame — `last_frame_at` may still hold last night's — and a message that
+  # called that figure a frame age would have a reader at 3am believing the rig
+  # went quiet minutes ago rather than hours.
+  floored: >
+    {% set frame = states[last_frame_at] %}
+    {{ frame is none or frame.state in ['unknown', 'unavailable']
+       or now().timestamp() - as_timestamp(frame.state, now().timestamp())
+          > sequencer_on_seconds | float(0) }}
 
 triggers:
   # N.I.N.A. down, the imaging PC rebooted, the tunnel gone. Every entity of the
@@ -562,6 +579,8 @@ actions:
         unavailable for two minutes.
         {%- elif trigger.id == 'parked' %}
         The mount parked itself while the sequencer was still running.
+        {%- elif floored %}
+        No frames in the {{ quiet_minutes }} minutes since the sequence started.
         {%- else %}
         No frames for {{ quiet_minutes }} minutes.
         {%- endif %}
