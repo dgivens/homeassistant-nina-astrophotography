@@ -9,7 +9,6 @@ gets, and an `enabled: !input` branch that is off by default is otherwise never
 built. A blueprint that fails this is inert on the rig, and for the abort
 blueprint that means a roof that never closes.
 """
-import shutil
 from pathlib import Path
 
 import pytest
@@ -106,21 +105,6 @@ OPTIONAL: dict[str, dict[str, object]] = {
         ],
     },
 }
-
-
-@pytest.fixture
-async def installed(hass: HomeAssistant):
-    """The shipped blueprints, in the config directory Home Assistant reads.
-
-    Turned off again afterwards: a time trigger registers a timer that would
-    otherwise outlive the test.
-    """
-    shutil.copytree(BLUEPRINTS[0].parents[2], hass.config.path("blueprints"),
-                    dirs_exist_ok=True)
-    yield
-    if entities := hass.states.async_entity_ids(AUTOMATION_DOMAIN):
-        await hass.services.async_call(
-            AUTOMATION_DOMAIN, "turn_off", {"entity_id": entities}, blocking=True)
 
 
 @pytest.mark.parametrize("configured", [False, True], ids=["defaults", "full"])

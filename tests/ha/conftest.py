@@ -1,12 +1,16 @@
 """Fixtures for the Home-Assistant-dependent suite."""
 from __future__ import annotations
 
+import shutil
 import sys
 from dataclasses import replace
+from pathlib import Path
 from typing import NamedTuple
 
 import pytest
 from helpers import load_fixture
+from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
+from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.syrupy import (
     HomeAssistantSnapshotExtension,
@@ -58,6 +62,23 @@ def pytest_collection_modifyitems(config, items):
 def auto_enable_custom_integrations(enable_custom_integrations):
     """PHACC requires this opt-in before a custom component will load."""
     return
+
+
+BLUEPRINTS = Path(__file__).resolve().parents[2] / "blueprints"
+
+
+@pytest.fixture
+async def installed(hass: HomeAssistant):
+    """The shipped blueprints, in the config directory Home Assistant reads.
+
+    Turned off again afterwards: a time trigger registers a timer that would
+    otherwise outlive the test.
+    """
+    shutil.copytree(BLUEPRINTS, hass.config.path("blueprints"), dirs_exist_ok=True)
+    yield
+    if entities := hass.states.async_entity_ids(AUTOMATION_DOMAIN):
+        await hass.services.async_call(
+            AUTOMATION_DOMAIN, "turn_off", {"entity_id": entities}, blocking=True)
 
 
 @pytest.fixture
