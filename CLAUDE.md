@@ -71,7 +71,7 @@ custom_components/nina_astrophotography/
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
-blueprints/automation/nina_astrophotography/   5 automation blueprints; entities
+blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
 www/                                           5 Lovelace cards; each builds its

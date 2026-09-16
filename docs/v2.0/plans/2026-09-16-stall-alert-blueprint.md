@@ -112,15 +112,22 @@ starts one exposure behind — say so in the input description.
 
 ### Alert lifecycle
 
-`mode: restart`, so a new frame pre-empts a pending run and no state leaks.
+`mode: single` with `max_exceeded: silent`. `mode: restart` would break the
+steps below: the quiet arm's `time_pattern /1` would kill the waiting run every
+60 s and re-notify, and it would never escalate or clear. The run already ends
+when a frame lands, through `wait_for_trigger` on `last_frame_at`.
 
 1. Raise: `persistent_notification.create` with a stable `notification_id`, plus
    `notify.send_message`.
 2. `wait_for_trigger`: `last_frame_at` changes (a frame landed), or
    `sequencer_running` goes `off` (the night ended, or someone stopped it).
    `timeout: escalate_minutes` (default 60).
-3. On timeout: renotify, up to `escalations` times (default 2), then stop.
-   A stall still stalled at 05:00 is a dawn problem, not a 3am one.
+3. On timeout: renotify, up to `escalations` times (default 2). After that the
+   run does **not** stop. It keeps waiting without reminders, so the cleared
+   message still arrives when frames resume. If the run ended, the next tick
+   would raise a duplicate alert, and nothing would be left to dismiss the
+   notification. A stall still stalled at 05:00 is a dawn problem, not a 3am
+   one.
 4. On resume: dismiss the notification and send the cleared message.
    **Never send "cleared" if nothing was raised.**
 5. `SEQUENCE-FINISHED` fires on a **manual stop as well as end of night**, so
@@ -174,9 +181,11 @@ one line would have named it instantly.
 
 ## Known limits, recorded rather than fixed
 
-- **An HA restart during an open alert loses the pending "cleared" message.**
-  `wait_for_trigger` does not survive a restart. The persistent notification
-  remains, so the alert is visible; only the automatic clear is lost.
+- **An HA restart during an open alert loses both the alert and its "cleared"
+  message.**
+  `wait_for_trigger` does not survive a restart, and neither do persistent
+  notifications, which live in memory. The notification and the automatic
+  clear are both lost. The phone notification already sent is what remains.
 - **The settle gate is mute for `settle_minutes` after an HA restart**, because
   `last_changed` resets. Errs toward silence.
 - **A safety loop is suppressed entirely.** If conditions are unsafe the rig is
@@ -193,3 +202,7 @@ one line would have named it instantly.
 2. An equipment-connected rollup binary sensor. The dawn night shows
    `CAMERA-DISCONNECTED` and `GUIDER-DISCONNECTED` mid-night with nothing
    aggregating them, so a dropped guider currently looks like a stall.
+3. The `MOUNT-HOMED` count in the last hour, which §The message asked for if
+   it came cheap. It was left out because no entity exposes it without a
+   `history_stats` or recorder query. The message reports `mount_at_home`
+   state instead.
