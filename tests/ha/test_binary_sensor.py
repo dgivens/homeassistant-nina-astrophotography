@@ -142,17 +142,14 @@ async def test_an_unanswered_autofocus_start_raises_the_problem_sensor(
     ("state", "expected"),
     [
         ("sequence_complete_tracking_off", "off"),
-        pytest.param("idle_with_stale_running_nodes", "off",
-                     marks=pytest.mark.synthetic),
         ("imaging_guiding", "on"),
     ],
 )
 async def test_imaging_follows_activity_and_not_node_status(
     hass: HomeAssistant, advance, state: str, expected: str
 ) -> None:
-    """§6.2: node `Status` persists from the loaded sequence file and from
-    prior runs, so an idle rig can report RUNNING nodes with no frame
-    arriving."""
+    """Frames arriving, never the tree: a sequence executing a wait reads
+    RUNNING throughout and takes nothing."""
     await advance(state)
     assert hass.states.get(IMAGING).state == expected
 

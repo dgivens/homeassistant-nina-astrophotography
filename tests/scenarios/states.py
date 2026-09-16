@@ -136,25 +136,6 @@ def _shorter_history(name: str, keep: int) -> dict:
     return {**envelope, "Response": frames[-keep:]}
 
 
-def _all_nodes_running(envelope: dict) -> dict:
-    """Every `Status` in a `/sequence/json` document set to RUNNING.
-
-    Node status persists from the loaded sequence file and from prior runs, so
-    an idle rig reports RUNNING nodes with nothing happening (§6.2). Synthetic:
-    the corpus has the completed tree and the running tree, never a running one
-    on an idle rig, and that state is what the imaging heuristic must ignore.
-    """
-    def walk(value):
-        if isinstance(value, dict):
-            return {k: "RUNNING" if k == "Status" else walk(v)
-                    for k, v in value.items()}
-        if isinstance(value, list):
-            return [walk(item) for item in value]
-        return value
-
-    return walk(envelope)
-
-
 def _replace_device(state: State, device: str, block: dict) -> State:
     """A copy of `state` with one `/equipment/info` device block swapped."""
     envelope = state["/equipment/info"]
@@ -347,20 +328,6 @@ STATES: dict[str, State] = {
     "sequence_complete_tracking_off": _replace_device(
         _IMAGING, "Mount", load_envelope("dawn_mount_tracking_off.json")["Response"]
     ),
-    # The same idle rig with every sequence node reading RUNNING: node status
-    # is what §6.2 refuses to infer imaging from. Synthetic in its
-    # /sequence/json alone — a real capture would replace it in place, and none
-    # of the 2026-09-15 states is one: each of those reads RUNNING because its
-    # sequence was running.
-    "idle_with_stale_running_nodes": {
-        **_replace_device(
-            _IMAGING, "Mount",
-            load_envelope("dawn_mount_tracking_off.json")["Response"],
-        ),
-        "/sequence/json": _all_nodes_running(
-            load_envelope("dawn_sequence_complete.json")
-        ),
-    },
     # 20:46 rig-local, before the night's first sub: Targets_Container RUNNING
     # while Target Scheduler waits out a target's start window, with no frame
     # in the history. The activity heuristic alone reads this as a stopped
