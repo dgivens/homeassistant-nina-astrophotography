@@ -71,6 +71,7 @@ REQUIRED: dict[str, dict[str, object]] = {
 OPTIONAL: dict[str, dict[str, object]] = {
     "guiding_alert.yaml": {"run_autofocus": True},
     "imaging_stall_alert.yaml": {
+        "last_image_filter": ["sensor.rig_last_image_filter"],
         "guider_rms": ["sensor.rig_guider_rms_total"],
         "mount_at_home": ["binary_sensor.rig_mount_at_home"],
         "autofocus_failed": ["binary_sensor.rig_focuser_autofocus_failed"],

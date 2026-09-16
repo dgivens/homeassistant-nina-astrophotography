@@ -162,6 +162,17 @@ blueprint:
         Optional. Each adds one line to the message; leave any of them empty on
         a rig that has no such device.
       input:
+        last_image_filter:
+          name: Last image filter
+          description: >-
+            The filter the newest frame was taken through, reported next to the
+            target. A stall part-way through a filter change names itself here.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              multiple: true
         guider_rms:
           name: Total guiding RMS
           default: []
@@ -329,6 +340,7 @@ variables:
   flip_sensor: !input flip_sensor
   camera_temperature: !input camera_temperature
   camera_cooler_power: !input camera_cooler_power
+  last_image_filter: !input last_image_filter
   guider_rms: !input guider_rms
   mount_at_home: !input mount_at_home
   autofocus_failed: !input autofocus_failed
@@ -483,12 +495,14 @@ actions:
       # single ·-separated line on purpose: a folded YAML scalar joins its lines
       # with spaces, so laying the fields out in columns here would not survive.
       detail: >-
+        {%- set filt = expand(last_image_filter) | first | default(none) -%}
         {%- set rms = expand(guider_rms) | first | default(none) -%}
         {%- set homed = expand(mount_at_home) | first | default(none) -%}
         {%- set af = expand(autofocus_failed) | first | default(none) -%}
         {%- set safety = expand(safety_connected) | first | default(none) -%}
         {%- set err = expand(error_event) | first | default(none) -%}
-        Target {{ states(sequence_target) }} ·
+        Target {{ states(sequence_target) }}{% if filt %},
+        filter {{ filt.state }}{% endif %} ·
         camera {{ states(camera_state) }} at {{ states(camera_temperature) }} °C,
         cooler {{ states(camera_cooler_power) }} % ·
         guider {{ states(guider_status) }}{% if rms %} (RMS {{ rms.state }}){% endif %} ·
