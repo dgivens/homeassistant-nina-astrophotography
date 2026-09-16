@@ -21,6 +21,7 @@ from custom_components.nina_astrophotography.const import DOMAIN
 
 FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip"
 FOCUSER_POSITION = "sensor.n_i_n_a_focuser_position"
+SEQUENCE_PROGRESS = "sensor.n_i_n_a_sequence_progress"
 
 
 def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
@@ -124,11 +125,14 @@ async def test_the_sequence_target_is_the_one_the_scheduler_announced(
 
 
 async def test_sequence_progress_is_unknown_where_no_node_counts_iterations(
-    hass: HomeAssistant, loaded_entry
+    hass: HomeAssistant, loaded_entry, entity_registry
 ) -> None:
     """The truth about what this API exposes on a Target Scheduler rig.
     Inventing a percentage from node statuses would be worse (§6.2)."""
-    assert hass.states.get("sensor.n_i_n_a_sequence_progress").state == "unknown"
+    entity_registry.async_update_entity(SEQUENCE_PROGRESS, disabled_by=None)
+    await hass.config_entries.async_reload(loaded_entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(SEQUENCE_PROGRESS).state == "unknown"
 
 
 async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
