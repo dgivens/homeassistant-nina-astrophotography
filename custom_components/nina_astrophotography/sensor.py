@@ -244,9 +244,13 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         key="session_start",
         translation_key="session_start",
         device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         kind=None,
         # The most recent rollover in the RIG's local time, not Home
         # Assistant's: 12:00 UTC is 07:00 on a UTC-5 rig, inside its dawn flats.
+        # Diagnostic because a healthy rig always reads `rollover_hour` today;
+        # any other hour means the rig's clock offset is not being honoured.
         value=lambda data: data.session.session_start,
     ),
     NinaSensorDescription(
@@ -555,11 +559,13 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
+        # Disabled because no captured rig has ever produced a value: a Target
+        # Scheduler rig keeps its target list inside the imaging container and
+        # publishes no iteration count, and the "3/10" fraction the walk parses
+        # is unverified on a plain sequence. Inventing a percentage from the
+        # node statuses would be worse (§6.2).
+        entity_registry_enabled_default=False,
         kind=None,
-        # `unknown` on a Target Scheduler rig, which keeps its target list
-        # inside the imaging container and publishes no iteration count. That
-        # is what this API exposes, and inventing a percentage from the node
-        # statuses would be worse (§6.2).
         value=lambda data: progress_percent(data.sequence),
     ),
     # ── Dome ─────────────────────────────────────────────────────────────
