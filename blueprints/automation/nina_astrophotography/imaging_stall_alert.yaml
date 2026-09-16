@@ -1,0 +1,599 @@
+blueprint:
+  name: "N.I.N.A. – Imaging Stall Alert"
+  description: >
+    Notifies when the rig has stopped producing frames for a bad reason, and
+    clears itself when frames resume. Notify only — it never stops a sequence,
+    parks a mount or moves a roof, because a false positive must cost a phone
+    buzz and never a night.
+
+    Three arms, because a stall has three shapes. N.I.N.A. itself unreachable
+    takes every entity with it, so no template over the rig's own state can
+    ever see that one. A mount that parked itself under a running sequencer is
+    a stall with no ambiguity and no timer. And the ordinary case: the frames
+    simply stopped.
+
+    Waiting is most of what a sequence does — for darkness, for a target's
+    start window, for moon separation, for a safety loop — so the quiet arm is
+    gated hard. It is silent while the scheduler is waiting, for a settling
+    period after a wait ends, while conditions are unsafe (the abort blueprint
+    owns that case), and, unless you turn that off, in daylight.
+
+    It cannot see a rig that is imaging but producing garbage. Star count, HFR
+    and RMS entities exist for that; it is a different alarm with different
+    thresholds.
+  domain: automation
+  author: dgivens
+  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/imaging_stall_alert.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        nina_rig:
+          name: N.I.N.A. instance
+          description: The rig to watch. Any of its devices identifies it.
+          selector:
+            device:
+              integration: nina_astrophotography
+        sequencer_running:
+          name: Sequencer running
+          description: >-
+            Pick `sequencer_running`, not `imaging`: a stopped sequencer is not
+            a stall, and this is also the entity whose disappearance says
+            N.I.N.A. is unreachable.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: running
+        imaging:
+          name: Imaging
+          description: >-
+            The activity heuristic — frames arriving, whatever the sequencer
+            says. Long enough off while the sequencer runs is the fast half of
+            the stall test.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: running
+        scheduler_waiting:
+          name: Scheduler waiting
+          description: >-
+            On while the sequence is deliberately waiting. A target-window wait
+            is hours of nothing and must never alert.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+        safety_unsafe:
+          name: Unsafe conditions
+          description: >-
+            The rig's "Unsafe" sensor — on when conditions are unsafe. A rig
+            holding station under cloud is behaving correctly, and the
+            unsafe-conditions abort blueprint is the one that speaks.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: safety
+        mount_at_park:
+          name: Mount at park
+          description: >-
+            A mount that parked itself while the sequencer is running has
+            already ended the night.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+        last_frame_at:
+          name: Last frame at
+          description: >-
+            The save time of the newest frame of any type. It is the frame's
+            SAVE time, so the clock below already starts one exposure behind.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              device_class: timestamp
+
+    diagnostics:
+      name: What the alert reports
+      icon: mdi:stethoscope
+      description: >-
+        Triage from bed, without opening Home Assistant. Every entity here is
+        read for the message only; none of them can raise or clear an alert.
+      input:
+        camera_state:
+          name: Camera state
+          description: >-
+            The single most diagnostic field: Idle, Exposing and Downloading
+            are three different nights.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+        sequence_target:
+          name: Sequence target
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+        guider_status:
+          name: Guider status
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+        flip_sensor:
+          name: Time to meridian flip
+          description: >-
+            Reading `unknown` is itself a diagnosis: the 24-hour sentinel it
+            replaces means tracking is off.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              device_class: duration
+        camera_temperature:
+          name: Camera temperature
+          description: >-
+            With the cooler power below: a warmed sensor means a shutdown has
+            already run, so nobody needs to drive to the roof.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              device_class: temperature
+        camera_cooler_power:
+          name: Camera cooler power
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+
+    extra_diagnostics:
+      name: Extra detail
+      icon: mdi:clipboard-text-search
+      collapsed: true
+      description: >-
+        Optional. Each adds one line to the message; leave any of them empty on
+        a rig that has no such device.
+      input:
+        guider_rms:
+          name: Total guiding RMS
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              multiple: true
+        mount_at_home:
+          name: Mount at home
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              multiple: true
+        autofocus_failed:
+          name: Autofocus failed
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: problem
+              multiple: true
+        safety_connected:
+          name: Safety monitor connected
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: connectivity
+              multiple: true
+        error_event:
+          name: N.I.N.A. error
+          description: >-
+            The error event entity. Its newest event and the time it fired are
+            reported; a plate-solve retry loop names itself here.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: event
+              multiple: true
+
+    thresholds:
+      name: Thresholds
+      icon: mdi:timer-sand
+      collapsed: true
+      input:
+        imaging_quiet_minutes:
+          name: Imaging quiet for
+          description: >-
+            The fast half of the test: an Idle camera, a plate-solve retry
+            loop, a hung autofocus. Measured autofocus runs are 4.0–4.6
+            minutes, so the default clears them comfortably.
+          default: 20
+          selector:
+            number:
+              min: 5
+              max: 120
+              unit_of_measurement: min
+        longest_exposure_seconds:
+          name: Longest exposure
+          description: >-
+            The longest sub your sequence takes. The grace below is ADDED to
+            it, never multiplied: dither, download, filter change, autofocus
+            and flip are fixed costs that do not scale with exposure.
+          default: 600
+          selector:
+            number:
+              min: 1
+              max: 3600
+              unit_of_measurement: s
+        grace_minutes:
+          name: Grace on top of one exposure
+          description: >-
+            The observed worst healthy gap between frames is 31.5 minutes, so
+            the 30-minute default leaves real headroom where 5 would not. This
+            window also covers "the rig never took a first frame tonight",
+            measured from when the sequencer started.
+          default: 30
+          selector:
+            number:
+              min: 5
+              max: 120
+              unit_of_measurement: min
+        settle_minutes:
+          name: Settle after a wait ends
+          description: >-
+            Slew, rotation, filter change and settle after a scheduler wait
+            ends took 11.6 minutes on the rig this was measured against.
+            Because Home Assistant re-stamps every entity's last-changed time
+            on restart, this gate is also mute for this long after a restart —
+            which errs toward silence, the right direction.
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 60
+              unit_of_measurement: min
+        night_only:
+          name: Only alert at night
+          description: >-
+            On by default: a sequence's twelve-hour daytime wait for darkness
+            is not a stall. Turn it off if you image the sun.
+          default: true
+          selector:
+            boolean:
+
+    notifications:
+      name: Notifications
+      icon: mdi:bell
+      collapsed: true
+      input:
+        notify_target:
+          name: Notify
+          description: >-
+            Notify entities to alert. Leave empty for none — the persistent
+            notification is raised either way, but nobody is woken by it.
+          default: []
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+        escalate_minutes:
+          name: Remind again after
+          default: 60
+          selector:
+            number:
+              min: 5
+              max: 240
+              unit_of_measurement: min
+        escalations:
+          name: Number of reminders
+          description: >-
+            After these, the alert stays open and silent until frames resume or
+            the sequencer stops. A stall still stalled at 05:00 is a dawn
+            problem, not a 3am one.
+          default: 2
+          selector:
+            number:
+              min: 1
+              max: 10
+
+# `single`, not `restart`: the quiet arm ticks every minute, and under `restart`
+# each tick would destroy the pending wait below and re-notify — a phone buzz a
+# minute, and no cleared message ever. The run owns the whole alert lifecycle
+# instead, and `max_exceeded: silent` drops the ticks that arrive while it does.
+# A new frame still pre-empts it, through the wait rather than through the mode.
+mode: single
+max_exceeded: silent
+
+# Inputs must be bound here before templates can reference them.
+variables:
+  nina_rig: !input nina_rig
+  sequencer_running: !input sequencer_running
+  scheduler_waiting: !input scheduler_waiting
+  mount_at_park: !input mount_at_park
+  last_frame_at: !input last_frame_at
+  camera_state: !input camera_state
+  sequence_target: !input sequence_target
+  guider_status: !input guider_status
+  flip_sensor: !input flip_sensor
+  camera_temperature: !input camera_temperature
+  camera_cooler_power: !input camera_cooler_power
+  guider_rms: !input guider_rms
+  mount_at_home: !input mount_at_home
+  autofocus_failed: !input autofocus_failed
+  safety_connected: !input safety_connected
+  error_event: !input error_event
+  settle_minutes: !input settle_minutes
+  longest_exposure_seconds: !input longest_exposure_seconds
+  grace_minutes: !input grace_minutes
+  escalations: !input escalations
+  # Added, never multiplied — see the input description.
+  stale_after_seconds: >
+    {{ longest_exposure_seconds | float(600) + grace_minutes | float(30) * 60 }}
+  # How long the rig has been quiet. With no frame yet tonight the clock runs
+  # from the sequencer starting instead: "it never took a first frame" is a
+  # stall too, and testing only for a value would make this blueprint mute for
+  # exactly that case.
+  quiet_seconds: >
+    {% set frame = states[last_frame_at] %}
+    {% set running = states[sequencer_running] %}
+    {% if frame is not none and frame.state not in ['unknown', 'unavailable'] %}
+      {{ (now().timestamp() - as_timestamp(frame.state, now().timestamp())) | round(0) }}
+    {% elif running is not none %}
+      {{ (now() - running.last_changed).total_seconds() | round(0) }}
+    {% else %}
+      0
+    {% endif %}
+
+triggers:
+  # N.I.N.A. down, the imaging PC rebooted, the tunnel gone. Every entity of the
+  # rig goes unavailable together, so no other arm can fire and no template over
+  # the rig's own state can see this at all. Held two minutes so a reload or a
+  # single missed poll is not an alert.
+  - trigger: state
+    entity_id: !input sequencer_running
+    to: "unavailable"
+    for: "00:02:00"
+    id: unreachable
+
+  - trigger: state
+    entity_id: !input mount_at_park
+    to: "on"
+    id: parked
+
+  # The clock gates below have to be re-evaluated, so the quiet arm needs a
+  # repeating trigger: a template trigger fires once on its false-to-true edge
+  # and would lose the stall for the rest of the night.
+  - trigger: time_pattern
+    minutes: "/1"
+    id: quiet
+
+conditions:
+  # Selectors cannot cross-filter, so on a two-rig install the entities above
+  # and the device can name different rigs — which would report the wrong
+  # telescope's state. Only blocks when they positively disagree: a template
+  # that cannot resolve must never suppress an alert.
+  - alias: "The entities and the device name the same rig"
+    condition: template
+    value_template: >
+      {% set entry = config_entry_id(sequencer_running) %}
+      {% set rig = device_attr(nina_rig, 'config_entries') %}
+      {{ entry is none or rig is not iterable or entry in rig | list }}
+
+actions:
+  # Per-arm gates, not top-level conditions: the unreachable arm fires when
+  # every one of these entities has gone unavailable, so gating it on them
+  # would mute the failure this blueprint most needs to catch. A condition that
+  # fails inside a branch stops the run, which is the whole effect wanted.
+  - alias: "The gates each arm has to pass"
+    choose:
+      - conditions:
+          - condition: trigger
+            id: parked
+        sequence:
+          - alias: "A park is only a stall if the sequencer was still running"
+            condition: state
+            entity_id: !input sequencer_running
+            state: "on"
+
+      - conditions:
+          - condition: trigger
+            id: quiet
+        sequence:
+          - alias: "The sequencer is running — a stopped one is not a stall"
+            condition: state
+            entity_id: !input sequencer_running
+            state: "on"
+
+          - alias: "The scheduler is not deliberately waiting"
+            condition: state
+            entity_id: !input scheduler_waiting
+            state: "off"
+
+          # Not `state: "off"`: the entity reads `unknown` when no safety
+          # monitor is present, and testing for `off` would mute the alarm
+          # exactly when the monitor has dropped out.
+          - alias: "Conditions are not unsafe — the abort blueprint owns that"
+            condition: not
+            conditions:
+              - condition: state
+                entity_id: !input safety_unsafe
+                state: "on"
+
+          - alias: "A scheduler wait ended long enough ago to have settled"
+            condition: template
+            value_template: >
+              {% set waiting = states[scheduler_waiting] %}
+              {{ waiting is not none
+                 and (now() - waiting.last_changed).total_seconds()
+                     > settle_minutes | float(15) * 60 }}
+
+          - alias: "Night only, unless the user images the sun"
+            condition: state
+            entity_id: sun.sun
+            state: "below_horizon"
+            enabled: !input night_only
+
+          - alias: "Frames really have stopped"
+            condition: or
+            conditions:
+              - alias: "Nothing has been arriving for the quiet period"
+                condition: state
+                entity_id: !input imaging
+                state: "off"
+                for:
+                  minutes: !input imaging_quiet_minutes
+              - alias: "No frame within one exposure plus the grace"
+                condition: template
+                value_template: >
+                  {{ quiet_seconds | float(0) > stale_after_seconds | float(0) }}
+
+  - variables:
+      rig_name: >
+        {{ device_attr(nina_rig, 'name_by_user')
+           or device_attr(nina_rig, 'name') or 'N.I.N.A.' }}
+      alert_id: "nina_stall_{{ nina_rig }}"
+      quiet_minutes: "{{ (quiet_seconds | float(0) / 60) | round(0) }}"
+      # Every line at one indent: a folded YAML scalar keeps the newlines of a
+      # MORE-indented line, so laying the branches out in a block would put
+      # hard line breaks through the middle of a sentence.
+      reason: >-
+        {%- if trigger.id == 'unreachable' %}
+        Home Assistant cannot reach N.I.N.A. — every entity of this rig has been
+        unavailable for two minutes.
+        {%- elif trigger.id == 'parked' %}
+        The mount parked itself while the sequencer was still running.
+        {%- else %}
+        No frames for {{ quiet_minutes }} minutes.
+        {%- endif %}
+      # Read once, here, so the raise and the notification carry the same
+      # snapshot. `expand` takes the optional inputs whether they hold one
+      # entity or none, and silently drops one that does not exist. Folded to a
+      # single ·-separated line on purpose: a folded YAML scalar joins its lines
+      # with spaces, so laying the fields out in columns here would not survive.
+      detail: >-
+        {%- set rms = expand(guider_rms) | first | default(none) -%}
+        {%- set homed = expand(mount_at_home) | first | default(none) -%}
+        {%- set af = expand(autofocus_failed) | first | default(none) -%}
+        {%- set safety = expand(safety_connected) | first | default(none) -%}
+        {%- set err = expand(error_event) | first | default(none) -%}
+        Target {{ states(sequence_target) }} ·
+        camera {{ states(camera_state) }} at {{ states(camera_temperature) }} °C,
+        cooler {{ states(camera_cooler_power) }} % ·
+        guider {{ states(guider_status) }}{% if rms %} (RMS {{ rms.state }}){% endif %} ·
+        mount {{ 'parked' if is_state(mount_at_park, 'on') else 'not parked' }}{% if homed %},
+        {{ 'at home' if homed.state == 'on' else 'not at home' }}{% endif %} ·
+        flip {{ states(flip_sensor) }}{% if af %} ·
+        autofocus failed {{ af.state }}{% endif %}{% if safety %} ·
+        safety monitor connected {{ safety.state }}{% endif %}{% if err %} ·
+        last error {{ err.attributes.event_type | default('none') }} at {{ err.state }}{% endif %}
+
+  - alias: "Raise the alert"
+    action: persistent_notification.create
+    data:
+      notification_id: "{{ alert_id }}"
+      title: "🛑 {{ rig_name }} imaging stalled"
+      message: "{{ reason }}\n\n{{ detail }}"
+    continue_on_error: true
+
+  # `notify.send_message` against a notify ENTITY, never `notify.<service>`
+  # built from text: a service name that does not exist raises ServiceNotFound,
+  # which `continue_on_error` does not suppress.
+  - alias: "Tell someone"
+    action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "🛑 {{ rig_name }} imaging stalled"
+      message: "{{ reason }} {{ detail }}"
+    continue_on_error: true
+
+  # The run stays alive until the stall actually resolves. Ending it after the
+  # last reminder would hand the next minute tick an open gate and a fresh
+  # alert, which is the 3am loop the reminder cap exists to prevent — and it
+  # would leave the persistent notification standing with nothing left to
+  # dismiss it.
+  - alias: "Wait for frames to resume, reminding while anyone can still act"
+    repeat:
+      sequence:
+        - wait_for_trigger:
+            # `not_to`, not a bare state trigger: `last_frame_at` going
+            # unavailable is a state change too, and it means the opposite of
+            # a frame landing.
+            - trigger: state
+              entity_id: !input last_frame_at
+              not_to:
+                - "unknown"
+                - "unavailable"
+              id: frame
+            - trigger: state
+              entity_id: !input sequencer_running
+              to: "off"
+              id: sequence_ended
+          timeout:
+            minutes: !input escalate_minutes
+          continue_on_timeout: true
+
+        - alias: "Remind, up to the configured number of times"
+          if:
+            - condition: template
+              value_template: >
+                {{ not wait.completed and repeat.index <= escalations | int(2) }}
+          then:
+            - action: notify.send_message
+              target:
+                entity_id: !input notify_target
+              data:
+                title: "🛑 {{ rig_name }} still stalled"
+                message: >-
+                  Reminder {{ repeat.index }} of {{ escalations | int(2) }}.
+                  {%- set frame = states[last_frame_at] %}
+                  {%- if frame is not none and frame.state not in ['unknown', 'unavailable'] %}
+                  Last frame {{ ((now().timestamp()
+                  - as_timestamp(frame.state, now().timestamp())) / 60) | round(0) }}
+                  minutes ago.
+                  {%- else %}
+                  Still no frame tonight.
+                  {%- endif %}
+                  Camera: {{ states(camera_state) }}.
+                  Guider: {{ states(guider_status) }}.
+              continue_on_error: true
+      until:
+        - condition: template
+          value_template: "{{ wait.completed }}"
+
+  # Only ever reached by a run that raised an alert, so a cleared message can
+  # never arrive on its own. SEQUENCE-FINISHED fires on a manual stop as well
+  # as at the end of the night and the two are indistinguishable, so this says
+  # what it observed rather than claiming the night completed.
+  - alias: "Dismiss the alert"
+    action: persistent_notification.dismiss
+    data:
+      notification_id: "{{ alert_id }}"
+    continue_on_error: true
+
+  - alias: "Say what ended it"
+    action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "✅ {{ rig_name }} imaging resumed"
+      message: >-
+        {%- if wait.trigger.id == 'frame' %}
+        A frame has landed — the rig is producing again.
+        {%- else %}
+        The sequencer stopped. That is either the end of the night or a manual
+        stop; nothing distinguishes them.
+        {%- endif %}
+    continue_on_error: true

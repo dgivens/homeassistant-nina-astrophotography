@@ -30,6 +30,21 @@ REQUIRED: dict[str, dict[str, object]] = {
         "guider_status": "sensor.rig_guider_status",
         "notify_target": ["notify.phone"],
     },
+    "imaging_stall_alert.yaml": {
+        "nina_rig": "device-id",
+        "sequencer_running": "binary_sensor.rig_sequencer_running",
+        "imaging": "binary_sensor.rig_imaging",
+        "scheduler_waiting": "binary_sensor.rig_scheduler_waiting",
+        "safety_unsafe": "binary_sensor.rig_safety_monitor_unsafe",
+        "mount_at_park": "binary_sensor.rig_mount_at_park",
+        "last_frame_at": "sensor.rig_last_frame_at",
+        "camera_state": "sensor.rig_camera_state",
+        "sequence_target": "sensor.rig_sequence_target",
+        "guider_status": "sensor.rig_guider_status",
+        "flip_sensor": "sensor.rig_mount_time_to_meridian_flip",
+        "camera_temperature": "sensor.rig_camera_temperature",
+        "camera_cooler_power": "sensor.rig_camera_cooler_power",
+    },
     "meridian_flip_warning.yaml": {
         "flip_sensor": "sensor.rig_mount_time_to_meridian_flip",
         "notify_target": ["notify.phone"],
@@ -55,6 +70,23 @@ REQUIRED: dict[str, dict[str, object]] = {
 # built rather than skipped.
 OPTIONAL: dict[str, dict[str, object]] = {
     "guiding_alert.yaml": {"run_autofocus": True},
+    "imaging_stall_alert.yaml": {
+        "guider_rms": ["sensor.rig_guider_rms_total"],
+        "mount_at_home": ["binary_sensor.rig_mount_at_home"],
+        "autofocus_failed": ["binary_sensor.rig_focuser_autofocus_failed"],
+        "safety_connected": ["binary_sensor.rig_safety_monitor_connected"],
+        "error_event": ["event.rig_error"],
+        "imaging_quiet_minutes": 30,
+        "longest_exposure_seconds": 300,
+        "grace_minutes": 45,
+        "settle_minutes": 20,
+        # Off, so the `enabled: !input` gate it controls is built as skipped
+        # rather than built at all — the branch the default never exercises.
+        "night_only": False,
+        "notify_target": ["notify.phone"],
+        "escalate_minutes": 90,
+        "escalations": 3,
+    },
     "meridian_flip_warning.yaml": {},
     "session_shutdown.yaml": {
         "close_dome": True, "notify_target": ["notify.phone"]},
