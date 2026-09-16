@@ -58,15 +58,34 @@ event history holds no stack serves no such path and creates no
 
 ## Awaiting capture
 
-No **endpoint** awaits capture any more: `imaging_guiding` serves every path the
+No **endpoint** awaits capture any more: the whole captures serve every path the
 integration reads, `/livestack/status`, `/profile/show?active=true` and
-`/equipment/focuser/last-af` included. The other states still leave those three
+`/equipment/focuser/last-af` included. The dawn family still leaves those three
 unregistered, so they answer 404 — which is what a build without the livestack
 plugin sends — and the coordinator's not-served latch stays exercised.
 
-Three **states** are named in `AWAITING_CAPTURE` and skip the tests that ask for
-them: `camera_warm_at_setup`, `idle_with_stale_running_nodes`,
-`guider_lost_lock`.
+One **state** is named in `AWAITING_CAPTURE` and skips the tests that ask for
+it: `camera_warm_at_setup`.
+
+## Whole captures
+
+A capture is whole when `capture_fixtures.py --state <slug>` wrote all fourteen
+endpoints, and `_captured(slug)` builds the state from it with none of the
+assembly a partial corpus needs. `imaging_guiding` is one; so are the three
+taken on 2026-09-15, in this order: `scheduler_waiting` (20:46), then
+`sequence_restarted` (20:49), then `sequence_stopped` (20:50).
+
+Between them they hold what no earlier capture does — a sequence running with
+no frame taken, one ten seconds after `SEQUENCE-STARTING`, and one stopped by
+hand — and together they show that **neither the container tree nor the
+`SEQUENCE-*` events can carry a running signal alone**: the tree still reads
+CREATED ten seconds into a run, and `scheduler_waiting` carries no `SEQUENCE-*`
+event at all because its sequence started before the history window. Their
+image histories are empty, which is a rig before its first sub, not an error.
+
+Enter a whole capture with `_set_up_at`, not `advance`: it serves the three
+tier-polled endpoints that the dawn family withholds, and advancing from a dawn
+state arrives with the not-served latch already fired.
 
 ## Adding one
 

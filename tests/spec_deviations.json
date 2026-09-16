@@ -5,7 +5,7 @@
   "WeatherData.Pressure":        {"spec": "integer", "wire": "float|nan", "why": "958.5 observed"},
   "WeatherData.RainRate":        {"spec": "string",  "wire": "int|nan",   "why": "numeric on the wire"},
   "WeatherData.SkyBrightness":   {"spec": "string",  "wire": "int|nan",   "why": "numeric on the wire"},
-  "WeatherData.SkyTemperature":  {"spec": "string",  "wire": "float|nan", "why": "numeric on the wire"},
+  "WeatherData.SkyTemperature":  {"spec": "string",  "wire": "float|int|nan", "why": "numeric on the wire; a whole degree serializes as int"},
   "WeatherData.WindGust":        {"spec": "string",  "wire": "float|nan", "why": "numeric on the wire"},
   "Rotator.Position":            {"spec": "integer", "wire": "float|int", "why": "335.0736 observed"},
   "Rotator.MechanicalPosition":  {"spec": "integer", "wire": "float|int", "why": "53.86 observed"},
