@@ -74,11 +74,20 @@ blueprint:
             The rig's "Unsafe" sensor — on when conditions are unsafe. A rig
             holding station under cloud is behaving correctly, and the
             unsafe-conditions abort blueprint is the one that speaks.
+
+            WIRE THIS IF YOUR RIG HAS A SAFETY MONITOR. Leaving it empty is
+            correct only on a rig that has none — the entity does not exist
+            there, so a required field would make this blueprint impossible to
+            save. A rig that HAS a monitor and skips this will be alerted
+            through every weather hold, which is exactly the case the
+            unsafe-conditions abort blueprint already owns.
+          default: []
           selector:
             entity:
               integration: nina_astrophotography
               domain: binary_sensor
               device_class: safety
+              multiple: true
         mount_at_park:
           name: Mount at park
           description: >-
@@ -359,6 +368,7 @@ variables:
   sequencer_running: !input sequencer_running
   scheduler_waiting: !input scheduler_waiting
   mount_at_park: !input mount_at_park
+  safety_unsafe: !input safety_unsafe
   imaging: !input imaging
   last_frame_at: !input last_frame_at
   camera_state: !input camera_state
@@ -483,15 +493,20 @@ conditions:
             entity_id: !input scheduler_waiting
             state: "off"
 
-          # Not `state: "off"`: the entity reads `unknown` when no safety
-          # monitor is present, and testing for `off` would mute the alarm
-          # exactly when the monitor has dropped out.
+          # "Not `on`", never "is `off`", and a template rather than a
+          # `condition: state` wrapped in `not`: an empty input makes that
+          # condition vacuously true, and the `not` would then invert it into a
+          # gate that mutes the blueprint on every rig with no safety monitor.
+          #
+          # Wired and `on` suppresses. Wired and `unknown` — which is what the
+          # entity reads when the monitor drops out — does NOT: testing for
+          # `off` would mute the stall alarm at exactly the moment the rig lost
+          # the device that would otherwise explain the silence.
           - alias: "Conditions are not unsafe — the abort blueprint owns that"
-            condition: not
-            conditions:
-              - condition: state
-                entity_id: !input safety_unsafe
-                state: "on"
+            condition: template
+            value_template: >
+              {% set monitor = expand(safety_unsafe) | first | default(none) %}
+              {{ monitor is none or monitor.state != 'on' }}
 
           - alias: "A scheduler wait ended long enough ago to have settled"
             condition: template

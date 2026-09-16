@@ -35,7 +35,6 @@ REQUIRED: dict[str, dict[str, object]] = {
         "sequencer_running": "binary_sensor.rig_sequencer_running",
         "imaging": "binary_sensor.rig_imaging",
         "scheduler_waiting": "binary_sensor.rig_scheduler_waiting",
-        "safety_unsafe": "binary_sensor.rig_safety_monitor_unsafe",
         "mount_at_park": "binary_sensor.rig_mount_at_park",
         "last_frame_at": "sensor.rig_last_frame_at",
         "camera_state": "sensor.rig_camera_state",
@@ -70,6 +69,7 @@ REQUIRED: dict[str, dict[str, object]] = {
 OPTIONAL: dict[str, dict[str, object]] = {
     "guiding_alert.yaml": {"run_autofocus": True},
     "imaging_stall_alert.yaml": {
+        "safety_unsafe": ["binary_sensor.rig_safety_monitor_unsafe"],
         "last_image_filter": ["sensor.rig_last_image_filter"],
         "guider_status": ["sensor.rig_guider_status"],
         "guider_rms": ["sensor.rig_guider_rms_total"],
@@ -82,10 +82,10 @@ OPTIONAL: dict[str, dict[str, object]] = {
         "longest_exposure_seconds": 300,
         "grace_minutes": 45,
         "settle_minutes": 20,
-        # The one input that is not an added branch: it feeds an
-        # `enabled: !input`, and both values build the step — an `enabled:
-        # false` one is built and validated, just never run. Setting it false
-        # is what exercises the false substitution.
+        # The one input that gates nothing structural: it is read inside a
+        # condition template, so both values build the same automation. False
+        # is still the value worth sending — it is the substitution the
+        # default never produces.
         "night_only": False,
         "notify_target": ["notify.phone"],
         "escalate_minutes": 90,
