@@ -9,6 +9,7 @@ binary_sensor.n_i_n_a_rotator_moving
 binary_sensor.n_i_n_a_rotator_synced
 binary_sensor.n_i_n_a_safety_monitor_connected
 binary_sensor.n_i_n_a_safety_monitor_unsafe
+binary_sensor.n_i_n_a_scheduler_waiting
 binary_sensor.n_i_n_a_sequencer_running
 button.n_i_n_a_camera_abort_exposure
 button.n_i_n_a_focuser_auto_focus
@@ -46,6 +47,7 @@ sensor.n_i_n_a_guider_rms_declination
 sensor.n_i_n_a_guider_rms_ra
 sensor.n_i_n_a_guider_rms_total
 sensor.n_i_n_a_guider_status
+sensor.n_i_n_a_last_frame_at
 sensor.n_i_n_a_last_image_exposure
 sensor.n_i_n_a_last_image_filter
 sensor.n_i_n_a_last_image_hfr
@@ -69,6 +71,7 @@ sensor.n_i_n_a_session_image_count
 sensor.n_i_n_a_session_integration_time
 sensor.n_i_n_a_session_start
 sensor.n_i_n_a_session_worst_hfr
+sensor.n_i_n_a_wait_ends_at
 sensor.n_i_n_a_weather_dew_point
 sensor.n_i_n_a_weather_humidity
 sensor.n_i_n_a_weather_pressure

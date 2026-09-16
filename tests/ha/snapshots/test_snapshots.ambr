@@ -88,6 +88,13 @@
     dict({
       'enabled_default': True,
       'entity_category': None,
+      'entity_id': 'binary_sensor.n_i_n_a_scheduler_waiting',
+      'original_name': 'Scheduler waiting',
+      'unique_id': '01JTESTENTRY0000000000000_scheduler_waiting',
+    }),
+    dict({
+      'enabled_default': True,
+      'entity_category': None,
       'entity_id': 'binary_sensor.n_i_n_a_sequencer_running',
       'original_name': 'Sequencer running',
       'unique_id': '01JTESTENTRY0000000000000_sequencer_running',
@@ -466,6 +473,13 @@
     dict({
       'enabled_default': True,
       'entity_category': None,
+      'entity_id': 'sensor.n_i_n_a_last_frame_at',
+      'original_name': 'Last frame at',
+      'unique_id': '01JTESTENTRY0000000000000_last_frame_at',
+    }),
+    dict({
+      'enabled_default': True,
+      'entity_category': None,
       'entity_id': 'sensor.n_i_n_a_mount_altitude',
       'original_name': 'Altitude',
       'unique_id': '01JTESTENTRY0000000000000_mount_altitude',
@@ -532,6 +546,13 @@
       'entity_id': 'sensor.n_i_n_a_session_start',
       'original_name': 'Session start',
       'unique_id': '01JTESTENTRY0000000000000_session_start',
+    }),
+    dict({
+      'enabled_default': True,
+      'entity_category': None,
+      'entity_id': 'sensor.n_i_n_a_wait_ends_at',
+      'original_name': 'Wait ends at',
+      'unique_id': '01JTESTENTRY0000000000000_wait_ends_at',
     }),
     dict({
       'enabled_default': True,
