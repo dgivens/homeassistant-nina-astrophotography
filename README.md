@@ -140,11 +140,30 @@ sky quality or star FWHM adds one each.
 | Safety Monitor | unsafe, connected (`binary_sensor`) |
 | Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing (`binary_sensor`); open, close, park, home (`button`) |
 | Switch | one entity per channel the driver reports, by shape: read-only becomes a `sensor`, an on/off channel a `switch`, a range a `number` |
-| Hub | session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequence running (`binary_sensor`); sequence start/stop (`button`); livestack (`switch`) |
+| Hub | session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequencer running and imaging (`binary_sensor`); sequence start/stop (`button`); livestack (`switch`) |
 
 Some entities ship **disabled by default**: the three flat-wizard sensors (see
 [Flats](#flats)), `sequence_progress`, and diagnostics you are unlikely to want
 on a dashboard. Enable them from the entity page.
+
+`binary_sensor.<instance>_sequencer_running` and
+`binary_sensor.<instance>_imaging` answer different questions, and on a Target
+Scheduler rig they disagree for hours at a time. **Sequence running** is the
+sequencer: it stays `on` through a wait for full dark, for a target to clear
+the horizon, for moon separation, or for a safety loop to find conditions safe.
+**Imaging** is frames arriving — a rising image count, a camera exposing, or an
+`IMAGE-SAVE` in the last five minutes.
+
+Use *sequencer running* to tell a working night from a stopped sequencer, and
+*imaging* to tell whether it is taking pictures right now.
+
+`binary_sensor.<instance>_sequence_running` is **gone**, and neither new entity
+claims its `unique_id`: it reported the imaging heuristic under a name that
+promised the sequencer, so repointing it silently would have changed what every
+automation using it meant. The old row goes unavailable on upgrade — delete it,
+and point each automation at whichever of the two it actually wanted. The
+shipped **session shutdown** blueprint wants *sequencer running*: on *imaging*
+it would shut the rig down during any wait.
 
 `sensor.<instance>_sequence_progress` is disabled because it reads `unknown` on
 a Target Scheduler rig: the scheduler chooses targets as the night goes and

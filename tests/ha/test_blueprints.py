@@ -36,7 +36,7 @@ REQUIRED: dict[str, dict[str, object]] = {
     },
     "session_shutdown.yaml": {
         "nina_rig": "device-id",
-        "sequence_running": "binary_sensor.rig_sequence_running",
+        "sequence_running": "binary_sensor.rig_sequencer_running",
         "mount_parked": "binary_sensor.rig_mount_at_park",
     },
     "session_startup.yaml": {

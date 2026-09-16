@@ -1,6 +1,7 @@
 """The `/sequence/json` walks.
 
-Node `Status` is deliberately not read (§6.2), so nothing here asserts on it.
+Only the ROOT containers' `Status` is read, by `running`; nothing here asserts
+on the status of a node below them (§6.2).
 """
 from __future__ import annotations
 
@@ -8,8 +9,8 @@ import pytest
 from helpers import load_fixture
 
 from nina_astrophotography.api.models import SequenceNode
-from nina_astrophotography.api.v2.mapper import map_sequence
-from nina_astrophotography.sequence import progress_percent, target_name
+from nina_astrophotography.api.v2.mapper import map_event, map_sequence
+from nina_astrophotography.sequence import progress_percent, running, target_name
 
 
 def _node(name: str, *children: SequenceNode, **own) -> SequenceNode:
@@ -35,6 +36,32 @@ def test_a_target_scheduler_tree_names_no_target_and_counts_nothing(
     tree = map_sequence(load_fixture(fixture))
     assert target_name(tree) is None
     assert progress_percent(tree) is None
+
+
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [
+        ("scheduler_waiting", True),
+        ("sequence_restarted", True),
+        ("sequence_stopped", False),
+        ("dawn", False),
+    ],
+    ids=["tree RUNNING, no SEQUENCE-* at all",
+         "tree still CREATED, SEQUENCE-STARTING newest",
+         "tree CREATED, SEQUENCE-FINISHED newest",
+         "night over, both agree"],
+)
+def test_the_tree_seeds_the_running_signal_and_the_events_correct_it(
+    state: str, expected: bool
+) -> None:
+    """Neither source is enough alone: the tree still reads CREATED ten seconds
+    into a run, and a sequence started before the history window leaves no
+    SEQUENCE-* event to read."""
+    trees = {"dawn": "dawn_sequence_complete.json"}
+    tree = map_sequence(load_fixture(trees.get(state, f"{state}_sequence_json.json")))
+    events = [map_event(wire, generation="g1")
+              for wire in load_fixture(f"{state}_event_history.json")]
+    assert running(tree, events, "g1") is expected
 
 
 def test_the_last_named_target_in_pre_order_wins() -> None:

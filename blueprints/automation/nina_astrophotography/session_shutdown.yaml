@@ -24,7 +24,12 @@ blueprint:
             device:
               integration: nina_astrophotography
         sequence_running:
-          name: Sequence running
+          name: Sequencer running
+          description: >-
+            Pick `sequencer_running`, not `imaging`: this waits for the
+            SEQUENCER to finish. Keyed on imaging it would shut the rig down
+            during any wait for darkness, a target's start window or a safety
+            loop — five quiet minutes look identical to a finished night.
           selector:
             entity:
               integration: nina_astrophotography

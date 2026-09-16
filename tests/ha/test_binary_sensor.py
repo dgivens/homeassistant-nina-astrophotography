@@ -14,7 +14,8 @@ from custom_components.nina_astrophotography.const import DOMAIN
 
 AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
-SEQUENCE_RUNNING = "binary_sensor.n_i_n_a_sequence_running"
+SEQUENCER_RUNNING = "binary_sensor.n_i_n_a_sequencer_running"
+IMAGING = "binary_sensor.n_i_n_a_imaging"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 
 
@@ -57,6 +58,9 @@ async def _set_up_at(hass: HomeAssistant, entry: MockConfigEntry, rig, state: st
         "livestack_running",
         # No `Slewing` on MountModel: nothing above the seam can compute it.
         "mount_slewing",
+        # Retired: 1.4.5's `_sequence_running` published the imaging heuristic,
+        # and `sequencer_running` answers a different question.
+        "sequence_running",
     ],
 )
 async def test_the_cut_binary_sensors_are_not_registered(
@@ -72,7 +76,7 @@ async def test_the_cut_binary_sensors_are_not_registered(
     ["safetymonitor_is_safe", "safetymonitor_connected", "mount_parked",
      "camera_exposing", "mount_at_home", "focuser_is_moving",
      "filterwheel_is_moving", "rotator_is_moving", "rotator_synced",
-     "autofocus_failed", "sequence_running"],
+     "autofocus_failed"],
 )
 async def test_the_kept_binary_sensors_are_registered(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
@@ -138,19 +142,27 @@ async def test_an_unanswered_autofocus_start_raises_the_problem_sensor(
     ("state", "expected"),
     [
         ("sequence_complete_tracking_off", "off"),
-        pytest.param("idle_with_stale_running_nodes", "off",
-                     marks=pytest.mark.synthetic),
         ("imaging_guiding", "on"),
     ],
 )
-async def test_sequence_running_follows_activity_and_not_node_status(
+async def test_imaging_follows_activity_and_not_node_status(
     hass: HomeAssistant, advance, state: str, expected: str
 ) -> None:
-    """§6.2: node `Status` persists from the loaded sequence file and from
-    prior runs, so an idle rig reports RUNNING nodes with nothing happening.
-    The meridian blueprint uses this sensor as a condition."""
+    """Frames arriving, never the tree: a sequence executing a wait reads
+    RUNNING throughout and takes nothing."""
     await advance(state)
-    assert hass.states.get(SEQUENCE_RUNNING).state == expected
+    assert hass.states.get(IMAGING).state == expected
+
+
+async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
+    hass: HomeAssistant, config_entry, rig
+) -> None:
+    """The two entities read the two fields, and a wait is where they diverge —
+    which is what the shutdown blueprint waits on, and what the meridian
+    blueprint gates on."""
+    await _set_up_at(hass, config_entry, rig, "scheduler_waiting")
+    assert hass.states.get(SEQUENCER_RUNNING).state == "on"
+    assert hass.states.get(IMAGING).state == "off"
 
 
 @pytest.mark.parametrize(
@@ -202,8 +214,8 @@ async def test_a_hub_entity_is_not_on_an_equipment_device(
     loaded_entry: MockConfigEntry, entity_registry, device_registry
 ) -> None:
     """`kind=None` puts a rig-scoped entity on the hub (§5.1), which is what
-    keeps `binary_sensor.<instance>_sequence_running` free of a device word."""
-    entry = entity_registry.async_get(SEQUENCE_RUNNING)
+    keeps `binary_sensor.<instance>_sequencer_running` free of a device word."""
+    entry = entity_registry.async_get(SEQUENCER_RUNNING)
     assert device_registry.async_get(entry.device_id).name == "N.I.N.A."
 
 

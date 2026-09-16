@@ -84,8 +84,11 @@
       "safety_unsafe": {
         "name": "Unsafe"
       },
-      "sequence_running": {
-        "name": "Sequence running"
+      "imaging": {
+        "name": "Imaging"
+      },
+      "sequencer_running": {
+        "name": "Sequencer running"
       }
     },
     "button": {
