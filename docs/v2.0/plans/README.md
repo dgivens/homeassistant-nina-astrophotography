@@ -1,8 +1,9 @@
 # v2.0 implementation plans
 
 `docs/v2.0-design.md` is the design of record. These are its execution plans,
-one per phase of §9, in order. Each is self-contained: an engineer picking one
-up needs that file plus the spec, nothing else.
+one per phase of §9, in order, plus any post-2.0 work large enough to want one.
+Each is self-contained: an engineer picking one up needs that file plus the
+spec, nothing else.
 
 | Plan | Phase | Size | Gate to the next |
 |---|---|---|---|
@@ -10,6 +11,7 @@ up needs that file plus the spec, nothing else.
 | [`2026-09-04-phase-b-devices-push-first.md`](2026-09-04-phase-b-devices-push-first.md) | B · Devices + push-first | L | Device registry + tiers proven; renames doc started |
 | [`2026-09-04-phase-c-platforms.md`](2026-09-04-phase-c-platforms.md) | C · Platforms | XL | `api.py` deleted; registry snapshot reviewed |
 | [`2026-09-04-phase-d-services-docs-release.md`](2026-09-04-phase-d-services-docs-release.md) | D · Services, blueprints, docs, release | L | §12 definition of done |
+| [`2026-09-16-stall-alert-blueprint.md`](2026-09-16-stall-alert-blueprint.md) | Post-2.0 · Stall alert blueprint | S | Reviewed by all three reviewers; both suites green |
 
 ## Branch model
 
