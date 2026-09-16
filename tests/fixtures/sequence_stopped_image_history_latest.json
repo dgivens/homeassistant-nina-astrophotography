@@ -1,0 +1,14 @@
+{
+  "Response": "",
+  "Error": "Index out of range",
+  "StatusCode": 400,
+  "Success": false,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-16T01:50:13+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/image-history",
+    "params": {}
+  }
+}

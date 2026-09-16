@@ -1,0 +1,192 @@
+{
+  "Response": [
+    {
+      "Event": "SAFETY-DISCONNECTED",
+      "Time": "2026-09-15T19:11:20.6620713-05:00"
+    },
+    {
+      "Event": "SAFETY-CONNECTED",
+      "Time": "2026-09-15T19:11:22.7236952-05:00"
+    },
+    {
+      "Event": "SWITCH-DISCONNECTED",
+      "Time": "2026-09-15T19:11:24.7324279-05:00"
+    },
+    {
+      "Event": "SWITCH-CONNECTED",
+      "Time": "2026-09-15T19:11:24.8492405-05:00"
+    },
+    {
+      "Event": "SAFETY-CHANGED",
+      "Time": "2026-09-15T19:16:06.7300775-05:00",
+      "IsSafe": true
+    },
+    {
+      "Event": "CAMERA-DISCONNECTED",
+      "Time": "2026-09-15T20:07:29.8310598-05:00"
+    },
+    {
+      "Event": "CAMERA-CONNECTED",
+      "Time": "2026-09-15T20:07:30.5174523-05:00"
+    },
+    {
+      "Event": "FILTERWHEEL-DISCONNECTED",
+      "Time": "2026-09-15T20:07:33.079724-05:00"
+    },
+    {
+      "Event": "FILTERWHEEL-CONNECTED",
+      "Time": "2026-09-15T20:07:33.8567144-05:00"
+    },
+    {
+      "Event": "FOCUSER-DISCONNECTED",
+      "Time": "2026-09-15T20:07:35.8711088-05:00"
+    },
+    {
+      "Event": "FLAT-DISCONNECTED",
+      "Time": "2026-09-15T20:07:36.2219529-05:00"
+    },
+    {
+      "Event": "FOCUSER-CONNECTED",
+      "Time": "2026-09-15T20:07:36.4973978-05:00"
+    },
+    {
+      "Event": "FLAT-CONNECTED",
+      "Time": "2026-09-15T20:07:38.3204739-05:00"
+    },
+    {
+      "Event": "ROTATOR-DISCONNECTED",
+      "Time": "2026-09-15T20:07:38.5058504-05:00"
+    },
+    {
+      "Event": "ROTATOR-CONNECTED",
+      "Time": "2026-09-15T20:07:40.2342174-05:00"
+    },
+    {
+      "Event": "WEATHER-DISCONNECTED",
+      "Time": "2026-09-15T20:07:42.245017-05:00"
+    },
+    {
+      "Event": "WEATHER-CONNECTED",
+      "Time": "2026-09-15T20:07:43.0108273-05:00"
+    },
+    {
+      "Event": "GUIDER-CONNECTED",
+      "Time": "2026-09-15T20:07:47.2707099-05:00"
+    },
+    {
+      "Event": "MOUNT-DISCONNECTED",
+      "Time": "2026-09-15T20:07:49.2812472-05:00"
+    },
+    {
+      "Event": "MOUNT-CONNECTED",
+      "Time": "2026-09-15T20:07:49.7973577-05:00"
+    },
+    {
+      "Event": "FLAT-COVER-OPENED",
+      "Time": "2026-09-15T20:07:52.383595-05:00"
+    },
+    {
+      "Event": "FLAT-DISCONNECTED",
+      "Time": "2026-09-15T20:07:52.8171023-05:00"
+    },
+    {
+      "Event": "MOUNT-HOMED",
+      "Time": "2026-09-15T20:07:55.9298778-05:00"
+    },
+    {
+      "Event": "STACK-STATUS",
+      "Status": "Running",
+      "Time": "2026-09-15T20:25:49.4901816-05:00"
+    },
+    {
+      "Event": "AUTOFOCUS-STARTING",
+      "Time": "2026-09-15T20:25:49.6103755-05:00"
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 3.148486353749906,
+      "Time": "2026-09-15T20:26:28.0782904-05:00",
+      "Position": 2546
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.7084999002715895,
+      "Time": "2026-09-15T20:26:50.1420735-05:00",
+      "Position": 2511
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 1.5453817444752513,
+      "Time": "2026-09-15T20:27:12.1823383-05:00",
+      "Position": 2476
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 2.753154426234438,
+      "Time": "2026-09-15T20:27:34.1130711-05:00",
+      "Position": 2441
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 4.5389356735250965,
+      "Time": "2026-09-15T20:27:58.0917121-05:00",
+      "Position": 2406
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 6.367417446247122,
+      "Time": "2026-09-15T20:28:22.0884916-05:00",
+      "Position": 2371
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 8.200343313736706,
+      "Time": "2026-09-15T20:28:46.0843815-05:00",
+      "Position": 2336
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 5.163996824552981,
+      "Time": "2026-09-15T20:29:08.071299-05:00",
+      "Position": 2581
+    },
+    {
+      "Event": "AUTOFOCUS-POINT-ADDED",
+      "HFR": 7.2398785616021994,
+      "Time": "2026-09-15T20:29:28.1499921-05:00",
+      "Position": 2616
+    },
+    {
+      "Event": "AUTOFOCUS-FINISHED",
+      "Time": "2026-09-15T20:29:52.166792-05:00"
+    },
+    {
+      "Time": "2026-09-16T01:33:37.4832482",
+      "Event": "TS-WAITSTART",
+      "WaitEndTime": "2026-09-15T21:05:40.8083069-05:00"
+    },
+    {
+      "Event": "MOUNT-HOMED",
+      "Time": "2026-09-15T20:33:37.4927291-05:00"
+    },
+    {
+      "Event": "SEQUENCE-FINISHED",
+      "Time": "2026-09-15T20:48:25.7431034-05:00"
+    },
+    {
+      "Event": "SEQUENCE-STARTING",
+      "Time": "2026-09-15T20:48:51.5264272-05:00"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-16T01:49:01+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/event-history",
+    "params": {}
+  }
+}

@@ -10,11 +10,17 @@ Every state carries the same endpoints, so advancing never changes which routes
 exist — an endpoint one state serves and another does not reads to the client
 as a build that dropped a route.
 
-Every endpoint the integration reads now has a capture, in `imaging_guiding`.
-The other states deliberately do NOT serve `/livestack/status`,
-`/profile/show?active=true` or `/equipment/focuser/last-af`: an unregistered
-path answers 404, which is what a build without the livestack plugin sends, and
-that keeps the coordinator's not-served latch exercised.
+The three tier-polled endpoints — `/livestack/status`,
+`/profile/show?active=true` and `/equipment/focuser/last-af` — are served by
+the whole captures alone (`imaging_guiding` and the three `_captured` states).
+The dawn family deliberately leaves them unregistered: an unregistered path
+answers 404, which is what a build without the livestack plugin sends, and that
+keeps the coordinator's not-served latch exercised.
+
+Which makes those two groups the exception to the paragraph above, and the
+reason a test enters a whole capture with `_set_up_at` rather than `advance`:
+advancing from a dawn state has the latch already fired, and one refresh does
+not retry.
 
 Adding a state: build it from captured envelopes, never from a hand-written
 document. A state the corpus cannot show belongs in `AWAITING_CAPTURE`.
@@ -57,6 +63,37 @@ def _versions(name: str = "dawn_equipment_info.json") -> State:
     return {
         "/version": ok(meta["api_version"]),
         "/version/nina": ok(meta["nina_version"]),
+    }
+
+
+def _captured(slug: str) -> State:
+    """Every endpoint of a whole capture, keyed by its fixture slug.
+
+    A capture is whole when `capture_fixtures.py --state <slug>` wrote all
+    fourteen files, which needs none of the assembly a partial corpus does.
+    `/version` and `/version/nina` come from `_meta` rather than their own
+    files, for the reason `_versions` gives — the captured `{slug}_version.json`
+    is unreadable by anything but the drift guard, its `Response` redacted.
+
+    `/image/0` is served the bare path's envelope: a capture never calls it —
+    it answers bytes — and a history that has no frame 0 has nothing else to
+    send. `_RESTARTED` makes the same assumption.
+    """
+    return {
+        **_versions(f"{slug}_equipment_info.json"),
+        "/application-start": load_envelope(f"{slug}_application_start.json"),
+        "/equipment/info": load_envelope(f"{slug}_equipment_info.json"),
+        "/image-history?count=true": load_envelope(f"{slug}_image_history_count.json"),
+        "/image-history?all=true": load_envelope(f"{slug}_image_history_all.json"),
+        "/image-history": load_envelope(f"{slug}_image_history_latest.json"),
+        "/event-history": load_envelope(f"{slug}_event_history.json"),
+        "/sequence/json": load_envelope(f"{slug}_sequence_json.json"),
+        "/sequence/state": load_envelope(f"{slug}_sequence_state.json"),
+        "/flats/status": load_envelope(f"{slug}_flats_status.json"),
+        "/livestack/status": load_envelope(f"{slug}_livestack_status.json"),
+        "/profile/show?active=true": load_envelope(f"{slug}_profile.json"),
+        "/equipment/focuser/last-af": load_envelope(f"{slug}_last_af.json"),
+        "/image/0": load_envelope(f"{slug}_image_history_latest.json"),
     }
 
 
@@ -229,19 +266,8 @@ _IMAGING: State = {
 # camera exposing, the guider locked, 27 frames down, livestack running. The
 # only state whose every endpoint is captured.
 _IMAGING_GUIDING: State = {
-    **_versions("imaging_guiding_equipment_info.json"),
-    "/application-start": load_envelope("imaging_guiding_application_start.json"),
-    "/equipment/info": load_envelope("imaging_guiding_equipment_info.json"),
-    "/image-history?count=true": load_envelope("imaging_guiding_image_history_count.json"),
-    "/image-history?all=true": load_envelope("imaging_guiding_image_history_all.json"),
-    "/image-history": load_envelope("imaging_guiding_image_history_latest.json"),
-    "/event-history": load_envelope("imaging_guiding_event_history.json"),
-    "/sequence/json": load_envelope("imaging_guiding_sequence_json.json"),
-    "/sequence/state": load_envelope("imaging_guiding_sequence_state.json"),
-    "/flats/status": load_envelope("imaging_guiding_flats_status.json"),
-    "/livestack/status": load_envelope("imaging_guiding_livestack_status.json"),
-    "/profile/show?active=true": load_envelope("imaging_guiding_profile.json"),
-    "/equipment/focuser/last-af": load_envelope("imaging_guiding_last_af.json"),
+    **_captured("imaging_guiding"),
+    # This state HAS frames, so both image routes answer bytes.
     "/image/0": _JPEG,
     _GUIDING_STACK: _JPEG,
 }
@@ -323,7 +349,9 @@ STATES: dict[str, State] = {
     ),
     # The same idle rig with every sequence node reading RUNNING: node status
     # is what §6.2 refuses to infer imaging from. Synthetic in its
-    # /sequence/json alone — a real capture would replace it in place.
+    # /sequence/json alone — a real capture would replace it in place, and none
+    # of the 2026-09-15 states is one: each of those reads RUNNING because its
+    # sequence was running.
     "idle_with_stale_running_nodes": {
         **_replace_device(
             _IMAGING, "Mount",
@@ -333,6 +361,33 @@ STATES: dict[str, State] = {
             load_envelope("dawn_sequence_complete.json")
         ),
     },
+    # 20:46 rig-local, before the night's first sub: Targets_Container RUNNING
+    # while Target Scheduler waits out a target's start window, with no frame
+    # in the history. The activity heuristic alone reads this as a stopped
+    # sequence.
+    #
+    # TS-WAITSTART names a time and never a reason — darkness here, but the
+    # same event fires for moon separation, altitude or a meridian window — so
+    # nothing above this layer can say why the rig is waiting.
+    #
+    # Carries no SEQUENCE-STARTING or -FINISHED at all, and the history is not
+    # truncated: it opens 27 s after /application-start. A sequence started
+    # before the history window leaves the event ledger silent, so the ledger
+    # cannot be the only running signal.
+    "scheduler_waiting": _captured("scheduler_waiting"),
+    # 20:49, ten seconds after SEQUENCE-STARTING: every container still CREATED
+    # on a sequence that IS running. The tree lags the start, so it cannot be
+    # the only running signal either.
+    "sequence_restarted": _captured("sequence_restarted"),
+    # 20:50, that run stopped by hand: Start_Container FINISHED,
+    # Targets_Container back to CREATED, SEQUENCE-FINISHED newest. Only the
+    # container that was RUNNING resets — and both captured stops happened in a
+    # pre-session wait, never mid-exposure.
+    #
+    # Both TS-WAITSTART events survive the stop, carrying a WaitEndTime that
+    # has not passed: a waiting entity keyed on the newest alone would read
+    # "waiting until 21:05" on a stopped rig.
+    "sequence_stopped": _captured("sequence_stopped"),
     # Four of eleven devices connected, mid-reconnect.
     "partial_equipment_connection": dict(_RESTARTED),
     "nina_restarted": dict(_RESTARTED),

@@ -83,6 +83,33 @@ async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> Non
         await client.get_livestack()
 
 
+@pytest.mark.parametrize(
+    ("state", "containers"),
+    [
+        ("scheduler_waiting",
+         {"Start_Container": "FINISHED", "Targets_Container": "RUNNING",
+          "End_Container": "CREATED"}),
+        ("sequence_restarted",
+         {"Start_Container": "CREATED", "Targets_Container": "CREATED",
+          "End_Container": "CREATED"}),
+        ("sequence_stopped",
+         {"Start_Container": "FINISHED", "Targets_Container": "CREATED",
+          "End_Container": "CREATED"}),
+    ],
+    ids=["running, scheduler waiting", "running, just started", "stopped"],
+)
+async def test_the_root_containers_do_not_tell_running_from_stopped_alone(
+    state: str, containers: dict[str, str]
+) -> None:
+    """`Targets_Container` reads CREATED both ten seconds into a run and after
+    a stop, so the tree seeds the running signal and the SEQUENCE-* events
+    correct it."""
+    client = _client(FakeRig(STATES, start=state))
+    root = await client.get_sequence()
+    assert {child.name: child.status
+            for child in root.children if child.name in containers} == containers
+
+
 async def test_goto_changes_what_the_rig_serves() -> None:
     rig = FakeRig(STATES, start="imaging")
     client = _client(rig)
