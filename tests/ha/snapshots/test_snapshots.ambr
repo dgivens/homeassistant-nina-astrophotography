@@ -39,6 +39,13 @@
     dict({
       'enabled_default': True,
       'entity_category': None,
+      'entity_id': 'binary_sensor.n_i_n_a_imaging',
+      'original_name': 'Imaging',
+      'unique_id': '01JTESTENTRY0000000000000_imaging',
+    }),
+    dict({
+      'enabled_default': True,
+      'entity_category': None,
       'entity_id': 'binary_sensor.n_i_n_a_mount_at_home',
       'original_name': 'At home',
       'unique_id': '01JTESTENTRY0000000000000_mount_at_home',
@@ -81,9 +88,9 @@
     dict({
       'enabled_default': True,
       'entity_category': None,
-      'entity_id': 'binary_sensor.n_i_n_a_sequence_running',
-      'original_name': 'Sequence running',
-      'unique_id': '01JTESTENTRY0000000000000_sequence_running',
+      'entity_id': 'binary_sensor.n_i_n_a_sequencer_running',
+      'original_name': 'Sequencer running',
+      'unique_id': '01JTESTENTRY0000000000000_sequencer_running',
     }),
   ])
 # ---
