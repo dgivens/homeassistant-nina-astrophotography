@@ -90,6 +90,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   instance is loaded, and is refused rather than guessed at once two are.
 - **Actions are registered at startup** rather than per config entry, so an
   automation referencing one validates even when the entry is unloaded.
+- **An imaging stall alert blueprint**, `imaging_stall_alert.yaml`. It is
+  notify-only and covers three cases: the rig unreachable, the mount parked
+  under a running sequencer, and frames stopped. The last is gated on scheduler
+  waits, unsafe conditions and daylight. It reminds up to twice and clears
+  itself when frames resume.
 - `event.<instance>_error` for plate-solve, download-timeout and autofocus-
   timeout failures. Best-effort: N.I.N.A.'s `ERROR-*` events are log scrapes and
   `ERROR-PLATESOLVE` matches ASTAP only.

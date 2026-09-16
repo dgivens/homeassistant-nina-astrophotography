@@ -195,11 +195,55 @@ throughout, because the loop is a N.I.N.A. container rather than a Target
 Scheduler wait. `Date` on a frame is when it was *saved*, so the clock also
 starts a full exposure behind.
 
-So a usable rule is *longest exposure + ~25 minutes*, only while running, not
+So a usable rule is *longest exposure + ~30 minutes*, only while running, not
 waiting and safe, and guarded for `last_frame_at` being `unknown` — which it is
 after every N.I.N.A. restart, since the image history is process-scoped. A
-blueprint shipping that is the next piece of work. A one-line template
-condition is how you get woken at 5am by a passing cloud.
+one-line template condition is how you get woken at 5am by a passing cloud.
+
+The **imaging stall alert** blueprint (`imaging_stall_alert.yaml`) is that rule,
+done carefully. It is notify-only: it never stops, parks or closes anything. It
+watches three shapes of stall:
+
+| Arm | Fires when |
+|---|---|
+| **Unreachable** | *sequencer running* has been `unavailable` for 2 minutes — N.I.N.A. or its API is gone. No other gate applies, since every entity of the rig is down with it. |
+| **Parked** | the mount parks while the sequencer is still running. |
+| **Quiet** | checked every minute: *imaging* has been off for 20 minutes, **or** no frame has been saved for longest exposure (default 600 s) + 30 minutes. |
+
+The quiet arm stays silent while the sequencer is stopped, while the scheduler
+is waiting, for 15 minutes after a wait ends, and in daylight. Every clock
+starts no earlier than the sequencer did, so last night's final frame does not
+raise an alert the minute tonight's sequence starts. All of these are inputs.
+
+Two suppressions to know about:
+
+- **An unsafe rig does not alert.** Looping on unsafe conditions is the rig
+  behaving correctly, and `weather_abort` is the blueprint that speaks. Leave the
+  safety input empty only if the rig has no safety monitor. On a rig that has
+  one, an empty input means an alert through every weather hold.
+- **`night_only` is on by default**, so the daytime wait for darkness is not a
+  stall. Turn it off if you image the sun. It reads `sun.sun`; without that
+  entity it does not suppress anything.
+
+Guiding has its own blueprint, `guiding_alert.yaml`, and this one does not
+duplicate it: a lost guide star that stops the frames shows up here as a stall,
+with the guider state in the message.
+
+The alert is a persistent notification plus a message to your notify entity. It
+reads from bed: minutes quiet, the last frame's target and filter, camera state,
+temperature and cooler power, guider, mount park and home, autofocus, the newest
+error. It reminds you every 60 minutes, at most twice (set reminders to 0 for
+none). After that it stays quiet
+but keeps waiting, so when a frame lands or the sequencer stops it dismisses the
+notification and says which of the two happened. A clear is never sent without
+an alert before it. A sequence that finishes looks the same as one stopped by
+hand, so the message does not claim the night completed.
+
+Limits: a Home Assistant restart while an alert is open loses both the
+notification and the clear, because persistent notifications and a pending wait
+do not survive it. The settle gate also mutes the quiet arm for
+`settle_minutes` after a restart. A rig that is imaging but producing bad frames
+is not a stall, and this blueprint does not see it.
 
 `sensor.<instance>_sequence_progress` is disabled because it reads `unknown` on
 a Target Scheduler rig: the scheduler chooses targets as the night goes and
@@ -388,8 +432,9 @@ config directory, then **Settings → Automations & Scenes → Blueprints**.
 | `session_shutdown.yaml` | The scheduled end of night: stop, park, warm, close. |
 | `meridian_flip_warning.yaml` | Warns ahead of the flip, and again when N.I.N.A. commits to it and completes it. |
 | `guiding_alert.yaml` | Notifies, and optionally refocuses, when guide RMS stays high. |
+| `imaging_stall_alert.yaml` | Notifies when frames stop for a bad reason — rig unreachable, mount parked mid-sequence, or no frames — and clears itself when they resume. See [Knowing the rig is working](#knowing-the-rig-is-working). |
 
-All five take a device or entity picker for the rig they act on, so they work on
+All six take a device or entity picker for the rig they act on, so they work on
 a two-rig install and need no editing.
 
 `weather_abort.yaml` takes **no weather trigger**, deliberately — see
