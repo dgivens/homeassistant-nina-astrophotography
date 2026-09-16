@@ -39,9 +39,8 @@ REQUIRED: dict[str, dict[str, object]] = {
         "mount_at_park": "binary_sensor.rig_mount_at_park",
         "last_frame_at": "sensor.rig_last_frame_at",
         "camera_state": "sensor.rig_camera_state",
+        "last_image_target": "sensor.rig_last_image_target",
         "sequence_target": "sensor.rig_sequence_target",
-        "guider_status": "sensor.rig_guider_status",
-        "flip_sensor": "sensor.rig_mount_time_to_meridian_flip",
         "camera_temperature": "sensor.rig_camera_temperature",
         "camera_cooler_power": "sensor.rig_camera_cooler_power",
     },
@@ -72,7 +71,9 @@ OPTIONAL: dict[str, dict[str, object]] = {
     "guiding_alert.yaml": {"run_autofocus": True},
     "imaging_stall_alert.yaml": {
         "last_image_filter": ["sensor.rig_last_image_filter"],
+        "guider_status": ["sensor.rig_guider_status"],
         "guider_rms": ["sensor.rig_guider_rms_total"],
+        "flip_sensor": ["sensor.rig_mount_time_to_meridian_flip"],
         "mount_at_home": ["binary_sensor.rig_mount_at_home"],
         "autofocus_failed": ["binary_sensor.rig_focuser_autofocus_failed"],
         "safety_connected": ["binary_sensor.rig_safety_monitor_connected"],
@@ -81,8 +82,10 @@ OPTIONAL: dict[str, dict[str, object]] = {
         "longest_exposure_seconds": 300,
         "grace_minutes": 45,
         "settle_minutes": 20,
-        # Off, so the `enabled: !input` gate it controls is built as skipped
-        # rather than built at all — the branch the default never exercises.
+        # The one input that is not an added branch: it feeds an
+        # `enabled: !input`, and both values build the step — an `enabled:
+        # false` one is built and validated, just never run. Setting it false
+        # is what exercises the false substitution.
         "night_only": False,
         "notify_target": ["notify.phone"],
         "escalate_minutes": 90,

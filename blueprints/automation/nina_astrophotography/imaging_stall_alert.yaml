@@ -105,6 +105,8 @@ blueprint:
       description: >-
         Triage from bed, without opening Home Assistant. Every entity here is
         read for the message only; none of them can raise or clear an alert.
+        Only entities every rig has are required here — anything that belongs to
+        a device you might not own is under Extra detail below.
       input:
         camera_state:
           name: Camera state
@@ -115,28 +117,26 @@ blueprint:
             entity:
               integration: nina_astrophotography
               domain: sensor
+        last_image_target:
+          name: Last image target
+          description: >-
+            What the newest frame was actually taken of. The message reports
+            this rather than the sequence's current target, so the target and
+            the filter below come from the same frame.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
         sequence_target:
           name: Sequence target
-          selector:
-            entity:
-              integration: nina_astrophotography
-              domain: sensor
-        guider_status:
-          name: Guider status
-          selector:
-            entity:
-              integration: nina_astrophotography
-              domain: sensor
-        flip_sensor:
-          name: Time to meridian flip
           description: >-
-            Reading `unknown` is itself a diagnosis: the 24-hour sentinel it
-            replaces means tracking is off.
+            Where the sequence believes it is now. Reported only when it differs
+            from the last frame's target — that difference is itself the
+            diagnosis "it moved to a new target and then stalled".
           selector:
             entity:
               integration: nina_astrophotography
               domain: sensor
-              device_class: duration
         camera_temperature:
           name: Camera temperature
           description: >-
@@ -159,14 +159,28 @@ blueprint:
       icon: mdi:clipboard-text-search
       collapsed: true
       description: >-
-        Optional. Each adds one line to the message; leave any of them empty on
-        a rig that has no such device.
+        Optional. Each adds one field to the message; leave any of them empty on
+        a rig that has no such device. Everything whose entity belongs to a
+        device the rig may not have lives here: on a rig with no guider or no
+        rotator those entities are never created, and a required input pointing
+        at one would make this blueprint impossible to save.
       input:
         last_image_filter:
           name: Last image filter
           description: >-
             The filter the newest frame was taken through, reported next to the
             target. A stall part-way through a filter change names itself here.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              multiple: true
+        guider_status:
+          name: Guider status
+          description: >-
+            Whether the guider is guiding, calibrating or has lost its star.
+            Belongs to the guider device, so an unguided rig has no such entity.
           default: []
           selector:
             entity:
@@ -180,6 +194,18 @@ blueprint:
             entity:
               integration: nina_astrophotography
               domain: sensor
+              multiple: true
+        flip_sensor:
+          name: Time to meridian flip
+          description: >-
+            Reading `unknown` is itself a diagnosis: the 24-hour sentinel it
+            replaces means tracking is off.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              device_class: duration
               multiple: true
         mount_at_home:
           name: Mount at home
@@ -333,39 +359,51 @@ variables:
   sequencer_running: !input sequencer_running
   scheduler_waiting: !input scheduler_waiting
   mount_at_park: !input mount_at_park
+  imaging: !input imaging
   last_frame_at: !input last_frame_at
   camera_state: !input camera_state
+  last_image_target: !input last_image_target
   sequence_target: !input sequence_target
-  guider_status: !input guider_status
-  flip_sensor: !input flip_sensor
   camera_temperature: !input camera_temperature
   camera_cooler_power: !input camera_cooler_power
   last_image_filter: !input last_image_filter
+  guider_status: !input guider_status
   guider_rms: !input guider_rms
+  flip_sensor: !input flip_sensor
   mount_at_home: !input mount_at_home
   autofocus_failed: !input autofocus_failed
   safety_connected: !input safety_connected
   error_event: !input error_event
   settle_minutes: !input settle_minutes
+  night_only: !input night_only
+  imaging_quiet_minutes: !input imaging_quiet_minutes
   longest_exposure_seconds: !input longest_exposure_seconds
   grace_minutes: !input grace_minutes
   escalations: !input escalations
   # Added, never multiplied — see the input description.
   stale_after_seconds: >
     {{ longest_exposure_seconds | float(600) + grace_minutes | float(30) * 60 }}
-  # How long the rig has been quiet. With no frame yet tonight the clock runs
-  # from the sequencer starting instead: "it never took a first frame" is a
-  # stall too, and testing only for a value would make this blueprint mute for
-  # exactly that case.
+  # NOTHING may be measured from before the sequencer started. `last_frame_at`
+  # holds the newest frame N.I.N.A. knows of, which survives across nights while
+  # it stays up, so at 20:00 it still reads last night's 05:00 frame — fifteen
+  # hours of "quiet" that has nothing to do with tonight. Every clock below is
+  # floored here, which is what makes a freshly started sequence silent through
+  # cool-down, slew, plate-solve and the first autofocus.
+  sequencer_on_seconds: >
+    {% set running = states[sequencer_running] %}
+    {{ 0 if running is none
+       else (now() - running.last_changed).total_seconds() | round(0) }}
+  # How long the rig has been quiet: time since the last frame, floored at the
+  # sequencer's own uptime. With no frame at all it IS that uptime — "the rig
+  # never took a first frame tonight" is a stall, and testing only for a value
+  # would make this blueprint mute for exactly that case.
   quiet_seconds: >
     {% set frame = states[last_frame_at] %}
-    {% set running = states[sequencer_running] %}
     {% if frame is not none and frame.state not in ['unknown', 'unavailable'] %}
-      {{ (now().timestamp() - as_timestamp(frame.state, now().timestamp())) | round(0) }}
-    {% elif running is not none %}
-      {{ (now() - running.last_changed).total_seconds() | round(0) }}
+      {{ [now().timestamp() - as_timestamp(frame.state, now().timestamp()),
+          sequencer_on_seconds | float(0)] | min | round(0) }}
     {% else %}
-      0
+      {{ sequencer_on_seconds | float(0) | round(0) }}
     {% endif %}
 
 triggers:
@@ -403,26 +441,38 @@ conditions:
       {% set rig = device_attr(nina_rig, 'config_entries') %}
       {{ entry is none or rig is not iterable or entry in rig | list }}
 
-actions:
-  # Per-arm gates, not top-level conditions: the unreachable arm fires when
-  # every one of these entities has gone unavailable, so gating it on them
-  # would mute the failure this blueprint most needs to catch. A condition that
-  # fails inside a branch stops the run, which is the whole effect wanted.
-  - alias: "The gates each arm has to pass"
-    choose:
-      - conditions:
+  # These gates live HERE rather than in the actions, and the difference is not
+  # cosmetic. A bare condition that fails inside a `choose` branch raises
+  # `_ConditionFail`, which Home Assistant catches at that branch's own script
+  # boundary and — unlike `stop:` — does NOT re-raise into the parent. The
+  # parent sequence then carries on to the next action, so gates written inside
+  # a branch are not gates at all: they abort the branch and alert anyway. At
+  # the automation's top level a false condition genuinely stops the run.
+  #
+  # Each arm carries its own gates, because they differ. The unreachable arm
+  # has none: every entity of the rig is unavailable when it fires, so any gate
+  # over them would mute the failure this blueprint most needs to catch.
+  - alias: "The gates for the arm that fired"
+    condition: or
+    conditions:
+      - condition: trigger
+        id: unreachable
+
+      - alias: "A park is only a stall if the sequencer was still running"
+        condition: and
+        conditions:
           - condition: trigger
             id: parked
-        sequence:
-          - alias: "A park is only a stall if the sequencer was still running"
-            condition: state
+          - condition: state
             entity_id: !input sequencer_running
             state: "on"
 
-      - conditions:
+      - alias: "Quiet, with all five gates and a threshold passed"
+        condition: and
+        conditions:
           - condition: trigger
             id: quiet
-        sequence:
+
           - alias: "The sequencer is running — a stopped one is not a stall"
             condition: state
             entity_id: !input sequencer_running
@@ -451,26 +501,37 @@ actions:
                  and (now() - waiting.last_changed).total_seconds()
                      > settle_minutes | float(15) * 60 }}
 
+          # A template rather than `enabled: !input` on a state condition:
+          # `enabled` is honoured on a script action, and these are nested
+          # conditions rather than actions.
           - alias: "Night only, unless the user images the sun"
-            condition: state
-            entity_id: sun.sun
-            state: "below_horizon"
-            enabled: !input night_only
+            condition: template
+            value_template: >
+              {{ not night_only or is_state('sun.sun', 'below_horizon') }}
 
           - alias: "Frames really have stopped"
             condition: or
             conditions:
+              # Not the native `for:` on a state condition, which measures from
+              # `last_changed` alone: `imaging` is off all day, so at 20:01 it
+              # has been off for hours and the gate would be satisfied the
+              # instant the sequencer started — an alert raised before a first
+              # frame is physically possible. Floored at the sequencer's
+              # uptime, the clock starts when the night does.
               - alias: "Nothing has been arriving for the quiet period"
-                condition: state
-                entity_id: !input imaging
-                state: "off"
-                for:
-                  minutes: !input imaging_quiet_minutes
+                condition: template
+                value_template: >
+                  {% set active = states[imaging] %}
+                  {{ active is not none and active.state == 'off'
+                     and [(now() - active.last_changed).total_seconds(),
+                          sequencer_on_seconds | float(0)] | min
+                         > imaging_quiet_minutes | float(20) * 60 }}
               - alias: "No frame within one exposure plus the grace"
                 condition: template
                 value_template: >
                   {{ quiet_seconds | float(0) > stale_after_seconds | float(0) }}
 
+actions:
   - variables:
       rig_name: >
         {{ device_attr(nina_rig, 'name_by_user')
@@ -494,24 +555,42 @@ actions:
       # entity or none, and silently drops one that does not exist. Folded to a
       # single ·-separated line on purpose: a folded YAML scalar joins its lines
       # with spaces, so laying the fields out in columns here would not survive.
+      #
+      # An unreachable rig gets no field list at all. Every entity is
+      # `unavailable`, so the line would be a row of the same word — and the
+      # mount field in particular would print "not parked" for a park state
+      # nothing can currently read, which is worse than saying nothing.
       detail: >-
-        {%- set filt = expand(last_image_filter) | first | default(none) -%}
-        {%- set rms = expand(guider_rms) | first | default(none) -%}
-        {%- set homed = expand(mount_at_home) | first | default(none) -%}
-        {%- set af = expand(autofocus_failed) | first | default(none) -%}
-        {%- set safety = expand(safety_connected) | first | default(none) -%}
-        {%- set err = expand(error_event) | first | default(none) -%}
-        Target {{ states(sequence_target) }}{% if filt %},
-        filter {{ filt.state }}{% endif %} ·
+        {%- if trigger.id == 'unreachable' %}
+        Nothing further can be read while the rig is unavailable — the last
+        known values in Home Assistant are as stale as the connection.
+        {%- else %}
+        {%- set filt = expand(last_image_filter) | first | default(none) %}
+        {%- set guider = expand(guider_status) | first | default(none) %}
+        {%- set rms = expand(guider_rms) | first | default(none) %}
+        {%- set flip = expand(flip_sensor) | first | default(none) %}
+        {%- set homed = expand(mount_at_home) | first | default(none) %}
+        {%- set af = expand(autofocus_failed) | first | default(none) %}
+        {%- set safety = expand(safety_connected) | first | default(none) %}
+        {%- set err = expand(error_event) | first | default(none) %}
+        {%- set frame_target = states(last_image_target) %}
+        {%- set now_target = states(sequence_target) %}
+        {%- set park = states(mount_at_park) %}
+        Last frame {{ frame_target }}{% if filt %},
+        filter {{ filt.state }}{% endif %}{% if now_target not in
+        [frame_target, 'unknown', 'unavailable'] %},
+        now on {{ now_target }}{% endif %} ·
         camera {{ states(camera_state) }} at {{ states(camera_temperature) }} °C,
-        cooler {{ states(camera_cooler_power) }} % ·
-        guider {{ states(guider_status) }}{% if rms %} (RMS {{ rms.state }}){% endif %} ·
-        mount {{ 'parked' if is_state(mount_at_park, 'on') else 'not parked' }}{% if homed %},
-        {{ 'at home' if homed.state == 'on' else 'not at home' }}{% endif %} ·
-        flip {{ states(flip_sensor) }}{% if af %} ·
-        autofocus failed {{ af.state }}{% endif %}{% if safety %} ·
-        safety monitor connected {{ safety.state }}{% endif %}{% if err %} ·
-        last error {{ err.attributes.event_type | default('none') }} at {{ err.state }}{% endif %}
+        cooler {{ states(camera_cooler_power) }} %
+        {%- if guider %} · guider {{ guider.state }}{% if rms %} (RMS {{ rms.state }}){% endif %}{% endif %} ·
+        mount {{ {'on': 'parked', 'off': 'not parked'}.get(park, 'park ' ~ park) }}
+        {%- if homed %}, {{ 'at home' if homed.state == 'on' else 'not at home' }}{% endif %}
+        {%- if flip %} · flip {{ flip.state }}{% endif %}
+        {%- if af %} · autofocus failed {{ af.state }}{% endif %}
+        {%- if safety %} · safety monitor connected {{ safety.state }}{% endif %}
+        {%- if err %} · last error {{ err.attributes.event_type | default('none') }}
+        at {{ err.state }}{% endif %}
+        {%- endif %}
 
   - alias: "Raise the alert"
     action: persistent_notification.create
@@ -581,7 +660,8 @@ actions:
                   Still no frame tonight.
                   {%- endif %}
                   Camera: {{ states(camera_state) }}.
-                  Guider: {{ states(guider_status) }}.
+                  {%- set guider = expand(guider_status) | first | default(none) %}
+                  {%- if guider %} Guider: {{ guider.state }}.{% endif %}
               continue_on_error: true
       until:
         - condition: template
