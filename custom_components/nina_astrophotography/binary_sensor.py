@@ -149,13 +149,25 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         value=_autofocus_failed,
     ),
     NinaBinarySensorDescription(
-        key="sequence_running",
-        translation_key="sequence_running",
+        key="sequencer_running",
+        translation_key="sequencer_running",
         device_class=BinarySensorDeviceClass.RUNNING,
         kind=None,
-        # The §6.2 activity heuristic, never `/sequence/json` node status: node
-        # `Status` persists from the loaded file and from prior runs, so an
-        # idle rig reports RUNNING nodes with nothing happening.
+        # The sequencer, not the camera: a rig waiting out a target's start
+        # window is running and not imaging. A NEW `unique_id` deliberately —
+        # 1.4.5's `_sequence_running` answered the other question, and a row
+        # whose meaning changes under an automation is worse than one that goes
+        # unavailable and asks to be repointed.
+        value=lambda data: data.running,
+    ),
+    NinaBinarySensorDescription(
+        key="imaging",
+        translation_key="imaging",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        kind=None,
+        # §6.2's activity heuristic: a rising count, a camera exposing, or an
+        # IMAGE-SAVE inside five minutes. Frames are arriving, whatever the
+        # sequencer says.
         value=lambda data: data.imaging,
     ),
     NinaBinarySensorDescription(

@@ -4,11 +4,11 @@ Not in `derive.py`, which is version-independent maths: the tree's shape is
 partly a Target Scheduler fact, so the mapper normalizes it into `SequenceNode`
 and the walk lives here.
 
-**Node `Status` is not read.** It persists from the loaded sequence file and
-from prior runs, so an idle rig reports `RUNNING` nodes with nothing happening
-(§6.2) — which is why `binary_sensor.sequence_running` comes from the activity
-heuristic instead. What is read here is `Iterations` and `TargetName`, which a
-node carries only when it actually has them.
+**Only the ROOT containers' `Status` is read**, by `running`. Deeper status
+persists from the loaded sequence file and from prior runs, so a node reads
+`RUNNING` long after its run (§6.2); the roots do not, because a stop resets
+the container that was running. What else is read here is `Iterations` and
+`TargetName`, which a node carries only when it actually has them.
 
 **A Target Scheduler rig produces neither**, so on the reference rig both walks
 return `None` and `sensor.sequence_target` falls back to `TS-TARGETSTART`
@@ -28,11 +28,16 @@ and do not build on them.
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 
-from .api.models import SequenceNode
+from .api.models import NinaEvent, SequenceNode
 
 _LOGGER = logging.getLogger(__name__)
+
+# `SEQUENCE-FINISHED` fires on a manual stop as well as at end of night, so the
+# pair brackets a run rather than a night.
+_SEQUENCE_STARTED = "SEQUENCE-STARTING"
+_SEQUENCE_BRACKET = frozenset({_SEQUENCE_STARTED, "SEQUENCE-FINISHED"})
 
 
 def _walk(root: SequenceNode | None) -> Iterator[SequenceNode]:
@@ -42,6 +47,47 @@ def _walk(root: SequenceNode | None) -> Iterator[SequenceNode]:
     yield root
     for child in root.children:
         yield from _walk(child)
+
+
+def running(root: SequenceNode | None,
+            events: Iterable[NinaEvent],
+            generation: str | None) -> bool:
+    """Whether the sequencer is executing — which is not whether it is imaging.
+
+    A sequence spends hours not imaging and still running: Target Scheduler
+    waiting out a target's start window, a safety loop waiting for conditions,
+    a wait for full dark. `imaging` (§6.2) answers the other question.
+
+    The ROOT containers seed it, and neither source suffices alone:
+
+    - Ten seconds after `SEQUENCE-STARTING` every root still reads CREATED, so
+      the tree is blind on the leading edge of a run.
+    - A sequence started before the event history's window leaves no
+      `SEQUENCE-*` event at all, so the ledger is blind to it entirely.
+
+    The tree is asked first and the events only break a tie, which is what
+    keeps a stale `SEQUENCE-FINISHED` from an earlier run in the same process
+    from overriding a tree that says a container is RUNNING right now.
+
+    Only the TOP-LEVEL nodes are read, never the nodes below them: deep status
+    persists from the loaded file and from prior runs (§6.2), and a stop resets
+    the container that was RUNNING while leaving its finished siblings
+    FINISHED. `/sequence/json` sits on the sequence tier, so the tree is up to
+    five minutes stale while idle; both `SEQUENCE-*` events queue a refetch, so
+    only a rig whose socket is down waits that long.
+
+    On the same timestamp a start outranks a finish: a run observed starting at
+    the instant another ended is the live one.
+    """
+    if root is not None and any(child.status == "RUNNING" for child in root.children):
+        return True
+    bracketing = [event for event in events
+                  if event.name in _SEQUENCE_BRACKET and event.generation == generation]
+    if not bracketing:
+        return False
+    newest = max(bracketing,
+                 key=lambda event: (event.time, event.name == _SEQUENCE_STARTED))
+    return newest.name == _SEQUENCE_STARTED
 
 
 def target_name(root: SequenceNode | None) -> str | None:

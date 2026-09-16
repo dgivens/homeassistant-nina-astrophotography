@@ -316,7 +316,10 @@ class NinaObservatoryCard extends HTMLElement {
     if (!h) return;
     const prefix = this._prefix;
 
-    const seqRunning  = isOn(h, `binary_sensor.${prefix}_sequence_running`);
+    // The sequencer and the camera answer different questions: a rig waiting
+    // out a target's start window is running and taking nothing.
+    const seqRunning  = isOn(h, `binary_sensor.${prefix}_sequencer_running`);
+    const imaging     = isOn(h, `binary_sensor.${prefix}_imaging`);
     const camConnected = available(h, `sensor.${prefix}_camera_state`);
     const mntConnected = available(h, `sensor.${prefix}_mount_right_ascension`);
     const focConnected = available(h, `number.${prefix}_focuser_position`);
@@ -399,7 +402,7 @@ class NinaObservatoryCard extends HTMLElement {
           <div class="session-banner">
             <div>
               <div class="target">${seqRunning ? target : "—"}</div>
-              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${seqRunning ? "Imaging" : "Sequence not running"}</div>
+              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${imaging ? "Imaging" : seqRunning ? "Running, not imaging" : "Sequence not running"}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
               ${isNaN(progress) ? "" : `

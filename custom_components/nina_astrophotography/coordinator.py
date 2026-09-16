@@ -61,7 +61,7 @@ from .polling import (
     TierSchedule,
     imaging,
 )
-from .sequence import target_name
+from .sequence import running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
     fold,
@@ -140,8 +140,12 @@ class NinaData:
     version: VersionInfo
     imaging: bool
     """§6.2's activity heuristic, computed once per tick for the tier schedule
-    and published here so `binary_sensor.sequence_running` reads the same
-    value. Never `/sequence/json` node status."""
+    and published here so `binary_sensor.imaging` reads the same value. Never
+    `/sequence/json` node status."""
+    running: bool
+    """Whether the SEQUENCER is executing, which a rig waiting out a target's
+    start window is while `imaging` is false. From the root containers, with
+    `SEQUENCE-STARTING`/`-FINISHED` breaking a tie — see `sequence.running`."""
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
@@ -655,6 +659,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             generation=self.generation,
             version=self._version,
             imaging=self._imaging,
+            running=running(self._sequence, self.events, self.generation),
         )
 
 
