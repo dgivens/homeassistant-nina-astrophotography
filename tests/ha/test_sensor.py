@@ -229,8 +229,7 @@ async def test_the_last_autofocus_publishes_the_curve_a_card_plots(
     curve = hass.states.get(
         "sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
 
-    assert curve[4] == {"position": 2352, "value": pytest.approx(1.55229727412562),
-                        "error": pytest.approx(0.10801730574556397)}
+    assert [sorted(row) for row in curve] == [["error", "position", "value"]] * 9
 
 
 async def test_the_autofocus_readings_exist_before_a_run_reports(

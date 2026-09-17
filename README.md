@@ -339,8 +339,12 @@ minimum, and the intersection extrapolates to a star size the optics cannot
 produce — on a captured run it read 1.09 px against a best measured 1.55 px.
 Its offset also changes if you change the curve fitting in your profile, which
 is why it is the disabled `autofocus_fitted_hfr` and not the headline number.
-Against `autofocus_starting_hfr`, which is also measured, the pair is a fair
-before-and-after.
+Against `autofocus_starting_hfr`, which is also measured, the pair is the
+closest thing to a before-and-after the report offers — but it is not one.
+Both are measured at sweep steps, while the run moves to a fitted minimum
+between two steps whose HFR is never measured, so the "after" can read worse
+than the "before" on a run that improved focus. On a captured run it does:
+1.552 px against a starting 1.519 px.
 
 Four things the report itself cannot tell you:
 
@@ -371,7 +375,8 @@ The positions and the duration are unaffected.
 ### Plotting the V-curve
 
 `sensor.<instance>_focuser_last_autofocus` carries the whole sweep in its
-`curve` attribute — one row per measurement, in the order N.I.N.A. took them:
+`curve` attribute — one row per position the run visited, ascending in focuser
+position:
 
 ```yaml
 curve:
@@ -385,11 +390,35 @@ curve:
 ```
 
 `value` is HFR in pixels under a `STARHFR` run and a contrast score under
-`CONTRASTDETECTION`; the `method` attribute beside it says which. `error` is
-the measurement's standard deviation, which is the error bar N.I.N.A.'s own
-chart draws. Points the star detector failed on are dropped rather than
-reported as zero, so a gap in the V is a gap, and `measured_points` is how many
-rows survived.
+`CONTRASTDETECTION`; the `method` attribute beside it says which.
+
+**A `value` of `null` means that frame measured nothing** — the star detector
+found nothing usable, which out at the ends of a sweep means the stars bloated
+past its cut. The position is kept, so the sweep's real range survives and a
+chart breaks its line at the failure instead of drawing a chord across it. Two
+nulls on one side only is the signature of a sweep that is too wide for your
+focal ratio, which is worth seeing rather than being smoothed away.
+`measured_points` counts the rows that measured something, so it is less than
+the curve's length on a run that lost frames.
+
+**`error` is the spread of star sizes across that frame**, not the uncertainty
+on the V. N.I.N.A. draws it as the point's error bar. A fat bar means the field
+has a range of star sizes — tilt, field curvature, elongation — so it reads as
+"check the optics", not "distrust this point". On a y axis spanning the whole
+V these bars are nearly invisible except near the vertex; a shaded band reads
+better than caps.
+
+Three things a card should not assume:
+
+- **The sweep is not necessarily centred on `autofocus_starting_position`.** On
+  one captured run the starting position is the third of nine points.
+- **`autofocus_starting_hfr` is not the curve's value at that position.** They
+  are two separate exposures — 1.519 px against the sweep's 1.552 px at the
+  same step on a captured run — so a "starting HFR" marker will sit visibly off
+  the curve. That is correct, not a bug.
+- **The final position usually isn't on the curve at all.** N.I.N.A. moves to
+  the fitted minimum, which falls between two steps, and the HFR there was
+  never measured.
 
 An attribute, not entities: a curve is not a series, and there is no useful
 statistic over "the fourth point of whatever run happened last".

@@ -690,27 +690,34 @@ def _hfr(wire: dict, point: str) -> float | None:
 
 
 def _focus_curve(wire: dict) -> tuple[FocusPoint, ...]:
-    """The sweep's own measurements — the only values in the report the camera
-    actually saw, and the only ones that plot as a curve.
+    """Every position the sweep visited — the only points that plot as a curve.
 
-    A point needs both a position and a positive value to be a measurement: a
-    frame the star detector failed on still reports, at value 0, and plotting
-    that draws a spike to the floor through the bottom of the V.
+    A position is what makes a point plottable, so a row without one goes; a
+    row whose measurement failed STAYS, at a None value. Deleting it instead
+    takes its x off the axis, and a line chart then joins the surviving
+    neighbours straight through the failure — a fabricated chord across the
+    region where the V bends hardest. A None breaks the line there, which is
+    what actually happened.
+
+    Sorted by position: a plot needs monotonic x, and nothing in the report
+    states its own order. Every capture is already ascending, so this only
+    catches a build that emitted acquisition order.
     """
     points = wire.get("MeasurePoints")
     if not isinstance(points, list):
         return ()
-    measured = []
+    swept = []
     for point in points:
-        if not isinstance(point, dict):
-            continue
         position = _integer(point, "Position")
-        value = _positive(_number(point, "Value"))
-        if position is None or value is None:
+        if position is None:
             continue
-        measured.append(FocusPoint(position=position, value=value,
-                                   error=_number(point, "Error")))
-    return tuple(measured)
+        # `_positive`, because a measurement of 0 is the star detector finding
+        # nothing usable. `Error` is not held to that rule: zero spread is a
+        # real reading, if a suspicious one.
+        swept.append(FocusPoint(position=position,
+                                value=_positive(_number(point, "Value")),
+                                error=_number(point, "Error")))
+    return tuple(sorted(swept, key=lambda point: point.position))
 
 
 def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
@@ -731,7 +738,10 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     leaves `InitialFocusPoint.Value` at 0 where the pre-sweep measurement found
     no stars, which is its own `if (initialHFR != 0 …)` guard. A fitted value
     can also come out negative, the trendline intersection extrapolating past
-    zero, so the rule is: positive or nothing.
+    zero, so the rule is: positive or nothing. `curve` keeps such a point at a
+    None value rather than dropping it, because a position the sweep visited
+    and failed at is part of what the run did; `measured_points` counts only
+    the ones that measured.
 
     `hfr` is the sweep's LOWEST MEASURED point, not
     `CalculatedFocusPoint.Value`: under a `TREND*` fitting that value is the
@@ -750,6 +760,7 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         if isinstance(value, (int, float))
     ] if isinstance(squares, dict) else []
     curve = _focus_curve(wire)
+    measured = [point.value for point in curve if point.value is not None]
     return AutoFocusReport(
         timestamp=_timestamp(wire.get("Timestamp")),
         filter_name=_text(wire, "Filter") or None,
@@ -759,10 +770,10 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         autofocuser=_text(wire, "AutoFocuserName"),
         star_detector=_text(wire, "StarDetectorName"),
         position=_integer(wire, "CalculatedFocusPoint", "Position"),
-        hfr=min(point.value for point in curve) if curve and is_hfr else None,
+        hfr=min(measured) if measured and is_hfr else None,
         fitted_hfr=_hfr(wire, "CalculatedFocusPoint") if is_hfr else None,
         curve=curve,
-        measured_points=len(curve) or None,
+        measured_points=len(measured) or None,
         initial_position=_integer(wire, "InitialFocusPoint", "Position"),
         initial_hfr=_hfr(wire, "InitialFocusPoint") if is_hfr else None,
         duration_seconds=_timespan_seconds(wire.get("Duration")),

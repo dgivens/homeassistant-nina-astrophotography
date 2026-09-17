@@ -367,19 +367,29 @@ class AutoFocusState:
 
 @dataclass(frozen=True, slots=True)
 class FocusPoint:
-    """One measurement the autofocus sweep took, at one focuser position.
+    """One position the autofocus sweep visited.
 
     `value` is HFR in pixels only under a STARHFR run; a CONTRASTDETECTION run
-    measures a contrast score at the same positions, so the curve is still a
-    curve but its y axis is not pixels. `AutoFocusReport.method` is what says
-    which, and it travels with the points for that reason.
+    measures a contrast score at the same positions, and
+    `AutoFocusReport.method` is what says which.
     """
 
     position: int
-    value: float
+    value: float | None
+    """None where the sweep measured nothing here — the star detector found no
+    usable stars, which out at the ends of a sweep means the stars bloated past
+    its cut. The position is kept so the sweep's real range survives, and so a
+    chart breaks its line rather than drawing a chord across the failure.
+    """
     error: float | None
-    """The measurement's standard deviation, which N.I.N.A.'s own chart draws
-    as an error bar. 0 where the detector reports no spread.
+    """The spread of HFR ACROSS THE STARS in that frame, which N.I.N.A.'s own
+    chart draws as an error bar.
+
+    Not the uncertainty on the V: with hundreds of stars the error on the mean
+    is smaller by √N. A fat bar means the field has a spread of star sizes —
+    tilt, field curvature, elongation — so it reads as "check the optics",
+    never as "distrust this point". A 0 on a measured point is near enough one
+    detected star, which is a run to distrust.
     """
 
 
@@ -438,16 +448,23 @@ class AutoFocusReport:
     diagnostic and `hfr` is what a statistic keys on.
     """
     curve: tuple[FocusPoint, ...]
-    """The sweep itself, in the order the report lists it — the V to plot.
+    """The sweep itself, ascending in focuser position — the V to plot.
 
-    Only points carrying both a position and a positive value survive, so a
-    frame the detector failed on leaves a gap rather than a spike at zero, and
-    `measured_points` is this tuple's length. Empty where the report has no
-    `MeasurePoints` at all, never None: an absent sweep and an empty one are
-    the same thing to draw.
+    Every position the sweep visited, including the ones that measured nothing
+    (`FocusPoint.value` None), so its length is what the run cost and
+    `measured_points` is what it got. Empty rather than None where the report
+    has no `MeasurePoints`: an absent sweep and an empty one draw the same.
+
+    The sweep is NOT necessarily centred on `initial_position` — one captured
+    run starts at the third of nine points — so nothing may assume the
+    starting marker lands mid-curve.
     """
     measured_points: int | None
-    """How many points the sweep measured — what `duration_seconds` bought."""
+    """How many of the sweep's positions actually measured something.
+
+    Less than `len(curve)` where frames failed; `duration_seconds` bought the
+    failures too.
+    """
     initial_position: int | None
     """Where the focuser was before the run — `position` less this is the move."""
     initial_hfr: float | None

@@ -32,7 +32,7 @@ setup must not lose its cooler-power entity.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
@@ -185,12 +185,11 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
     from Hocus Focus's fitted PSF and from the built-in detector are not — and
     the point count is what makes the duration mean anything.
 
-    `curve` is the sweep a card plots as the V, one row per measurement:
-    `position`, `value` and `error`. `value` is pixels only under a STARHFR
-    `method`, which sits beside it here for that reason. A statistic cannot
-    hold a curve, so an attribute is the right shape and the recorder's never
-    storing it costs nothing — the report is a snapshot of one run, and
-    `autofocus_hfr` is the series.
+    `curve` is the sweep a card plots as the V, one `position`/`value`/`error`
+    row per position visited, `value` None where that frame measured nothing.
+    An attribute because a statistic cannot hold a curve: the sweep is the
+    shape of ONE run, and `autofocus_hfr` is already the series across runs.
+    `method` sits beside it because it is what says whether `value` is pixels.
     """
     report = data.autofocus_report
     if report is None:
@@ -201,11 +200,7 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
         "autofocuser": report.autofocuser,
         "star_detector": report.star_detector,
         "measured_points": report.measured_points,
-        "curve": [
-            {"position": point.position, "value": point.value,
-             "error": point.error}
-            for point in report.curve
-        ],
+        "curve": [asdict(point) for point in report.curve],
     }
 
 
@@ -541,7 +536,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
     # ── The last autofocus run ───────────────────────────────────────────
     # Separate sensors rather than attributes on one: position and HFR earn
     # long-term statistics, which is what makes focus drift against
-    # temperature chartable, and an attribute is never recorded.
+    # temperature chartable, and no statistic is ever computed over an
+    # attribute.
     NinaSensorDescription(
         key="autofocus_last_run",
         translation_key="autofocus_last_run",
