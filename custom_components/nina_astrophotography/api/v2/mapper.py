@@ -229,7 +229,9 @@ def map_camera(wire: dict) -> CameraModel:
         connected=_connected(wire),
         meta=_meta(wire),
         temperature=_number(readings, "Temperature"),
-        target_temperature=_number(readings, "TargetTemp"),
+        # The driver's setpoint. TargetTemp is not: it reads 0 whatever the
+        # camera is cooling to.
+        target_temperature=_number(readings, "TemperatureSetPoint"),
         cooler_on=_flag(readings, "CoolerOn"),
         cooler_power=_number(readings, "CoolerPower"),
         dew_heater_on=_flag(readings, "DewHeaterOn"),
