@@ -366,6 +366,86 @@ class AutoFocusState:
 
 
 @dataclass(frozen=True, slots=True)
+class FocusPoint:
+    """One position the autofocus sweep visited.
+
+    `value` is HFR in pixels only under a STARHFR run; a CONTRASTDETECTION run
+    measures a contrast score at the same positions, and
+    `AutoFocusReport.method` is what says which.
+    """
+
+    position: int
+    value: float | None
+    """None where the sweep measured nothing here — the star detector found no
+    usable stars, which out at the ends of a sweep means the stars bloated past
+    its cut. The position is kept so the sweep's real range survives, and so a
+    chart breaks its line rather than drawing a chord across the failure.
+    """
+    error: float | None
+    """The spread of HFR ACROSS THE STARS in that frame, which N.I.N.A.'s own
+    chart draws as an error bar.
+
+    Not the uncertainty on the V: with hundreds of stars the error on the mean
+    is smaller by √N. A fat bar means the field has a spread of star sizes —
+    tilt, field curvature, elongation — so it reads as "check the optics",
+    never as "distrust this point". A 0 on a measured point is near enough one
+    detected star, which is a run to distrust.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class FitMinimum:
+    """Where one of the report's fits puts best focus.
+
+    `name` is the wire's own key, because the second entry is named after
+    whichever curve the profile fitted — `QuadraticMinimum` on a TRENDPARABOLIC
+    run — so it is read as "the entry that is not `TrendLineIntersection`"
+    rather than by a literal name. (The published spec calls it
+    `HyperbolicMinimum`; the rig disagrees, and the rig wins.)
+
+    `TrendLineIntersection`'s value is not a star size a system can produce:
+    the two trend lines extrapolate the V's wings past each other, so it lands
+    far under anything measured (0.333 px on a captured run). A chart must not
+    let it set the y axis.
+    """
+
+    name: str
+    position: int
+    value: float | None
+
+
+@dataclass(frozen=True, slots=True)
+class CurveFit:
+    """One curve N.I.N.A. fitted through the sweep, as a chart would draw it.
+
+    Only fits the run actually used are carried; N.I.N.A. sends an empty
+    equation for the rest.
+    """
+
+    name: str
+    """`Quadratic`, `LeftTrend`, `RightTrend`, `Hyperbolic` or `Gaussian`."""
+    equation: str
+    """As N.I.N.A. wrote it. Kept because `coefficients` is a best-effort parse
+    of a form only the polynomial fits have been observed in — for anything
+    else this string is the only record of what the fit actually was.
+    """
+    coefficients: tuple[float, ...] | None
+    """Highest power first, so `(a, b, c)` means `a·x² + b·x + c` — evaluate it
+    and the fitted line plots. None where the equation is not a polynomial.
+
+    The trend lines are fitted to the points on each side EXCLUDING the lowest
+    measured one, so re-fitting the published curve in a chart will not
+    reproduce them.
+    """
+    r_squared: float | None
+    """This fit's own R², which is what labels this line in a legend.
+
+    `AutoFocusReport.r_squared` is the WORST across the run, which is the right
+    number for a pass/fail threshold and the wrong one for a chart.
+    """
+
+
+@dataclass(frozen=True, slots=True)
 class AutoFocusReport:
     """The newest `/equipment/focuser/last-af`.
 
@@ -419,8 +499,38 @@ class AutoFocusReport:
     with the profile's `AutoFocusCurveFitting`, which is why it is a
     diagnostic and `hfr` is what a statistic keys on.
     """
+    curve: tuple[FocusPoint, ...]
+    """The sweep itself, ascending in focuser position — the V to plot.
+
+    Every position the sweep visited, including the ones that measured nothing
+    (`FocusPoint.value` None), so its length is what the run cost and
+    `measured_points` is what it got. Empty rather than None where the report
+    has no `MeasurePoints`: an absent sweep and an empty one draw the same.
+
+    The sweep is NOT necessarily centred on `initial_position` — one captured
+    run starts at the third of nine points — so nothing may assume the
+    starting marker lands mid-curve.
+    """
+    fits: tuple[CurveFit, ...]
+    """The curves N.I.N.A. fitted through `curve`, for a chart to overlay.
+
+    Empty where the report names none. A card cannot re-derive these from the
+    measured points: which points each fit used is undocumented and varies with
+    the fitting and the autofocus routine.
+    """
+    minima: tuple[FitMinimum, ...]
+    """Every entry of `Intersections` — the markers N.I.N.A.'s own chart draws.
+
+    `position`/`fitted_hfr` is where the run ended up, and it is the
+    componentwise MEAN of these two, so they are the explanation behind it:
+    when a run goes wrong, which one dragged the result is the diagnostic.
+    """
     measured_points: int | None
-    """How many points the sweep measured — what `duration_seconds` bought."""
+    """How many of the sweep's positions actually measured something.
+
+    Less than `len(curve)` where frames failed; `duration_seconds` bought the
+    failures too.
+    """
     initial_position: int | None
     """Where the focuser was before the run — `position` less this is the move."""
     initial_hfr: float | None

@@ -531,5 +531,142 @@ def test_a_focus_point_of_zero_is_no_measurement() -> None:
     assert map_last_autofocus(wire).initial_hfr is None
 
 
+def test_the_autofocus_curve_ascends_in_focuser_position() -> None:
+    """A plot needs monotonic x, and the report does not state its own order."""
+    curve = map_last_autofocus(load("imaging_guiding_last_af.json")).curve
+    assert [point.position for point in curve] == [
+        2212, 2247, 2282, 2317, 2352, 2387, 2422, 2457, 2492]
+
+
+def test_an_autofocus_curve_point_carries_its_spread() -> None:
+    """`Error` is how widely star sizes varied across that frame, which
+    N.I.N.A. draws as the point's error bar."""
+    curve = map_last_autofocus(load("imaging_guiding_last_af.json")).curve
+    assert curve[4].error == pytest.approx(0.10801730574556397)
+
+
+@pytest.fixture
+def failed_sweep_point():
+    """A two-point sweep whose first frame measured nothing. Fabricated —
+    every captured sweep is complete — and marked `synthetic` at each use."""
+    return map_last_autofocus(dict(
+        load("imaging_guiding_last_af.json"),
+        MeasurePoints=[{"Position": 2317, "Value": 0, "Error": 0},
+                       {"Position": 2352, "Value": 1.5, "Error": 0.1}]))
+
+
+@pytest.mark.synthetic
+def test_a_position_the_sweep_measured_nothing_at_stays_on_the_curve(
+    failed_sweep_point,
+) -> None:
+    """Deleting the row would take its position off the axis, and a chart
+    would then draw a straight chord across the failure instead of breaking
+    the line where the sweep actually lost a frame."""
+    assert [(p.position, p.value) for p in failed_sweep_point.curve] == [
+        (2317, None), (2352, 1.5)]
+
+
+@pytest.mark.synthetic
+def test_only_the_positions_that_measured_something_are_counted(
+    failed_sweep_point,
+) -> None:
+    """`measured_points` is what the run got; the curve's length is what it
+    paid for, failures included."""
+    assert (failed_sweep_point.measured_points,
+            len(failed_sweep_point.curve)) == (1, 2)
+
+
+@pytest.mark.synthetic
+def test_a_failed_sweep_point_is_not_the_best_hfr(failed_sweep_point) -> None:
+    """The headline HFR is a minimum over the curve, so a frame that measured
+    nothing must not read as the sharpest focus the run achieved."""
+    assert failed_sweep_point.hfr == pytest.approx(1.5)
+
+
+@pytest.mark.synthetic
+def test_a_sweep_point_without_a_position_cannot_be_plotted() -> None:
+    """Fabricates a positionless entry. A position is the x axis: a row
+    lacking one has nowhere to go on the chart, unlike a failed measurement."""
+    wire = dict(load("imaging_guiding_last_af.json"),
+                MeasurePoints=[{"Value": 1.7, "Error": 0.1},
+                               {"Position": 2352, "Value": 1.5, "Error": 0.1}])
+    assert [p.position for p in map_last_autofocus(wire).curve] == [2352]
+
+
+@pytest.mark.synthetic
+def test_a_report_without_a_sweep_has_an_empty_curve() -> None:
+    """Fabricates a report with no `MeasurePoints`. An absent sweep and an
+    empty one draw the same, so this is `()` rather than None — a chart should
+    not have to test for two kinds of nothing."""
+    wire = load("imaging_guiding_last_af.json")
+    del wire["MeasurePoints"]
+    report = map_last_autofocus(wire)
+    assert report.curve == ()
+    assert (report.hfr, report.measured_points) == (None, None)
+
+
+def test_a_fitted_curve_is_published_as_coefficients() -> None:
+    """N.I.N.A. writes the fit as an equation STRING. A chart needs to evaluate
+    it, and parsing it once here beats parsing it in JavaScript on every
+    render."""
+    quadratic = next(f for f in map_last_autofocus(
+        load("imaging_guiding_last_af.json")).fits if f.name == "Quadratic")
+    assert quadratic.coefficients == pytest.approx(
+        (0.0003058854621319121, -1.4293365331583652, 1671.5984427459177))
+
+
+def test_each_fit_keeps_its_own_r_squared() -> None:
+    """`AutoFocusReport.r_squared` is the worst fit of the run, which is right
+    for a threshold and cannot label an individual line in a chart legend."""
+    fits = {f.name: f.r_squared
+            for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits}
+    assert fits == pytest.approx({"Quadratic": 0.9710548595560263,
+                                  "LeftTrend": 0.9902518159347956,
+                                  "RightTrend": 0.9998991212499581})
+
+
+def test_a_fitting_this_run_did_not_use_is_not_published() -> None:
+    """N.I.N.A. carries one entry per fitting it knows and an empty equation
+    for the ones it did not run, which is no curve to draw."""
+    names = [f.name for f in map_last_autofocus(
+        load("imaging_guiding_last_af.json")).fits]
+    assert "Hyperbolic" not in names and "Gaussian" not in names
+
+
+def test_the_fit_minima_are_read_by_the_names_the_rig_uses() -> None:
+    """The second entry is named after whichever curve was fitted — the spec
+    calls it `HyperbolicMinimum`, this TRENDPARABOLIC run calls it
+    `QuadraticMinimum` — so keying on a literal name would find nothing."""
+    minima = map_last_autofocus(load("imaging_guiding_last_af.json")).minima
+    assert [(m.name, m.position) for m in minima] == [
+        ("TrendLineIntersection", 2344), ("QuadraticMinimum", 2336)]
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("equation", "expected"),
+    [
+        ("y = 2 * x^2 + -3 * x + 4", (2.0, -3.0, 4.0)),
+        ("y = -0.5 * x + 1.25", (-0.5, 1.25)),
+        ("y = 3 * x^3 + 1", (3.0, 0.0, 0.0, 1.0)),   # zero-filled, not skipped
+        ("y = 1E+05 * x + 2", (100000.0, 2.0)),      # the split must not be on "+"
+        ("", None),
+        ("y = a / (x - b)", None),                   # no hyperbolic form observed
+    ],
+)
+def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
+    """Fabricates `Fittings.Quadratic`: the corpus carries only a quadratic and
+    two trend lines, and a hyperbolic or gaussian run has never been captured,
+    so anything that is not a polynomial yields no coefficients rather than a
+    guess."""
+    wire = dict(load("imaging_guiding_last_af.json"),
+                Fittings={"Quadratic": equation})
+    fits = map_last_autofocus(wire).fits
+    if expected is None:
+        assert [f.coefficients for f in fits] in ([], [None])
+    else:
+        assert fits[0].coefficients == pytest.approx(expected)
+
+
 def test_a_rig_that_has_never_run_an_autofocus_has_no_report() -> None:
     assert map_last_autofocus({}) is None

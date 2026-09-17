@@ -59,10 +59,13 @@ from ..models import (
     DeviceMeta,
     DomeModel,
     EquipmentSnapshot,
+    CurveFit,
     FilterWheelModel,
+    FitMinimum,
     FlatDeviceModel,
     FlatsStatus,
     FocuserModel,
+    FocusPoint,
     Frame,
     GuiderModel,
     LivestackStatus,
@@ -677,6 +680,12 @@ def map_flats_status(wire: dict) -> FlatsStatus:
     )
 
 
+def _numeric(value: Any) -> float | None:
+    """A BARE wire value as a number; the `_number` path walk needs a dict."""
+    value = nan_to_none(value)
+    return float(value) if _is_number(value) else None
+
+
 def _positive(value: float | None) -> float | None:
     """A star has a size: 0 is "never measured", and a fit can extrapolate
     past zero. N.I.N.A. guards its own `initialHFR` the same way."""
@@ -688,14 +697,105 @@ def _hfr(wire: dict, point: str) -> float | None:
     return _positive(_number(wire, point, "Value"))
 
 
-def _measured_hfrs(wire: dict) -> list[float]:
-    """The sweep's own measurements, which is the only HFR in the report that
-    the camera actually saw."""
+def _focus_curve(wire: dict) -> tuple[FocusPoint, ...]:
+    """Every position the sweep visited — the only points that plot as a curve.
+
+    A position is what makes a point plottable, so a row without one goes; a
+    row whose measurement failed STAYS, at a None value. Deleting it instead
+    takes its x off the axis, and a line chart then joins the surviving
+    neighbours straight through the failure — a fabricated chord across the
+    region where the V bends hardest. A None breaks the line there, which is
+    what actually happened.
+
+    Sorted by position: a plot needs monotonic x, and nothing in the report
+    states its own order. Every capture is already ascending, so this only
+    catches a build that emitted acquisition order.
+    """
     points = wire.get("MeasurePoints")
     if not isinstance(points, list):
-        return []
-    measured = (_positive(_number(point, "Value")) for point in points)
-    return [value for value in measured if value is not None]
+        return ()
+    swept = []
+    for point in points:
+        position = _integer(point, "Position")
+        if position is None:
+            continue
+        # `_positive`, because a measurement of 0 is the star detector finding
+        # nothing usable. `Error` is not held to that rule: zero spread is a
+        # real reading, if a suspicious one.
+        swept.append(FocusPoint(position=position,
+                                value=_positive(_number(point, "Value")),
+                                error=_number(point, "Error")))
+    return tuple(sorted(swept, key=lambda point: point.position))
+
+
+_TERM = re.compile(
+    r"^(?P<coefficient>[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)"
+    r"(?:\s*\*\s*x(?:\^(?P<power>\d+))?)?$"
+)
+
+
+def _polynomial(equation: str) -> tuple[float, ...] | None:
+    """`"y = 0.0003 * x^2 + -1.429 * x + 1671.6"` → `(0.0003, -1.429, 1671.6)`.
+
+    Highest power first, zero-filled, so a card evaluates it as a plain
+    polynomial. None where the equation is not one — N.I.N.A. can fit a
+    hyperbolic or a gaussian, and neither's written form has been observed.
+
+    Split on `" + "` and not `"+"`, because .NET writes a negative coefficient
+    as `+ -1.429` and an exponent as `1E+05`; only the former carries spaces.
+    """
+    _, _, terms = equation.partition("=")
+    if not terms.strip():
+        return None
+    powers: dict[int, float] = {}
+    for term in terms.split(" + "):
+        match = _TERM.match(term.strip())
+        if match is None:
+            return None
+        power = 0 if "x" not in term else int(match["power"] or 1)
+        powers[power] = powers.get(power, 0.0) + float(match["coefficient"])
+    return tuple(powers.get(power, 0.0) for power in range(max(powers), -1, -1))
+
+
+def _curve_fits(wire: dict) -> tuple[CurveFit, ...]:
+    """The fits this run actually used, each with its OWN R².
+
+    N.I.N.A. carries one entry per fitting it knows and an empty equation for
+    every one this run did not use, so a non-empty equation is the filter.
+    `RSquares` has no Gaussian entry at all, hence a lookup rather than a zip.
+    """
+    fittings = wire.get("Fittings")
+    if not isinstance(fittings, dict):
+        return ()
+    squares = wire.get("RSquares")
+    squares = squares if isinstance(squares, dict) else {}
+    return tuple(
+        CurveFit(name=name, equation=equation,
+                 coefficients=_polynomial(equation),
+                 r_squared=_numeric(squares.get(name)))
+        for name, equation in fittings.items()
+        if isinstance(equation, str) and equation.strip()
+    )
+
+
+def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
+    """Every `Intersections` entry, keyed by the wire's own name.
+
+    Read generically because the non-trendline entry is named after whichever
+    curve was fitted — `QuadraticMinimum` here, where the spec says
+    `HyperbolicMinimum` — so keying on a literal name would silently find
+    nothing the moment the profile's curve fitting changed.
+    """
+    intersections = wire.get("Intersections")
+    if not isinstance(intersections, dict):
+        return ()
+    found = []
+    for name, point in intersections.items():
+        position = _integer(point, "Position")
+        if position is not None:
+            found.append(FitMinimum(name=name, position=position,
+                                    value=_positive(_number(point, "Value"))))
+    return tuple(found)
 
 
 def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
@@ -716,7 +816,10 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     leaves `InitialFocusPoint.Value` at 0 where the pre-sweep measurement found
     no stars, which is its own `if (initialHFR != 0 …)` guard. A fitted value
     can also come out negative, the trendline intersection extrapolating past
-    zero, so the rule is: positive or nothing.
+    zero, so the rule is: positive or nothing. `curve` keeps such a point at a
+    None value rather than dropping it, because a position the sweep visited
+    and failed at is part of what the run did; `measured_points` counts only
+    the ones that measured.
 
     `hfr` is the sweep's LOWEST MEASURED point, not
     `CalculatedFocusPoint.Value`: under a `TREND*` fitting that value is the
@@ -729,12 +832,13 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     method = _text(wire, "Method")
     is_hfr = method is None or method.upper() in _HFR_METHODS
     squares = wire.get("RSquares")
-    fits = [
+    computed = [
         value
-        for value in (nan_to_none(v) for v in (squares or {}).values())
-        if isinstance(value, (int, float))
+        for value in (_numeric(v) for v in (squares or {}).values())
+        if value is not None
     ] if isinstance(squares, dict) else []
-    measured = _measured_hfrs(wire)
+    curve = _focus_curve(wire)
+    measured = [point.value for point in curve if point.value is not None]
     return AutoFocusReport(
         timestamp=_timestamp(wire.get("Timestamp")),
         filter_name=_text(wire, "Filter") or None,
@@ -746,11 +850,14 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         position=_integer(wire, "CalculatedFocusPoint", "Position"),
         hfr=min(measured) if measured and is_hfr else None,
         fitted_hfr=_hfr(wire, "CalculatedFocusPoint") if is_hfr else None,
+        curve=curve,
+        fits=_curve_fits(wire),
+        minima=_fit_minima(wire),
         measured_points=len(measured) or None,
         initial_position=_integer(wire, "InitialFocusPoint", "Position"),
         initial_hfr=_hfr(wire, "InitialFocusPoint") if is_hfr else None,
         duration_seconds=_timespan_seconds(wire.get("Duration")),
-        r_squared=min(fits) if fits else None,
+        r_squared=min(computed) if computed else None,
     )
 
 

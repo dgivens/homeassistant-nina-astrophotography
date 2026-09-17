@@ -32,7 +32,7 @@ setup must not lose its cooler-power entity.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
@@ -177,13 +177,25 @@ def _autofocus(field: str) -> Callable[[NinaData], Any]:
 
 
 def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
-    """How the run was measured, and how much of it there was.
+    """How the run was measured, how much of it there was, and its curve.
 
     Attributes rather than entities: the four names are profile and plugin
     settings, and a statistic over a string is nothing. They are what says
     whether two HFR readings months apart are even on the same scale — HFR
     from Hocus Focus's fitted PSF and from the built-in detector are not — and
     the point count is what makes the duration mean anything.
+
+    `curve` is the sweep a card plots as the V, one `position`/`value`/`error`
+    row per position visited, `value` None where that frame measured nothing.
+    An attribute because a statistic cannot hold a curve: the sweep is the
+    shape of ONE run, and `autofocus_hfr` is already the series across runs.
+    `method` sits beside it because it is what says whether `value` is pixels.
+
+    `fits` and `minima` are the overlay — the fitted lines and the markers
+    N.I.N.A.'s own chart draws. They travel with the curve because a card
+    cannot re-derive them: which points each fit used is undocumented, and
+    `r_squared` the sensor is the WORST fit of the run, which labels no
+    single line.
     """
     report = data.autofocus_report
     if report is None:
@@ -194,6 +206,9 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
         "autofocuser": report.autofocuser,
         "star_detector": report.star_detector,
         "measured_points": report.measured_points,
+        "curve": [asdict(point) for point in report.curve],
+        "fits": [asdict(fit) for fit in report.fits],
+        "minima": [asdict(minimum) for minimum in report.minima],
     }
 
 
@@ -529,7 +544,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
     # ── The last autofocus run ───────────────────────────────────────────
     # Separate sensors rather than attributes on one: position and HFR earn
     # long-term statistics, which is what makes focus drift against
-    # temperature chartable, and an attribute is never recorded.
+    # temperature chartable, and no statistic is ever computed over an
+    # attribute.
     NinaSensorDescription(
         key="autofocus_last_run",
         translation_key="autofocus_last_run",
