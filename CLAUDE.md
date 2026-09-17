@@ -91,7 +91,13 @@ disk proves nothing.
 - **An entity is created only once its `kind`'s model is non-`None`**, and a
   listener adds the ones whose device appears later. A descriptor whose slot is
   absent must not be registered: it would mint a nameless device and take the
-  wrong entity id.
+  wrong entity id. Every equipment platform needs that listener, even one with a
+  single entity; gating only at setup misses equipment a sequence connects hours
+  later. Test it by setting up with the device never observed, then refreshing
+  with a captured snapshot where it is (`test_light.py`).
+- **Observation is latched in memory, not persisted.** After a restart, a
+  device that was down at setup shows restored `unavailable` registry rows
+  until the rig reports it again.
 - **A surviving entity keeps its 1.4.5 `unique_id`** through
   `unique_id_suffix`; only names and translation keys change. An orphaned
   registry row silently breaks the automation pointing at it — which for the
@@ -113,8 +119,8 @@ disk proves nothing.
 ## Branches
 
 - `main` — the shipping line, at 1.4.5 until 2.0 merges
-- `v2` — the 2.0 integration branch; work lands as stacked task PRs onto it
-  (stack #17). **Every `gh stack` command needs `GH_REPO=<your fork>` and
+- `v2` — the 2.0 integration branch. Stack PRs only when one builds on
+  another's diff (stack #17); independent fixes are plain PRs onto `v2`. **Every `gh stack` command needs `GH_REPO=<your fork>` and
   `--remote origin`**: it auto-detects `upstream` and will try to create
   duplicate PRs there. `gh repo set-default` covers `gh pr`, not `gh stack`.
   One branch per task, `v2-<phase><NN>-<slug>`; each phase ends with a
@@ -310,6 +316,13 @@ not.
 - **Ranges are per-device.** Flat panel brightness is `MinBrightness`–
   `MaxBrightness` and varies by hardware; mount tracking modes come from
   `TrackingModes` and differ by mount. Never hardcode either.
+- **The camera's setpoint is `TemperatureSetPoint`, not `TargetTemp`.**
+  `TargetTemp` reads 0 whatever the camera is cooling to. A warm-up leaves the
+  setpoint at its final value.
+- **`/flats/status` only tracks N.I.N.A.'s flat wizard.** Target Scheduler
+  flats leave it `Finished` / `-1`; they show up as FLAT frames in the image
+  history. Rotator `Position` is the sky angle; `ROTATOR-MOVED` carries the
+  mechanical angle.
 - **Out-of-range input is silently clamped** and answers `Success: true`.
   Validate client-side and raise `ServiceValidationError` — schema validation
   raising `vol.Invalid` is not the same thing, and Home Assistant re-raises it
