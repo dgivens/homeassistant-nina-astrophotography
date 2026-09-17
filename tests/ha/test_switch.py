@@ -179,26 +179,16 @@ async def test_on_and_off_are_the_channels_own_range_ends(
     assert rig.sent == [("/equipment/switch/set", {"index": 0, "value": 2.0})]
 
 
-@pytest.mark.parametrize(
-    ("state", "temperature"),
-    # Two setpoints, because one cannot tell a reading from a constant: 1.4.5
-    # hardcoded -10 °C over 15 minutes whatever the camera was set to.
-    [
-        ("imaging", 0.0),
-        pytest.param(
-            "camera_cooling_to_minus_ten", -10.0, marks=pytest.mark.synthetic
-        ),
-    ],
-)
 async def test_the_cooler_sends_the_setpoint_the_camera_reports(
-    hass: HomeAssistant, advance, rig, state: str, temperature: float
+    hass: HomeAssistant, advance, rig
 ) -> None:
     """/cool has no "resume at the existing target" form, so starting the
-    cooler has to name a temperature."""
-    await advance(state)
+    cooler has to name a temperature: the captured -5 °C, not the -10 °C 1.4.5
+    hardcoded whatever the camera was set to."""
+    await advance("imaging_guiding")
     await _call(hass, SERVICE_TURN_ON, COOLER)
     assert rig.sent == [
-        ("/equipment/camera/cool", {"temperature": temperature, "minutes": -1})
+        ("/equipment/camera/cool", {"temperature": -5.0, "minutes": -1})
     ]
 
 
@@ -206,8 +196,9 @@ async def test_the_cooler_sends_the_setpoint_the_camera_reports(
 async def test_the_cooler_refuses_to_start_without_a_setpoint(
     hass: HomeAssistant, advance, rig
 ) -> None:
-    """A camera with no cooling reports `TargetTemp: "NaN"`. Cooling to a
-    guessed temperature is worse than refusing."""
+    """A camera with no cooling reports `TemperatureSetPoint: "NaN"`. Cooling
+    to a guessed temperature is worse than refusing. Fabricated: no uncooled
+    camera has been captured."""
     await advance("camera_without_a_cooling_setpoint")
     with pytest.raises(ServiceValidationError):
         await _call(hass, SERVICE_TURN_ON, COOLER)

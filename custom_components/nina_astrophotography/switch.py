@@ -68,7 +68,7 @@ class NinaSwitchDescription(SwitchEntityDescription):
 
     `command` receives the published snapshot as well as the client, because a
     command can need a reading to send: the cooler's setpoint is the camera's
-    own `TargetTemp`.
+    own `TemperatureSetPoint`.
 
     `supported` is a second gate beyond the device being observed, for a
     capability the driver reports per device — a flat panel with no cover would
@@ -144,6 +144,9 @@ async def _set_guiding(client: NinaClientV2, data: NinaData, on: bool) -> None:
 
 
 async def _set_cooler(client: NinaClientV2, data: NinaData, on: bool) -> None:
+    """On resumes at the driver's current setpoint, which a warm-up leaves at
+    its own final value rather than the imaging temperature. To cool to a
+    chosen temperature, set the target temperature number instead."""
     camera = data.snapshot.camera
     setpoint = camera.target_temperature if camera is not None else None
     if on and setpoint is None:

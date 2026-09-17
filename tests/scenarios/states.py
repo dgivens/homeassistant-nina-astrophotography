@@ -429,13 +429,10 @@ STATES: dict[str, State] = {
     },
     "guider_lost_lock": _with_readings(_IMAGING_GUIDING, "Guider", State="LostLock"),
     "guider_stopped": _with_readings(_IMAGING_GUIDING, "Guider", State="Stopped"),
-    # A camera cooling to -10 °C, and one that reports no setpoint at all.
-    # Every camera capture reads `TargetTemp: 0`, which cannot tell a setpoint
-    # that was read from one that was hardcoded; `"NaN"` is how a camera with
-    # no cooling reports the field, and the cooler has nothing to send.
-    "camera_cooling_to_minus_ten": _with_readings(_IMAGING, "Camera", TargetTemp=-10),
+    # A camera with no cooling, which reports the setpoint as "NaN" and so
+    # gives the cooler nothing to send.
     "camera_without_a_cooling_setpoint": _with_readings(
-        _IMAGING, "Camera", TargetTemp="NaN"
+        _IMAGING, "Camera", TemperatureSetPoint="NaN"
     ),
     # A third channel spanning 0-100, which belongs on `number`, not `switch`.
     "switch_hub_with_a_dimmable_channel": _with_readings(
