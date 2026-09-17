@@ -8,6 +8,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Breaking
 
+- **Home Assistant 2026.9.0 or later is required**; 1.4.5 declared 2024.1.0.
 - **The config entry is now titled by an instance name you choose**, not
   `N.I.N.A. <version> @ <host>`: a version in a title goes stale on the rig's
   next update, and the title is what names the hub device. Existing entries keep
@@ -70,12 +71,56 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **All five blueprints were rewritten** and their inputs renamed, so an
   automation built from one has to be rebuilt. Every one of them hardcoded
   entity ids this release renames or removes, so all five were inert on 2.0
-  either way.
+  either way. Two input changes to know about:
+  - Notifications go to a **notify entity** (`notify_target`), not a service
+    name (`notify_device`). A notify service that did not exist raised an
+    error that stopped the automation before it acted, so a typo cancelled the
+    whole abort.
+  - `weather_abort.yaml` **no longer triggers on weather sensors**. It aborts on
+    the safety monitor reporting unsafe or dropping out; weather conditions are
+    only used to hold back a resume.
 - **The Lovelace cards take a `prefix:`** — the slugified instance name their
   entity ids carry, `n_i_n_a` by default. Without it a card reads nothing.
+- **`binary_sensor.<instance>_sequence_running` is removed**, replaced by
+  `_sequencer_running` and `_imaging`. It reported frames arriving under a name
+  that promised the sequencer, so it read `off` through every Target Scheduler
+  wait. Neither replacement claims its `unique_id`: the old row goes unavailable,
+  and each automation using it has to be pointed at the one it meant. The
+  session shutdown blueprint wants `_sequencer_running`.
 
 ### Added
 
+- **Whether the rig is working**, as five hub entities:
+  - `binary_sensor.<instance>_sequencer_running` — the sequencer is executing,
+    including through a wait for darkness, a target window or a safety loop.
+  - `binary_sensor.<instance>_imaging` — frames are arriving: a rising image
+    count, the camera exposing, or a frame saved in the last five minutes.
+  - `binary_sensor.<instance>_scheduler_waiting` and
+    `sensor.<instance>_wait_ends_at` — Target Scheduler is waiting, and until
+    when.
+  - `sensor.<instance>_last_frame_at` — when the newest frame of any type was
+    saved, flats included.
+- `binary_sensor.<instance>_focuser_autofocus_failed`, `on` when an autofocus
+  run hangs (a start with no finish past the profile's timeout) or is rejected
+  (its R² below the profile's threshold). An interrupted run is not a failure.
+- **The N.I.N.A. switch device's channels**, one entity each by shape: a
+  read-only channel is a `sensor`, an on/off channel a `switch`, and a wider
+  range a `number`.
+- **Controls and readings 1.4.5 did not have:** camera dew heater, flat panel
+  cover and rotator reverse (`switch`); flat panel brightness, camera USB limit
+  and rotator mechanical position (`number`); guider clear calibration
+  (`button`); mount side of pier and flat panel cover state (`sensor`); filter
+  wheel moving, rotator moving and rotator synced (`binary_sensor`). The
+  livestack `switch` is new too.
+- **Dome entities** — shutter status, azimuth, following, at park, at home,
+  slewing, and open, close, park and home buttons. They are derived from the API
+  specification and untested against hardware, and ship disabled.
+- `image.<instance>_livestack` carries `target` and `filter` attributes naming
+  the stack it shows.
+- The hub device links to the rig's web UI (`configuration_url`).
+- `sensor.<instance>_session_start`, the boundary the session statistics count
+  from. A disabled diagnostic: it reads your rollover hour every day, and any
+  other hour means the rig's clock offset is not being picked up.
 - **A session rollover hour**, under **Configure**: `rollover_hour`, 0–23,
   default 12. It is read in the RIG's local hours, so a rig whose Windows clock
   runs UTC can put the boundary at a real midday on site rather than in the
@@ -133,14 +178,55 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - Ranges come from the driver: flat panel brightness scales to the panel's own
   `MinBrightness`–`MaxBrightness`, and the tracking select offers the modes the
   mount reports.
+- **Weather channels appear on their first real reading** rather than all at
+  setup, so a station that never reports a channel creates no permanently
+  `unknown` sensor for it. A channel reads `unknown` while its source sends
+  `"NaN"`, and `unavailable` when a different source is active that cannot
+  provide it.
+- `image.<instance>_last_frame`'s timestamp is when the newest frame was saved.
+- A device dropping out is logged once when it disconnects and once when it
+  reconnects.
+- The host is trimmed and lower-cased when an entry is added, so the same rig
+  typed two ways is recognised as a duplicate.
+- **The blueprints act in a safer order.** The dome closes only after the mount
+  has confirmed it is parked, and before the camera warms. A resume waits for
+  conditions to stay safe for the configured time and checks again before
+  restarting. Session startup checks safety before opening anything and does not
+  enable tracking at the park position. The meridian warning reports time to
+  the flip itself.
+- **The observatory card confirms** before stopping a sequence, parking the
+  mount or closing the dome, and takes `device_id:` to say which rig its
+  buttons act on.
+- `info.md` is gone; HACS shows the README.
+- **`switch.<instance>_camera_cooler` cools to the camera's own setpoint** over
+  the profile's ramp, where 1.4.5 hardcoded −10 °C over 15 minutes. A camera
+  reporting no setpoint is refused. After a warm-up the setpoint is the
+  warm-up's final value, so switching on resumes there; set
+  `number.<instance>_camera_target_temperature` to cool to a chosen value.
 
 ### Fixed
 
 - **`Last Image HFR` no longer reads `0` after a flat run.** Calibration frames
-  report `HFR 0` and `Stars -1` as sentinels; those are `unknown` now, the
+  report `HFR 0` and `Stars -1` as sentinels; those, and a calibration
+  frame's guide RMS, are `unknown` now, the
   session aggregates exclude them instead of averaging zeros into the night,
   and the last-image sensors report the last **light** — so a flat run leaves
   your imaging readouts where they were rather than blanking them.
+- **The filter select sends the wheel's own slot id**, not the option's
+  position in the list. A wheel whose slots are not numbered in list order
+  changed to the wrong filter while reporting success.
+- **`select.<instance>_mount_tracking_rate` shows the mount's actual mode.**
+  1.4.5 read a field the API does not send and always showed `Sidereal`.
+- **`sensor.<instance>_sequence_target` and `_sequence_progress` report
+  values.** 1.4.5 looked for them in the wrong place and read nothing. Progress
+  is `unknown` on a Target Scheduler rig, which publishes no count, and ships
+  disabled.
+- **The cards no longer report good news they do not have.** An unknown safety
+  state read as "Conditions safe", missing guiding RMS as perfect guiding, and
+  an empty image history broke the image panel.
+- **`number.<instance>_camera_target_temperature` reads the camera's real
+  setpoint.** It read `TargetTemp`, which is 0 whatever the camera is cooling
+  to; the driver's setpoint is `TemperatureSetPoint`.
 - **The flat panel no longer jumps to full output** when switched on. 1.4.5 sent
   Home Assistant's 0–255 brightness straight to a driver whose scale is its own.
 - `"NaN"` — which .NET writes as a JSON *string* — is mapped to `unknown` on
@@ -161,6 +247,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - Entities that mirrored another entity's state, and the per-frame trend and
   sparkline sensors — the frame-statistics family. The cards compute what they
   need from the last-frame sensors and `/image-history`.
+- `number.*_filter_wheel_slot`: `select.<instance>_filter_wheel_filter` makes
+  the same choice by name.
 - Controls with a survivor elsewhere: `button.*_start_guiding` and
   `*_stop_guiding` (now `switch.<instance>_guider`), `switch.*_mount_tracking`
   (now `select.<instance>_mount_tracking_rate`), and
