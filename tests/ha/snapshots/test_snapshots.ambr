@@ -275,11 +275,18 @@
       'unique_id': '01JTESTENTRY0000000000000_autofocus_duration',
     }),
     dict({
-      'enabled_default': False,
+      'enabled_default': True,
       'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
       'entity_id': 'sensor.n_i_n_a_focuser_autofocus_filter',
       'original_name': 'Autofocus filter',
       'unique_id': '01JTESTENTRY0000000000000_autofocus_filter',
+    }),
+    dict({
+      'enabled_default': False,
+      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_id': 'sensor.n_i_n_a_focuser_autofocus_fitted_hfr',
+      'original_name': 'Autofocus fitted HFR',
+      'unique_id': '01JTESTENTRY0000000000000_autofocus_fitted_hfr',
     }),
     dict({
       'enabled_default': True,

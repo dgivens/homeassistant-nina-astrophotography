@@ -42,6 +42,7 @@ sensor.n_i_n_a_flats_state
 sensor.n_i_n_a_flats_total_iterations
 sensor.n_i_n_a_focuser_autofocus_duration
 sensor.n_i_n_a_focuser_autofocus_filter
+sensor.n_i_n_a_focuser_autofocus_fitted_hfr
 sensor.n_i_n_a_focuser_autofocus_hfr
 sensor.n_i_n_a_focuser_autofocus_position
 sensor.n_i_n_a_focuser_autofocus_r2
