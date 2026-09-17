@@ -118,6 +118,16 @@ _SEQUENCE_OWN_KEYS = ("Name", "Status", "Iterations", *_SEQUENCE_CHILDREN)
 # 'Tot: 0.26 (0.42")' — the bracketed figure is the arcsecond one.
 _TOTAL_RMS_ARCSEC = re.compile(r"\(\s*([-+]?\d*\.?\d+)")
 
+# .NET's TimeSpan: `[-][d.]hh:mm:ss[.fffffff]`, days separated by a DOT — so
+# "1.02:03:04" is a day and two hours, not a fractional day.
+_TIMESPAN = re.compile(
+    r"^(?P<sign>-)?(?:(?P<days>\d+)\.)?(?P<hours>\d{1,2}):"
+    r"(?P<minutes>\d{2}):(?P<seconds>\d{2}(?:\.\d+)?)$"
+)
+
+# The one method whose focus points are not HFR in pixels.
+_CONTRAST_METHOD = "CONTRASTDETECTION"
+
 
 def nan_to_none(value: Any) -> Any:
     """The blanket rule."""
@@ -161,6 +171,18 @@ def _flag(wire: Any, *path: str) -> bool | None:
 def _text(wire: Any, *path: str) -> str | None:
     value = _dig(wire, *path)
     return value if isinstance(value, str) else None
+
+
+def _timespan_seconds(raw: Any) -> float | None:
+    """A .NET TimeSpan string as seconds; None for anything else."""
+    match = _TIMESPAN.match(raw.strip()) if isinstance(raw, str) else None
+    if match is None:
+        return None
+    total = (int(match["days"] or 0) * 86400
+             + int(match["hours"]) * 3600
+             + int(match["minutes"]) * 60
+             + float(match["seconds"]))
+    return -total if match["sign"] else total
 
 
 def _timestamp(raw: Any) -> datetime | None:
@@ -661,9 +683,15 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     `"NaN"` rule is the worst fit actually computed — which is what the
     profile's threshold has to judge. No fitting-to-R² table is needed, and
     none is guessed at.
+
+    A CONTRASTDETECTION run measures a contrast score rather than star sizes,
+    so its focus-point values are not pixels and are dropped: one statistic
+    cannot hold both quantities. The positions stay — a step is a step.
     """
     if not wire:
         return None
+    method = _text(wire, "Method")
+    is_hfr = method != _CONTRAST_METHOD
     squares = wire.get("RSquares")
     fits = [
         value
@@ -674,10 +702,13 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         timestamp=_timestamp(wire.get("Timestamp")),
         filter_name=_text(wire, "Filter") or None,
         temperature=_number(wire, "Temperature"),
-        method=_text(wire, "Method"),
+        method=method,
         fitting=_text(wire, "Fitting"),
         position=_integer(wire, "CalculatedFocusPoint", "Position"),
-        hfr=_number(wire, "CalculatedFocusPoint", "Value"),
+        hfr=_number(wire, "CalculatedFocusPoint", "Value") if is_hfr else None,
+        initial_position=_integer(wire, "InitialFocusPoint", "Position"),
+        initial_hfr=_number(wire, "InitialFocusPoint", "Value") if is_hfr else None,
+        duration_seconds=_timespan_seconds(wire.get("Duration")),
         r_squared=min(fits) if fits else None,
     )
 

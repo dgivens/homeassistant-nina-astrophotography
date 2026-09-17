@@ -174,3 +174,60 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(
     `sensor.last_image_*` reports."""
     await advance("dawn_flats")
     assert hass.states.get(LAST_FRAME_AT).state == "2026-09-04T11:26:34+00:00"
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "expected"),
+    [
+        ("sensor.n_i_n_a_focuser_autofocus_position", 2340.0),
+        ("sensor.n_i_n_a_focuser_autofocus_starting_position", 2352.0),
+        ("sensor.n_i_n_a_focuser_autofocus_hfr", 1.0932570683996303),
+        ("sensor.n_i_n_a_focuser_autofocus_starting_hfr", 1.5191799853991006),
+        ("sensor.n_i_n_a_focuser_autofocus_temperature", 25.7),
+        ("sensor.n_i_n_a_focuser_autofocus_duration", 242.0079444),
+    ],
+    ids=lambda value: value if isinstance(value, str) else "",
+)
+async def test_the_last_autofocus_run_is_published_reading_by_reading(
+    hass: HomeAssistant, config_entry, rig, set_up_at, entity_id: str, expected: float
+) -> None:
+    """Separate sensors, not attributes on one: only a state is recorded, and
+    focus drift against temperature is a chart over months."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    assert float(hass.states.get(entity_id).state) == pytest.approx(expected)
+
+
+async def test_the_last_autofocus_time_is_published_in_utc_with_how_it_was_run(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """01:10 on a UTC−5 rig, and Home Assistant drops the sub-second part a
+    TIMESTAMP sensor is given. The age of the run is what says a report belongs
+    to a previous night, which every other autofocus reading depends on."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    state = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus")
+
+    assert state.state == "2026-09-05T06:10:14+00:00"
+    assert state.attributes["method"] == "STARHFR"
+
+
+async def test_the_autofocus_readings_exist_before_a_run_reports(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    """The dawn snapshot serves no report. The entities still belong to the
+    focuser, and an automation may point at one from the first restart."""
+    assert hass.states.get(
+        "sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"
+
+
+@pytest.mark.parametrize(
+    "suffix", ["autofocus_r_squared", "autofocus_filter"], ids=lambda s: s
+)
+async def test_the_autofocus_diagnostics_ship_disabled(
+    hass: HomeAssistant, config_entry, rig, set_up_at, entity_registry, suffix: str
+) -> None:
+    """R² and the filter qualify a reading rather than being one: neither is
+    worth a row on a focuser card, and both are what a bad run is read with."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    entity_id = _registered(entity_registry, config_entry, suffix)
+
+    assert entity_registry.async_get(entity_id).disabled_by is not None

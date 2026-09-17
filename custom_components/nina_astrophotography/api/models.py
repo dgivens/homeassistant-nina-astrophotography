@@ -391,7 +391,17 @@ class AutoFocusReport:
     position: int | None
     """Where the run left the focuser."""
     hfr: float | None
-    """The fitted minimum — the HFR the curve predicts at `position`."""
+    """The fitted minimum — the HFR the curve predicts at `position`.
+
+    None for a CONTRASTDETECTION run, whose focus points carry a contrast
+    score rather than pixels.
+    """
+    initial_position: int | None
+    """Where the focuser was before the run — `position` less this is the move."""
+    initial_hfr: float | None
+    """The measured HFR at `initial_position`, under `hfr`'s method rule."""
+    duration_seconds: float | None
+    """What the run cost the session, from the report's .NET TimeSpan."""
     r_squared: float | None
     """The WORST fit in the report, which is what a threshold must judge.
 

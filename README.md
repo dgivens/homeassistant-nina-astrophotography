@@ -123,7 +123,7 @@ falls at noon in **Home Assistant's** zone instead.
 ## Entities
 
 Entity ids are `<domain>.<instance>_<name>` — with the default instance name
-`N.I.N.A.`, `sensor.n_i_n_a_mount_altitude`. The reference rig registers 93
+`N.I.N.A.`, `sensor.n_i_n_a_mount_altitude`. The reference rig registers 102
 entities, two of them its switch hub's channels. A dome adds ten more, and a
 weather source reporting cloud cover, sky quality or star FWHM adds one each.
 
@@ -131,7 +131,7 @@ weather source reporting cloud cover, sky quality or star FWHM adds one each.
 |---|---|
 | Camera | temperature, cooler power, gain, offset, state; target temperature and USB limit (`number`); cooler and dew heater (`switch`); exposing (`binary_sensor`); abort exposure (`button`) |
 | Mount | RA, declination, altitude, azimuth, sidereal time, side of pier, time to meridian flip; at park, at home (`binary_sensor`); tracking rate (`select`); park, unpark, find home (`button`) |
-| Focuser | position, temperature, step size; position (`number`); moving, autofocus failed (`binary_sensor`); autofocus (`button`) |
+| Focuser | position, temperature, step size; the last autofocus run — time, starting and final position, starting and final HFR, temperature, duration, R² and filter; position (`number`); moving, autofocus failed (`binary_sensor`); autofocus (`button`) |
 | Filter Wheel | filter (`select`); moving (`binary_sensor`) |
 | Guider | RMS total, RA and declination, status; guider (`switch`); clear calibration (`button`) |
 | Rotator | position, mechanical position (`number`); reverse (`switch`); moving, synced (`binary_sensor`) |
@@ -323,6 +323,31 @@ What a flat run does to the rest of the rig's entities:
   restart they read `unavailable` until it connects again. While it is
   connected, a scene or automation that touches the panel's light or brightness
   competes with N.I.N.A.'s own brightness control and spoils that flat set.
+
+## Autofocus
+
+`sensor.<instance>_focuser_last_autofocus` and the `autofocus_*` sensors beside
+it publish N.I.N.A.'s last autofocus report — its time, where the run started
+and finished in steps, the starting and final HFR, the focuser temperature at
+the run, and how long it took. R² and the filter are diagnostics, disabled by
+default.
+
+Three things the report itself cannot tell you:
+
+- **A rejected run replaces the last good one.** N.I.N.A. writes the report
+  before it decides whether the run was any good, and the file carries no
+  verdict. `binary_sensor.<instance>_focuser_autofocus_failed` is that
+  judgement, made by comparing R² with your profile's `RSquaredThreshold`.
+- **A run that hangs writes no report at all**, so these sensors keep showing
+  the previous one. `last_autofocus` is how old it is; the failed flag catches
+  the hang separately, as a start nothing answered.
+- **The report outlives a restart and the night.** A value here can be from
+  three nights ago. Date it against `last_autofocus` before believing it.
+
+`autofocus_hfr` and `autofocus_starting_hfr` read `unknown` on a
+`CONTRASTDETECTION` run: that method measures a contrast score rather than
+star sizes, so its numbers are not pixels and are not comparable with the rest.
+The positions and the duration are unaffected.
 
 ## Errors
 
