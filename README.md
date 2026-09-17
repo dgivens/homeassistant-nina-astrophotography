@@ -368,6 +368,36 @@ autofocus in X °C" gauge.
 star sizes, so its numbers are not pixels and are not comparable with the rest.
 The positions and the duration are unaffected.
 
+### Plotting the V-curve
+
+`sensor.<instance>_focuser_last_autofocus` carries the whole sweep in its
+`curve` attribute — one row per measurement, in the order N.I.N.A. took them:
+
+```yaml
+curve:
+  - position: 2212
+    value: 6.767517920907358
+    error: 0.3301867392819892
+  - position: 2247
+    value: 4.851116817456493
+    error: 0.2779231723941218
+  # …
+```
+
+`value` is HFR in pixels under a `STARHFR` run and a contrast score under
+`CONTRASTDETECTION`; the `method` attribute beside it says which. `error` is
+the measurement's standard deviation, which is the error bar N.I.N.A.'s own
+chart draws. Points the star detector failed on are dropped rather than
+reported as zero, so a gap in the V is a gap, and `measured_points` is how many
+rows survived.
+
+An attribute, not entities: a curve is not a series, and there is no useful
+statistic over "the fourth point of whatever run happened last".
+`sensor.<instance>_focuser_autofocus_hfr` is the series — one number per run,
+recorded — and the curve is the shape of the single run behind it. Nothing in
+Home Assistant charts an attribute natively; feed it to a custom card, an
+ApexCharts `data_generator`, or a template.
+
 ## Errors
 
 `event.<instance>_error` fires `platesolve_failed`, `camera_download_timeout`

@@ -531,5 +531,54 @@ def test_a_focus_point_of_zero_is_no_measurement() -> None:
     assert map_last_autofocus(wire).initial_hfr is None
 
 
+def test_the_autofocus_curve_keeps_the_sweep_in_order() -> None:
+    """The V a chart plots. Order is the report's own — N.I.N.A. sweeps low to
+    high — and reordering it would be inventing a reading the rig never
+    described."""
+    curve = map_last_autofocus(load("imaging_guiding_last_af.json")).curve
+    assert [point.position for point in curve] == [
+        2212, 2247, 2282, 2317, 2352, 2387, 2422, 2457, 2492]
+
+
+def test_an_autofocus_curve_point_carries_its_spread() -> None:
+    """`Error` is the measurement's standard deviation, which is the error bar
+    on the point; without it a chart cannot say how well the V is known."""
+    curve = map_last_autofocus(load("imaging_guiding_last_af.json")).curve
+    assert curve[4].value == pytest.approx(1.55229727412562)
+    assert curve[4].error == pytest.approx(0.10801730574556397)
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("point", "reason"),
+    [
+        ({"Position": 2317, "Value": 0, "Error": 0}, "no stars detected"),
+        ({"Value": 1.7, "Error": 0.1}, "no position"),
+        ("not a point", "not an object"),
+    ],
+)
+def test_the_autofocus_curve_drops_a_point_that_measured_nothing(point, reason) -> None:
+    """Fabricates one `MeasurePoints` entry: every captured sweep is complete.
+    A frame the detector failed on still reports, at value 0, and plotting
+    that draws a spike through the floor of the V rather than a gap."""
+    wire = dict(load("imaging_guiding_last_af.json"))
+    wire["MeasurePoints"] = [point, {"Position": 2352, "Value": 1.5, "Error": 0.1}]
+    report = map_last_autofocus(wire)
+    assert [p.position for p in report.curve] == [2352]
+    assert report.measured_points == 1
+
+
+@pytest.mark.synthetic
+def test_a_report_without_a_sweep_has_an_empty_curve() -> None:
+    """Fabricates a report with no `MeasurePoints`. An absent sweep and an
+    empty one draw the same, so this is `()` rather than None — a chart should
+    not have to test for two kinds of nothing."""
+    wire = {key: value for key, value in
+            load("imaging_guiding_last_af.json").items() if key != "MeasurePoints"}
+    report = map_last_autofocus(wire)
+    assert report.curve == ()
+    assert (report.hfr, report.measured_points) == (None, None)
+
+
 def test_a_rig_that_has_never_run_an_autofocus_has_no_report() -> None:
     assert map_last_autofocus({}) is None

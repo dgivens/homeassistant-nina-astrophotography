@@ -177,13 +177,20 @@ def _autofocus(field: str) -> Callable[[NinaData], Any]:
 
 
 def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
-    """How the run was measured, and how much of it there was.
+    """How the run was measured, how much of it there was, and its curve.
 
     Attributes rather than entities: the four names are profile and plugin
     settings, and a statistic over a string is nothing. They are what says
     whether two HFR readings months apart are even on the same scale — HFR
     from Hocus Focus's fitted PSF and from the built-in detector are not — and
     the point count is what makes the duration mean anything.
+
+    `curve` is the sweep a card plots as the V, one row per measurement:
+    `position`, `value` and `error`. `value` is pixels only under a STARHFR
+    `method`, which sits beside it here for that reason. A statistic cannot
+    hold a curve, so an attribute is the right shape and the recorder's never
+    storing it costs nothing — the report is a snapshot of one run, and
+    `autofocus_hfr` is the series.
     """
     report = data.autofocus_report
     if report is None:
@@ -194,6 +201,11 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
         "autofocuser": report.autofocuser,
         "star_detector": report.star_detector,
         "measured_points": report.measured_points,
+        "curve": [
+            {"position": point.position, "value": point.value,
+             "error": point.error}
+            for point in report.curve
+        ],
     }
 
 

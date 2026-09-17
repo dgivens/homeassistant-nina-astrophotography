@@ -220,6 +220,19 @@ async def test_the_last_autofocus_carries_what_measured_it(
     assert attributes["star_detector"] == "Hocus Focus"
 
 
+async def test_the_last_autofocus_publishes_the_curve_a_card_plots(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """A curve is not a statistic, so it rides as an attribute — and it has to
+    reach a Lovelace card as plain JSON rows rather than as models."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    curve = hass.states.get(
+        "sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
+
+    assert curve[4] == {"position": 2352, "value": pytest.approx(1.55229727412562),
+                        "error": pytest.approx(0.10801730574556397)}
+
+
 async def test_the_autofocus_readings_exist_before_a_run_reports(
     hass: HomeAssistant, loaded_entry
 ) -> None:

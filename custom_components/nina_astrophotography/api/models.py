@@ -366,6 +366,24 @@ class AutoFocusState:
 
 
 @dataclass(frozen=True, slots=True)
+class FocusPoint:
+    """One measurement the autofocus sweep took, at one focuser position.
+
+    `value` is HFR in pixels only under a STARHFR run; a CONTRASTDETECTION run
+    measures a contrast score at the same positions, so the curve is still a
+    curve but its y axis is not pixels. `AutoFocusReport.method` is what says
+    which, and it travels with the points for that reason.
+    """
+
+    position: int
+    value: float
+    error: float | None
+    """The measurement's standard deviation, which N.I.N.A.'s own chart draws
+    as an error bar. 0 where the detector reports no spread.
+    """
+
+
+@dataclass(frozen=True, slots=True)
 class AutoFocusReport:
     """The newest `/equipment/focuser/last-af`.
 
@@ -418,6 +436,15 @@ class AutoFocusReport:
     against a best measured 1.55 on one captured run). Its bias also changes
     with the profile's `AutoFocusCurveFitting`, which is why it is a
     diagnostic and `hfr` is what a statistic keys on.
+    """
+    curve: tuple[FocusPoint, ...]
+    """The sweep itself, in the order the report lists it — the V to plot.
+
+    Only points carrying both a position and a positive value survive, so a
+    frame the detector failed on leaves a gap rather than a spike at zero, and
+    `measured_points` is this tuple's length. Empty where the report has no
+    `MeasurePoints` at all, never None: an absent sweep and an empty one are
+    the same thing to draw.
     """
     measured_points: int | None
     """How many points the sweep measured — what `duration_seconds` bought."""

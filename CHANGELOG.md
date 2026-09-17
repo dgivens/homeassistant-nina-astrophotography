@@ -149,8 +149,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - Session statistics carry a `by_target` and `by_filter` breakdown as attributes
   on `sensor.<instance>_session_avg_hfr`.
 - **Ten sensors off the last autofocus report**, on the Focuser device: the
-  run's time (carrying method, fitting, autofocuser, star detector and point
-  count as attributes), starting and final position, the HFR before and during
+  run's time (carrying method, fitting, autofocuser, star detector, point count
+  and the sweep's own measurements as attributes — a `curve` of
+  `position`/`value`/`error` rows a Lovelace card can plot as the V), starting
+  and final position, the HFR before and during
   the sweep, the focuser temperature at the run, its duration and the filter it
   was measured through, plus R² and the fitted HFR as diagnostics disabled by
   default. The integration already downloaded the report for

@@ -63,6 +63,7 @@ from ..models import (
     FlatDeviceModel,
     FlatsStatus,
     FocuserModel,
+    FocusPoint,
     Frame,
     GuiderModel,
     LivestackStatus,
@@ -688,14 +689,28 @@ def _hfr(wire: dict, point: str) -> float | None:
     return _positive(_number(wire, point, "Value"))
 
 
-def _measured_hfrs(wire: dict) -> list[float]:
-    """The sweep's own measurements, which is the only HFR in the report that
-    the camera actually saw."""
+def _focus_curve(wire: dict) -> tuple[FocusPoint, ...]:
+    """The sweep's own measurements — the only values in the report the camera
+    actually saw, and the only ones that plot as a curve.
+
+    A point needs both a position and a positive value to be a measurement: a
+    frame the star detector failed on still reports, at value 0, and plotting
+    that draws a spike to the floor through the bottom of the V.
+    """
     points = wire.get("MeasurePoints")
     if not isinstance(points, list):
-        return []
-    measured = (_positive(_number(point, "Value")) for point in points)
-    return [value for value in measured if value is not None]
+        return ()
+    measured = []
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+        position = _integer(point, "Position")
+        value = _positive(_number(point, "Value"))
+        if position is None or value is None:
+            continue
+        measured.append(FocusPoint(position=position, value=value,
+                                   error=_number(point, "Error")))
+    return tuple(measured)
 
 
 def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
@@ -734,7 +749,7 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         for value in (nan_to_none(v) for v in (squares or {}).values())
         if isinstance(value, (int, float))
     ] if isinstance(squares, dict) else []
-    measured = _measured_hfrs(wire)
+    curve = _focus_curve(wire)
     return AutoFocusReport(
         timestamp=_timestamp(wire.get("Timestamp")),
         filter_name=_text(wire, "Filter") or None,
@@ -744,9 +759,10 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         autofocuser=_text(wire, "AutoFocuserName"),
         star_detector=_text(wire, "StarDetectorName"),
         position=_integer(wire, "CalculatedFocusPoint", "Position"),
-        hfr=min(measured) if measured and is_hfr else None,
+        hfr=min(point.value for point in curve) if curve and is_hfr else None,
         fitted_hfr=_hfr(wire, "CalculatedFocusPoint") if is_hfr else None,
-        measured_points=len(measured) or None,
+        curve=curve,
+        measured_points=len(curve) or None,
         initial_position=_integer(wire, "InitialFocusPoint", "Position"),
         initial_hfr=_hfr(wire, "InitialFocusPoint") if is_hfr else None,
         duration_seconds=_timespan_seconds(wire.get("Duration")),
