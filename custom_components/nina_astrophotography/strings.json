@@ -188,6 +188,9 @@
       "autofocus_filter": {
         "name": "Autofocus filter"
       },
+      "autofocus_fitted_hfr": {
+        "name": "Autofocus fitted HFR"
+      },
       "autofocus_hfr": {
         "name": "Autofocus HFR"
       },

@@ -103,14 +103,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   through the API.
 - Session statistics carry a `by_target` and `by_filter` breakdown as attributes
   on `sensor.<instance>_session_avg_hfr`.
-- **Nine sensors off the last autofocus report**, on the Focuser device: the
-  run's time (with its method and fitting as attributes), starting and final
-  position, starting and final HFR, the focuser temperature at the run, and its
-  duration, plus R² and the filter as diagnostics disabled by default. The
-  integration already downloaded the report for
+- **Ten sensors off the last autofocus report**, on the Focuser device: the
+  run's time (carrying method, fitting, autofocuser, star detector and point
+  count as attributes), starting and final position, the HFR before and during
+  the sweep, the focuser temperature at the run, its duration and the filter it
+  was measured through, plus R² and the fitted HFR as diagnostics disabled by
+  default. The integration already downloaded the report for
   `binary_sensor.<instance>_focuser_autofocus_failed`; separate sensors rather
   than attributes, because only a state is recorded and focus drift against
-  temperature is a chart over months. The two HFR sensors read `unknown` on a
+  temperature is a chart over months. `autofocus_hfr` is the lowest HFR the
+  sweep MEASURED rather than `CalculatedFocusPoint.Value`, which under a
+  `TREND*` fitting is the mean of the trendline intersection and the quadratic
+  minimum and reads far below anything the camera saw; that value is the
+  disabled `autofocus_fitted_hfr`. Both HFR sensors read `unknown` on a
   `CONTRASTDETECTION` run, whose focus points are a contrast score rather than
   pixels.
 - `sensor.<instance>_mount_time_to_meridian_flip` carries

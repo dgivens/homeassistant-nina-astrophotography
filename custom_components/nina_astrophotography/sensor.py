@@ -177,13 +177,23 @@ def _autofocus(field: str) -> Callable[[NinaData], Any]:
 
 
 def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
-    """How the run was measured and fitted. Attributes rather than entities:
-    both are profile settings that change when the operator changes them, and
-    a statistic over a string is nothing."""
+    """How the run was measured, and how much of it there was.
+
+    Attributes rather than entities: the four names are profile and plugin
+    settings, and a statistic over a string is nothing. They are what says
+    whether two HFR readings months apart are even on the same scale — HFR
+    from Hocus Focus's fitted PSF and from the built-in detector are not — and
+    the point count is what makes the duration mean anything.
+    """
     report = data.autofocus_report
+    if report is None:
+        return {}
     return {
-        "method": None if report is None else report.method,
-        "fitting": None if report is None else report.fitting,
+        "method": report.method,
+        "fitting": report.fitting,
+        "autofocuser": report.autofocuser,
+        "star_detector": report.star_detector,
+        "measured_points": report.measured_points,
     }
 
 
@@ -544,9 +554,26 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind="focuser",
-        # The curve's fitted minimum, and unknown on a CONTRASTDETECTION run —
-        # the mapper drops that method's value, which is a contrast score.
+        # The sweep's lowest MEASURED point, which is what compares run to run:
+        # `CalculatedFocusPoint.Value` moves with the profile's curve fitting
+        # and reads far below anything the camera saw (`autofocus_fitted_hfr`).
+        # Unknown on a CONTRASTDETECTION run, whose values are not pixels.
         value=_autofocus("hfr"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_fitted_hfr",
+        translation_key="autofocus_fitted_hfr",
+        native_unit_of_measurement="px",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="focuser",
+        # What N.I.N.A. moved to, and a curve artifact rather than a reading:
+        # under a TREND* fitting it is the mean of the trendline intersection
+        # and the quadratic minimum. Kept for reading one run's fit; not a
+        # series to key a statistic on.
+        value=_autofocus("fitted_hfr"),
     ),
     NinaSensorDescription(
         key="autofocus_starting_position",
@@ -554,8 +581,9 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         native_unit_of_measurement="steps",
         state_class=SensorStateClass.MEASUREMENT,
         kind="focuser",
-        # Against `autofocus_position`: how far the run moved, which is the
-        # drift temperature compensation would have had to cover.
+        # Against `autofocus_position`: how far the run moved. With temp comp
+        # off that is the drift since the last run; with it on it is the
+        # residual temp comp did NOT cover, which is the opposite reading.
         value=_autofocus("initial_position"),
     ),
     NinaSensorDescription(
@@ -565,8 +593,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind="focuser",
-        # Measured, where `autofocus_hfr` is fitted: the pair is how much the
-        # run actually bought.
+        # Measured before the sweep, as `autofocus_hfr` is measured during it,
+        # so the pair is comparable — which it would not be against the fit.
         value=_autofocus("initial_hfr"),
     ),
     NinaSensorDescription(
@@ -589,8 +617,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         kind="focuser",
-        # What the run cost the night: the overhead half of "is autofocusing
-        # this often worth it?".
+        # What the run cost, per ATTEMPT — the whole report is per attempt, so
+        # a run that retried twice cost the night more than this says.
         value=_autofocus("duration_seconds"),
     ),
     NinaSensorDescription(
@@ -610,10 +638,12 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         key="autofocus_filter",
         translation_key="autofocus_filter",
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
         kind="focuser",
-        # Which filter the run was measured through: HFR is not comparable
-        # across filters, so it qualifies the reading rather than reporting it.
+        # Which filter the run was measured through. Enabled, unlike the other
+        # diagnostic here: a non-parfocal set moves focus hundreds of steps
+        # between filters, so without this recorded alongside, position against
+        # temperature interleaves filter offsets with thermal drift — and a
+        # disabled entity records nothing to split by afterwards.
         value=_autofocus("filter_name"),
     ),
     # ── Guider ───────────────────────────────────────────────────────────

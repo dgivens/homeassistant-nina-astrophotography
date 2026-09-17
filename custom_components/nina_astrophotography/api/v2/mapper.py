@@ -125,8 +125,10 @@ _TIMESPAN = re.compile(
     r"(?P<minutes>\d{2}):(?P<seconds>\d{2}(?:\.\d+)?)$"
 )
 
-# The one method whose focus points are not HFR in pixels.
-_CONTRAST_METHOD = "CONTRASTDETECTION"
+# The only method whose focus points are HFR in pixels. An allowlist, not a
+# denylist: CONTRASTDETECTION is the one non-HFR method shipped today, and a
+# method nobody here has seen must not have its numbers published as pixels.
+_HFR_METHODS = frozenset({"STARHFR"})
 
 
 def nan_to_none(value: Any) -> Any:
@@ -675,6 +677,27 @@ def map_flats_status(wire: dict) -> FlatsStatus:
     )
 
 
+def _positive(value: float | None) -> float | None:
+    """A star has a size: 0 is "never measured", and a fit can extrapolate
+    past zero. N.I.N.A. guards its own `initialHFR` the same way."""
+    return value if value is not None and value > 0 else None
+
+
+def _hfr(wire: dict, point: str) -> float | None:
+    """One focus point's HFR."""
+    return _positive(_number(wire, point, "Value"))
+
+
+def _measured_hfrs(wire: dict) -> list[float]:
+    """The sweep's own measurements, which is the only HFR in the report that
+    the camera actually saw."""
+    points = wire.get("MeasurePoints")
+    if not isinstance(points, list):
+        return []
+    measured = (_positive(_number(point, "Value")) for point in points)
+    return [value for value in measured if value is not None]
+
+
 def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     """The newest autofocus report, or `None` where the rig has never run one.
 
@@ -686,28 +709,46 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
 
     A CONTRASTDETECTION run measures a contrast score rather than star sizes,
     so its focus-point values are not pixels and are dropped: one statistic
-    cannot hold both quantities. The positions stay — a step is a step.
+    cannot hold both quantities. The positions stay — a step is a step. A
+    report with no `Method` at all is read as STARHFR, which every capture is.
+
+    A focus point of 0 is no measurement — a star has a size — and N.I.N.A.
+    leaves `InitialFocusPoint.Value` at 0 where the pre-sweep measurement found
+    no stars, which is its own `if (initialHFR != 0 …)` guard. A fitted value
+    can also come out negative, the trendline intersection extrapolating past
+    zero, so the rule is: positive or nothing.
+
+    `hfr` is the sweep's LOWEST MEASURED point, not
+    `CalculatedFocusPoint.Value`: under a `TREND*` fitting that value is the
+    mean of the trendline intersection and the quadratic minimum, which reads
+    far below anything the camera measured and moves with the profile's curve
+    fitting. It is kept as `fitted_hfr` for the operator who wants it.
     """
     if not wire:
         return None
     method = _text(wire, "Method")
-    is_hfr = method != _CONTRAST_METHOD
+    is_hfr = method is None or method.upper() in _HFR_METHODS
     squares = wire.get("RSquares")
     fits = [
         value
         for value in (nan_to_none(v) for v in (squares or {}).values())
         if isinstance(value, (int, float))
     ] if isinstance(squares, dict) else []
+    measured = _measured_hfrs(wire)
     return AutoFocusReport(
         timestamp=_timestamp(wire.get("Timestamp")),
         filter_name=_text(wire, "Filter") or None,
         temperature=_number(wire, "Temperature"),
         method=method,
         fitting=_text(wire, "Fitting"),
+        autofocuser=_text(wire, "AutoFocuserName"),
+        star_detector=_text(wire, "StarDetectorName"),
         position=_integer(wire, "CalculatedFocusPoint", "Position"),
-        hfr=_number(wire, "CalculatedFocusPoint", "Value") if is_hfr else None,
+        hfr=min(measured) if measured and is_hfr else None,
+        fitted_hfr=_hfr(wire, "CalculatedFocusPoint") if is_hfr else None,
+        measured_points=len(measured) or None,
         initial_position=_integer(wire, "InitialFocusPoint", "Position"),
-        initial_hfr=_number(wire, "InitialFocusPoint", "Value") if is_hfr else None,
+        initial_hfr=_hfr(wire, "InitialFocusPoint") if is_hfr else None,
         duration_seconds=_timespan_seconds(wire.get("Duration")),
         r_squared=min(fits) if fits else None,
     )

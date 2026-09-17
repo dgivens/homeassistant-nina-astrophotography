@@ -123,7 +123,7 @@ falls at noon in **Home Assistant's** zone instead.
 ## Entities
 
 Entity ids are `<domain>.<instance>_<name>` — with the default instance name
-`N.I.N.A.`, `sensor.n_i_n_a_mount_altitude`. The reference rig registers 102
+`N.I.N.A.`, `sensor.n_i_n_a_mount_altitude`. The reference rig registers 103
 entities, two of them its switch hub's channels. A dome adds ten more, and a
 weather source reporting cloud cover, sky quality or star FWHM adds one each.
 
@@ -131,7 +131,7 @@ weather source reporting cloud cover, sky quality or star FWHM adds one each.
 |---|---|
 | Camera | temperature, cooler power, gain, offset, state; target temperature and USB limit (`number`); cooler and dew heater (`switch`); exposing (`binary_sensor`); abort exposure (`button`) |
 | Mount | RA, declination, altitude, azimuth, sidereal time, side of pier, time to meridian flip; at park, at home (`binary_sensor`); tracking rate (`select`); park, unpark, find home (`button`) |
-| Focuser | position, temperature, step size; the last autofocus run — time, starting and final position, starting and final HFR, temperature, duration, R² and filter; position (`number`); moving, autofocus failed (`binary_sensor`); autofocus (`button`) |
+| Focuser | position, temperature, step size; the last autofocus run — time, starting and final position, starting and best measured HFR, temperature, duration, filter, R² and the fitted HFR; position (`number`); moving, autofocus failed (`binary_sensor`); autofocus (`button`) |
 | Filter Wheel | filter (`select`); moving (`binary_sensor`) |
 | Guider | RMS total, RA and declination, status; guider (`switch`); clear calibration (`button`) |
 | Rotator | position, mechanical position (`number`); reverse (`switch`); moving, synced (`binary_sensor`) |
@@ -328,11 +328,21 @@ What a flat run does to the rest of the rig's entities:
 
 `sensor.<instance>_focuser_last_autofocus` and the `autofocus_*` sensors beside
 it publish N.I.N.A.'s last autofocus report — its time, where the run started
-and finished in steps, the starting and final HFR, the focuser temperature at
-the run, and how long it took. R² and the filter are diagnostics, disabled by
-default.
+and finished in steps, the HFR before and during the sweep, the focuser
+temperature at the run, how long it took, and the filter it was measured
+through. R² and the fitted HFR are diagnostics, disabled by default.
 
-Three things the report itself cannot tell you:
+**`autofocus_hfr` is the lowest HFR the sweep actually measured**, not the
+`CalculatedFocusPoint` N.I.N.A. moved to. Under a `TREND*` curve fitting that
+calculated value is the mean of the trendline intersection and the quadratic
+minimum, and the intersection extrapolates to a star size the optics cannot
+produce — on a captured run it read 1.09 px against a best measured 1.55 px.
+Its offset also changes if you change the curve fitting in your profile, which
+is why it is the disabled `autofocus_fitted_hfr` and not the headline number.
+Against `autofocus_starting_hfr`, which is also measured, the pair is a fair
+before-and-after.
+
+Four things the report itself cannot tell you:
 
 - **A rejected run replaces the last good one.** N.I.N.A. writes the report
   before it decides whether the run was any good, and the file carries no
@@ -343,6 +353,15 @@ Three things the report itself cannot tell you:
   the hang separately, as a start nothing answered.
 - **The report outlives a restart and the night.** A value here can be from
   three nights ago. Date it against `last_autofocus` before believing it.
+- **Everything here is per attempt.** N.I.N.A. retries a rejected run, and only
+  the last attempt's report survives — so `autofocus_duration` undercounts what
+  a troublesome run cost the night.
+
+`sensor.<instance>_focuser_temperature` minus
+`sensor.<instance>_focuser_autofocus_temperature` is the ΔT that N.I.N.A.'s own
+"autofocus after temperature change" trigger is watching, since that trigger
+measures from the last run. A template sensor over the two gives you a "next
+autofocus in X °C" gauge.
 
 `autofocus_hfr` and `autofocus_starting_hfr` read `unknown` on a
 `CONTRASTDETECTION` run: that method measures a contrast score rather than

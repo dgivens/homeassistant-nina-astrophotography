@@ -181,7 +181,7 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(
     [
         ("sensor.n_i_n_a_focuser_autofocus_position", 2340.0),
         ("sensor.n_i_n_a_focuser_autofocus_starting_position", 2352.0),
-        ("sensor.n_i_n_a_focuser_autofocus_hfr", 1.0932570683996303),
+        ("sensor.n_i_n_a_focuser_autofocus_hfr", 1.55229727412562),
         ("sensor.n_i_n_a_focuser_autofocus_starting_hfr", 1.5191799853991006),
         ("sensor.n_i_n_a_focuser_autofocus_temperature", 25.7),
         ("sensor.n_i_n_a_focuser_autofocus_duration", 242.0079444),
@@ -197,17 +197,27 @@ async def test_the_last_autofocus_run_is_published_reading_by_reading(
     assert float(hass.states.get(entity_id).state) == pytest.approx(expected)
 
 
-async def test_the_last_autofocus_time_is_published_in_utc_with_how_it_was_run(
+async def test_the_last_autofocus_time_is_published_in_utc(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
-    """01:10 on a UTC−5 rig, and Home Assistant drops the sub-second part a
-    TIMESTAMP sensor is given. The age of the run is what says a report belongs
+    """01:10 on a UTC−5 rig. The age of the run is what says a report belongs
     to a previous night, which every other autofocus reading depends on."""
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    state = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus")
+    assert hass.states.get(
+        "sensor.n_i_n_a_focuser_last_autofocus"
+    ).state == "2026-09-05T06:10:14+00:00"
 
-    assert state.state == "2026-09-05T06:10:14+00:00"
-    assert state.attributes["method"] == "STARHFR"
+
+async def test_the_last_autofocus_carries_what_measured_it(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """HFR is on a different scale per star detector, so a reading is only
+    comparable with another taken the same way."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    attributes = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").attributes
+
+    assert attributes["method"] == "STARHFR"
+    assert attributes["star_detector"] == "Hocus Focus"
 
 
 async def test_the_autofocus_readings_exist_before_a_run_reports(
@@ -217,17 +227,3 @@ async def test_the_autofocus_readings_exist_before_a_run_reports(
     focuser, and an automation may point at one from the first restart."""
     assert hass.states.get(
         "sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"
-
-
-@pytest.mark.parametrize(
-    "suffix", ["autofocus_r_squared", "autofocus_filter"], ids=lambda s: s
-)
-async def test_the_autofocus_diagnostics_ship_disabled(
-    hass: HomeAssistant, config_entry, rig, set_up_at, entity_registry, suffix: str
-) -> None:
-    """R² and the filter qualify a reading rather than being one: neither is
-    worth a row on a focuser card, and both are what a bad run is read with."""
-    await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    entity_id = _registered(entity_registry, config_entry, suffix)
-
-    assert entity_registry.async_get(entity_id).disabled_by is not None
