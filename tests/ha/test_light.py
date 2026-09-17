@@ -165,6 +165,29 @@ async def test_a_panel_never_observed_has_no_entity(
     assert hass.states.get(ENTITY) is None
 
 
+async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
+    hass: HomeAssistant, set_up_with_flat_device, nina_responses, monkeypatch
+) -> None:
+    """A sequence routinely connects the panel long after Home Assistant
+    started; the light must arrive with it, as the panel's other entities do."""
+    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+    from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
+
+    entry = await set_up_with_flat_device(
+        meta=DeviceMeta(None, None, None, None, None), connected=False,
+    )
+    assert hass.states.get(ENTITY) is None
+    dawn = map_equipment_info(nina_responses("dawn_equipment_info.json"))
+
+    async def get_equipment(self):
+        return dawn
+
+    monkeypatch.setattr(NinaClientV2, "get_equipment", get_equipment)
+    await entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(ENTITY) is not None
+
+
 @pytest.mark.parametrize(
     ("command", "act"),
     [("set_flat_brightness", lambda hass: _turn_on(hass, **{ATTR_BRIGHTNESS: 10})),

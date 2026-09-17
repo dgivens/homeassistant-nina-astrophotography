@@ -21,13 +21,14 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, ColorMode, LightEntity
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api.errors import NinaError
 from .api.models import FlatDeviceModel
 from .coordinator import NinaConfigEntry, NinaCoordinator
+from .device import observed
 from .entity import NinaEntity
 
 # One in-flight command per platform. Entity calls only; services are unaffected.
@@ -147,10 +148,23 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    # Gate on the panel having been OBSERVED, not on SupportsOnOff being true
-    # right now: a disconnected panel reports Min 0 / Max 0 and SupportsOnOff
-    # false, which is the ordinary startup state. Gating on it would make the
-    # light vanish on every restart that beat the panel's connection.
-    # `available` carries the disconnected state instead. §5.2.2.
-    if coordinator.data.snapshot.flat_device is not None:
+    added = False
+
+    @callback
+    def _add_observed() -> None:
+        """Create the light once the panel has been observed.
+
+        Gate on observation, not on SupportsOnOff: a disconnected panel reports
+        Min 0 / Max 0 and SupportsOnOff false as its ordinary startup state, and
+        `available` carries that. Re-run on every publish: N.I.N.A. often
+        connects the panel only briefly, and long after Home Assistant started.
+        §5.2.2.
+        """
+        nonlocal added
+        if added or not observed(coordinator.data, "flat_device"):
+            return
+        added = True
         async_add_entities([NinaFlatLight(coordinator, entry, "flat_panel_light")])
+
+    _add_observed()
+    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
