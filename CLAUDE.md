@@ -74,7 +74,7 @@ custom_components/nina_astrophotography/
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
-www/                                           5 Lovelace cards; each builds its
+www/                                           6 Lovelace cards; each builds its
                       entity ids from a configured instance prefix
 tests/unit/                                    HA-free; tests/ha/ under PHACC
 tests/scenarios/                               FakeRig — see its README

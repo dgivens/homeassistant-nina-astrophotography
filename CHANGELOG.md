@@ -170,6 +170,16 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   disabled `autofocus_fitted_hfr`. Both HFR sensors read `unknown` on a
   `CONTRASTDETECTION` run, whose focus points are a contrast score rather than
   pixels.
+- **A sixth Lovelace card, `www/nina-autofocus-card.js`**, which draws that
+  chart: the measured V with its error bars, the fitted curves over it, each
+  minimum marked in the colour of the fit that found it, and where the focuser
+  was actually left. A position that measured nothing breaks the line rather
+  than being drawn through, and is marked on the axis. The card reads the
+  fitted HFR and R² out of the attributes rather than from
+  `autofocus_fitted_hfr` and `autofocus_r2`, which ship disabled — so it works
+  on a default install — and it names which fit the R² belongs to, since it is
+  the worst of several. It also shows how far the temperature and the focuser
+  have moved since the run, the two reasons to want another one.
 - `sensor.<instance>_mount_time_to_meridian_flip` carries
   `flip_fires_at_minutes`: the reading at which N.I.N.A. actually flips, which
   is `(Max − Min)` from the profile rather than zero.
