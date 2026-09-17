@@ -182,6 +182,36 @@
       }
     },
     "sensor": {
+      "autofocus_duration": {
+        "name": "Autofocus duration"
+      },
+      "autofocus_filter": {
+        "name": "Autofocus filter"
+      },
+      "autofocus_fitted_hfr": {
+        "name": "Autofocus fitted HFR"
+      },
+      "autofocus_hfr": {
+        "name": "Autofocus HFR"
+      },
+      "autofocus_last_run": {
+        "name": "Last autofocus"
+      },
+      "autofocus_position": {
+        "name": "Autofocus position"
+      },
+      "autofocus_r_squared": {
+        "name": "Autofocus R²"
+      },
+      "autofocus_starting_hfr": {
+        "name": "Autofocus starting HFR"
+      },
+      "autofocus_starting_position": {
+        "name": "Autofocus starting position"
+      },
+      "autofocus_temperature": {
+        "name": "Autofocus temperature"
+      },
       "camera_cooler_power": {
         "name": "Cooler power"
       },

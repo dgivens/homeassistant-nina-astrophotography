@@ -160,6 +160,43 @@ def _flip_bounds(data: NinaData) -> Mapping[str, Any]:
     }
 
 
+def _autofocus(field: str) -> Callable[[NinaData], Any]:
+    """One field off the newest autofocus report; `None` until a run reports.
+
+    The report is whatever `/equipment/focuser/last-af` last held, previous
+    nights included: it is not dated against the session here, the way
+    `binary_sensor.autofocus_failed` has to date it. A stale run is still the
+    focuser's last known state, and `autofocus_last_run` is what says how old
+    it is.
+    """
+    def value(data: NinaData) -> Any:
+        report = data.autofocus_report
+        return None if report is None else getattr(report, field)
+
+    return value
+
+
+def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
+    """How the run was measured, and how much of it there was.
+
+    Attributes rather than entities: the four names are profile and plugin
+    settings, and a statistic over a string is nothing. They are what says
+    whether two HFR readings months apart are even on the same scale — HFR
+    from Hocus Focus's fitted PSF and from the built-in detector are not — and
+    the point count is what makes the duration mean anything.
+    """
+    report = data.autofocus_report
+    if report is None:
+        return {}
+    return {
+        "method": report.method,
+        "fitting": report.fitting,
+        "autofocuser": report.autofocuser,
+        "star_detector": report.star_detector,
+        "measured_points": report.measured_points,
+    }
+
+
 def _weather_source(data: NinaData) -> str | None:
     """Which source the readings are coming from. Some drivers report an empty
     name, and the opaque `DeviceId` is still better than nothing."""
@@ -488,6 +525,126 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         # A driver constant, not a reading: no `state_class`, because a
         # statistic over an unchanging number is noise.
         value=read_field("focuser", "step_size"),
+    ),
+    # ── The last autofocus run ───────────────────────────────────────────
+    # Separate sensors rather than attributes on one: position and HFR earn
+    # long-term statistics, which is what makes focus drift against
+    # temperature chartable, and an attribute is never recorded.
+    NinaSensorDescription(
+        key="autofocus_last_run",
+        translation_key="autofocus_last_run",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        kind="focuser",
+        # The report survives a restart and a night: an age, not a heartbeat.
+        value=_autofocus("timestamp"),
+        attributes=_autofocus_run,
+    ),
+    NinaSensorDescription(
+        key="autofocus_position",
+        translation_key="autofocus_position",
+        native_unit_of_measurement="steps",
+        state_class=SensorStateClass.MEASUREMENT,
+        kind="focuser",
+        value=_autofocus("position"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_hfr",
+        translation_key="autofocus_hfr",
+        native_unit_of_measurement="px",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        kind="focuser",
+        # The sweep's lowest MEASURED point, which is what compares run to run:
+        # `CalculatedFocusPoint.Value` moves with the profile's curve fitting
+        # and reads far below anything the camera saw (`autofocus_fitted_hfr`).
+        # Unknown on a CONTRASTDETECTION run, whose values are not pixels.
+        value=_autofocus("hfr"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_fitted_hfr",
+        translation_key="autofocus_fitted_hfr",
+        native_unit_of_measurement="px",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="focuser",
+        # What N.I.N.A. moved to, and a curve artifact rather than a reading:
+        # under a TREND* fitting it is the mean of the trendline intersection
+        # and the quadratic minimum. Kept for reading one run's fit; not a
+        # series to key a statistic on.
+        value=_autofocus("fitted_hfr"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_starting_position",
+        translation_key="autofocus_starting_position",
+        native_unit_of_measurement="steps",
+        state_class=SensorStateClass.MEASUREMENT,
+        kind="focuser",
+        # Against `autofocus_position`: how far the run moved. With temp comp
+        # off that is the drift since the last run; with it on it is the
+        # residual temp comp did NOT cover, which is the opposite reading.
+        value=_autofocus("initial_position"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_starting_hfr",
+        translation_key="autofocus_starting_hfr",
+        native_unit_of_measurement="px",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        kind="focuser",
+        # Measured before the sweep, as `autofocus_hfr` is measured during it,
+        # so the pair is comparable — which it would not be against the fit.
+        value=_autofocus("initial_hfr"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_temperature",
+        translation_key="autofocus_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        kind="focuser",
+        # The temperature the run was triggered at, held until the next run —
+        # which is what `focuser_temperature` cannot show, because it moves on.
+        value=_autofocus("temperature"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_duration",
+        translation_key="autofocus_duration",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        kind="focuser",
+        # What the run cost, per ATTEMPT — the whole report is per attempt, so
+        # a run that retried twice cost the night more than this says.
+        value=_autofocus("duration_seconds"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_r_squared",
+        translation_key="autofocus_r_squared",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=3,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        kind="focuser",
+        # The worst fit the run computed, and the only evidence that N.I.N.A.
+        # rejected it — `binary_sensor.autofocus_failed` is that judgement
+        # already made, against the profile's threshold.
+        value=_autofocus("r_squared"),
+    ),
+    NinaSensorDescription(
+        key="autofocus_filter",
+        translation_key="autofocus_filter",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="focuser",
+        # Which filter the run was measured through. Enabled, unlike the other
+        # diagnostic here: a non-parfocal set moves focus hundreds of steps
+        # between filters, so without this recorded alongside, position against
+        # temperature interleaves filter offsets with thermal drift — and a
+        # disabled entity records nothing to split by afterwards.
+        value=_autofocus("filter_name"),
     ),
     # ── Guider ───────────────────────────────────────────────────────────
     NinaSensorDescription(

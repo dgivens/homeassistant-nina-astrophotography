@@ -388,10 +388,49 @@ class AutoFocusReport:
     """`STARHFR` or `CONTRASTDETECTION`."""
     fitting: str | None
     """Which curve was fitted: `TRENDPARABOLIC`, `HYPERBOLIC`, and so on."""
+    autofocuser: str | None
+    """Which autofocus routine ran; `star_detector` measured the stars.
+
+    Both are plugin settings — Hocus Focus rather than the built-in detector,
+    say — and HFR is on a different SCALE per detector, so two readings taken
+    under different ones are not comparable however close their numbers look.
+    """
+    star_detector: str | None
     position: int | None
     """Where the run left the focuser."""
     hfr: float | None
-    """The fitted minimum — the HFR the curve predicts at `position`."""
+    """The LOWEST HFR measured across the sweep, and the only comparable one.
+
+    Measured, so it is independent of the fitting the profile selects, which
+    `fitted_hfr` is not. Quantized by the sweep's step: the curve's true
+    minimum lies between two measured points.
+
+    None for a CONTRASTDETECTION run, whose focus points carry a contrast
+    score rather than pixels.
+    """
+    fitted_hfr: float | None
+    """`CalculatedFocusPoint.Value` — a curve artifact, not an achieved HFR.
+
+    Under a `TREND*` fitting N.I.N.A. sets it to the MEAN of the trendline
+    intersection and the quadratic or hyperbolic minimum, and the trendline
+    intersection extrapolates the V's wings to a size no star on the system
+    can reach — so it reads far below anything the camera measured (1.09 px
+    against a best measured 1.55 on one captured run). Its bias also changes
+    with the profile's `AutoFocusCurveFitting`, which is why it is a
+    diagnostic and `hfr` is what a statistic keys on.
+    """
+    measured_points: int | None
+    """How many points the sweep measured — what `duration_seconds` bought."""
+    initial_position: int | None
+    """Where the focuser was before the run — `position` less this is the move."""
+    initial_hfr: float | None
+    """The measured HFR at `initial_position`, under `hfr`'s method rule."""
+    duration_seconds: float | None
+    """What the run cost the session, from the report's .NET TimeSpan.
+
+    Per ATTEMPT, as the whole report is: a run that failed twice before it
+    succeeded cost the night more than this says.
+    """
     r_squared: float | None
     """The WORST fit in the report, which is what a threshold must judge.
 

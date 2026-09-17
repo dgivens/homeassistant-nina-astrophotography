@@ -462,5 +462,74 @@ def test_an_autofocus_report_carries_where_it_left_the_focuser() -> None:
     assert (report.position, report.filter_name) == (2340, "L")
 
 
+def test_the_autofocus_hfr_is_the_sweeps_lowest_measured_point() -> None:
+    """`CalculatedFocusPoint.Value` is not an achieved HFR: under a `TREND*`
+    fitting N.I.N.A. sets it to the mean of the trendline intersection and the
+    quadratic minimum, which here reads 1.09 against a best measured 1.55. The
+    measured point is what compares run to run and across fittings."""
+    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    assert report.hfr == pytest.approx(1.55229727412562)
+    assert report.fitted_hfr == pytest.approx(1.0932570683996303)
+
+
+def test_an_autofocus_report_carries_where_the_run_started() -> None:
+    """`InitialFocusPoint` is where the focuser was before the run — the other
+    end of the move, without which the run's size is unknowable."""
+    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    assert report.initial_position == 2352
+    assert report.initial_hfr == pytest.approx(1.5191799853991006)
+
+
+def test_an_autofocus_runs_duration_is_seconds() -> None:
+    """`Duration` is a .NET TimeSpan string, not a number: the overhead a run
+    costs a session is only comparable once it is seconds."""
+    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    assert report.duration_seconds == pytest.approx(242.0079444)
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("duration", "expected"),
+    [
+        ("00:04:02", 242.0),             # a run that lands on a whole second
+        ("1.02:03:04", 93784.0),         # days, which .NET writes with a dot
+        ("", None),
+        ("4 minutes", None),
+        (242, None),                     # never observed as a number
+    ],
+)
+def test_the_timespan_forms_a_duration_can_arrive_in(duration, expected) -> None:
+    """Fabricates `Duration` alone; every observed capture carries the
+    `hh:mm:ss.fffffff` form, and the day-prefixed form is .NET's own."""
+    report = map_last_autofocus({"Duration": duration})
+    assert report.duration_seconds == (
+        None if expected is None else pytest.approx(expected))
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize("method", ["CONTRASTDETECTION", "ContrastDetection", "MYSTERY"])
+def test_only_a_star_hfr_run_reports_pixels(method: str) -> None:
+    """Fabricates `Method`: the corpus is all STARHFR. CONTRASTDETECTION
+    measures a contrast score, so its focus points are not pixels — publishing
+    them as HFR would put two different quantities in one statistic — and a
+    method nobody here has seen gets the same treatment rather than the
+    benefit of the doubt. The positions survive: a step is a step."""
+    wire = dict(load("imaging_guiding_last_af.json"), Method=method)
+    report = map_last_autofocus(wire)
+    assert (report.hfr, report.fitted_hfr, report.initial_hfr) == (None, None, None)
+    assert (report.position, report.initial_position) == (2340, 2352)
+
+
+@pytest.mark.synthetic
+def test_a_focus_point_of_zero_is_no_measurement() -> None:
+    """Fabricates `InitialFocusPoint`: N.I.N.A. leaves it at 0 where the
+    pre-sweep measurement found no stars, which is its own `initialHFR != 0`
+    guard. A star has a size, and a 0 in a MEASUREMENT sensor is what corrupts
+    a long-term statistic."""
+    wire = dict(load("imaging_guiding_last_af.json"),
+                InitialFocusPoint={"Position": 2352, "Value": 0, "Error": 0})
+    assert map_last_autofocus(wire).initial_hfr is None
+
+
 def test_a_rig_that_has_never_run_an_autofocus_has_no_report() -> None:
     assert map_last_autofocus({}) is None
