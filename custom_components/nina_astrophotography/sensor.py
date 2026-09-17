@@ -190,6 +190,12 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
     An attribute because a statistic cannot hold a curve: the sweep is the
     shape of ONE run, and `autofocus_hfr` is already the series across runs.
     `method` sits beside it because it is what says whether `value` is pixels.
+
+    `fits` and `minima` are the overlay — the fitted lines and the markers
+    N.I.N.A.'s own chart draws. They travel with the curve because a card
+    cannot re-derive them: which points each fit used is undocumented, and
+    `r_squared` the sensor is the WORST fit of the run, which labels no
+    single line.
     """
     report = data.autofocus_report
     if report is None:
@@ -201,6 +207,8 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
         "star_detector": report.star_detector,
         "measured_points": report.measured_points,
         "curve": [asdict(point) for point in report.curve],
+        "fits": [asdict(fit) for fit in report.fits],
+        "minima": [asdict(minimum) for minimum in report.minima],
     }
 
 

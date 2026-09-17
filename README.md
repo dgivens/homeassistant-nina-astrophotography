@@ -420,6 +420,55 @@ Three things a card should not assume:
   the fitted minimum, which falls between two steps, and the HFR there was
   never measured.
 
+#### The fitted overlay
+
+The same attribute set carries what N.I.N.A.'s own autofocus chart draws on
+top of the points:
+
+```yaml
+fits:
+  - name: Quadratic
+    equation: "y = 0.0003058854621319121 * x^2 + -1.4293365331583652 * x + 1671.5984427459177"
+    coefficients: [0.0003058854621319121, -1.4293365331583652, 1671.5984427459177]
+    r_squared: 0.9710548595560263
+  - name: LeftTrend
+    coefficients: [-0.04727009756935714, 111.1161540435258]
+    r_squared: 0.9902518159347956
+  # …RightTrend
+
+minima:
+  - name: TrendLineIntersection
+    position: 2344
+    value: 0.3330580830396599
+  - name: QuadraticMinimum
+    position: 2336
+    value: 1.8534560537596008
+```
+
+`coefficients` is highest power first, so `[a, b, c]` evaluates as
+`a·x² + b·x + c` and plots directly. N.I.N.A. sends the fit as an equation
+string; it is parsed here once rather than in JavaScript on every render, and
+`equation` is kept beside it because only the polynomial forms have been
+observed — a hyperbolic or gaussian fit yields `coefficients: null` and the
+string is then the only record of it. Fits the run did not use are omitted.
+
+`r_squared` here is **per fit**, which is what labels one line in a legend.
+`sensor.<instance>_focuser_autofocus_r_squared` is the *worst* fit of the run,
+which is the right number for a pass/fail threshold and the wrong one for a
+chart.
+
+`minima` is every marker N.I.N.A. computed. Read the second one by position in
+the list rather than by name: it is named after whichever curve your profile
+fits, so a `TRENDPARABOLIC` run calls it `QuadraticMinimum` and a hyperbolic
+one will not. The final position — `sensor.<instance>_focuser_autofocus_position`
+— is the componentwise **mean** of the two, so when a run lands somewhere odd,
+which marker dragged it is the diagnostic.
+
+**Do not let `TrendLineIntersection` set your y axis.** The two trend lines
+extrapolate the V's wings until they cross, which is well below any star the
+optics can produce — 0.333 px on the run above, against a best measured
+1.552 px. Clamp the axis to the measured points.
+
 An attribute, not entities: a curve is not a series, and there is no useful
 statistic over "the fourth point of whatever run happened last".
 `sensor.<instance>_focuser_autofocus_hfr` is the series — one number per run,

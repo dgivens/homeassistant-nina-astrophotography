@@ -153,9 +153,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   count as attributes), starting and final position, the HFR before and during
   the sweep, the focuser temperature at the run, its duration and the filter it
   was measured through, plus R² and the fitted HFR as diagnostics disabled by
-  default. The run's time also carries `curve`, the sweep itself — one
-  `position`/`value`/`error` row per position visited, `value` null where that
-  frame measured nothing — which is what a Lovelace card plots as the V.
+  default. The run's time also carries the whole chart: `curve`, the sweep
+  itself, one `position`/`value`/`error` row per position visited with
+  `value` null where that frame measured nothing; `fits`, each curve
+  N.I.N.A. fitted through it, parsed from its equation string into
+  coefficients and carrying its own R²; and `minima`, the markers behind
+  the final position, which is their componentwise mean.
   The integration already downloaded the report for
   `binary_sensor.<instance>_focuser_autofocus_failed`; separate sensors rather
   than attributes, because a statistic is only ever computed over a state, and

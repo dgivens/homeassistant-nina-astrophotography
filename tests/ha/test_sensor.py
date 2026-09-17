@@ -10,6 +10,7 @@ pins it field by field, and the only connected device the corpus ever shows
 reporting `"NaN"` is the weather station, whose channels answer `unavailable`
 rather than `unknown` by a rule of their own (§5.2.2).
 """
+import json
 from pathlib import Path
 
 import pytest
@@ -230,6 +231,19 @@ async def test_the_last_autofocus_publishes_the_curve_a_card_plots(
         "sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
 
     assert [sorted(row) for row in curve] == [["error", "position", "value"]] * 9
+
+
+async def test_the_last_autofocus_publishes_the_fit_overlay(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """A card cannot re-derive the fitted curves, so they ship parsed — and
+    coefficients have to survive as a JSON array, not a Python tuple."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    fits = hass.states.get(
+        "sensor.n_i_n_a_focuser_last_autofocus").attributes["fits"]
+
+    assert json.loads(json.dumps(fits))[0]["coefficients"] == pytest.approx(
+        [0.0003058854621319121, -1.4293365331583652, 1671.5984427459177])
 
 
 async def test_the_autofocus_readings_exist_before_a_run_reports(
