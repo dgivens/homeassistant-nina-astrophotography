@@ -123,9 +123,9 @@ falls at noon in **Home Assistant's** zone instead.
 ## Entities
 
 Entity ids are `<domain>.<instance>_<name>` — with the default instance name
-`N.I.N.A.`, `sensor.n_i_n_a_mount_altitude`. The reference rig registers 89
-entities. A dome adds ten more, and a weather source reporting cloud cover,
-sky quality or star FWHM adds one each.
+`N.I.N.A.`, `sensor.n_i_n_a_mount_altitude`. The reference rig registers 93
+entities, two of them its switch hub's channels. A dome adds ten more, and a
+weather source reporting cloud cover, sky quality or star FWHM adds one each.
 
 | Device | Entities |
 |---|---|
@@ -136,19 +136,19 @@ sky quality or star FWHM adds one each.
 | Guider | RMS total, RA and declination, status; guider (`switch`); clear calibration (`button`) |
 | Rotator | position, mechanical position (`number`); reverse (`switch`); moving, synced (`binary_sensor`) |
 | Flat Panel | cover state; brightness (`number`); light (`light`); cover (`switch`) |
-| Weather | temperature, humidity, dew point, pressure, wind speed/direction/gust, rain rate, sky brightness, sky temperature, cloud cover, sky quality, star FWHM, source |
+| Weather | temperature, humidity, dew point, pressure, wind speed/direction/gust, rain rate, sky brightness, sky temperature, cloud cover, sky quality, star FWHM |
 | Safety Monitor | unsafe, connected (`binary_sensor`) |
 | Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing (`binary_sensor`); open, close, park, home (`button`) |
 | Switch | one entity per channel the driver reports, by shape: read-only becomes a `sensor`, an on/off channel a `switch`, a range a `number` |
-| Hub | session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequencer running, imaging and scheduler waiting (`binary_sensor`); wait ends at, last frame at; sequence start/stop (`button`); livestack (`switch`) |
+| Hub | weather source; session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequencer running, imaging and scheduler waiting (`binary_sensor`); wait ends at, last frame at; sequence start/stop (`button`); livestack (`switch`) |
 
-Some entities ship **disabled by default**: the three flat-wizard sensors (see
+Some entities ship **disabled by default**: the three `flats_*` sensors (see
 [Flats](#flats)), `sequence_progress`, and diagnostics you are unlikely to want
 on a dashboard. Enable them from the entity page.
 
 `binary_sensor.<instance>_sequencer_running` and
 `binary_sensor.<instance>_imaging` answer different questions, and on a Target
-Scheduler rig they disagree for hours at a time. **Sequence running** is the
+Scheduler rig they disagree for hours at a time. **Sequencer running** is the
 sequencer: it stays `on` through a wait for full dark, for a target to clear
 the horizon, for moon separation, or for a safety loop to find conditions safe.
 **Imaging** is frames arriving — a rising image count, a camera exposing, or an
@@ -274,8 +274,9 @@ Weather channels appear **on their first real reading**, so configuring the
 integration in daylight yields no weather entities until the source starts
 reporting. They persist once created.
 
-A channel the active source cannot provide reads **`unavailable`**, not
-`unknown` — two sources on the same rig are routinely disjoint in both
+A channel reads **`unknown`** while the source that created it reports no value
+(`"NaN"`), and **`unavailable`** once a different source is active that cannot
+provide it — two sources on the same rig are routinely disjoint in both
 directions.
 
 **Weather is telemetry, not an abort authority.** A forecast-backed
@@ -300,19 +301,37 @@ error rather than silently doing nothing.
 
 ## Flats
 
-`/flats/status` observes **only flats started through the API**. A Target
-Scheduler flat run reads `Finished` with `-1` iterations straight through, so an
-entity reporting a stale `Finished` all night is worse than none: the three
-`flats_*` entities ship **disabled**. Enable them if you start flats through the
-API.
+**The `flats_*` sensors only see flats started through the API**, and this
+integration has no action that starts them. A Target Scheduler flat run or the
+flat wizard leaves the state `Finished` with both iteration counts `unknown`
+straight through, so all three ship **disabled**. `/flats/status` also has no
+event, so they are polled every 5 minutes. Enable them only if something else
+starts flats through the API.
+
+What a flat run does to the rest of the rig's entities:
+
+- **`sensor.<instance>_session_image_count` counts the flats**; its
+  `light_count` attribute does not. Integration time and the HFR and star
+  statistics are over lights only.
+- **The `last_image_*` sensors keep the last light frame**, so a calibration
+  run does not overwrite your imaging readouts.
+- **`sensor.<instance>_last_frame_at` counts flats**, and
+  **`binary_sensor.<instance>_imaging`** is `on` while they are exposing, so a
+  flat run reads as the rig working.
+- **The flat panel's entities appear the first time N.I.N.A. connects the
+  panel**, which on many rigs is only the flat run. After a Home Assistant
+  restart they read `unavailable` until it connects again. While it is
+  connected, a scene or automation that touches the panel's light or brightness
+  competes with N.I.N.A.'s own brightness control and spoils that flat set.
 
 ## Errors
 
-`event.<instance>_error` is **best-effort and solver-specific**. N.I.N.A.'s
-`ERROR-*` events are log-file regex scrapes: `ERROR-PLATESOLVE` matches ASTAP
-only, so a failure from another solver produces nothing. The autofocus arm is
-this integration's own timeout verdict rather than N.I.N.A.'s `ERROR-AF`, which
-appears dead in the plugin.
+`event.<instance>_error` fires `platesolve_failed`, `camera_download_timeout`
+and `autofocus_timeout`. It is **best-effort and solver-specific**: N.I.N.A.'s
+`ERROR-*` events are log-file regex scrapes, and `ERROR-PLATESOLVE` matches
+ASTAP only, so a failure from another solver produces nothing. The autofocus
+arm is this integration's own timeout verdict rather than N.I.N.A.'s
+`ERROR-AF`, which appears dead in the plugin.
 
 
 ---
@@ -484,9 +503,10 @@ What does need your attention:
   `sequence_load` takes `sequence_name` (was `path`, which the API ignores);
   `mount_slew` takes `ra_degrees`/`dec_degrees` in **J2000 degrees** (was `ra`
   in hours) — see [Actions](#actions).
-- **All five blueprints were rewritten** and their inputs changed. Re-import
-  them and rebuild the automations. The old ones referenced entities 2.0 does
-  not create, so they were inert either way.
+- **1.4.5's five blueprints were rewritten** and their inputs changed, and
+  `imaging_stall_alert.yaml` is new. Re-import them and rebuild the
+  automations. The old ones referenced entities 2.0 does not create, so they
+  were inert either way.
 - **The Lovelace cards need `prefix:`** — see [Lovelace cards](#lovelace-cards).
 - **`switch.<instance>_flat_panel_light` is gone** — the `light` entity survives.
   Its old registry row lingers as unavailable until you delete it.

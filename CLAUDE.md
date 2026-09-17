@@ -319,10 +319,10 @@ not.
 - **The camera's setpoint is `TemperatureSetPoint`, not `TargetTemp`.**
   `TargetTemp` reads 0 whatever the camera is cooling to. A warm-up leaves the
   setpoint at its final value.
-- **`/flats/status` only tracks N.I.N.A.'s flat wizard.** Target Scheduler
-  flats leave it `Finished` / `-1`; they show up as FLAT frames in the image
-  history. Rotator `Position` is the sky angle; `ROTATOR-MOVED` carries the
-  mechanical angle.
+- **`/flats/status` only tracks flats started through the API** (`/flats/*`).
+  Target Scheduler flats and the flat wizard leave it `Finished` / `-1`; they
+  show up as FLAT frames in the image history. Rotator `Position` is the sky
+  angle; `ROTATOR-MOVED` carries the mechanical angle.
 - **Out-of-range input is silently clamped** and answers `Success: true`.
   Validate client-side and raise `ServiceValidationError` — schema validation
   raising `vol.Invalid` is not the same thing, and Home Assistant re-raises it
