@@ -10,7 +10,7 @@
  *   3. Add card:
  *        type: custom:nina-autofocus-card
  *        prefix: n_i_n_a        # the slugified instance name your entities carry
- *        temperature_delta: 1   # °C of drift since the run worth flagging
+ *        temperature_delta: 2   # °C of drift since the run worth flagging
  */
 
 const VERSION = "2.0.0";
@@ -26,8 +26,11 @@ const DEFAULT_PREFIX = "n_i_n_a";
 
 // How far the focuser temperature may drift from the run's before the card
 // says so. There is no right answer to publish here — it belongs to the
-// sequence's own refocus trigger — so this is only a default to override.
-const DEFAULT_TEMPERATURE_DELTA = 1.0;
+// sequence's own refocus trigger — so this is only a default to override, and
+// the card names the number it used rather than claiming it is yours. Set
+// above 1 °C deliberately: a site that swings ten degrees overnight would
+// spend most of the night flagged, which teaches the operator to ignore it.
+const DEFAULT_TEMPERATURE_DELTA = 2.0;
 
 const CURVE = "#5bcfcf";      // the measured sweep
 const FIT = "#7b8de8";        // the fitted curve, and the minimum it found
