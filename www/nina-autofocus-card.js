@@ -45,11 +45,31 @@ function fixed(value, places) {
   return Number.isFinite(value) ? value.toFixed(places) : "—";
 }
 
+// Filter, fitting, autofocuser, star detector and fit names all come off the
+// rig, and all of them land in `innerHTML`. A filter named with a tag would
+// otherwise run as markup in the dashboard.
+const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+function safe(value) {
+  return String(value).replace(/[&<>"]/g, (character) => ESCAPES[character]);
+}
+
 // The wire names a fit and its minimum in .NET's own casing: `LeftTrend`,
 // `TrendLineIntersection`, `QuadraticMinimum`. Split it for a human.
 function pretty(name) {
-  const words = String(name).replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  const words = safe(name).replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+// The lowest and highest HFR the sweep actually measured, error bars included.
+// This is the chart's y axis, and the line under which a fitted minimum counts
+// as off it.
+function measuredRange(curve) {
+  const measured = curve.filter((point) => Number.isFinite(point.value));
+  return {
+    measured,
+    low: Math.min(...measured.map((point) => point.value - (point.error || 0))),
+    high: Math.max(...measured.map((point) => point.value + (point.error || 0))),
+  };
 }
 
 // A trend line is fitted to one side of the V and a curve to the whole of it;
@@ -311,7 +331,7 @@ class NinaAutofocusCard extends HTMLElement {
     const when = run.timestamp ? ago(run.timestamp) : null;
     return [
       when,
-      shown(run.filter) === "—" ? null : `${run.filter} filter`,
+      shown(run.filter) === "—" ? null : `${safe(run.filter)} filter`,
       Number.isFinite(run.temperature) ? `${fixed(run.temperature, 1)} °C` : null,
     ].filter(Boolean).join(" · ") || "No run reported";
   }
@@ -399,10 +419,10 @@ class NinaAutofocusCard extends HTMLElement {
           <span class="k">Measured nothing</span> ${blind} ${blind === 1 ? "position" : "positions"}</span>` : ""}
         <span class="chip"><span class="k">Points</span> ${shown(run.measured)} of ${run.curve.length}</span>
         <span class="chip"><span class="k">Took</span> ${duration(run.duration)}</span>
-        ${shown(run.method) === "—" ? "" : `<span class="chip"><span class="k">Method</span> ${run.method}</span>`}
-        ${shown(run.fitting) === "—" ? "" : `<span class="chip"><span class="k">Fitting</span> ${run.fitting}</span>`}
-        ${shown(run.autofocuser) === "—" ? "" : `<span class="chip"><span class="k">By</span> ${run.autofocuser}</span>`}
-        ${shown(run.detector) === "—" ? "" : `<span class="chip"><span class="k">Stars</span> ${run.detector}</span>`}
+        ${shown(run.method) === "—" ? "" : `<span class="chip"><span class="k">Method</span> ${safe(run.method)}</span>`}
+        ${shown(run.fitting) === "—" ? "" : `<span class="chip"><span class="k">Fitting</span> ${safe(run.fitting)}</span>`}
+        ${shown(run.autofocuser) === "—" ? "" : `<span class="chip"><span class="k">By</span> ${safe(run.autofocuser)}</span>`}
+        ${shown(run.detector) === "—" ? "" : `<span class="chip"><span class="k">Stars</span> ${safe(run.detector)}</span>`}
       </div>
     `;
   }
@@ -426,9 +446,7 @@ class NinaAutofocusCard extends HTMLElement {
     }
     // The axis stops at the lowest measured point, so a minimum below that is
     // drawn on the edge and has to say so here.
-    const floor = Math.min(...run.curve
-      .filter((point) => Number.isFinite(point.value))
-      .map((point) => point.value - (point.error || 0)));
+    const { low: floor } = measuredRange(run.curve);
     for (const minimum of run.minima) {
       const colour = isTrend(minimum.name) ? TREND : FIT;
       const under = Number.isFinite(minimum.value) && minimum.value < floor;
@@ -479,11 +497,7 @@ class NinaAutofocusCard extends HTMLElement {
     // below any star the optics can produce — letting it set the floor spends
     // most of the chart on empty sky and squashes the vertex, which is the
     // part worth reading. A minimum outside the axis is pinned to its edge.
-    const measured = run.curve.filter((point) => Number.isFinite(point.value));
-    const tops = measured.map((point) => point.value + (point.error || 0));
-    const bottoms = measured.map((point) => point.value - (point.error || 0));
-    const high = Math.max(...tops);
-    const low = Math.min(...bottoms);
+    const { measured, low, high } = measuredRange(run.curve);
     const span = (high - low) || 1;
     const yMax = high + span * 0.08;
     const yMin = Math.max(0, low - span * 0.08);
