@@ -47,6 +47,8 @@ def _light(**overrides) -> Frame:
         "mean": 548.6,
         "median": 540.0,
         "std_dev": 30.0,
+        "min": 300.0,
+        "max": 60000.0,
         "rms_arcsec": 0.29,
         "temperature": -10.0,
         "gain": 100,

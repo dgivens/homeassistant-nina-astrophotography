@@ -1,26 +1,31 @@
 /**
  * N.I.N.A. Image Panel Card
  *
- * Displays the last captured image from N.I.N.A. using the Advanced API's
- * streaming image endpoint, with a live stats overlay, session image strip,
- * and histogram visualisation.
+ * Displays the last captured image from N.I.N.A., with a live stats overlay,
+ * session image strip, and histogram visualisation.
  *
- * API endpoints used:
- *   GET /v2/api/image/0?stream=true                 → latest image (JPEG stream)
- *   GET /v2/api/image/N?stream=true                 → Nth image from history
- *   GET /v2/api/image-history?all=true              → image history metadata
+ * Images never come from N.I.N.A. directly: its Advanced API is plain
+ * HTTP-only, and a dashboard served over HTTPS would have every such fetch
+ * blocked as mixed content. Instead the integration proxies them, same
+ * origin as Home Assistant itself:
  *
- * Reads HA sensors for the overlay:
- *   The newest frame's HFR, star count, mean ADU, filter, exposure, guide RMS
- *   and target, the session frame count and integration time, and whether the
- *   camera is exposing. Per-frame history — including the ADU range the
- *   histogram draws — comes from /image-history directly.
+ *   GET /api/nina_astrophotography/image/{entity_id}/{index}   → one frame,
+ *     JPEG, by history index (0 = newest of any type)
+ *
+ * Every image URL is signed just before use via the `auth/sign_path`
+ * websocket command, so it can be set directly as `<img src>` — including
+ * the thumbnail strip, which cannot carry an Authorization header.
+ *
+ * Reads HA sensors for the overlay and the strip/histogram:
+ *   The newest LIGHT frame's HFR, star count, mean ADU, filter, exposure,
+ *   guide RMS and target; the session frame count and integration time;
+ *   whether the camera is exposing; and `sensor.<prefix>_last_image_mean_adu`'s
+ *   `recent_frames` attribute — the newest frames of any type, already
+ *   bounded and ordered — for the strip's labels and the histogram's range.
  *
  * Card config:
  *   type: custom:nina-image-panel-card
- *   host: 192.168.1.100     # N.I.N.A. PC IP (required)
  *   prefix: n_i_n_a         # the slugified instance name your entities carry
- *   port: 1888              # API port (default 1888)
  *   refresh_on_save: true   # auto-refresh when IMAGE-SAVE fires via HA event (default true)
  *   show_strip: true        # show recent-frames strip at bottom (default true)
  *   show_histogram: true    # show ADU histogram bar (default true)
@@ -29,7 +34,11 @@
  *   strip_count: 6          # number of thumbnails in the recent strip (default 6)
  */
 
-const VERSION = "2.0.0";
+const VERSION = "3.0.0";
+
+// Signed just before use, not cached: a fresh signature each call is what
+// naturally busts the browser's cache across reloads of the same index.
+const SIGNED_URL_TTL_SECONDS = 30;
 
 // Home Assistant slugifies an instance name the same way for the entity ids
 // and the event payload: `N.I.N.A.` becomes `n_i_n_a`.
@@ -263,17 +272,15 @@ class NinaImagePanelCard extends HTMLElement {
     this._currentIndex = 0;   // 0 = latest
     this._totalFrames  = 0;
     this._loading = false;
-    this._imgUrl  = null;
-    this._historyMeta = [];   // [{filter, hfr, stars, mean}]
+    this._historyMeta = [];   // [{date, filename, filter, mean, median, min, max}]
+    this._hasImage = false;
+    this._loadToken = 0;
     this._rendered = false;
     this._unsubHassEvent = null;
   }
 
   setConfig(config) {
-    if (!config.host) throw new Error("nina-image-panel-card: 'host' is required");
     this._config = {
-      host: config.host,
-      port: config.port ?? 1888,
       refresh_on_save: config.refresh_on_save ?? true,
       show_strip: config.show_strip ?? true,
       show_histogram: config.show_histogram ?? true,
@@ -282,7 +289,6 @@ class NinaImagePanelCard extends HTMLElement {
       strip_count: config.strip_count ?? 6,
       prefix: config.prefix ?? DEFAULT_PREFIX,
     };
-    this._apiBase = `http://${this._config.host}:${this._config.port}/v2/api`;
   }
 
   set hass(hass) {
@@ -325,7 +331,6 @@ class NinaImagePanelCard extends HTMLElement {
       .then((unsub) => { if (typeof unsub === "function") unsub(); })
       .catch(() => {});
     this._unsubHassEvent = null;
-    if (this._imgUrl) URL.revokeObjectURL(this._imgUrl);
   }
 
   _s(id, fallback = null) {
@@ -334,12 +339,44 @@ class NinaImagePanelCard extends HTMLElement {
   }
   _f(id, fallback = 0) { return parseFloat(this._s(id)) || fallback; }
 
-  // The frame on screen, from `/image-history`. Index 0 is the newest, which
-  // is the one the entities describe.
+  // The entity the proxy resolves to a rig by — any of this integration's
+  // own hub entities works, but NOT a piece of equipment's: `camera_state`
+  // is gated behind the camera being observed (kind="camera") and is absent
+  // from the registry on a fresh install, which would 404 every request.
+  // `last_image_mean_adu` (kind=None) is a hub entity, always created at
+  // setup, and the card already reads it for `recent_frames`.
+  _entityId() { return `sensor.${this._config.prefix}_last_image_mean_adu`; }
+
+  // The frame on screen, from the `recent_frames` attribute. Index 0 is the
+  // newest of any type, matching what the proxy serves at history index 0.
   _frame() { return this._historyMeta[this._currentIndex] || {}; }
   _attr(id, attr, fallback = null) {
     const e = this._hass?.states?.[id];
     return e?.attributes?.[attr] ?? fallback;
+  }
+
+  // ── Signed, same-origin image URLs ──────────────────────────────────────
+
+  // The unsigned path: a stable, cache-key-free description of one frame.
+  _imagePath(index, forStrip = false) {
+    const cfg = this._config;
+    const params = new URLSearchParams({
+      quality: forStrip ? "40" : String(cfg.quality),
+      ...(cfg.stretch ? { autoPrepare: "true" } : {}),
+    });
+    return `/api/nina_astrophotography/image/${this._entityId()}/${index}?${params}`;
+  }
+
+  // Signed right before use: `auth/sign_path` is Home Assistant's mechanism
+  // for handing an authenticated resource a short-lived URL usable directly
+  // as `<img src>`, which cannot carry an Authorization header itself.
+  async _signedUrl(path) {
+    const { path: signed } = await this._hass.callWS({
+      type: "auth/sign_path",
+      path,
+      expires: SIGNED_URL_TTL_SECONDS,
+    });
+    return signed;
   }
 
   // ── DOM construction ──────────────────────────────────────────────────
@@ -413,7 +450,7 @@ class NinaImagePanelCard extends HTMLElement {
 
     // Image click → fullscreen
     this.shadowRoot.getElementById("img-wrap").addEventListener("click", () => {
-      if (this._imgUrl) this._openModal(this._imgUrl);
+      if (this._hasImage) this._openModal().catch(() => {});
     });
     this.shadowRoot.getElementById("modal").addEventListener("click", e => {
       if (e.target !== this.shadowRoot.getElementById("modal-img")) this._closeModal();
@@ -422,17 +459,6 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   // ── Image loading ─────────────────────────────────────────────────────
-
-  _imageUrl(index, forStrip = false) {
-    const cfg = this._config;
-    // The index is a path segment: /image is not a route, /image/{index} is.
-    const params = new URLSearchParams({
-      stream: "true",
-      quality: forStrip ? "40" : String(cfg.quality),
-      ...(cfg.stretch ? { autoPrepare: "true" } : {}),
-    });
-    return `${this._apiBase}/image/${index}?${params}`;
-  }
 
   async _loadImage(index, silent = false) {
     if (this._loading && !silent) return;
@@ -444,6 +470,13 @@ class NinaImagePanelCard extends HTMLElement {
     // true and block every later load.
     if (!img) return;
 
+    // `silent` bypasses the guard above, so an IMAGE-SAVE refresh can race a
+    // strip click. Each load gets its own token and its own off-DOM probe
+    // image — the shared `<img>` and `_hasImage`/`_loading` are only ever
+    // touched by whichever load is still current when it settles, so a
+    // superseded load's promise still resolves instead of hanging forever,
+    // it just does nothing.
+    const token = ++this._loadToken;
     this._loading = true;
     this._currentIndex = index;
 
@@ -452,30 +485,26 @@ class NinaImagePanelCard extends HTMLElement {
       spinner?.classList.add("active");
     }
 
-    const url = this._imageUrl(index);
-    // Cache-bust so browser doesn't serve stale image on refresh
-    const cacheBusted = `${url}&_t=${Date.now()}`;
-
     try {
-      const resp = await fetch(cacheBusted);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const blob = await resp.blob();
-      if (!blob.type.startsWith("image/")) throw new Error("Not an image");
-
-      const objUrl = URL.createObjectURL(blob);
-      if (this._imgUrl) URL.revokeObjectURL(this._imgUrl);
-      this._imgUrl = objUrl;
-
-      img.src = objUrl;
-      img.onload = () => {
-        img.classList.remove("loading");
-        spinner?.classList.remove("active");
-        noImg && (noImg.style.display = "none");
-        img.style.display = "block";
-        if (this._config.show_histogram) this._drawHistogram();
-        this._updateStripActive();
-      };
+      const url = await this._signedUrl(this._imagePath(index));
+      await new Promise((resolve, reject) => {
+        const probe = new Image();
+        probe.onload = resolve;
+        probe.onerror = () => reject(new Error("image failed to load"));
+        probe.src = url;
+      });
+      if (token !== this._loadToken) return;
+      img.src = url;
+      this._hasImage = true;
+      img.classList.remove("loading");
+      spinner?.classList.remove("active");
+      noImg && (noImg.style.display = "none");
+      img.style.display = "block";
+      if (this._config.show_histogram) this._drawHistogram();
+      this._updateStripActive();
     } catch (err) {
+      if (token !== this._loadToken) return;
+      this._hasImage = false;
       img.classList.remove("loading");
       spinner?.classList.remove("active");
       // Show no-image state only if this is the latest frame (not a strip click)
@@ -484,7 +513,7 @@ class NinaImagePanelCard extends HTMLElement {
         noImg && (noImg.style.display = "flex");
       }
     } finally {
-      this._loading = false;
+      if (token === this._loadToken) this._loading = false;
     }
   }
 
@@ -495,42 +524,36 @@ class NinaImagePanelCard extends HTMLElement {
     if (!strip) return;
 
     const count = this._config.strip_count;
-    // Fetch image history metadata for filter names
-    let meta = [];
-    try {
-      // /image-history, not /image/history, and `count` is a boolean asking
-      // for the number of frames rather than a limit. Oldest first, so the
-      // newest `count` frames are at the end.
-      const resp = await fetch(`${this._apiBase}/image-history?all=true`);
-      if (resp.ok) {
-        const data = await resp.json();
-        // An empty history answers `Response: ""` with `Index out of range`,
-        // over HTTP 200 — so `resp.ok` proves nothing about the shape.
-        const rows = data?.Response;
-        meta = Array.isArray(rows) ? rows.slice(-count) : [];
-      }
-    } catch (_) {}
-
-    // Newest first, which is how the strip and `_currentIndex` count. The
-    // entities publish the NEWEST frame only, so this is where a frame the
-    // user has browsed back to gets its ADU range.
-    this._historyMeta = meta.reverse();
+    // Already newest-first and bounded (session.py's `recent_frames`) — no
+    // fetch of our own, and no reversal needed.
+    const recentFrames = this._attr(
+      `sensor.${this._config.prefix}_last_image_mean_adu`, "recent_frames", []);
+    this._historyMeta = recentFrames.slice(0, count);
     if (this._config.show_histogram) this._drawHistogram();
 
+    // Bounded to what actually exists: `strip_count` thumbnails would each
+    // cost a sign + proxy round trip for an index N.I.N.A. cannot serve. A
+    // rig whose attribute has not populated yet (old data, first render)
+    // falls back to the configured count rather than showing nothing.
+    const thumbCount = recentFrames.length > 0
+      ? Math.min(count, recentFrames.length) : count;
+
     strip.innerHTML = "";
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < thumbCount; i++) {
       const thumb = document.createElement("div");
       thumb.className = `strip-thumb${i === this._currentIndex ? " active" : ""}`;
       thumb.dataset.index = i;
 
       const img = document.createElement("img");
-      img.src = `${this._imageUrl(i, true)}&_t=${Date.now()}`;
       img.alt = `Frame -${i}`;
       img.onerror = () => { thumb.style.opacity = "0.3"; };
       thumb.appendChild(img);
+      this._signedUrl(this._imagePath(i, true))
+        .then((url) => { img.src = url; })
+        .catch(() => { thumb.style.opacity = "0.3"; });
 
-      // Filter label from history metadata or sparkline
-      const filterName = this._historyMeta[i]?.Filter ?? "";
+      // Filter label from the recent-frames metadata
+      const filterName = this._historyMeta[i]?.filter ?? "";
       if (filterName) {
         const lbl = document.createElement("div");
         lbl.className = "strip-filter";
@@ -559,14 +582,14 @@ class NinaImagePanelCard extends HTMLElement {
     const canvas = this.shadowRoot?.getElementById("hist-canvas");
     if (!canvas) return;
 
-    // Min, Max and Median are per-frame history fields: 2.0 publishes the
-    // mean alone, the one an operator watches for a saturated flat.
+    // Min, Max and Median come from `recent_frames`; the sensor's own state
+    // is the mean alone, the one an operator watches for a saturated flat.
     const frame = this._frame();
-    const mean = finite(frame.Mean) ?? this._f(
+    const mean = finite(frame.mean) ?? this._f(
       `sensor.${this._config.prefix}_last_image_mean_adu`);
-    const min = finite(frame.Min);
-    const max = finite(frame.Max);
-    const median = finite(frame.Median) ?? mean;
+    const min = finite(frame.min);
+    const max = finite(frame.max);
+    const median = finite(frame.median) ?? mean;
 
     const rangeEl = this.shadowRoot?.getElementById("hist-range");
     if (min === null || max === null) {
@@ -748,13 +771,12 @@ class NinaImagePanelCard extends HTMLElement {
 
   // ── Modal ─────────────────────────────────────────────────────────────
 
-  _openModal(url) {
+  async _openModal() {
     const modal    = this.shadowRoot?.getElementById("modal");
     const modalImg = this.shadowRoot?.getElementById("modal-img");
-    if (!modal || !modalImg || !url) return;
-    // Load full-quality version for modal
-    const fullUrl = this._imageUrl(this._currentIndex);
-    modalImg.src = `${fullUrl}&_t=${Date.now()}`;
+    if (!modal || !modalImg) return;
+    // Full-quality version for the modal, signed fresh for this viewing.
+    modalImg.src = await this._signedUrl(this._imagePath(this._currentIndex));
     modal.classList.add("open");
   }
 
@@ -765,7 +787,7 @@ class NinaImagePanelCard extends HTMLElement {
   getCardSize() { return 7; }
 
   static getStubConfig() {
-    return { host: "192.168.1.100", port: 1888 };
+    return { prefix: DEFAULT_PREFIX };
   }
 }
 

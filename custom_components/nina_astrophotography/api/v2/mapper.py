@@ -552,6 +552,8 @@ def map_frame(wire: dict, generation: str | None) -> Frame:
         mean=_number(wire, "Mean"),
         median=_number(wire, "Median"),
         std_dev=_number(wire, "StDev"),
+        min=_number(wire, "Min"),
+        max=_number(wire, "Max"),
         rms_arcsec=rms,
         temperature=_number(wire, "Temperature"),
         gain=_integer(wire, "Gain"),

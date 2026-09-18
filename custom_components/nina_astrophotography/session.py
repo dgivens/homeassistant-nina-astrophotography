@@ -18,6 +18,7 @@ exists, and loses events arriving during the refetch.
 """
 from __future__ import annotations
 
+import heapq
 from collections.abc import Callable, Container, Iterable, Sequence
 from datetime import datetime, timedelta
 from math import fsum
@@ -253,16 +254,33 @@ def latest_stack(events: Iterable[NinaEvent],
     )
 
 
+_RECENT_FRAMES_LIMIT = 20
+"""Comfortably covers a dashboard card's thumbnail strip; nowhere near a
+Target Scheduler night's frame count, so this stays cheap every tick."""
+
+
+def recent_frames(frames: Iterable[Frame], generation: str | None) -> tuple[Frame, ...]:
+    """The newest frames this process saved, of any type, newest first,
+    bounded — what a dashboard's thumbnail strip and ADU histogram need.
+
+    `heapq.nlargest`, not a full sort: a Target Scheduler night's frame count
+    only has to be walked once, not ordered end to end for 20 of them.
+    """
+    kept = (f for f in frames if f.generation == generation)
+    return tuple(heapq.nlargest(_RECENT_FRAMES_LIMIT, kept, key=_identity))
+
+
 def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | None:
     """The newest frame this process saved, of any type — what `/image/0`
     serves.
 
     Deliberately outside the session window that `fold` applies: the rig's
     image history does not roll over at local noon, so the frame the route
-    renders at 13:00 is still last night's.
+    renders at 13:00 is still last night's. The single-frame case of
+    `recent_frames` — one ordering rule, not two.
     """
-    kept = [f for f in frames if f.generation == generation]
-    return max(kept, key=_identity, default=None)
+    newest = recent_frames(frames, generation)
+    return newest[0] if newest else None
 
 
 def latest_target(events: Iterable[NinaEvent],

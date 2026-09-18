@@ -75,6 +75,7 @@ from .const import (
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 from .device import async_sync_devices, kind_of
+from .views import async_register_views
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -95,8 +96,10 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the actions, once, before any entry is set up."""
+    """Register the actions and the image proxy, once, before any entry is
+    set up."""
     _register_services(hass)
+    async_register_views(hass)
     return True
 
 

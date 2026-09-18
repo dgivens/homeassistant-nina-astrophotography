@@ -225,6 +225,26 @@ _BY_TARGET = _breakdown("by_target")
 _BY_FILTER = _breakdown("by_filter")
 
 
+def _recent_frames(data: NinaData) -> tuple[Mapping[str, Any], ...]:
+    """Newest-first, hand-picked fields — what a dashboard's thumbnail strip
+    and ADU histogram need to browse recent frames without their own fetch to
+    N.I.N.A. Not `dataclasses.asdict(frame)`: this is a card's contract, free
+    to diverge from `Frame`'s own fold/identity semantics on purpose.
+    """
+    return tuple(
+        {
+            "date": frame.date.isoformat(),
+            "filename": frame.filename,
+            "filter": frame.filter_name,
+            "mean": frame.mean,
+            "median": frame.median,
+            "min": frame.min,
+            "max": frame.max,
+        }
+        for frame in data.recent_frames
+    )
+
+
 SESSION: tuple[NinaSensorDescription, ...] = (
     NinaSensorDescription(
         key="session_image_count",
@@ -331,6 +351,7 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         suggested_display_precision=1,
         kind=None,
         value=_frame("mean"),
+        attributes=lambda data: {"recent_frames": _recent_frames(data)},
     ),
     NinaSensorDescription(
         key="last_image_exposure",
@@ -935,6 +956,10 @@ class NinaSensor(NinaEntity, SensorEntity):
     """One descriptor, read out of the published snapshot."""
 
     entity_description: NinaSensorDescription
+    # `recent_frames` is what a dashboard card reads live off current state;
+    # no history query ever wants it, and it would otherwise write ~3-5 KB
+    # to the recorder on every saved frame for nothing.
+    _unrecorded_attributes = frozenset({"recent_frames"})
 
     def __init__(
         self,
