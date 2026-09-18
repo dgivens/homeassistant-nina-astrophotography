@@ -5,7 +5,7 @@
     "@dgivens"
   ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["http"],
   "documentation": "https://github.com/dgivens/homeassistant-nina-astrophotography",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/dgivens/homeassistant-nina-astrophotography/issues",

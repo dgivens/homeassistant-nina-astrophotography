@@ -292,6 +292,8 @@ class Frame:
     mean: float | None
     median: float | None
     std_dev: float | None
+    min: float | None
+    max: float | None
     rms_arcsec: float | None
     """Total guide RMS over the exposure, in arcseconds — comparable across
     rigs, the same convention as `GuiderModel.rms_total`. `RmsText` carries the

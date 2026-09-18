@@ -67,8 +67,8 @@ from .session import (
     fold,
     latest_stack,
     latest_target,
+    recent_frames,
     scheduler_wait,
-    newest_frame,
 )
 
 if TYPE_CHECKING:
@@ -136,6 +136,10 @@ class NinaData:
     and so `image.last_frame`'s timestamp. `session.last_frame` is the newest
     LIGHT inside the session window: after a dawn flat run, and at any hour
     after the noon rollover, the two name different frames or none at all."""
+    recent_frames: tuple[Frame, ...]
+    """The newest frames of any type, newest first, bounded — what the
+    `recent_frames` sensor attribute publishes for a dashboard's thumbnail
+    strip and histogram to browse."""
     profile: ProfileSettings
     generation: str | None
     version: VersionInfo
@@ -163,6 +167,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     the device the moment it went down. A never-observed kind publishes as
     `None`; an observed one that is down publishes with `connected=False`.
     """
+
+    config_entry: ConfigEntry
 
     def __init__(
         self,
@@ -644,6 +650,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         straddle a second.
         """
         moment = self._now()
+        # One pass over `self.frames`, not two: `newest_frame` is `recent`'s
+        # own newest entry, and a Target Scheduler night's frame count is not
+        # worth walking twice a tick.
+        recent = recent_frames(self.frames.values(), self.generation)
         return NinaData(
             snapshot=snapshot,
             session=fold(
@@ -664,7 +674,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             target=(latest_target(self.events, self.generation)
                     or target_name(self._sequence)),
             autofocus_report=self._last_autofocus,
-            newest_frame=newest_frame(self.frames.values(), self.generation),
+            newest_frame=recent[0] if recent else None,
+            recent_frames=recent,
             profile=self._profile,
             generation=self.generation,
             version=self._version,

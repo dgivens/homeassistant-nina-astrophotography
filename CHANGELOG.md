@@ -196,6 +196,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - Home Assistant bus events name the instance they came from (`instance` and
   `entry_id`). The event types are shared, so an unfiltered automation fired for
   every configured rig.
+- `sensor.<instance>_last_image_mean_adu` carries a `recent_frames` attribute
+  — the newest frames of any type, bounded, newest first, with the filter
+  name and ADU statistics each carries. What the image panel card's strip and
+  histogram read, without a fetch of their own.
 
 ### Changed
 
@@ -287,6 +291,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   only helps equipment observed for the first time from here on; anything
   already registered keeps its current area. See the entity-id-prefix caveat
   this can produce in [Troubleshooting](#troubleshooting).
+- **The image panel card shows images again on an HTTPS dashboard.** It used
+  to fetch straight from N.I.N.A.'s (HTTP-only) Advanced API from the
+  browser, which an HTTPS-served Home Assistant blocks as mixed content — the
+  stats overlay kept working regardless, since those come from Home
+  Assistant's own entities, which made the failure easy to mistake for a
+  configuration mistake rather than a browser policy. The integration now
+  proxies the bytes itself, same origin as the dashboard. The card's `host`
+  and `port` options are gone; nothing replaces them.
 
 ### Removed
 

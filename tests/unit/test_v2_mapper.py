@@ -222,6 +222,22 @@ def test_calibration_frames_lose_their_hfr_but_keep_their_adu(first_flat) -> Non
     assert frame.mean is not None
 
 
+def test_the_adu_range_is_mapped_from_min_and_max(first_light) -> None:
+    frame = map_frame(first_light, generation="g1")
+    assert (frame.min, frame.max) == (first_light["Min"], first_light["Max"])
+
+
+@pytest.mark.synthetic
+def test_a_nan_adu_range_is_none() -> None:
+    """Min/Max are ordinary numeric fields, so the .NET NaN-as-string quirk
+    applies to them the same as Mean and Median. No captured frame carries
+    it; constructed deliberately."""
+    wire = {"ImageType": "LIGHT", "Date": "2026-09-04T02:00:00.000-05:00",
+            "Filename": "frame_9998.fits", "Min": "NaN", "Max": "NaN"}
+    frame = map_frame(wire, generation="g1")
+    assert (frame.min, frame.max) == (None, None)
+
+
 @pytest.mark.synthetic
 @pytest.mark.parametrize("image_type", ["DARK", "BIAS", "DARKFLAT"])
 def test_every_calibration_type_is_stripped_like_a_flat(first_flat, image_type) -> None:
