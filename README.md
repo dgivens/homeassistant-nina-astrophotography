@@ -355,6 +355,19 @@ Four things the report itself cannot tell you:
 - **A run that hangs writes no report at all**, so these sensors keep showing
   the previous one. `last_autofocus` is how old it is; the failed flag catches
   the hang separately, as a start nothing answered.
+
+  The flag carries what it judged, because `on` alone is not actionable:
+
+  | attribute | |
+  |---|---|
+  | `reason` | `hung`, `rejected`, or absent. **This is the one to branch on** — a hung run wants the sequence looked at, a rejected one the focus range or the star detector. And only `hung` means the report every other autofocus sensor is showing belongs to a *different* run. |
+  | `r_squared` | the R² the judgement used — the worst of the run's `RSquares` |
+  | `r_squared_threshold` | your profile's `RSquaredThreshold` |
+
+  Compare against `r_squared` rather than a value of your own: the run's R² is
+  the worst of `RSquares`, which is not quite the worst of the equations
+  `fits` can be parsed from, and a verdict read off the other one can
+  contradict the flag it sits beside.
 - **The report outlives a restart and the night.** A value here can be from
   three nights ago. Date it against `last_autofocus` before believing it.
 - **Everything here is per attempt.** N.I.N.A. retries a rejected run, and only
@@ -635,7 +648,7 @@ any entity id.
 |---|---|
 | `nina-observatory-card` | Session banner and progress, equipment chips, meridian countdown, camera / mount / focuser readings, guiding RMS bars, last-frame statistics, and one-tap controls. Stopping a sequence, parking and closing the dome ask for confirmation. |
 | `nina-frame-stats-card` | Per-frame HFR, star-count and ADU sparklines with a trend, and a per-filter breakdown. The series is sampled in the browser as frames arrive, so a page reload starts it over. |
-| `nina-autofocus-card` | The last autofocus run as a chart: the measured V with error bars, the fitted curves and their minima, and the position the run left the focuser at. Reports the starting HFR against the best measured, so a run that bought nothing says so, and flags a fit that landed at the edge of the sweep. Takes an optional `temperature_delta:` (default 2 °C) — the drift since the run worth flagging, which is really your sequence's own refocus trigger. |
+| `nina-autofocus-card` | The last autofocus run as a chart: the measured V with error bars, the fitted curves and their minima, and the position the run left the focuser at. Says whether the fit passed your profile's R² threshold, reports the starting HFR against the best measured so a run that bought nothing says so, and flags a fit that landed at the edge of the sweep. Takes an optional `temperature_delta:` (default 2 °C) — the drift since the run worth flagging, which is really your sequence's own refocus trigger. |
 | `nina-image-panel-card` | The latest image with a filmstrip of recent frames, an ADU histogram, and per-frame statistics. Needs `host:` (and `port:`) — it fetches images from N.I.N.A. directly. |
 | `nina-sky-map-card` | A live star chart with the current pointing, a trail of recent positions, and the meridian. **Set `latitude:`** — it projects the whole star field and defaults to 40°N. |
 | `nina-weather-card` | Safety banner, atmospheric and wind conditions, and sky quality. Channels the source cannot provide are shown as absent rather than zero. |

@@ -18,8 +18,9 @@ for safe is a trap every user hits exactly once, at the worst possible moment.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -58,6 +59,7 @@ class NinaBinarySensorDescription(BinarySensorEntityDescription):
 
     value: Callable[[NinaData], bool | None]
     kind: str | None
+    attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
     verified: bool = True
     survives_disconnect: bool = False
     unique_id_suffix: str | None = None
@@ -73,11 +75,15 @@ def _unsafe(data: NinaData) -> bool | None:
     return not monitor.is_safe
 
 
-def _autofocus_failed(data: NinaData) -> bool | None:
-    """`on` for either way an autofocus fails, which look nothing alike.
+def _autofocus_reason(data: NinaData) -> str | None:
+    """Which of the two ways an autofocus fails this is, or `None` for neither.
+
+    They look nothing alike, and what to do about them differs.
 
     A HUNG run is an absence — a start no finish answers, past the profile's
-    timeout — and the fold decides it (§4.4).
+    timeout — and the fold decides it (§4.4). It never writes a report, so
+    `/equipment/focuser/last-af` still holds the PREVIOUS run: anything read off
+    that report belongs to a different, probably good, run.
 
     A REJECTED run finishes normally and is invisible in the event stream: the
     report N.I.N.A. writes carries no verdict, so the only evidence is its R²
@@ -90,15 +96,42 @@ def _autofocus_failed(data: NinaData) -> bool | None:
     read as a problem the moment Home Assistant restarted.
     """
     if data.session.autofocus.failed:
-        return True
+        return "hung"
     report = data.autofocus_report
     threshold = data.profile.r_squared_threshold
     if report is None or report.r_squared is None or threshold is None:
-        return False
+        return None
     start = data.session.session_start
     if report.timestamp is None or (start is not None and report.timestamp < start):
-        return False
-    return report.r_squared < threshold
+        return None
+    return "rejected" if report.r_squared < threshold else None
+
+
+def _autofocus_failed(data: NinaData) -> bool | None:
+    """`on` for either way an autofocus fails; `reason` says which."""
+    return _autofocus_reason(data) is not None
+
+
+def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
+    """What the verdict was made from, beside the verdict.
+
+    `on` alone cannot be acted on: a hung run wants the sequence looked at,
+    while a rejected one wants the focus range or the star detector looked at,
+    and only a hung run means the report on display is a different run's.
+
+    The R² is carried here rather than left to
+    `sensor.<instance>_focuser_autofocus_r2` — which is diagnostic and ships
+    disabled — because it is the value this judgement was actually made on.
+    A reader comparing some other R² against this threshold could contradict
+    the sensor it sits on: the run's R² is the worst of `RSquares`, which is
+    not quite the worst of the equations `fits` could be parsed from.
+    """
+    return {
+        "reason": _autofocus_reason(data),
+        "r_squared": None if (report := data.autofocus_report) is None
+        else report.r_squared,
+        "r_squared_threshold": data.profile.r_squared_threshold,
+    }
 
 
 DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
@@ -147,6 +180,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         kind="focuser",
         # Derived from the folded event set on read — there is no timer to leak.
         value=_autofocus_failed,
+        attributes=_autofocus_verdict,
     ),
     NinaBinarySensorDescription(
         key="sequencer_running",
@@ -270,6 +304,11 @@ class NinaBinarySensor(NinaEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         return self.entity_description.value(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        build = self.entity_description.attributes
+        return None if build is None else build(self.coordinator.data)
 
 
 async def async_setup_entry(
