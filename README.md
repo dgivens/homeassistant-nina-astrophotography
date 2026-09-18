@@ -473,8 +473,10 @@ An attribute, not entities: a curve is not a series, and there is no useful
 statistic over "the fourth point of whatever run happened last".
 `sensor.<instance>_focuser_autofocus_hfr` is the series — one number per run,
 recorded — and the curve is the shape of the single run behind it. Nothing in
-Home Assistant charts an attribute natively; feed it to a custom card, an
-ApexCharts `data_generator`, or a template.
+Home Assistant charts an attribute natively, so it needs a custom card, an
+ApexCharts `data_generator`, or a template. [`nina-autofocus-card`](#lovelace-cards)
+is the one that ships; everything above is what you need to know to write
+your own.
 
 ## Errors
 
@@ -633,6 +635,7 @@ any entity id.
 |---|---|
 | `nina-observatory-card` | Session banner and progress, equipment chips, meridian countdown, camera / mount / focuser readings, guiding RMS bars, last-frame statistics, and one-tap controls. Stopping a sequence, parking and closing the dome ask for confirmation. |
 | `nina-frame-stats-card` | Per-frame HFR, star-count and ADU sparklines with a trend, and a per-filter breakdown. The series is sampled in the browser as frames arrive, so a page reload starts it over. |
+| `nina-autofocus-card` | The last autofocus run as a chart: the measured V with error bars, the fitted curves and their minima, and the position the run left the focuser at. Reports the starting HFR against the best measured, so a run that bought nothing says so, and flags a fit that landed at the edge of the sweep. Takes an optional `temperature_delta:` (default 2 °C) — the drift since the run worth flagging, which is really your sequence's own refocus trigger. |
 | `nina-image-panel-card` | The latest image with a filmstrip of recent frames, an ADU histogram, and per-frame statistics. Needs `host:` (and `port:`) — it fetches images from N.I.N.A. directly. |
 | `nina-sky-map-card` | A live star chart with the current pointing, a trail of recent positions, and the meridian. **Set `latitude:`** — it projects the whole star field and defaults to 40°N. |
 | `nina-weather-card` | Safety banner, atmospheric and wind conditions, and sky quality. Channels the source cannot provide are shown as absent rather than zero. |
