@@ -279,6 +279,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   nominal length was out by 2.25× on one observed night.
 - An empty image history — which the API answers with `Index out of range` —
   no longer surfaces as an error.
+- **Equipment first observed after the hub has an area now lands in that area
+  too**, rather than showing as a subordinate "Hub → Rig" location. `via_device`
+  grants no area inheritance of its own — only true Home Assistant child
+  devices get that — so without this, equipment that connects for the first
+  time after you organise the hub into an area stayed arealess forever. This
+  only helps equipment observed for the first time from here on; anything
+  already registered keeps its current area. See the entity-id-prefix caveat
+  this can produce in [Troubleshooting](#troubleshooting).
 
 ### Removed
 

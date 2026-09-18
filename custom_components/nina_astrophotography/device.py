@@ -27,6 +27,7 @@ from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
@@ -164,6 +165,7 @@ def child_device_info(
     kind: str,
     meta: DeviceMeta | None,
     via_device_id: str,
+    suggested_area: str | None = None,
 ) -> DeviceInfo:
     """One piece of equipment, linked to the hub.
 
@@ -171,6 +173,11 @@ def child_device_info(
     driver is not reporting them: a disconnected device drops its whole
     identity, and writing that through would blank what the registry holds.
     The manufacturer is the hub's — the driver's vendor is not on the wire.
+
+    `suggested_area` seeds the area only where the registry CREATES the
+    device — `via_device` grants no area inheritance of its own, so without it
+    equipment first observed after the operator has organised the hub lands
+    arealess. A device that already exists keeps the area it has.
     """
     return DeviceInfo(
         identifiers=device_identifiers(entry_id, kind),
@@ -180,6 +187,7 @@ def child_device_info(
         **_present(
             model=meta.name if meta else None,
             sw_version=meta.driver_version if meta else None,
+            suggested_area=suggested_area,
         ),
     )
 
@@ -208,6 +216,8 @@ def async_sync_devices(
             ),
         ),
     )
+    hub_area = ar.async_get(hass).async_get_area(hub.area_id) if hub.area_id else None
+    hub_area_name = hub_area.name if hub_area else None
     for kind in KINDS:
         device = getattr(data.snapshot, kind)
         if device is None:
@@ -215,7 +225,12 @@ def async_sync_devices(
         registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             **child_device_info(
-                entry.entry_id, instance_name, kind, device.meta, hub.id
+                entry.entry_id,
+                instance_name,
+                kind,
+                device.meta,
+                hub.id,
+                suggested_area=hub_area_name,
             ),
         )
 

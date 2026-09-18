@@ -3,6 +3,7 @@ from dataclasses import fields
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 
 from custom_components.nina_astrophotography import async_remove_config_entry_device
@@ -126,6 +127,43 @@ async def test_only_equipment_the_rig_no_longer_reports_can_be_deleted(
         identifiers={(DOMAIN, f"{loaded_entry.entry_id}{suffix}")},
     )
     assert await async_remove_config_entry_device(hass, loaded_entry, device) is removable
+
+
+async def test_a_newly_created_child_inherits_the_hubs_area(
+    hass: HomeAssistant, loaded_entry, advance
+) -> None:
+    """`via_device` grants no area inheritance of its own (Home Assistant
+    grants that only to true child devices), so equipment first observed after
+    the operator has organised the hub would otherwise land arealess.
+    """
+    registry = dr.async_get(hass)
+    area = ar.async_get(hass).async_get_or_create("Starfront")
+    hub = _device(hass, loaded_entry)
+    registry.async_update_device(hub.id, area_id=area.id)
+
+    assert _device(hass, loaded_entry, "guider") is None
+    await advance("imaging_guiding")
+
+    assert _device(hass, loaded_entry, "guider").area_id == area.id
+
+
+async def test_syncing_does_not_move_an_already_placed_child(
+    hass: HomeAssistant, loaded_entry, advance
+) -> None:
+    """`async_sync_devices` runs on every publish; a re-run must not undo an
+    operator's deliberate move away from the hub's area."""
+    registry = dr.async_get(hass)
+    areas = ar.async_get(hass)
+    hub_area = areas.async_get_or_create("Starfront")
+    other_area = areas.async_get_or_create("Workshop")
+    hub = _device(hass, loaded_entry)
+    registry.async_update_device(hub.id, area_id=hub_area.id)
+    camera = _device(hass, loaded_entry, "camera")
+    registry.async_update_device(camera.id, area_id=other_area.id)
+
+    await advance("imaging_guiding")
+
+    assert _device(hass, loaded_entry, "camera").area_id == other_area.id
 
 
 async def test_a_device_can_be_deleted_after_its_entry_is_unloaded(
