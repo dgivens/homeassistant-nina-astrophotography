@@ -45,6 +45,13 @@ function fixed(value, places) {
   return Number.isFinite(value) ? value.toFixed(places) : "—";
 }
 
+// Two decimals suit HFR in pixels; a contrast score spans thousandths and
+// would read as "0.00" throughout.
+function reading(value) {
+  if (!Number.isFinite(value)) return "—";
+  return value !== 0 && Math.abs(value) < 0.1 ? value.toFixed(4) : value.toFixed(2);
+}
+
 // Filter, fitting, autofocuser, star detector and fit names all come off the
 // rig, and all of them land in `innerHTML`. A filter named with a tag would
 // otherwise run as markup in the dashboard.
@@ -60,16 +67,21 @@ function pretty(name) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-// The lowest and highest HFR the sweep actually measured, error bars included.
-// This is the chart's y axis, and the line under which a fitted minimum counts
-// as off it.
-function measuredRange(curve) {
+// The chart's y axis: the MEASURED points and nothing else, error bars
+// included, with a little padding. Two trend lines extrapolate the V's wings
+// until they cross, and that crossing sits well below any star the optics can
+// produce — letting it set the floor spends most of the chart on empty sky and
+// squashes the vertex, which is the part worth reading.
+//
+// One function because the legend and the chart have to agree on it: the
+// legend is what says a minimum is below the axis, and the chart is what puts
+// it there.
+function axisRange(curve) {
   const measured = curve.filter((point) => Number.isFinite(point.value));
-  return {
-    measured,
-    low: Math.min(...measured.map((point) => point.value - (point.error || 0))),
-    high: Math.max(...measured.map((point) => point.value + (point.error || 0))),
-  };
+  const low = Math.min(...measured.map((point) => point.value - (point.error || 0)));
+  const high = Math.max(...measured.map((point) => point.value + (point.error || 0)));
+  const span = (high - low) || 1;
+  return { measured, min: Math.max(0, low - span * 0.08), max: high + span * 0.08 };
 }
 
 // A trend line is fitted to one side of the V and a curve to the whole of it;
@@ -200,9 +212,11 @@ class NinaAutofocusCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._prefix = this._config.prefix || DEFAULT_PREFIX;
-    this._temperatureDelta = Number.isFinite(this._config.temperature_delta)
-      ? Math.abs(this._config.temperature_delta)
-      : DEFAULT_TEMPERATURE_DELTA;
+    // Coerced, because YAML hands back a string as readily as a number, and a
+    // silent fallback to the default would look like the setting was ignored.
+    const delta = Math.abs(Number(this._config.temperature_delta));
+    this._temperatureDelta = Number.isFinite(delta) && delta > 0
+      ? delta : DEFAULT_TEMPERATURE_DELTA;
     this._signature = null;
   }
 
@@ -239,18 +253,37 @@ class NinaAutofocusCard extends HTMLElement {
     return Number.isFinite(value) ? value : null;
   }
 
+  _list(id, attribute) {
+    const value = this._attr(id, attribute, []);
+    return Array.isArray(value) ? value : [];
+  }
+
   _read() {
     const prefix = this._prefix;
     const run = `sensor.${prefix}_focuser_last_autofocus`;
-    const curve = this._attr(run, "curve", []) || [];
-    const fits = this._attr(run, "fits", []) || [];
-    const minima = this._attr(run, "minima", []) || [];
+    const curve = this._list(run, "curve");
+    const fits = this._list(run, "fits");
+    const minima = this._list(run, "minima");
+
+    // A CONTRASTDETECTION run measures a contrast score and not star sizes, so
+    // nothing it produces is in pixels. The integration already refuses to
+    // publish an HFR for one; the card has to stop labelling the axis.
+    const method = this._attr(run, "method");
+    const isHfr = method === null || method === undefined
+      || String(method).toUpperCase() !== "CONTRASTDETECTION";
 
     // `autofocus_fitted_hfr` and `autofocus_r2` are diagnostic and ship
     // disabled, so both are taken from the attributes instead: the fitted HFR
-    // is the mean of the minima, which is how N.I.N.A. computes the point it
+    // is the mean of the minima, which is how N.I.N.A. arrives at the point it
     // moves to, and the sensor's R² is the worst of the run's fits.
+    //
+    // The mean holds only while EVERY minimum survived. A trend-line
+    // intersection can extrapolate below zero, and the mapper drops a negative
+    // one — averaging what is left would then quietly report the quadratic
+    // minimum alone, a different and much higher number than the integration's
+    // own `autofocus_fitted_hfr`, which is the mean including the negative.
     const fitted = minima.map((minimum) => minimum.value).filter(Number.isFinite);
+    const whole = minima.length > 0 && fitted.length === minima.length;
     const scored = fits.filter((fit) => Number.isFinite(fit.r_squared));
     const worst = scored.reduce(
       (lowest, fit) => (lowest === null || fit.r_squared < lowest.r_squared ? fit : lowest),
@@ -262,8 +295,8 @@ class NinaAutofocusCard extends HTMLElement {
 
     return {
       timestamp: this._state(run),
-      curve, fits, minima,
-      method: this._attr(run, "method"),
+      curve, fits, minima, method, isHfr,
+      unit: isHfr ? "px" : "",
       fitting: this._attr(run, "fitting"),
       autofocuser: this._attr(run, "autofocuser"),
       detector: this._attr(run, "star_detector"),
@@ -271,12 +304,14 @@ class NinaAutofocusCard extends HTMLElement {
       failed: this._state(`binary_sensor.${prefix}_focuser_autofocus_failed`) === "on",
       position: this._number(`sensor.${prefix}_focuser_autofocus_position`),
       hfr: this._number(`sensor.${prefix}_focuser_autofocus_hfr`),
-      fittedHfr: fitted.length
+      fittedHfr: whole && isHfr
         ? fitted.reduce((total, value) => total + value, 0) / fitted.length
         : null,
       // Named, because the sensor's R² is the worst of several fits and the
       // number means nothing without knowing which one it came from. The
-      // sensor itself is the fallback for a run whose equations did not parse.
+      // sensor is only a fallback for a report that carried no fits at all —
+      // R² comes off `RSquares` whether or not the equation string parsed —
+      // and it ships disabled, so on a stock install `fits` is the only source.
       worstSquare: worst ? worst.r_squared : this._number(`sensor.${prefix}_focuser_autofocus_r2`),
       worstFit: worst ? pretty(worst.name) : null,
       startPosition: this._number(`sensor.${prefix}_focuser_autofocus_starting_position`),
@@ -285,7 +320,10 @@ class NinaAutofocusCard extends HTMLElement {
       duration: this._number(`sensor.${prefix}_focuser_autofocus_duration`),
       temperature: at,
       nowTemperature: temperature,
-      nowPosition: this._number(`sensor.${prefix}_focuser_position`),
+      // `number.` and not `sensor.`: the focuser position exists as both, and
+      // the sensor is the diagnostic one, disabled by default. The observatory
+      // card reads the same `number.` for the same reason.
+      nowPosition: this._number(`number.${prefix}_focuser_position`),
       drift: Number.isFinite(at) && Number.isFinite(temperature)
         ? temperature - at : null,
     };
@@ -295,15 +333,16 @@ class NinaAutofocusCard extends HTMLElement {
     if (!this._hass) return;
     const run = this._read();
 
-    // Every entity here changes once per run, but `set hass` fires on every
-    // state change in the whole of Home Assistant. Redrawing the canvas each
-    // time buys nothing.
-    const signature = JSON.stringify([
-      run.timestamp, run.failed, run.position, run.nowPosition,
-      run.nowTemperature, run.curve.length, run.fits.length,
-    ]);
+    // `set hass` fires on every state change in the whole of Home Assistant,
+    // and redrawing the canvas each time buys nothing. The signature is
+    // everything the card renders rather than a few fields that stand in for
+    // it: state arrives per batch, not per run, so a `hass` can carry the new
+    // run's timestamp beside the previous run's HFR and duration. Rendering
+    // that mixture is survivable; skipping every later correction because a
+    // narrow signature already matched is not — on a focuser with no
+    // temperature probe nothing would ever dislodge it.
+    const signature = JSON.stringify(run);
     if (signature === this._signature) return;
-    this._signature = signature;
     this._run = run;
 
     this.shadowRoot.innerHTML = `
@@ -319,6 +358,10 @@ class NinaAutofocusCard extends HTMLElement {
         <div class="body">${this._body(run)}</div>
       </ha-card>
     `;
+    // Only once the markup is up. Recording it first would mean that a throw
+    // anywhere in `_body` left a blank card that never tried again, because
+    // the next identical `hass` would match the signature and return.
+    this._signature = signature;
 
     if (this._plottable(run)) requestAnimationFrame(() => this._draw());
   }
@@ -353,29 +396,55 @@ class NinaAutofocusCard extends HTMLElement {
     const drifted = Number.isFinite(run.drift)
       && Math.abs(run.drift) >= this._temperatureDelta;
     const blind = run.curve.filter((point) => !Number.isFinite(point.value)).length;
+    // Positive means the sweep improved focus. Both readings are measured
+    // exposures, so they are comparable; the fitted value is not.
+    const gained = Number.isFinite(run.startHfr) && Number.isFinite(run.hfr)
+      ? run.startHfr - run.hfr : null;
+    // An error of exactly 0 is a frame with no spread to report — near enough
+    // one detected star, and a point the fit should not have leaned on.
+    const lonely = run.curve.filter(
+      (point) => Number.isFinite(point.value) && point.error === 0).length;
+    // A fit landing in the outermost step means the true focus is probably
+    // outside the range that was swept, so the sweep needs widening and this
+    // result does not deserve much confidence.
+    const swept = run.curve.map((point) => point.position);
+    const reach = run.curve.length > 1
+      ? (Math.max(...swept) - Math.min(...swept)) / (run.curve.length - 1) : 0;
+    const atEdge = Number.isFinite(run.position) && run.curve.length > 1
+      && (run.position <= Math.min(...swept) + reach
+        || run.position >= Math.max(...swept) - reach);
 
     return `
       ${run.failed ? `
         <div class="banner">
           <span style="font-size:1.1rem">⚠️</span>
           <div>
-            <div class="what">This run did not take</div>
-            <div class="why">The focuser stayed where it was, and frames since are as soft as they were before it.</div>
+            <div class="what">The last autofocus did not take</div>
+            <div class="why">A rejected run leaves the focuser where it was, so frames since are as
+              soft as they were before it. A run that hung never wrote a report at all — then the
+              chart below is the last run that did report, from ${ago(run.timestamp) || "earlier"},
+              and not the one that failed.</div>
           </div>
         </div>` : ""}
 
       <div class="stat-row">
         <div class="stat-box">
-          <div class="label">Focus position</div>
+          <div class="label">${run.failed ? "Computed position" : "Focus position"}</div>
           <div class="value">${shown(run.position)} <span class="unit">steps</span></div>
-          <div class="sub">${moved === null ? "&nbsp;"
+          <div class="sub">${run.failed ? "Not applied — rejected"
+            : moved === null ? "&nbsp;"
             : `${moved >= 0 ? "+" : "−"}${Math.abs(moved)} from ${run.startPosition}`}</div>
         </div>
         <div class="stat-box">
           <div class="label">Best measured</div>
-          <div class="value">${fixed(run.hfr, 2)} <span class="unit">px</span></div>
-          <div class="sub">${Number.isFinite(run.fittedHfr)
-            ? `Fitted ${fixed(run.fittedHfr, 2)} px` : "&nbsp;"}</div>
+          <div class="value">${fixed(run.hfr, 2)} <span class="unit">${run.unit}</span></div>
+          <div class="sub">${gained === null
+            // What the sweep was for. Both numbers are measured — the starting
+            // one before it, the best during it — so unlike the fitted value
+            // they are on the same scale and the difference means something.
+            ? (Number.isFinite(run.fittedHfr) ? `Fitted ${fixed(run.fittedHfr, 2)} ${run.unit}` : "&nbsp;")
+            : `${fixed(run.startHfr, 2)} → ${fixed(run.hfr, 2)} · ${
+                gained > 0 ? `${fixed(gained, 2)} better` : `${fixed(-gained, 2)} worse`}`}</div>
         </div>
         <div class="stat-box">
           <div class="label">Worst fit</div>
@@ -391,20 +460,29 @@ class NinaAutofocusCard extends HTMLElement {
               <div class="label">Temperature since</div>
               <div class="value">${run.drift === null ? "—"
                 : `${run.drift >= 0 ? "+" : "−"}${fixed(Math.abs(run.drift), 1)}`} <span class="unit">°C</span></div>
-              <div class="sub">${fixed(run.temperature, 1)} → ${fixed(run.nowTemperature, 1)} °C${drifted ? " · past your trigger" : ""}</div>
+              <div class="sub">${fixed(run.temperature, 1)} → ${fixed(run.nowTemperature, 1)} °C${
+                drifted ? ` · past ${fixed(this._temperatureDelta, 1)} °C` : ""}</div>
             </div>` : ""}
           ${away !== null ? `
             <div class="stat-box">
               <div class="label">Focuser now</div>
               <div class="value">${run.nowPosition} <span class="unit">steps</span></div>
-              <div class="sub">${away === 0 ? "Where the run left it"
-                : `${away > 0 ? "+" : "−"}${Math.abs(away)} steps since the run`}</div>
+              <div class="sub">${
+                // On a rejected run the focuser never moved to the computed
+                // position, so measuring against it would read as though
+                // something nudged the focuser afterwards. Sitting back at the
+                // starting position is the signature of the restore.
+                run.failed
+                  ? (run.nowPosition === run.startPosition
+                      ? "Back where the run started" : "Not at the computed position")
+                  : away === 0 ? "Where the run left it"
+                  : `${away > 0 ? "+" : "−"}${Math.abs(away)} steps since the run`}</div>
             </div>` : ""}
         </div>` : ""}
 
       ${this._plottable(run) ? `
         <div class="chart-section">
-          <div class="chart-label">HFR against focuser position</div>
+          <div class="chart-label">${run.isHfr ? "HFR" : "Contrast"} against focuser position</div>
           <canvas id="curve"></canvas>
           ${this._legend(run)}
         </div>` : `
@@ -417,6 +495,10 @@ class NinaAutofocusCard extends HTMLElement {
       <div class="meta">
         ${blind ? `<span class="chip" style="border-color:rgba(231,111,81,0.45)">
           <span class="k">Measured nothing</span> ${blind} ${blind === 1 ? "position" : "positions"}</span>` : ""}
+        ${atEdge ? `<span class="chip" style="border-color:rgba(244,162,97,0.45)">
+          <span class="k">Focus at the edge of the sweep</span> widen the range</span>` : ""}
+        ${lonely ? `<span class="chip" style="border-color:rgba(244,162,97,0.45)">
+          <span class="k">No spread to report</span> ${lonely} ${lonely === 1 ? "position" : "positions"}</span>` : ""}
         <span class="chip"><span class="k">Points</span> ${shown(run.measured)} of ${run.curve.length}</span>
         <span class="chip"><span class="k">Took</span> ${duration(run.duration)}</span>
         ${shown(run.method) === "—" ? "" : `<span class="chip"><span class="k">Method</span> ${safe(run.method)}</span>`}
@@ -430,7 +512,8 @@ class NinaAutofocusCard extends HTMLElement {
   _legend(run) {
     const items = [
       `<div class="item"><span class="dot" style="background:${CURVE}"></span>
-        <span>Measured</span><span class="reading">± spread across stars</span></div>`,
+        <span>Measured</span><span class="reading">${
+          run.isHfr ? "± spread across stars" : "contrast score"}</span></div>`,
     ];
     for (const fit of run.fits) {
       // A fit whose equation is not a polynomial has no coefficients to
@@ -444,16 +527,22 @@ class NinaAutofocusCard extends HTMLElement {
         <span${drawn ? "" : ` style="color:var(--muted)"`}>${pretty(fit.name)}</span>
         <span class="reading">R² ${fixed(fit.r_squared, 3)}${drawn ? "" : " · not plotted"}</span></div>`);
     }
-    // The axis stops at the lowest measured point, so a minimum below that is
-    // drawn on the edge and has to say so here.
-    const { low: floor } = measuredRange(run.curve);
+    // Against the axis the chart actually uses, padding included — otherwise a
+    // minimum landing inside that padding is called below the axis here and
+    // drawn as an ordinary in-range diamond there.
+    const { min: floor } = axisRange(run.curve);
     for (const minimum of run.minima) {
       const colour = isTrend(minimum.name) ? TREND : FIT;
-      const under = Number.isFinite(minimum.value) && minimum.value < floor;
+      // A minimum the mapper dropped for being negative has no value to plot,
+      // and the chart skips it. Saying so beats a legend entry pointing at a
+      // marker that is not there.
+      const plotted = Number.isFinite(minimum.value);
+      const under = plotted && minimum.value < floor;
       items.push(`<div class="item">
-        <span class="diamond" style="background:${colour}"></span>
-        <span>${pretty(minimum.name)}</span>
-        <span class="reading">${shown(minimum.position)} · ${fixed(minimum.value, 2)} px${
+        <span class="diamond" style="background:${plotted ? colour : "var(--muted)"}"></span>
+        <span${plotted ? "" : ` style="color:var(--muted)"`}>${pretty(minimum.name)}</span>
+        <span class="reading">${shown(minimum.position)} · ${
+          plotted ? `${reading(minimum.value)} ${run.unit}` : "negative · not plotted"}${
           under ? " · below the axis" : ""}</span></div>`);
     }
     if (Number.isFinite(run.position)) {
@@ -484,32 +573,34 @@ class NinaAutofocusCard extends HTMLElement {
     // The x domain is the sweep's own range, nulls included: a position that
     // measured nothing was still visited, and dropping it would narrow the
     // range the run actually covered.
-    const positions = run.curve.map((point) => point.position);
-    if (Number.isFinite(run.position)) positions.push(run.position);
+    const swept = run.curve.map((point) => point.position);
+    // The step comes off the sweep alone. Folding the final position in first
+    // would inflate it whenever the fit landed outside the swept range, and
+    // with it the margin either side.
     const step = run.curve.length > 1
-      ? (Math.max(...positions) - Math.min(...positions)) / (run.curve.length - 1)
+      ? (Math.max(...swept) - Math.min(...swept)) / (run.curve.length - 1)
       : 1;
+    const positions = Number.isFinite(run.position) ? [...swept, run.position] : swept;
     const xMin = Math.min(...positions) - step * 0.5;
-    const xMax = Math.max(...positions) + step * 0.5;
+    // A sweep that collapsed onto one step would otherwise divide by zero and
+    // silently draw nothing: canvas treats a NaN coordinate as a no-op.
+    const xSpan = (Math.max(...positions) + step * 0.5 - xMin) || 1;
+    const xMax = xMin + xSpan;
 
-    // The axis is the MEASURED points and nothing else. Two trend lines
-    // extrapolate the V's wings until they cross, and that crossing sits well
-    // below any star the optics can produce — letting it set the floor spends
-    // most of the chart on empty sky and squashes the vertex, which is the
-    // part worth reading. A minimum outside the axis is pinned to its edge.
-    const { measured, low, high } = measuredRange(run.curve);
-    const span = (high - low) || 1;
-    const yMax = high + span * 0.08;
-    const yMin = Math.max(0, low - span * 0.08);
+    const { measured, min: yMin, max: yMax } = axisRange(run.curve);
 
-    const xOf = (x) => pad.l + ((x - xMin) / (xMax - xMin)) * plotW;
+    const xOf = (x) => pad.l + ((x - xMin) / xSpan) * plotW;
     const yOf = (y) => pad.t + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
     const inside = (y) => y >= yMin && y <= yMax;
+    const onChart = (x) => x >= xMin && x <= xMax;
 
     ctx.font = "9px sans-serif";
     ctx.textBaseline = "middle";
 
-    // Grid and the HFR axis
+    // Grid and the measurement axis. The precision follows the range rather
+    // than assuming pixels: a contrast score spans thousandths, and five
+    // gridlines all reading "0.0" carry nothing.
+    const places = Math.min(4, Math.max(1, 1 - Math.floor(Math.log10((yMax - yMin) / 4))));
     ctx.strokeStyle = "rgba(255,255,255,0.06)";
     ctx.fillStyle = "rgba(255,255,255,0.4)";
     ctx.lineWidth = 0.5;
@@ -521,7 +612,7 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.lineTo(W - pad.r, y);
       ctx.stroke();
       ctx.textAlign = "right";
-      ctx.fillText(value.toFixed(1), pad.l - 5, y);
+      ctx.fillText(value.toFixed(places), pad.l - 5, y);
     }
 
     // The focuser-position axis
@@ -639,16 +730,22 @@ class NinaAutofocusCard extends HTMLElement {
 
     for (const minimum of run.minima) {
       if (!Number.isFinite(minimum.value) || !Number.isFinite(minimum.position)) continue;
+      // Near-parallel trend lines cross a long way outside the sweep, which is
+      // exactly the failed run this card exists to explain. Drawing it anyway
+      // would put a marker on top of the axis labels or off the canvas; the
+      // legend still carries its position.
+      if (!onChart(minimum.position)) continue;
       const x = xOf(minimum.position);
       const below = minimum.value < yMin;
       const y = yOf(Math.min(Math.max(minimum.value, yMin), yMax));
       ctx.fillStyle = isTrend(minimum.name) ? TREND : FIT;
       ctx.strokeStyle = "rgba(255,255,255,0.5)";
       ctx.lineWidth = 0.8;
+      const off = below || minimum.value > yMax;
       ctx.beginPath();
-      if (below || minimum.value > yMax) {
+      if (off) {
         // Off the chart: a chevron pointing the way it went, pinned to the
-        // edge. The legend carries the value it actually has.
+        // edge.
         const tip = below ? y : y - 1;
         const back = below ? -6 : 6;
         ctx.moveTo(x, tip);
@@ -663,6 +760,14 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      // Its real value beside it, because this is the one marker the chart
+      // deliberately does not place where it belongs. Without the number a
+      // glance reads the chevron's height as the value.
+      if (off) {
+        ctx.font = "9px sans-serif";
+        ctx.textAlign = x > W / 2 ? "right" : "left";
+        ctx.fillText(reading(minimum.value), x + (x > W / 2 ? -8 : 8), y + (below ? -5 : 5));
+      }
     }
   }
 

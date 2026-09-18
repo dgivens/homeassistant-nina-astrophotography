@@ -473,8 +473,10 @@ An attribute, not entities: a curve is not a series, and there is no useful
 statistic over "the fourth point of whatever run happened last".
 `sensor.<instance>_focuser_autofocus_hfr` is the series — one number per run,
 recorded — and the curve is the shape of the single run behind it. Nothing in
-Home Assistant charts an attribute natively; feed it to a custom card, an
-ApexCharts `data_generator`, or a template.
+Home Assistant charts an attribute natively, so it needs a custom card, an
+ApexCharts `data_generator`, or a template. [`nina-autofocus-card`](#lovelace-cards)
+is the one that ships; everything above is what you need to know to write
+your own.
 
 ## Errors
 
