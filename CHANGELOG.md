@@ -184,6 +184,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   step of the sweep, a frame that reported no spread at all, and how far the
   temperature and the focuser have moved since. A `CONTRASTDETECTION` run is
   labelled as a contrast score throughout rather than in pixels.
+- **`binary_sensor.<instance>_focuser_autofocus_failed` carries what it judged**
+  — `reason` (`hung` or `rejected`), `r_squared` and `r_squared_threshold`.
+  `on` alone is not actionable: the two failures want different things looked
+  at, and only a hung run means every other autofocus sensor is showing a
+  different run's report, because a hung run writes none. The threshold reached
+  no entity before this, so the R² could be read but never judged.
 - `sensor.<instance>_mount_time_to_meridian_flip` carries
   `flip_fires_at_minutes`: the reading at which N.I.N.A. actually flips, which
   is `(Max − Min)` from the profile rather than zero.

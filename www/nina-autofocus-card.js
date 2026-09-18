@@ -173,6 +173,7 @@ const STYLE = `
   .stat-box .value .unit { font-size: 0.7rem; font-weight: 400; color: var(--muted); }
   .stat-box .sub { font-size: 0.65rem; color: var(--muted); }
   .stat-box.drifted { border-color: rgba(244,162,97,0.45); }
+  .stat-box.rejected { border-color: rgba(231,111,81,0.5); }
 
   .chart-section { display: flex; flex-direction: column; gap: 4px; }
   .chart-label { font-size: 0.62rem; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--muted); }
@@ -296,6 +297,15 @@ class NinaAutofocusCard extends HTMLElement {
     const temperature = this._number(`sensor.${prefix}_focuser_temperature`);
     const at = this._number(`sensor.${prefix}_focuser_autofocus_temperature`);
 
+    // The verdict, from the entity that makes it. `reason` separates a run
+    // that hung — which wrote no report, so the curve below belongs to an
+    // earlier run — from one that finished and was rejected on its fit. The
+    // R² is the one the judgement used, so the card cannot contradict the
+    // sensor it is quoting.
+    const verdict = `binary_sensor.${prefix}_focuser_autofocus_failed`;
+    const judged = this._attr(verdict, "r_squared");
+    const threshold = this._attr(verdict, "r_squared_threshold");
+
     return {
       timestamp: this._state(run),
       curve, fits, minima, method, isHfr,
@@ -304,7 +314,10 @@ class NinaAutofocusCard extends HTMLElement {
       autofocuser: this._attr(run, "autofocuser"),
       detector: this._attr(run, "star_detector"),
       measured: this._attr(run, "measured_points"),
-      failed: this._state(`binary_sensor.${prefix}_focuser_autofocus_failed`) === "on",
+      failed: this._state(verdict) === "on",
+      reason: this._attr(verdict, "reason"),
+      judged: Number.isFinite(judged) ? judged : null,
+      threshold: Number.isFinite(threshold) ? threshold : null,
       position: this._number(`sensor.${prefix}_focuser_autofocus_position`),
       hfr: this._number(`sensor.${prefix}_focuser_autofocus_hfr`),
       fittedHfr: whole && isHfr
@@ -416,25 +429,35 @@ class NinaAutofocusCard extends HTMLElement {
     const atEdge = Number.isFinite(run.position) && run.curve.length > 1
       && (run.position <= Math.min(...swept) + reach
         || run.position >= Math.max(...swept) - reach);
+    // A hung run wrote no report, so nothing below it describes the failure —
+    // it describes whichever run last finished.
+    const hung = run.reason === "hung";
+    // Only a rejected run leaves a computed position the focuser never took.
+    // A hung run's report is an EARLIER run's, and that one was applied.
+    const rejected = run.reason === "rejected";
+    const quality = run.judged ?? run.worstSquare;
 
     return `
       ${run.failed ? `
         <div class="banner">
           <span style="font-size:1.1rem">⚠️</span>
           <div>
-            <div class="what">The last autofocus did not take</div>
-            <div class="why">A rejected run leaves the focuser where it was, so frames since are as
-              soft as they were before it. A run that hung never wrote a report at all — then the
-              chart below is the last run that did report, from ${ago(run.timestamp) || "earlier"},
-              and not the one that failed.</div>
+            <div class="what">${hung ? "An autofocus run hung" : "The last autofocus was rejected"}</div>
+            <div class="why">${hung
+              ? `It never finished, so it wrote no report — the run charted below is the last one
+                 that did, from ${ago(run.timestamp) || "earlier"}, and not the one that failed.`
+              : `${run.threshold === null ? "Its fit was not good enough"
+                  : `Its fit scored ${fixed(run.judged, 3)} against the ${fixed(run.threshold, 2)}
+                     your profile requires`}. The focuser stayed where it was, so frames since are
+                 as soft as they were before it.`}</div>
           </div>
         </div>` : ""}
 
       <div class="stat-row">
         <div class="stat-box">
-          <div class="label">${run.failed ? "Computed position" : "Focus position"}</div>
+          <div class="label">${rejected ? "Computed position" : "Focus position"}</div>
           <div class="value">${shown(run.position)} <span class="unit">steps</span></div>
-          <div class="sub">${run.failed ? "Not applied — rejected"
+          <div class="sub">${rejected ? "Not applied — rejected"
             : moved === null ? "&nbsp;"
             : `${moved >= 0 ? "+" : "−"}${Math.abs(moved)} from ${run.startPosition}`}</div>
         </div>
@@ -449,10 +472,17 @@ class NinaAutofocusCard extends HTMLElement {
             : `${fixed(run.startHfr, 2)} → ${fixed(run.hfr, 2)} · ${
                 gained > 0 ? `${fixed(gained, 2)} better` : `${fixed(-gained, 2)} worse`}`}</div>
         </div>
-        <div class="stat-box">
-          <div class="label">Worst fit</div>
-          <div class="value">${fixed(run.worstSquare, 3)} <span class="unit">R²</span></div>
-          <div class="sub">${run.worstFit || "&nbsp;"}</div>
+        <div class="stat-box ${run.threshold !== null && quality !== null
+            && quality < run.threshold ? "rejected" : ""}">
+          <div class="label">Fit quality</div>
+          <div class="value">${fixed(quality, 3)} <span class="unit">R²</span></div>
+          <div class="sub">${
+            // The threshold turns a number nobody knows the scale of into a
+            // verdict. Without it the card falls back to naming which of the
+            // run's fits the number came from.
+            run.threshold === null || quality === null
+              ? (run.worstFit || "&nbsp;")
+              : `${quality < run.threshold ? "Rejected" : "Passed"} · needs ${fixed(run.threshold, 2)}`}</div>
         </div>
       </div>
 
@@ -475,7 +505,7 @@ class NinaAutofocusCard extends HTMLElement {
                 // position, so measuring against it would read as though
                 // something nudged the focuser afterwards. Sitting back at the
                 // starting position is the signature of the restore.
-                run.failed
+                rejected
                   ? (run.nowPosition === run.startPosition
                       ? "Back where the run started" : "Not at the computed position")
                   : away === 0 ? "Where the run left it"

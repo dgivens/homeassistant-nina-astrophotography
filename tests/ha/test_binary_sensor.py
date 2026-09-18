@@ -262,6 +262,39 @@ async def test_a_completed_autofocus_that_fitted_well_raises_nothing(
     assert hass.states.get(AUTOFOCUS_FAILED).state == "off"
 
 
+@pytest.mark.synthetic
+async def test_a_rejected_run_publishes_what_it_was_judged_against(
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+) -> None:
+    """`on` alone cannot be acted on. The R² and the threshold it lost to are
+    what turn the verdict into a number the operator can check."""
+    await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
+    attributes = hass.states.get(AUTOFOCUS_FAILED).attributes
+    assert attributes["reason"] == "rejected"
+    assert attributes["r_squared"] < attributes["r_squared_threshold"] == 0.7
+
+
+async def test_a_hung_run_says_so_because_the_report_is_another_runs(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, inside_the_dawn_session
+) -> None:
+    """A run that hangs never writes a report, so `last-af` still holds the
+    previous one. Without the reason, anything read off that report reads as
+    belonging to the run that just failed."""
+    await _set_up_at(hass, config_entry, rig, "autofocus_timed_out")
+    assert hass.states.get(AUTOFOCUS_FAILED).attributes["reason"] == "hung"
+
+
+async def test_a_run_that_fitted_well_has_no_reason(
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+) -> None:
+    """The threshold is published whether or not anything failed: it is what
+    says how much headroom a passing run had."""
+    await _set_up_at(hass, config_entry, rig, "imaging_guiding")
+    attributes = hass.states.get(AUTOFOCUS_FAILED).attributes
+    assert attributes["reason"] is None
+    assert attributes["r_squared_threshold"] == 0.7
+
+
 async def test_a_report_older_than_the_session_is_not_tonights_problem(
     hass: HomeAssistant, config_entry, rig
 ) -> None:
