@@ -27,6 +27,8 @@ uv run --group dev --group test-ha pyright                      # custom_compone
 uv run --group dev ruff check --fix . && uv run --group dev ruff format .   # lint and format
 ```
 
+The `justfile` wraps all of these; `just ci` runs everything CI checks.
+
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
 collection; always name the suite.
 
@@ -135,6 +137,10 @@ disk proves nothing.
   duplicate PRs there. `gh repo set-default` covers `gh pr`, not `gh stack`.
   One branch per task, `v2-<phase><NN>-<slug>`; each phase ends with a
   `<phase>NN-phase-<x>-gate-fixes` branch carrying the review findings.
+- **PRs are squash-merged.** A mechanical reformat ships as its own PR, and
+  its squash SHA goes into `.git-blame-ignore-revs` after it merges. Git never
+  sees a squashed branch as merged (`--merged`, `git cherry`), so check the
+  PR's state before `git branch -D`.
 - **`wip/v2.0` — a read-only reference, deleted when 2.0 tags. Never merge or
   rebase it.** It predates every fix on `main` and has no tests; its value is
   the API audit in its CHANGELOG and README, which `docs/v2.0-design.md`
