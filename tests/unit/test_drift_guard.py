@@ -12,6 +12,7 @@ _meta.endpoint. Without that, the per-device captures contribute bare leaves —
 `Connected`, `Name`, `Position` — that collide across devices, and no waiver key
 could ever match an observed path.
 """
+
 from collections import defaultdict
 import json
 from pathlib import Path
@@ -60,8 +61,14 @@ def _type_name(value: object) -> str:
         return "null"
     if value == NAN:
         return "nan"
-    return {bool: "bool", int: "int", float: "float", str: "str",
-            dict: "dict", list: "list"}[type(value)]
+    return {
+        bool: "bool",
+        int: "int",
+        float: "float",
+        str: "str",
+        dict: "dict",
+        list: "list",
+    }[type(value)]
 
 
 def _collapse(path: str) -> str:
@@ -128,7 +135,7 @@ def _corpus() -> dict[str, set[str]]:
         # JSON list. Guard it, or the whole guard dies on an AttributeError.
         if not isinstance(document, dict):
             continue
-        meta = document.pop("_meta", {})              # ours, not N.I.N.A.'s
+        meta = document.pop("_meta", {})  # ours, not N.I.N.A.'s
         endpoint = meta.get("endpoint", "")
         try:
             prefix = _NAMESPACE[endpoint]
@@ -149,10 +156,16 @@ def test_a_disconnected_device_drops_keys_rather_than_nulling_them() -> None:
     DeviceId" is the observation signal.
     """
     connected = json.loads(
-        (FIXTURES / "dawn_equipment_info.json").read_text(encoding="utf-8"))
+        (FIXTURES / "dawn_equipment_info.json").read_text(encoding="utf-8")
+    )
     disconnected = json.loads(
-        (FIXTURES / "restart_equipment_partial_connect.json").read_text(encoding="utf-8"))
-    absent = set(connected["Response"]["Mount"]) - set(disconnected["Response"]["Mount"])
+        (FIXTURES / "restart_equipment_partial_connect.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    absent = set(connected["Response"]["Mount"]) - set(
+        disconnected["Response"]["Mount"]
+    )
     assert {"DeviceId", "Name", "TrackingMode", "TrackingModes"} <= absent
 
 
@@ -187,15 +200,20 @@ def test_a_scalar_list_item_is_recorded_at_a_bracket_leaf() -> None:
 
 def test_observed_wire_shape_matches_snapshot(snapshot) -> None:
     """Fires when the WIRE changes — which the spec cannot tell you."""
-    shape = {path: "|".join(sorted(types_)) for path, types_ in sorted(_corpus().items())}
+    shape = {
+        path: "|".join(sorted(types_)) for path, types_ in sorted(_corpus().items())
+    }
     assert shape == snapshot
 
 
 def test_no_waiver_is_stale() -> None:
     """A waiver naming a path the corpus no longer contains is a lie."""
     observed = set(_corpus())
-    stale = [dotted for dotted, entry in DEVIATIONS.items()
-             if entry["wire"] != "absent" and dotted not in observed]
+    stale = [
+        dotted
+        for dotted, entry in DEVIATIONS.items()
+        if entry["wire"] != "absent" and dotted not in observed
+    ]
     assert not stale, f"waivers that no longer describe the corpus: {stale}"
 
 
@@ -205,10 +223,12 @@ def test_waivers_state_the_observed_wire_type() -> None:
     over-describe the deviation it excuses.
     """
     observed = _corpus()
-    wrong = {dotted: ("|".join(sorted(observed[dotted])), entry["wire"])
-             for dotted, entry in DEVIATIONS.items()
-             if entry["wire"] != "absent"
-             and "|".join(sorted(observed[dotted])) != entry["wire"]}
+    wrong = {
+        dotted: ("|".join(sorted(observed[dotted])), entry["wire"])
+        for dotted, entry in DEVIATIONS.items()
+        if entry["wire"] != "absent"
+        and "|".join(sorted(observed[dotted])) != entry["wire"]
+    }
     assert not wrong, f"waivers whose wire type is not what the corpus shows: {wrong}"
 
 
@@ -217,6 +237,9 @@ def test_no_field_waived_as_absent_is_present() -> None:
     If it ever appears, the waiver must go.
     """
     observed = set(_corpus())
-    present = [dotted for dotted, entry in DEVIATIONS.items()
-               if entry["wire"] == "absent" and dotted in observed]
+    present = [
+        dotted
+        for dotted, entry in DEVIATIONS.items()
+        if entry["wire"] == "absent" and dotted in observed
+    ]
     assert not present, f"fields waived as absent but present on the wire: {present}"

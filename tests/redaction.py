@@ -24,6 +24,7 @@ Credentials, account names, absolute paths, hostnames, IPv4 and IPv6 addresses,
 UUIDs and Home Assistant entity ids are a different matter and are still
 redacted.
 """
+
 import hashlib
 import re
 from typing import Any
@@ -32,7 +33,15 @@ REDACTED = "REDACTED"
 
 # Substring match on the lowercased key.
 _SECRET_KEYS = ("key", "token", "secret", "password", "credential", "email")
-_LOCATION_KEYS = ("path", "folder", "directory", "host", "url", "address", "machinename")
+_LOCATION_KEYS = (
+    "path",
+    "folder",
+    "directory",
+    "host",
+    "url",
+    "address",
+    "machinename",
+)
 # Whole camel-case words only: "Focuser" and "PauseRequested" both contain
 # "user" as a substring, and "AutoFocuserName" spells "username" across the
 # seam between "AutoFocuser" and "Name" — a substring rule zeroes the Focuser
@@ -54,25 +63,41 @@ _PSEUDONYM_KEYS = ("deviceid", "entityid")
 #                                bare-IPv4 shape below whenever every segment
 #                                is 1-3 digits, e.g. "2.2.15.2"
 _KEEP = (
-    "targetname", "sideofpier",
-    "sitelatitude", "sitelongitude", "siteelevation",
-    "latitude", "longitude", "elevation",
-    "altitude", "altitudestring", "siderealtime", "siderealtimestring",
-    "api_version", "nina_version",
+    "targetname",
+    "sideofpier",
+    "sitelatitude",
+    "sitelongitude",
+    "siteelevation",
+    "latitude",
+    "longitude",
+    "elevation",
+    "altitude",
+    "altitudestring",
+    "siderealtime",
+    "siderealtimestring",
+    "api_version",
+    "nina_version",
 )
 
 _VALUE_PATTERNS = (
-    re.compile(r"[A-Za-z]:\\"),                                  # Windows path
-    re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"),                  # bare IPv4
+    re.compile(r"[A-Za-z]:\\"),  # Windows path
+    re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"),  # bare IPv4
     # IPv6: eight hex groups, or a "::" compression. Timestamps ("21:26:56")
     # and RmsText carry one or two colons and must not match.
-    re.compile(r"(?<![\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}"
-               r"|(?:[0-9a-f]{1,4}:){1,6}(?::[0-9a-f]{1,4}){1,6}"
-               r"|(?:[0-9a-f]{1,4}:){1,7}:|:(?::[0-9a-f]{1,4}){1,7})(?![\w:])", re.IGNORECASE),
-    re.compile(r"\.ts\.net\b", re.IGNORECASE),                            # Tailscale hostname
-    re.compile(r"\b[0-9a-f]{8}(?:-?[0-9a-f]{4}){3}-?[0-9a-f]{12}\b", re.IGNORECASE),  # UUID
-    re.compile(r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
-               r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"),  # HA entity id
+    re.compile(
+        r"(?<![\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}"
+        r"|(?:[0-9a-f]{1,4}:){1,6}(?::[0-9a-f]{1,4}){1,6}"
+        r"|(?:[0-9a-f]{1,4}:){1,7}:|:(?::[0-9a-f]{1,4}){1,7})(?![\w:])",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\.ts\.net\b", re.IGNORECASE),  # Tailscale hostname
+    re.compile(
+        r"\b[0-9a-f]{8}(?:-?[0-9a-f]{4}){3}-?[0-9a-f]{12}\b", re.IGNORECASE
+    ),  # UUID
+    re.compile(
+        r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
+        r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"
+    ),  # HA entity id
 )
 
 # Site or facility identifiers, matched two ways: as the whole value of a name
@@ -147,7 +172,9 @@ def _digest(value: str, prefix: str, legacy_width: int, suffix: str = "") -> str
     """
     if re.fullmatch(rf"{re.escape(prefix)}[0-9a-f]{{8}}{re.escape(suffix)}", value):
         return value
-    if re.fullmatch(rf"{re.escape(prefix)}\d{{{legacy_width}}}{re.escape(suffix)}", value):
+    if re.fullmatch(
+        rf"{re.escape(prefix)}\d{{{legacy_width}}}{re.escape(suffix)}", value
+    ):
         return value
     digest = hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
     return f"{prefix}{digest}{suffix}"
@@ -227,11 +254,17 @@ def scan(value: Any) -> list[str]:
 
 def _differing_paths(before: Any, after: Any, prefix: str = "") -> list[str]:
     if isinstance(before, dict) and isinstance(after, dict):
-        return [path for key in before
-                for path in _differing_paths(before[key], after.get(key),
-                                             f"{prefix}.{key}" if prefix else key)]
+        return [
+            path
+            for key in before
+            for path in _differing_paths(
+                before[key], after.get(key), f"{prefix}.{key}" if prefix else key
+            )
+        ]
     if isinstance(before, list) and isinstance(after, list):
-        return [path for index, item in enumerate(before)
-                for path in _differing_paths(item, after[index],
-                                             f"{prefix}[{index}]")]
+        return [
+            path
+            for index, item in enumerate(before)
+            for path in _differing_paths(item, after[index], f"{prefix}[{index}]")
+        ]
     return [] if before == after else [prefix]

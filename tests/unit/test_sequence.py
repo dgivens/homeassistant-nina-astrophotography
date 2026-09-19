@@ -3,6 +3,7 @@
 Only the ROOT containers' `Status` is read, by `running`; nothing here asserts
 on the status of a node below them (§6.2).
 """
+
 from nina_astrophotography.api.models import SequenceNode
 from nina_astrophotography.api.v2.mapper import map_event, map_sequence
 from nina_astrophotography.sequence import progress_percent, running, target_name
@@ -45,10 +46,12 @@ def test_a_target_scheduler_tree_names_no_target_and_counts_nothing(
         ("sequence_stopped", False),
         ("dawn", False),
     ],
-    ids=["tree RUNNING, no SEQUENCE-* at all",
-         "tree still CREATED, SEQUENCE-STARTING newest",
-         "tree CREATED, SEQUENCE-FINISHED newest",
-         "night over, both agree"],
+    ids=[
+        "tree RUNNING, no SEQUENCE-* at all",
+        "tree still CREATED, SEQUENCE-STARTING newest",
+        "tree CREATED, SEQUENCE-FINISHED newest",
+        "night over, both agree",
+    ],
 )
 def test_the_tree_seeds_the_running_signal_and_the_events_correct_it(
     state: str, expected: bool
@@ -59,8 +62,10 @@ def test_the_tree_seeds_the_running_signal_and_the_events_correct_it(
     """
     trees = {"dawn": "dawn_sequence_complete.json"}
     tree = map_sequence(load_fixture(trees.get(state, f"{state}_sequence_json.json")))
-    events = [map_event(wire, generation="g1")
-              for wire in load_fixture(f"{state}_event_history.json")]
+    events = [
+        map_event(wire, generation="g1")
+        for wire in load_fixture(f"{state}_event_history.json")
+    ]
     assert running(tree, events, "g1") is expected
 
 
@@ -68,16 +73,17 @@ def test_the_last_named_target_in_pre_order_wins() -> None:
     """Last, not deepest — depth does not order sibling targets. Pinned so the
     ordering is a decision rather than an accident of the walk.
     """
-    tree = _node("Sequence", _node("Targets", TargetName="M31"),
-                 TargetName="Tonight")
+    tree = _node("Sequence", _node("Targets", TargetName="M31"), TargetName="Tonight")
     assert target_name(tree) == "M31"
 
 
 def test_a_deeper_target_does_not_outrank_a_later_shallow_one() -> None:
     """The behaviour the docstring used to claim the opposite of."""
-    tree = _node("Sequence",
-                 _node("A", _node("B", TargetName="deep")),
-                 _node("C", TargetName="shallow"))
+    tree = _node(
+        "Sequence",
+        _node("A", _node("B", TargetName="deep")),
+        _node("C", TargetName="shallow"),
+    )
     assert target_name(tree) == "shallow"
 
 
@@ -93,8 +99,7 @@ def test_an_unusable_innermost_count_does_not_fall_out_to_its_container(
     """Reporting the enclosing container's fraction would present the night's
     progress as this target's — plausible, unlogged, and wrong.
     """
-    tree = _node("Sequence", _node("Target", iterations=innermost),
-                 iterations="1/2")
+    tree = _node("Sequence", _node("Target", iterations=innermost), iterations="1/2")
     assert progress_percent(tree) is None
 
 
@@ -111,9 +116,7 @@ def test_a_count_outside_its_own_range_is_clamped(
     assert progress_percent(_node("Sequence", iterations=iterations)) == expected
 
 
-@pytest.mark.parametrize(
-    "iterations", ["", "3", "3/0", "many/10", None], ids=repr
-)
+@pytest.mark.parametrize("iterations", ["", "3", "3/0", "many/10", None], ids=repr)
 def test_an_iteration_count_that_is_not_a_fraction_reads_nothing(
     iterations: str | None,
 ) -> None:

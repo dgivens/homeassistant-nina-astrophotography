@@ -14,6 +14,7 @@ same device through two integrations is ordinary. The normal case is a real
 ASCOM switch, a Pegasus Powerbox and its outlets, dew heaters and gauges, which
 the enabled-by-default rule (§5.3.5) is written for.
 """
+
 from homeassistant.core import HomeAssistant
 import pytest
 

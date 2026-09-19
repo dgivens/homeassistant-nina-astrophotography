@@ -1,4 +1,5 @@
 """Redaction rules — one module, shared by the capture script and the guard."""
+
 import pytest
 
 from redaction import PROFILE_ALLOWLIST, project, redact, scan
@@ -21,8 +22,10 @@ from redaction import PROFILE_ALLOWLIST, project, redact, scan
         ({"IPAddress": "10.0.0.5"}, {"IPAddress": "REDACTED"}),
         ({"MachineName": "OBS-PC"}, {"MachineName": "REDACTED"}),
         # A timestamp has colons too; only eight groups or a "::" is an IPv6.
-        ({"Time": "2026-09-03T21:26:56.6584856-05:00"},
-         {"Time": "2026-09-03T21:26:56.6584856-05:00"}),
+        (
+            {"Time": "2026-09-03T21:26:56.6584856-05:00"},
+            {"Time": "2026-09-03T21:26:56.6584856-05:00"},
+        ),
         ({"Username": "dan"}, {"Username": "REDACTED"}),
         # "user" and "username" are whole-word rules: Focuser is a device, not
         # an account, and "AutoFocuserName" spells "username" across the seam
@@ -54,12 +57,15 @@ from redaction import PROFILE_ALLOWLIST, project, redact, scan
         # Under a key no rule names, the TOKEN goes and the rest stays: a
         # sequence node's text and a scheduler group label are the structure
         # the fixtures exist to record.
-        ({"Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48"},
-         {"Group": "REDACTED / Lobster & Bubble : 2026-09-04 20:51:48"}),
-        ({"Text": "off as required by SFRO policy"},
-         {"Text": "off as required by REDACTED policy"}),
-        ({"Text": "off as required by policy"},
-         {"Text": "off as required by policy"}),
+        (
+            {"Group": "SFRO / Lobster & Bubble : 2026-09-04 20:51:48"},
+            {"Group": "REDACTED / Lobster & Bubble : 2026-09-04 20:51:48"},
+        ),
+        (
+            {"Text": "off as required by SFRO policy"},
+            {"Text": "off as required by REDACTED policy"},
+        ),
+        ({"Text": "off as required by policy"}, {"Text": "off as required by policy"}),
         # A four-part .NET version string is shaped exactly like a bare IPv4
         # address when every segment is 1-3 digits.
         ({"api_version": "2.2.15.2"}, {"api_version": "2.2.15.2"}),
@@ -78,8 +84,11 @@ def test_redaction_preserves_json_type() -> None:
 
 
 def test_device_ids_become_stable_distinct_pseudonyms() -> None:
-    payload = {"a": {"DeviceId": "ASCOM.X"}, "b": {"DeviceId": "ASCOM.Y"},
-               "c": {"DeviceId": "ASCOM.X"}}
+    payload = {
+        "a": {"DeviceId": "ASCOM.X"},
+        "b": {"DeviceId": "ASCOM.Y"},
+        "c": {"DeviceId": "ASCOM.X"},
+    }
     out = redact(payload)
     assert out["a"]["DeviceId"] == out["c"]["DeviceId"] != out["b"]["DeviceId"]
     assert out["a"]["DeviceId"].startswith("device-")
@@ -140,8 +149,12 @@ def test_the_meridian_flip_inputs_survive_redaction() -> None:
     fixture to test against, and the only alternative is a hand-written
     synthetic triple — which the fixture rules forbid.
     """
-    mount = {"SiteLatitude": 31.5478, "SiderealTime": 21.021944,
-             "RightAscension": 22.071111, "SideOfPier": "pierWest"}
+    mount = {
+        "SiteLatitude": 31.5478,
+        "SiderealTime": 21.021944,
+        "RightAscension": 22.071111,
+        "SideOfPier": "pierWest",
+    }
     assert redact(mount) == mount
 
 
@@ -154,16 +167,25 @@ def test_profile_projection_keeps_only_the_allowlist() -> None:
     profile = {
         "TelescopeSettings": {"FocalLength": 500, "Name": "Esprit 100"},
         "CameraSettings": {"PixelSize": 3.76, "Gain": 100},
-        "FocuserSettings": {"AutoFocusTimeoutSeconds": 600, "RSquaredThreshold": 0.9,
-                            "AutoFocusStepSize": 50},
-        "MeridianFlipSettings": {"MinutesAfterMeridian": 5, "MaxMinutesAfterMeridian": 15,
-                                 "UseSideOfPier": True},
+        "FocuserSettings": {
+            "AutoFocusTimeoutSeconds": 600,
+            "RSquaredThreshold": 0.9,
+            "AutoFocusStepSize": 50,
+        },
+        "MeridianFlipSettings": {
+            "MinutesAfterMeridian": 5,
+            "MaxMinutesAfterMeridian": 15,
+            "UseSideOfPier": True,
+        },
         "WeatherSettings": {"WeatherUndergroundAPIKey": "live"},
     }
     assert project(profile, PROFILE_ALLOWLIST) == {
         "TelescopeSettings": {"FocalLength": 500},
         "CameraSettings": {"PixelSize": 3.76},
         "FocuserSettings": {"AutoFocusTimeoutSeconds": 600, "RSquaredThreshold": 0.9},
-        "MeridianFlipSettings": {"MinutesAfterMeridian": 5, "MaxMinutesAfterMeridian": 15,
-                                 "UseSideOfPier": True},
+        "MeridianFlipSettings": {
+            "MinutesAfterMeridian": 5,
+            "MaxMinutesAfterMeridian": 15,
+            "UseSideOfPier": True,
+        },
     }

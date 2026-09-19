@@ -30,6 +30,7 @@ is the next poll's reading; `flat_panel_brightness` in particular is raw driver
 units, not the `light`'s HA 0–255, and setting it does not toggle the light —
 brightness 0 is not off (§5.3.4).
 """
+
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -99,6 +100,7 @@ def _driver_range(
     A disconnected flat panel reports `Min 0 / Max 0`, which is an empty range
     rather than a permissive one: every value is "in range" of it.
     """
+
     def bounds(data: NinaData) -> tuple[float, float] | None:
         device = getattr(data.snapshot, kind)
         if device is None:
@@ -301,7 +303,9 @@ class NinaNumberChannel(NinaChannelEntity, NumberEntity):
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="channel_gone",
-                translation_placeholders={"channel": self._attr_name or str(self._index)},
+                translation_placeholders={
+                    "channel": self._attr_name or str(self._index)
+                },
             )
         try:
             await self.coordinator.client.set_switch_value(self._index, value)

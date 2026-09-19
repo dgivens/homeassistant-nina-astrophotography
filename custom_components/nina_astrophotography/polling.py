@@ -7,6 +7,7 @@ transient invariant failure as a sequence of arguments rather than a rig.
 Nothing here clears anything. A N.I.N.A. restart is a *generation* change, and
 the process boundary is applied downstream by filtering on that tag (§3.6).
 """
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -238,8 +239,9 @@ class TierSchedule:
         """
         self.sequence_interval = self.SEQUENCE_IDLE
 
-    def request_sequence_refetch(self, now: float | None = None, *,
-                                 requeue: str | None = None) -> bool:
+    def request_sequence_refetch(
+        self, now: float | None = None, *, requeue: str | None = None
+    ) -> bool:
         """True at most once per 30 s.
 
         `TS-TARGETSTART` fires once per exposure and its payload already
@@ -251,8 +253,10 @@ class TierSchedule:
         event made loses it until the five-minute floor comes round.
         """
         moment = self._now() if now is None else now
-        if (self._requested is not None
-                and moment - self._requested < self.SEQUENCE_DEBOUNCE):
+        if (
+            self._requested is not None
+            and moment - self._requested < self.SEQUENCE_DEBOUNCE
+        ):
             if requeue is not None:
                 self._pending.add(requeue)
             return False

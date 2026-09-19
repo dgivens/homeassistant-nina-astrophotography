@@ -11,6 +11,7 @@ translation arithmetic itself to
 bytes at its own newest index only, so a case that reads the body stubs
 `/image/0` for itself.
 """
+
 import pytest
 
 from helpers import FakeResponse, failure, ok
@@ -104,7 +105,9 @@ async def test_the_rig_being_unreachable_for_the_count_answers_502(
     assert resp.status == 502
 
 
-async def test_an_unknown_entity_answers_404(hass, loaded_entry, rig, hass_client) -> None:
+async def test_an_unknown_entity_answers_404(
+    hass, loaded_entry, rig, hass_client
+) -> None:
     client = await hass_client()
     resp = await client.get("/api/nina_astrophotography/image/image.no_such_entity/0")
     assert resp.status == 404
@@ -125,13 +128,20 @@ async def test_an_entity_whose_entry_is_unloaded_answers_404(
 
 @pytest.mark.parametrize(
     "path",
-    [f"/api/nina_astrophotography/image/{ENTITY}/not-a-number",
-     f"/api/nina_astrophotography/image/{ENTITY}/-1",
-     f"/api/nina_astrophotography/image/{ENTITY}/0?quality=high",
-     f"/api/nina_astrophotography/image/{ENTITY}/0?quality=0",
-     f"/api/nina_astrophotography/image/{ENTITY}/0?quality=101"],
-    ids=["bad-index", "negative-index", "bad-quality", "quality-too-low",
-         "quality-too-high"],
+    [
+        f"/api/nina_astrophotography/image/{ENTITY}/not-a-number",
+        f"/api/nina_astrophotography/image/{ENTITY}/-1",
+        f"/api/nina_astrophotography/image/{ENTITY}/0?quality=high",
+        f"/api/nina_astrophotography/image/{ENTITY}/0?quality=0",
+        f"/api/nina_astrophotography/image/{ENTITY}/0?quality=101",
+    ],
+    ids=[
+        "bad-index",
+        "negative-index",
+        "bad-quality",
+        "quality-too-low",
+        "quality-too-high",
+    ],
 )
 async def test_an_invalid_index_or_quality_answers_400(
     hass, loaded_entry, rig, hass_client, path: str

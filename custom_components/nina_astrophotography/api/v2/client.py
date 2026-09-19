@@ -14,6 +14,7 @@ Classification is on the pair (StatusCode, Error), never the code alone:
 /sequence/{edit,load}. The OpenAPI document calls it "Sequencer not
 initialized"; the wire says "Sequence is not initialized". Match the wire.
 """
+
 from datetime import timedelta
 import json
 import logging
@@ -118,7 +119,11 @@ class NinaClientV2:
     @staticmethod
     def _pre_handler_error(path: str, status: int, body: str) -> Exception:
         summary = " ".join(body.split())[:120]
-        message = f"GET {path} -> {status}: {summary}" if summary else f"GET {path} -> {status}"
+        message = (
+            f"GET {path} -> {status}: {summary}"
+            if summary
+            else f"GET {path} -> {status}"
+        )
         if status in _NOT_SERVED:
             return NinaEndpointError(message)
         if 400 <= status < 500:
@@ -190,8 +195,9 @@ class NinaClientV2:
             self._rig_offset = offset
         return map_equipment_info(wire)
 
-    async def get_frames(self, *, include_all: bool = False,
-                         generation: str | None = None) -> list[Frame]:
+    async def get_frames(
+        self, *, include_all: bool = False, generation: str | None = None
+    ) -> list[Frame]:
         """`include_all`, not `all` — the wire parameter stays `all`; only the
         keyword differs, to leave the builtin unshadowed.
 
@@ -263,8 +269,9 @@ class NinaClientV2:
     async def get_profile(self) -> ProfileSettings:
         return map_profile(await self._get("/profile/show", {"active": "true"}) or {})
 
-    async def get_image_bytes(self, index: int, *, quality: int = 85,
-                              auto_prepare: bool = True) -> bytes:
+    async def get_image_bytes(
+        self, index: int, *, quality: int = 85, auto_prepare: bool = True
+    ) -> bytes:
         """Fetch a rendered frame.
 
         `index` counts OLDEST-first, confirmed against a live rig: 0 is the
@@ -279,8 +286,9 @@ class NinaClientV2:
             params["autoPrepare"] = "true"
         return await self._image_bytes(f"/image/{index}", params)
 
-    async def get_livestack_image_bytes(self, target: str, filter_name: str, *,
-                                        quality: int = 85) -> bytes:
+    async def get_livestack_image_bytes(
+        self, target: str, filter_name: str, *, quality: int = 85
+    ) -> bytes:
         """Fetch the accumulated stack for one target and filter.
 
         Both halves are PATH segments and a target name carries spaces and
@@ -290,7 +298,9 @@ class NinaClientV2:
         route takes no such parameter — an unknown one binds nothing and is not
         rejected, so sending it would look like it worked.
         """
-        path = f"/livestack/image/{quote(target, safe='')}/{quote(filter_name, safe='')}"
+        path = (
+            f"/livestack/image/{quote(target, safe='')}/{quote(filter_name, safe='')}"
+        )
         return await self._image_bytes(path, {"stream": "true", "quality": quality})
 
     async def _image_bytes(self, path: str, params: dict[str, Any]) -> bytes:
@@ -302,11 +312,14 @@ class NinaClientV2:
         """
         url = self.base_url + path
         try:
-            async with self._session.get(url, params=params,
-                                         timeout=_IMAGE_TIMEOUT) as resp:
+            async with self._session.get(
+                url, params=params, timeout=_IMAGE_TIMEOUT
+            ) as resp:
                 # With stream=true a real image is served as image/*; a refusal
                 # arrives as 200 carrying the JSON envelope.
-                if resp.status == 200 and (resp.content_type or "").startswith("image/"):
+                if resp.status == 200 and (resp.content_type or "").startswith(
+                    "image/"
+                ):
                     return await resp.read()
                 body = await resp.text()
                 if resp.status != 200:
@@ -341,14 +354,16 @@ class NinaClientV2:
         """`minutes` is the cooling ramp, not a timeout; -1 asks for the
         profile's own duration.
         """
-        await self._get("/equipment/camera/cool",
-                        {"temperature": temperature, "minutes": minutes})
+        await self._get(
+            "/equipment/camera/cool", {"temperature": temperature, "minutes": minutes}
+        )
 
     async def warm_camera(self, *, minutes: float = -1) -> None:
         await self._get("/equipment/camera/warm", {"minutes": minutes})
 
-    async def set_target_temperature(self, temperature: float, *,
-                                     minutes: float | None = None) -> None:
+    async def set_target_temperature(
+        self, temperature: float, *, minutes: float | None = None
+    ) -> None:
         """There is no setpoint endpoint: changing the target is a cool-down to
         the new value. Omitting `minutes` leaves the ramp to the API.
         """
@@ -357,8 +372,9 @@ class NinaClientV2:
             params["minutes"] = minutes
         await self._get("/equipment/camera/cool", params)
 
-    async def set_cooler(self, on: bool, temperature: float, *,
-                         minutes: float = -1) -> None:
+    async def set_cooler(
+        self, on: bool, temperature: float, *, minutes: float = -1
+    ) -> None:
         """The API has no cooler toggle: cooling starts with /cool and stops
         with /warm, so the two branches are different endpoints.
 
@@ -380,8 +396,9 @@ class NinaClientV2:
         """
         await self._get("/equipment/camera/usb-limit", {"limit": limit})
 
-    async def capture_image(self, duration: float, *, gain: int | None = None,
-                            save: bool = False) -> None:
+    async def capture_image(
+        self, duration: float, *, gain: int | None = None, save: bool = False
+    ) -> None:
         """The parameter is `duration`. 1.4.5 sent `time`, so exposure time was
         silently ignored — the API defaulted it and answered Success: true.
 
@@ -447,8 +464,9 @@ class NinaClientV2:
     # guider
 
     async def start_guiding(self, *, force_calibration: bool = False) -> None:
-        await self._get("/equipment/guider/start",
-                        {"calibrate": _boolean(force_calibration)})
+        await self._get(
+            "/equipment/guider/start", {"calibrate": _boolean(force_calibration)}
+        )
 
     async def stop_guiding(self) -> None:
         await self._get("/equipment/guider/stop")
@@ -474,7 +492,9 @@ class NinaClientV2:
 
     async def set_rotator_reverse(self, on: bool) -> None:
         """The parameter is `reverseDirection`."""
-        await self._get("/equipment/rotator/reverse", {"reverseDirection": _boolean(on)})
+        await self._get(
+            "/equipment/rotator/reverse", {"reverseDirection": _boolean(on)}
+        )
 
     # dome
 
@@ -509,8 +529,9 @@ class NinaClientV2:
         await self._get("/equipment/flatdevice/set-light", {"on": _boolean(on)})
 
     async def set_flat_brightness(self, brightness: int) -> None:
-        await self._get("/equipment/flatdevice/set-brightness",
-                        {"brightness": brightness})
+        await self._get(
+            "/equipment/flatdevice/set-brightness", {"brightness": brightness}
+        )
 
     async def open_flat_cover(self) -> None:
         """The parameter is `closed` and it is inverted: opening sends false."""

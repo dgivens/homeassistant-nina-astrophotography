@@ -4,15 +4,14 @@ Static, not runtime. Once pytest-homeassistant-custom-component is installed its
 pytest11 entry point imports Home Assistant before collection, so a sys.modules
 check can never pass.
 """
+
 import ast
 from pathlib import Path
 
 import pytest
 
 COMPONENT = (
-    Path(__file__).resolve().parents[2]
-    / "custom_components"
-    / "nina_astrophotography"
+    Path(__file__).resolve().parents[2] / "custom_components" / "nina_astrophotography"
 )
 
 SEAM_ROOTS = ("api", "derive.py", "polling.py", "session.py", "const.py")
@@ -50,8 +49,9 @@ def _first_party_imports(path: Path) -> set[str]:
             parts = parts[: len(parts) - (node.level - 1)] if node.level > 1 else parts
             base = ".".join(p for p in [*parts, node.module or ""] if p)
             found.add(base)
-            found.update(f"{base}.{alias.name}" if base else alias.name
-                         for alias in node.names)
+            found.update(
+                f"{base}.{alias.name}" if base else alias.name for alias in node.names
+            )
     return found
 
 
@@ -65,8 +65,9 @@ def test_seam_module_does_not_import_homeassistant(path: Path) -> None:
             names = [node.module or ""]
         else:
             continue
-        assert not any(n == "homeassistant" or n.startswith("homeassistant.")
-                       for n in names), f"{path.name} imports Home Assistant"
+        assert not any(
+            n == "homeassistant" or n.startswith("homeassistant.") for n in names
+        ), f"{path.name} imports Home Assistant"
 
 
 def test_seam_guard_sees_the_modules_it_claims_to() -> None:
@@ -95,8 +96,9 @@ def _imports_the_wire_layer(tree: ast.AST) -> bool:
             module = node.module or ""
             if _ends_at(module, WIRE_MODULES):
                 return True
-            if (_ends_at(module, (WIRE_PACKAGE,))
-                    and any(alias.name in WIRE_NAMES for alias in node.names)):
+            if _ends_at(module, (WIRE_PACKAGE,)) and any(
+                alias.name in WIRE_NAMES for alias in node.names
+            ):
                 return True
     return False
 
@@ -109,10 +111,16 @@ def test_nothing_above_the_seam_imports_the_wire_layer() -> None:
     Read from the import statements, not from the file's text: `from .api.v2
     import mapper` names the wire layer without ever spelling `api.v2.mapper`.
     """
-    above = [p for p in COMPONENT.rglob("*.py")
-             if "api" not in p.relative_to(COMPONENT).parts]
-    offenders = [p.name for p in above
-                 if _imports_the_wire_layer(ast.parse(p.read_text(encoding="utf-8")))]
+    above = [
+        p
+        for p in COMPONENT.rglob("*.py")
+        if "api" not in p.relative_to(COMPONENT).parts
+    ]
+    offenders = [
+        p.name
+        for p in above
+        if _imports_the_wire_layer(ast.parse(p.read_text(encoding="utf-8")))
+    ]
     assert not offenders, f"wire layer imported above the seam: {offenders}"
 
 

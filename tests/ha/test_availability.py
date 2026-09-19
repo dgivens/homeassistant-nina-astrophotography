@@ -8,6 +8,7 @@ this integration's entity, by
 Level 3 — a sentinel reading as `unknown` rather than `unavailable` — is a
 value concern of the sensor platforms and is pinned in phase C.
 """
+
 import logging
 
 from homeassistant.core import HomeAssistant

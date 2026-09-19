@@ -3,6 +3,7 @@
 Bronze common-modules puts it here; Bronze has-entity-name means every entity
 name derives from its device, so `_attr_name` is the channel, never the rig.
 """
+
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -80,9 +81,7 @@ class NinaChannelEntity(NinaEntity):
         entry: NinaConfigEntry,
         channel: SwitchChannelModel,
     ) -> None:
-        super().__init__(
-            coordinator, entry, channel_key(channel), kind="switch_device"
-        )
+        super().__init__(coordinator, entry, channel_key(channel), kind="switch_device")
         self._index = channel.index
         # Named by the driver, so there is no translation key to name it by.
         self._attr_name = channel_name(channel)

@@ -1,4 +1,5 @@
 """Config flow for the N.I.N.A. Astrophotography integration."""
+
 import logging
 from typing import Any
 
@@ -60,8 +61,10 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Hostnames are case-insensitive, so `NINA.local` and `nina.local`
             # are one rig; normalising before the unique id is what makes the
             # duplicate guard see that. The entry stores the normalised form.
-            user_input = {**user_input,
-                          CONF_HOST: user_input[CONF_HOST].strip().lower()}
+            user_input = {
+                **user_input,
+                CONF_HOST: user_input[CONF_HOST].strip().lower(),
+            }
             # Host and port, not a rig-reported id: the API exposes nothing
             # stable, and this is what a second instance must differ in. Set
             # BEFORE the probe, so adding a rig twice costs no HTTP call.
@@ -79,10 +82,10 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
                 try:
                     await client.get_versions()
-                except (NinaConnectionError, NinaUnavailableError, NinaCommandError):
+                except NinaConnectionError, NinaUnavailableError, NinaCommandError:
                     # Transient or equipment-level: the address is probably right.
                     errors["base"] = "cannot_connect"
-                except (NinaEndpointError, NinaRequestError):
+                except NinaEndpointError, NinaRequestError:
                     # Something answers, but not the Advanced API this expects —
                     # a plugin too old, or another service on the port.
                     errors["base"] = "unsupported_api"
@@ -140,15 +143,11 @@ class NinaOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_POLL_INTERVAL,
-                        default=options.get(
-                            CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
-                        ),
+                        default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
                     ): _POLL_INTERVAL,
                     vol.Optional(
                         CONF_ROLLOVER_HOUR,
-                        default=options.get(
-                            CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR
-                        ),
+                        default=options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR),
                     ): vol.All(int, vol.Range(min=0, max=23)),
                 }
             ),

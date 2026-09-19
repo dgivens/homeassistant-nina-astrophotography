@@ -15,6 +15,7 @@ missing: the dome's entities, which need hardware nobody has, and the switch
 device's `number` and `sensor` channels, which need a driver richer than this
 rig's two-outlet bridge.
 """
+
 from pathlib import Path
 
 from homeassistant.const import Platform

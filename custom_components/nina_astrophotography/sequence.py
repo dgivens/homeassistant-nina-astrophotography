@@ -25,6 +25,7 @@ returns `None` everywhere and the fallback is dead code. A capture of a loaded
 Advanced Sequencer run is what settles it; until then treat both as provisional
 and do not build on them.
 """
+
 from collections.abc import Iterable, Iterator
 import logging
 
@@ -47,9 +48,9 @@ def _walk(root: SequenceNode | None) -> Iterator[SequenceNode]:
         yield from _walk(child)
 
 
-def running(root: SequenceNode | None,
-            events: Iterable[NinaEvent],
-            generation: str | None) -> bool:
+def running(
+    root: SequenceNode | None, events: Iterable[NinaEvent], generation: str | None
+) -> bool:
     """Whether the sequencer is executing — which is not whether it is imaging.
 
     A sequence spends hours not imaging and still running: Target Scheduler
@@ -79,12 +80,16 @@ def running(root: SequenceNode | None,
     """
     if root is not None and any(child.status == "RUNNING" for child in root.children):
         return True
-    bracketing = [event for event in events
-                  if event.name in _SEQUENCE_BRACKET and event.generation == generation]
+    bracketing = [
+        event
+        for event in events
+        if event.name in _SEQUENCE_BRACKET and event.generation == generation
+    ]
     if not bracketing:
         return False
-    newest = max(bracketing,
-                 key=lambda event: (event.time, event.name == _SEQUENCE_STARTED))
+    newest = max(
+        bracketing, key=lambda event: (event.time, event.name == _SEQUENCE_STARTED)
+    )
     return newest.name == _SEQUENCE_STARTED
 
 
@@ -98,8 +103,11 @@ def target_name(root: SequenceNode | None) -> str | None:
     necessarily the one being shot — see the module docstring, this whole path
     is unverified against a captured plain sequence.
     """
-    names = [str(node.attributes["TargetName"]) for node in _walk(root)
-             if node.attributes.get("TargetName")]
+    names = [
+        str(node.attributes["TargetName"])
+        for node in _walk(root)
+        if node.attributes.get("TargetName")
+    ]
     return names[-1] if names else None
 
 

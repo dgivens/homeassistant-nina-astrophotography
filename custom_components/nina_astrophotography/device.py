@@ -21,6 +21,7 @@ that a platform MUST gate entity creation on its slot being non-`None`, as
 `light.py` does: an identifiers-only `DeviceInfo` naming a kind this module has
 not created leaves the entity platform to create a nameless device.
 """
+
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, cast
 
@@ -69,6 +70,7 @@ def read_field(kind: str, field: str) -> Callable[[NinaData], Any]:
     A disconnected device's readings are already `None` from the mapper, so
     this yields `unknown` rather than a driver template default.
     """
+
     def value(data: NinaData) -> Any:
         device = getattr(data.snapshot, kind)
         return None if device is None else getattr(device, field)

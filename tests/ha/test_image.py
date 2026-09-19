@@ -5,6 +5,7 @@ two things that separate a frame from a refusal — the content type on the wire
 and the timestamp above it. The bytes are never inspected: the rig fake serves
 a JPEG magic number, because the pixels are not this platform's business.
 """
+
 from datetime import datetime
 
 from homeassistant.components.image import async_get_image
@@ -51,7 +52,10 @@ async def test_the_newest_index_is_read_fresh_not_cached_from_the_fold(
     N.I.N.A. would ask for 121 and miss a frame saved since the last poll.
     """
     rig.respond("/image-history?count=true", ok(5))
-    rig.respond("/image/4", FakeResponse(b"\xff\xd8\xff\xe0 not a frame", content_type="image/jpeg"))
+    rig.respond(
+        "/image/4",
+        FakeResponse(b"\xff\xd8\xff\xe0 not a frame", content_type="image/jpeg"),
+    )
     await async_get_image(hass, LAST_FRAME)
     assert _params(rig, "/image/4") is not None
     assert _params(rig, NEWEST_ROUTE) is None
@@ -111,7 +115,9 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_the_rig_holds(
     """
     frames = nina_responses("dawn_image_history_with_flats.json")
     newest = max(frame["Date"] for frame in frames)
-    assert hass.states.get(LAST_FRAME).state == datetime.fromisoformat(newest).isoformat()
+    assert (
+        hass.states.get(LAST_FRAME).state == datetime.fromisoformat(newest).isoformat()
+    )
 
 
 async def test_the_last_frame_timestamp_advances_when_a_frame_is_saved(
@@ -162,9 +168,9 @@ async def test_both_images_hang_off_the_hub(
     entity ids promise and what `docs/2.0-renames.md` records.
     """
     on_the_hub = entity_registry.async_get("button.n_i_n_a_sequence_start").device_id
-    assert {entity_registry.async_get(e).device_id for e in (LAST_FRAME, LIVESTACK)} == {
-        on_the_hub
-    }
+    assert {
+        entity_registry.async_get(e).device_id for e in (LAST_FRAME, LIVESTACK)
+    } == {on_the_hub}
 
 
 async def test_the_livestack_image_says_which_stack_it_is_showing(
@@ -188,8 +194,12 @@ async def test_a_stack_that_starts_after_home_assistant_did_gets_its_entity(
     entry = two_rigs.entries[1]
     assert hass.states.get("image.dome_livestack") is None
     entry.runtime_data.events._dispatch(  # noqa: SLF001
-        {"Event": "STACK-UPDATED", "Time": "2026-09-04T04:30:00-05:00",
-         "Target": "NGC 281", "Filter": "S"},
+        {
+            "Event": "STACK-UPDATED",
+            "Time": "2026-09-04T04:30:00-05:00",
+            "Target": "NGC 281",
+            "Filter": "S",
+        },
         entry.runtime_data.coordinator.generation,
     )
     await hass.async_block_till_done()

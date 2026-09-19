@@ -4,6 +4,7 @@ The states are read through the real client: a state that the mapper cannot
 read is not a state, and dispatch that cannot tell `?all=true` from
 `?count=true` would answer the reseed with a frame count.
 """
+
 from dataclasses import fields
 
 from nina_astrophotography.api.errors import NinaConnectionError, NinaEndpointError
@@ -87,15 +88,30 @@ async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> Non
 @pytest.mark.parametrize(
     ("state", "containers"),
     [
-        ("scheduler_waiting",
-         {"Start_Container": "FINISHED", "Targets_Container": "RUNNING",
-          "End_Container": "CREATED"}),
-        ("sequence_restarted",
-         {"Start_Container": "CREATED", "Targets_Container": "CREATED",
-          "End_Container": "CREATED"}),
-        ("sequence_stopped",
-         {"Start_Container": "FINISHED", "Targets_Container": "CREATED",
-          "End_Container": "CREATED"}),
+        (
+            "scheduler_waiting",
+            {
+                "Start_Container": "FINISHED",
+                "Targets_Container": "RUNNING",
+                "End_Container": "CREATED",
+            },
+        ),
+        (
+            "sequence_restarted",
+            {
+                "Start_Container": "CREATED",
+                "Targets_Container": "CREATED",
+                "End_Container": "CREATED",
+            },
+        ),
+        (
+            "sequence_stopped",
+            {
+                "Start_Container": "FINISHED",
+                "Targets_Container": "CREATED",
+                "End_Container": "CREATED",
+            },
+        ),
     ],
     ids=["running, scheduler waiting", "running, just started", "stopped"],
 )
@@ -108,8 +124,9 @@ async def test_the_root_containers_do_not_tell_running_from_stopped_alone(
     """
     client = _client(FakeRig(STATES, start=state))
     root = await client.get_sequence()
-    assert {child.name: child.status
-            for child in root.children if child.name in containers} == containers
+    assert {
+        child.name: child.status for child in root.children if child.name in containers
+    } == containers
 
 
 async def test_goto_changes_what_the_rig_serves() -> None:
@@ -143,9 +160,11 @@ async def test_a_command_is_recorded_and_answered_success() -> None:
 
 @pytest.mark.parametrize(
     "device",
-    [pytest.param("Camera", marks=pytest.mark.synthetic),
-     pytest.param("SafetyMonitor", marks=pytest.mark.synthetic),
-     "Mount"],
+    [
+        pytest.param("Camera", marks=pytest.mark.synthetic),
+        pytest.param("SafetyMonitor", marks=pytest.mark.synthetic),
+        "Mount",
+    ],
 )
 def test_a_disconnected_device_drops_its_identity_rather_than_nulling_it(
     device: str,

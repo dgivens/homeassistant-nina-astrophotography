@@ -11,6 +11,7 @@ change, focuser move, flat light, dome, sequence start/stop, profile switch. A
 rig may be imaging, and a wasted night is not recoverable. If you are unsure
 whether a call mutates state, do not make it.
 """
+
 import argparse
 import asyncio
 from datetime import UTC, datetime
@@ -56,8 +57,11 @@ def _as_envelope(slug: str, body: str) -> dict:
         envelope = None
     if isinstance(envelope, dict):
         return envelope
-    print(f"warning: {slug} answered no JSON envelope ({len(body)} B); "
-          "recording the raw body", file=sys.stderr)
+    print(
+        f"warning: {slug} answered no JSON envelope ({len(body)} B); "
+        "recording the raw body",
+        file=sys.stderr,
+    )
     return {"_raw": body}
 
 
@@ -81,8 +85,9 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
     versions: dict[str, str] = {}
     async with aiohttp.ClientSession() as session:
         for slug, path, params in ENDPOINTS:
-            async with session.get(base + path, params=params,
-                                   timeout=aiohttp.ClientTimeout(total=30)) as resp:
+            async with session.get(
+                base + path, params=params, timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
                 envelope = _as_envelope(slug, await resp.text())
 
             if slug == "version":
@@ -90,8 +95,9 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
             if slug == "nina_version":
                 versions["nina_version"] = str(envelope.get("Response"))
             if slug == "profile":
-                envelope["Response"] = project(envelope.get("Response"),
-                                               PROFILE_ALLOWLIST)
+                envelope["Response"] = project(
+                    envelope.get("Response"), PROFILE_ALLOWLIST
+                )
 
             envelope = redact(envelope)
             leaks = scan(envelope)

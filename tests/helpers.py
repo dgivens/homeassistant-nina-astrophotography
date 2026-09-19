@@ -6,6 +6,7 @@ specific fragment first. `default` covers everything else.
 
 Imports neither Home Assistant nor the integration, so both suites can use it.
 """
+
 import json
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,9 @@ FIXTURES = Path(__file__).resolve().parent / "fixtures"
 class FakeResponse:
     """Stands in for an aiohttp response."""
 
-    def __init__(self, payload, status: int = 200, content_type: str = "application/json"):
+    def __init__(
+        self, payload, status: int = 200, content_type: str = "application/json"
+    ):
         self._payload = payload
         self.status = status
         self.content_type = content_type
@@ -27,10 +30,18 @@ class FakeResponse:
         return json.loads(self._payload)
 
     async def read(self):
-        return self._payload if isinstance(self._payload, bytes) else str(self._payload).encode()
+        return (
+            self._payload
+            if isinstance(self._payload, bytes)
+            else str(self._payload).encode()
+        )
 
     async def text(self):
-        return self._payload if isinstance(self._payload, str) else json.dumps(self._payload)
+        return (
+            self._payload
+            if isinstance(self._payload, str)
+            else json.dumps(self._payload)
+        )
 
     async def __aenter__(self):
         return self

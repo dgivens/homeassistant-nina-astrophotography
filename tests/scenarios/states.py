@@ -25,6 +25,7 @@ not retry.
 Adding a state: build it from captured envelopes, never from a hand-written
 document. A state the corpus cannot show belongs in `AWAITING_CAPTURE`.
 """
+
 import json
 from typing import Any
 
@@ -108,7 +109,11 @@ def _truncated_after_the_last_autofocus_start(name: str) -> dict:
     """
     envelope = load_envelope(name)
     events = envelope["Response"]
-    starts = [i for i, event in enumerate(events) if event.get("Event") == "AUTOFOCUS-STARTING"]
+    starts = [
+        i
+        for i, event in enumerate(events)
+        if event.get("Event") == "AUTOFOCUS-STARTING"
+    ]
     return {**envelope, "Response": events[: starts[-1] + 1]}
 
 
@@ -178,10 +183,16 @@ def _rejected_autofocus(name: str, *, r_squared: float) -> dict:
     """
     envelope = load_envelope(name)
     squares = envelope["Response"]["RSquares"]
-    return {**envelope, "Response": {**envelope["Response"], "RSquares": {
-        key: (value if value == "NaN" else r_squared)
-        for key, value in squares.items()
-    }}}
+    return {
+        **envelope,
+        "Response": {
+            **envelope["Response"],
+            "RSquares": {
+                key: (value if value == "NaN" else r_squared)
+                for key, value in squares.items()
+            },
+        },
+    }
 
 
 def _rangeless(channel: dict) -> dict:
@@ -191,8 +202,14 @@ def _rangeless(channel: dict) -> dict:
     has both outlets reporting a real 0-1 range — so the shape that falls
     through all three platforms has to be derived.
     """
-    return {**channel, "Id": 4, "Name": "Aux Port",
-            "Minimum": "NaN", "Maximum": "NaN", "StepSize": "NaN"}
+    return {
+        **channel,
+        "Id": 4,
+        "Name": "Aux Port",
+        "Minimum": "NaN",
+        "Maximum": "NaN",
+        "StepSize": "NaN",
+    }
 
 
 def _degenerate(channel: dict) -> dict:
@@ -203,8 +220,15 @@ def _degenerate(channel: dict) -> dict:
     zero-step guard it reads as binary and mints a switch whose on and off
     values are both 0.
     """
-    return {**channel, "Id": 5, "Name": "Stuck Outlet",
-            "Minimum": 0, "Maximum": 0, "StepSize": 0, "Value": 0}
+    return {
+        **channel,
+        "Id": 5,
+        "Name": "Stuck Outlet",
+        "Minimum": 0,
+        "Maximum": 0,
+        "StepSize": 0,
+        "Value": 0,
+    }
 
 
 def _gauge() -> dict:
@@ -303,7 +327,9 @@ def _down(block: dict) -> dict:
     show, comparing the connected and disconnected blocks it holds: the
     identity keys go, `Connected` is false.
     """
-    return {k: v for k, v in block.items() if k not in _IDENTITY_KEYS} | {"Connected": False}
+    return {k: v for k, v in block.items() if k not in _IDENTITY_KEYS} | {
+        "Connected": False
+    }
 
 
 def disconnect(state: State, *devices: str) -> State:
@@ -315,8 +341,10 @@ def disconnect(state: State, *devices: str) -> State:
     reference = load_envelope("restart_equipment_partial_connect.json")["Response"]
     for device in devices:
         captured = reference[device]
-        block = captured if captured.get("DeviceId") is None else _down(
-            state["/equipment/info"]["Response"][device]
+        block = (
+            captured
+            if captured.get("DeviceId") is None
+            else _down(state["/equipment/info"]["Response"][device])
         )
         state = _replace_device(state, device, block)
     return state
@@ -409,8 +437,10 @@ STATES: dict[str, State] = {
     "weather_station_channel_nan": _replace_device(
         _IMAGING,
         "WeatherData",
-        {**_IMAGING["/equipment/info"]["Response"]["WeatherData"],
-         "SkyBrightness": "NaN"},
+        {
+            **_IMAGING["/equipment/info"]["Response"]["WeatherData"],
+            "SkyBrightness": "NaN",
+        },
     ),
     # The same rig with `?count=true` one frame ahead of `?all=true`, which is
     # what a frame saved between the two reads looks like. The count is a
@@ -443,8 +473,10 @@ STATES: dict[str, State] = {
     # The same rig answering /application-start with a null Response — the
     # generation unreadable for one tick. Also a scalar variant: the corpus
     # holds no capture of a transiently empty endpoint.
-    "imaging_start_unreadable": {**_IMAGING,
-                                 "/application-start": {**ok(), "Response": None}},
+    "imaging_start_unreadable": {
+        **_IMAGING,
+        "/application-start": {**ok(), "Response": None},
+    },
     # The guider connected but no longer locked on, and the guider stopped.
     # `GuiderInfo.State` is Looping | LostLock | Guiding | Stopped | Calibrating
     # and the corpus holds only `Guiding` — a guider that is down carries no
@@ -467,73 +499,99 @@ STATES: dict[str, State] = {
     ),
     # A third channel spanning 0-100, which belongs on `number`, not `switch`.
     "switch_hub_with_a_dimmable_channel": _with_readings(
-        _IMAGING, "Switch",
+        _IMAGING,
+        "Switch",
         WritableSwitches=[*_DAWN_CHANNELS, _dimmable(_DAWN_CHANNELS[0])],
     ),
     # The flat panel outlet commanded on and not yet switched: `Value` is the
     # channel's state and `TargetValue` is what it was last asked for, and no
     # capture caught them apart.
     "switch_channel_commanded_not_yet_switched": _with_readings(
-        _IMAGING, "Switch",
-        WritableSwitches=[{**_DAWN_CHANNELS[0], "Value": 0, "TargetValue": 1},
-                          _DAWN_CHANNELS[1]],
+        _IMAGING,
+        "Switch",
+        WritableSwitches=[
+            {**_DAWN_CHANNELS[0], "Value": 0, "TargetValue": 1},
+            _DAWN_CHANNELS[1],
+        ],
     ),
     # A writable channel with no range, which belongs on no platform at all.
     "switch_hub_with_a_rangeless_channel": _with_readings(
-        _IMAGING, "Switch",
+        _IMAGING,
+        "Switch",
         WritableSwitches=[*_DAWN_CHANNELS, _rangeless(_DAWN_CHANNELS[0])],
     ),
     # A channel whose range is `0-0 step 0` — the arithmetic a zero-step guard
     # exists to refuse.
     "switch_hub_with_a_degenerate_channel": _with_readings(
-        _IMAGING, "Switch",
+        _IMAGING,
+        "Switch",
         WritableSwitches=[*_DAWN_CHANNELS, _degenerate(_DAWN_CHANNELS[0])],
     ),
     # The flat panel outlet gone from the driver's list, which the entity
     # created for it outlives.
     "switch_channel_no_longer_reported": _with_readings(
-        _IMAGING, "Switch", WritableSwitches=[_DAWN_CHANNELS[1]],
+        _IMAGING,
+        "Switch",
+        WritableSwitches=[_DAWN_CHANNELS[1]],
     ),
     # A wheel whose slots are numbered from 4, so a position and an `Id` can
     # be told apart. Every capture numbers from zero in list order, which is
     # exactly why nothing else can show which one is sent.
     "filter_wheel_numbered_from_four": _with_readings(
-        _IMAGING_GUIDING, "FilterWheel",
+        _IMAGING_GUIDING,
+        "FilterWheel",
         AvailableFilters=[
             {**entry, "Id": entry["Id"] + 4}
-            for entry in _IMAGING_GUIDING["/equipment/info"]["Response"]
-            ["FilterWheel"]["AvailableFilters"]
+            for entry in _IMAGING_GUIDING["/equipment/info"]["Response"]["FilterWheel"][
+                "AvailableFilters"
+            ]
         ],
     ),
     # A read-only gauge beside the two outlets, which belongs on `sensor`.
     "switch_hub_with_a_readonly_channel": _with_readings(
-        _IMAGING, "Switch", ReadonlySwitches=[_gauge()],
+        _IMAGING,
+        "Switch",
+        ReadonlySwitches=[_gauge()],
     ),
     # The two channels numbered 5 and 6. `Id` is the API's own channel index
     # and every capture happens to number from 0 in list order, so nothing
     # else distinguishes the id from the position in `WritableSwitches`.
     "switch_channels_numbered_from_five": _with_readings(
-        _IMAGING, "Switch",
-        WritableSwitches=[{**_DAWN_CHANNELS[0], "Id": 5},
-                          {**_DAWN_CHANNELS[1], "Id": 6}],
+        _IMAGING,
+        "Switch",
+        WritableSwitches=[
+            {**_DAWN_CHANNELS[0], "Id": 5},
+            {**_DAWN_CHANNELS[1], "Id": 6},
+        ],
     ),
     # Both channels unnamed. A driver is not obliged to name a channel, and an
     # empty entity name resolves to the device's own under `has_entity_name`,
     # which would make two unnamed channels one entity.
     "switch_channels_with_no_names": _with_readings(
-        _IMAGING, "Switch",
-        WritableSwitches=[{**_DAWN_CHANNELS[0], "Name": ""},
-                          {**_DAWN_CHANNELS[1], "Name": ""}],
+        _IMAGING,
+        "Switch",
+        WritableSwitches=[
+            {**_DAWN_CHANNELS[0], "Name": ""},
+            {**_DAWN_CHANNELS[1], "Name": ""},
+        ],
     ),
     # The same channel numbering its two states 1 and 2. An ASCOM switch is
     # free to do that — 0-1 is a convention, not a rule — and every channel in
     # the corpus follows the convention, so nothing else can show that the
     # on/off values are read from the channel rather than assumed.
     "switch_channel_with_a_shifted_range": _with_readings(
-        _IMAGING, "Switch",
-        WritableSwitches=[{**_DAWN_CHANNELS[0], "Minimum": 1, "Maximum": 2,
-                           "Value": 1, "TargetValue": 1},
-                          _DAWN_CHANNELS[1]],
+        _IMAGING,
+        "Switch",
+        WritableSwitches=[
+            {
+                **_DAWN_CHANNELS[0],
+                "Minimum": 1,
+                "Maximum": 2,
+                "Value": 1,
+                "TargetValue": 1,
+            },
+            _DAWN_CHANNELS[1],
+        ],
     ),
     "camera_disconnected": disconnect(_IMAGING, "Camera"),
     "safety_monitor_disconnected": disconnect(_IMAGING, "SafetyMonitor"),

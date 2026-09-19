@@ -8,6 +8,7 @@ test that reads a state back after a command asserts it did **not** move.
 and the flat panel has; `imaging_guiding` is the mirror image. Which state a
 test starts from is therefore load-bearing, not incidental.
 """
+
 from homeassistant.components.switch import (
     DOMAIN as SWITCH_DOMAIN,
     SERVICE_TURN_OFF,
@@ -104,8 +105,11 @@ async def test_a_lock_lost_while_guiding_restarts_reads_on(
     """
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     coordinator = config_entry.runtime_data.coordinator
-    for state in ("scheduler_waiting_lost_lock", "guider_restarting_after_stop",
-                  "scheduler_waiting_lost_lock"):
+    for state in (
+        "scheduler_waiting_lost_lock",
+        "guider_restarting_after_stop",
+        "scheduler_waiting_lost_lock",
+    ):
         rig.goto(state)
         await coordinator.async_refresh()
     await hass.async_block_till_done()

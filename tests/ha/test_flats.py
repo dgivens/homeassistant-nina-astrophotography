@@ -1,4 +1,5 @@
 """Flats: disabled by default, because `/flats/status` observes only API-started runs."""
+
 from homeassistant.core import HomeAssistant
 
 STATE = "sensor.n_i_n_a_flats_state"

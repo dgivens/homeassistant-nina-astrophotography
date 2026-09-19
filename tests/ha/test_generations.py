@@ -4,6 +4,7 @@ A restart is applied by FILTERING on the generation tag: the pre-restart frames
 stay in the coordinator's set and stop counting. Clearing would race a
 concurrent poll and lose events arriving during the refetch.
 """
+
 from homeassistant.config_entries import ConfigEntryState
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -52,7 +53,7 @@ async def test_a_restart_reseeds_the_new_generations_frames(
     freezer.move_to("2026-09-05T07:30:00+00:00")
     await advance("imaging_guiding")
     assert loaded_entry.runtime_data.coordinator.data.session.image_count == 27
-    assert _reseeds(rig) == 2                  # setup, then the restart
+    assert _reseeds(rig) == 2  # setup, then the restart
 
 
 async def test_the_event_stream_follows_the_new_generation(
@@ -94,7 +95,7 @@ async def test_a_count_going_backwards_under_an_unchanged_start_reseeds(
     the generation having changed.
     """
     await advance("imaging_count_behind")
-    assert _reseeds(rig) == 2                  # setup, then the shrunk history
+    assert _reseeds(rig) == 2  # setup, then the shrunk history
 
 
 @pytest.mark.synthetic

@@ -1,4 +1,5 @@
 """The device model: a hub, one child per equipment type, metadata in the registry."""
+
 from dataclasses import fields
 
 from homeassistant.core import HomeAssistant
@@ -47,9 +48,9 @@ async def test_children_hang_off_the_hub(hass: HomeAssistant, loaded_entry) -> N
     registry = dr.async_get(hass)
     devices = dr.async_entries_for_config_entry(registry, loaded_entry.entry_id)
     hub = _device(hass, loaded_entry)
-    assert {
-        device.via_device_id for device in devices if device.id != hub.id
-    } == {hub.id}
+    assert {device.via_device_id for device in devices if device.id != hub.id} == {
+        hub.id
+    }
 
 
 async def test_the_hub_carries_the_nina_version(
@@ -126,7 +127,9 @@ async def test_only_equipment_the_rig_no_longer_reports_can_be_deleted(
         config_entry_id=loaded_entry.entry_id,
         identifiers={(DOMAIN, f"{loaded_entry.entry_id}{suffix}")},
     )
-    assert await async_remove_config_entry_device(hass, loaded_entry, device) is removable
+    assert (
+        await async_remove_config_entry_device(hass, loaded_entry, device) is removable
+    )
 
 
 async def test_a_newly_created_child_inherits_the_hubs_area(

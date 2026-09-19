@@ -24,7 +24,7 @@ uv run python scripts/coverage_floors.py
 
 uv run python scripts/check_fixtures.py tests/fixtures/*.json   # the redaction guard
 uv run --group dev --group test-ha pyright                      # custom_components/ and scripts/
-uv run --group dev ruff check --fix .                           # lint
+uv run --group dev ruff check --fix . && uv run --group dev ruff format .   # lint and format
 ```
 
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
@@ -45,9 +45,9 @@ fast, and the modules it covers have no `homeassistant` imports.
 
 `pythonpath = ["tests", "."]` means helpers import as `from helpers import ...`.
 CI is `.github/workflows/ci.yml` (both suites, coverage floors, ruff, pyright,
-fixture redaction, hassfest, HACS). Ruff lints with Home Assistant core's rule
-set, minus the docstring rules that demand boilerplate or a one-line summary —
-see `[tool.ruff]`; a pre-commit hook runs it.
+fixture redaction, hassfest, HACS). Ruff lints and formats with Home Assistant
+core's rule set, minus the docstring rules that demand boilerplate or a
+one-line summary — see `[tool.ruff]`; the pre-commit hooks run both.
 Pyright's scope and rules are `[tool.pyright]` in `pyproject.toml`: it gates
 `custom_components/` and `scripts/`, not `tests/` yet, and turns off
 `reportIncompatibleVariableOverride`, which every override of a Home Assistant

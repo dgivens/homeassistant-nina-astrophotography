@@ -15,6 +15,7 @@ verdict rather than an event.
 appeared in a capture. It costs one table row and fires nothing if the name is
 wrong.
 """
+
 from homeassistant.components.event import EventEntity, EventEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
@@ -60,9 +61,7 @@ class NinaErrorEvent(NinaEntity, EventEntity):
 
     entity_description = DESCRIPTION
 
-    def __init__(
-        self, coordinator: NinaCoordinator, entry: NinaConfigEntry
-    ) -> None:
+    def __init__(self, coordinator: NinaCoordinator, entry: NinaConfigEntry) -> None:
         super().__init__(coordinator, entry, DESCRIPTION.key)
         self._entry = entry
         # Seeded from the first published fold, so a failure that happened

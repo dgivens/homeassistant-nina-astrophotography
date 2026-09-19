@@ -23,6 +23,7 @@ per-tier due-time checks live inside `_async_update_data`.
                                   61,356 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
     before                        82,606 B x 6/min ~ 297 MB / night
 """
+
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import logging
@@ -92,8 +93,12 @@ _TIER_READS: dict[str, tuple[str, str]] = {
 # `/equipment/focuser/last-af` is here as well as on AUTOFOCUS-FINISHED: the
 # report is the only evidence a completed run was REJECTED, so a missed event
 # must not leave the verdict unread for the night.
-_FLOOR_ENDPOINTS = ("/flats/status", "/livestack/status", "/profile/show",
-                    "/equipment/focuser/last-af")
+_FLOOR_ENDPOINTS = (
+    "/flats/status",
+    "/livestack/status",
+    "/profile/show",
+    "/equipment/focuser/last-af",
+)
 
 # What a tier publishes before its endpoint has ever answered, and what it goes
 # on publishing if the build does not serve it.
@@ -307,7 +312,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         # guard is consulted only when nothing else has already asked for a
         # reseed — a tick that reseeds anyway must not spend one of its two
         # strikes.
-        if restarted or not self._seeded or self._reseed_guard.check(self._generation_frames(), count):
+        if (
+            restarted
+            or not self._seeded
+            or self._reseed_guard.check(self._generation_frames(), count)
+        ):
             await self._reseed(count)
         self._restart.update(application_start, count)
 
@@ -366,8 +375,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             # not the server's own state, and only /livestack/status reports
             # whether the stack is running — so it is read back.
             self._schedule.add_pending("/livestack/status")
-        elif (name == "SAFETY-CHANGED" or name.startswith("FLAT-")
-                or name.endswith(("-CONNECTED", "-DISCONNECTED"))):
+        elif (
+            name == "SAFETY-CHANGED"
+            or name.startswith("FLAT-")
+            or name.endswith(("-CONNECTED", "-DISCONNECTED"))
+        ):
             # Nothing safety-related waits for a tier (§6.4), and a connection
             # change moves all eleven device blocks at once. The FLAT-* events
             # are change hints and nothing more (§5.3.4) — FLAT-LIGHT-TOGGLED
@@ -516,8 +528,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             # the model at its empty value — the entities read "nothing here"
             # rather than going unavailable.
             self._not_served.add(endpoint)
-            _LOGGER.info("%s is not served by this N.I.N.A.; not polling it again",
-                         endpoint)
+            _LOGGER.info(
+                "%s is not served by this N.I.N.A.; not polling it again", endpoint
+            )
             return
         except NinaError as exc:
             # Transient. Keep what the last successful read left and try again
@@ -534,8 +547,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             # recovers and breaks anew.
             if endpoint not in self._tier_warned:
                 self._tier_warned.add(endpoint)
-                _LOGGER.warning("Could not read %s; keeping the last value",
-                                endpoint, exc_info=True)
+                _LOGGER.warning(
+                    "Could not read %s; keeping the last value", endpoint, exc_info=True
+                )
             return
         setattr(self, attribute, model)
         self._tier_warned.discard(endpoint)
@@ -621,7 +635,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             _LOGGER.info(
                 "history count %s differs from %s mapped frames after a reseed; "
                 "will re-check when the count changes",
-                count, held,
+                count,
+                held,
             )
             self._mismatch_logged = True
 
@@ -670,8 +685,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 self.events,
                 self.generation,
                 autofocus_timeout_seconds=(
-                    self._profile.autofocus_timeout_seconds
-                    or DEFAULT_AUTOFOCUS_TIMEOUT
+                    self._profile.autofocus_timeout_seconds or DEFAULT_AUTOFOCUS_TIMEOUT
                 ),
                 now=moment,
                 rollover_hour=self._rollover_hour,
@@ -680,8 +694,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             flats=self._flats,
             livestack=self._livestack,
             stack=latest_stack(self.events, self.generation),
-            target=(latest_target(self.events, self.generation)
-                    or target_name(self._sequence)),
+            target=(
+                latest_target(self.events, self.generation)
+                or target_name(self._sequence)
+            ),
             autofocus_report=self._last_autofocus,
             newest_frame=recent[0] if recent else None,
             recent_frames=recent,

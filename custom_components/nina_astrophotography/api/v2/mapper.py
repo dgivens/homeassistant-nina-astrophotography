@@ -45,6 +45,7 @@ module is stateless.
 If a sentinel reaches derive.py, models.py carries sentinel values and the seam
 is broken.
 """
+
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta, timezone
 import math
@@ -96,21 +97,23 @@ _SCHEDULER_WAIT_STARTED = "TS-WAITSTART"
 
 # WeatherData channel → model key. AveragePeriod is a driver setting, not a
 # reading, and is deliberately absent.
-_WEATHER_CHANNELS: Mapping[str, str] = MappingProxyType({
-    "CloudCover": "cloud_cover",
-    "DewPoint": "dew_point",
-    "Humidity": "humidity",
-    "Pressure": "pressure",
-    "RainRate": "rain_rate",
-    "SkyBrightness": "sky_brightness",
-    "SkyQuality": "sky_quality",
-    "SkyTemperature": "sky_temperature",
-    "StarFWHM": "star_fwhm",
-    "Temperature": "temperature",
-    "WindDirection": "wind_direction",
-    "WindGust": "wind_gust",
-    "WindSpeed": "wind_speed",
-})
+_WEATHER_CHANNELS: Mapping[str, str] = MappingProxyType(
+    {
+        "CloudCover": "cloud_cover",
+        "DewPoint": "dew_point",
+        "Humidity": "humidity",
+        "Pressure": "pressure",
+        "RainRate": "rain_rate",
+        "SkyBrightness": "sky_brightness",
+        "SkyQuality": "sky_quality",
+        "SkyTemperature": "sky_temperature",
+        "StarFWHM": "star_fwhm",
+        "Temperature": "temperature",
+        "WindDirection": "wind_direction",
+        "WindGust": "wind_gust",
+        "WindSpeed": "wind_speed",
+    }
+)
 
 # Keys under which /sequence/json nests child nodes. A node's own scalars go to
 # `attributes`; these do not.
@@ -182,10 +185,12 @@ def _timespan_seconds(raw: Any) -> float | None:
     match = _TIMESPAN.match(raw.strip()) if isinstance(raw, str) else None
     if match is None:
         return None
-    total = (int(match["days"] or 0) * 86400
-             + int(match["hours"]) * 3600
-             + int(match["minutes"]) * 60
-             + float(match["seconds"]))
+    total = (
+        int(match["days"] or 0) * 86400
+        + int(match["hours"]) * 3600
+        + int(match["minutes"]) * 60
+        + float(match["seconds"])
+    )
     return -total if match["sign"] else total
 
 
@@ -206,19 +211,24 @@ def _slots(entries: Any) -> Mapping[str, int]:
     """
     if not isinstance(entries, list):
         return MappingProxyType({})
-    return MappingProxyType({
-        entry["Name"]: index
-        for entry in entries
-        if isinstance(entry, dict)
-        and isinstance(entry.get("Name"), str)
-        and (index := _integer(entry, "Id")) is not None
-    })
+    return MappingProxyType(
+        {
+            entry["Name"]: index
+            for entry in entries
+            if isinstance(entry, dict)
+            and isinstance(entry.get("Name"), str)
+            and (index := _integer(entry, "Id")) is not None
+        }
+    )
 
 
 def _names(entries: Any) -> tuple[str, ...]:
     """The `Name` of each object in a list — filters, binning modes, ..."""
-    return tuple(entry["Name"] for entry in entries or ()
-                 if isinstance(entry, dict) and isinstance(entry.get("Name"), str))
+    return tuple(
+        entry["Name"]
+        for entry in entries or ()
+        if isinstance(entry, dict) and isinstance(entry.get("Name"), str)
+    )
 
 
 def _meta(wire: dict) -> DeviceMeta:
@@ -294,8 +304,9 @@ def map_mount(wire: dict) -> MountModel:
         sidereal_time=_number(readings, "SiderealTime"),
         tracking_enabled=tracking,
         tracking_mode=_text(readings, "TrackingMode"),
-        tracking_modes=tuple(mode for mode in wire.get("TrackingModes") or ()
-                             if isinstance(mode, str)),
+        tracking_modes=tuple(
+            mode for mode in wire.get("TrackingModes") or () if isinstance(mode, str)
+        ),
         at_park=_flag(readings, "AtPark"),
         at_home=_flag(readings, "AtHome"),
         side_of_pier=_text(readings, "SideOfPier"),
@@ -400,8 +411,11 @@ def map_weather(wire: dict) -> WeatherModel:
     return WeatherModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        channels={channel: _number(readings, key)
-                  for key, channel in _WEATHER_CHANNELS.items() if key in wire},
+        channels={
+            channel: _number(readings, key)
+            for key, channel in _WEATHER_CHANNELS.items()
+            if key in wire
+        },
     )
 
 
@@ -434,21 +448,25 @@ def map_switch(wire: dict) -> SwitchDeviceModel:
     for key, writable in (("WritableSwitches", True), ("ReadonlySwitches", False)):
         for position, entry in enumerate(wire.get(key) or ()):
             index = _integer(entry, "Id")
-            channels.append(SwitchChannelModel(
-                # The fallback is namespaced per list: `position` restarts at
-                # zero for the second one, so a writable and a read-only
-                # channel both missing `Id` would otherwise land on the same
-                # index — and `channel_of` resolves by index, so the read-only
-                # gauge would render the writable channel's value.
-                index=index if index is not None else _fallback_index(key, position),
-                name=_text(entry, "Name") or "",
-                description=_text(entry, "Description") or "",
-                value=_number(entry, "Value") if connected else None,
-                minimum=_number(entry, "Minimum"),
-                maximum=_number(entry, "Maximum"),
-                step_size=_number(entry, "StepSize"),
-                writable=writable,
-            ))
+            channels.append(
+                SwitchChannelModel(
+                    # The fallback is namespaced per list: `position` restarts at
+                    # zero for the second one, so a writable and a read-only
+                    # channel both missing `Id` would otherwise land on the same
+                    # index — and `channel_of` resolves by index, so the read-only
+                    # gauge would render the writable channel's value.
+                    index=index
+                    if index is not None
+                    else _fallback_index(key, position),
+                    name=_text(entry, "Name") or "",
+                    description=_text(entry, "Description") or "",
+                    value=_number(entry, "Value") if connected else None,
+                    minimum=_number(entry, "Minimum"),
+                    maximum=_number(entry, "Maximum"),
+                    step_size=_number(entry, "StepSize"),
+                    writable=writable,
+                )
+            )
     return SwitchDeviceModel(
         connected=connected,
         meta=_meta(wire),
@@ -478,12 +496,14 @@ def map_equipment_info(wire: dict) -> EquipmentSnapshot:
     never does. "Never observed" is a latch over successive snapshots and is the
     coordinator's to keep.
     """
+
     def block(key: str, mapper: Any) -> Any:
         raw = wire.get(key)
         return mapper(raw) if isinstance(raw, dict) else None
 
-    return EquipmentSnapshot(**{field: block(key, mapper)
-                                for field, key, mapper in _BLOCKS})
+    return EquipmentSnapshot(
+        **{field: block(key, mapper) for field, key, mapper in _BLOCKS}
+    )
 
 
 def rig_utc_offset(wire: dict) -> timedelta | None:
@@ -573,8 +593,9 @@ def map_image_save(payload: dict, generation: str | None) -> Frame | None:
     return map_frame(statistics, generation)
 
 
-def _event_time(name: str, wire: dict, frame: Frame | None,
-                offset: timedelta | None) -> datetime:
+def _event_time(
+    name: str, wire: dict, frame: Frame | None, offset: timedelta | None
+) -> datetime:
     parsed = _timestamp(wire.get("Time"))
     if parsed is None:
         if frame is None:
@@ -582,8 +603,9 @@ def _event_time(name: str, wire: dict, frame: Frame | None,
         return frame.date  # the live socket IMAGE-SAVE has no Time of its own
     if parsed.tzinfo is not None:
         return parsed
-    zone = next((z for prefix, z in EVENT_TIMEZONES.items()
-                 if name.startswith(prefix)), "local")
+    zone = next(
+        (z for prefix, z in EVENT_TIMEZONES.items() if name.startswith(prefix)), "local"
+    )
     if zone == "utc" or offset is None:
         return parsed.replace(tzinfo=UTC)
     return parsed.replace(tzinfo=timezone(offset))
@@ -607,8 +629,9 @@ def _wait_end(name: str, wire: dict, offset: timedelta | None) -> datetime | Non
     return None if offset is None else parsed.replace(tzinfo=timezone(offset))
 
 
-def map_event(wire: dict, generation: str | None, *,
-              rig_offset: timedelta | None = None) -> NinaEvent:
+def map_event(
+    wire: dict, generation: str | None, *, rig_offset: timedelta | None = None
+) -> NinaEvent:
     """One socket push or `/event-history` entry.
 
     `rig_offset` resolves the naive local times of the log-scraped `ERROR-*`
@@ -621,9 +644,12 @@ def map_event(wire: dict, generation: str | None, *,
     return NinaEvent(
         name=name,
         time=_event_time(name, wire, frame, rig_offset),
-        data={key: nan_to_none(value) for key, value in wire.items()
-              if key not in ("Event", "Time", "ImageStatistics")
-              and not isinstance(value, (dict, list))},
+        data={
+            key: nan_to_none(value)
+            for key, value in wire.items()
+            if key not in ("Event", "Time", "ImageStatistics")
+            and not isinstance(value, (dict, list))
+        },
         generation=generation,
         frame=frame,
         wait_end=_wait_end(name, wire, rig_offset),
@@ -637,13 +663,17 @@ def _sequence_node(wire: dict, fallback: str) -> SequenceNode:
         name=name if name is not None else fallback,
         status=_text(wire, "Status"),
         iterations=None if iterations is None else str(iterations),
-        children=tuple(_sequence_node(child, key)
-                       for key in _SEQUENCE_CHILDREN
-                       for child in wire.get(key) or ()
-                       if isinstance(child, dict)),
-        attributes={key: nan_to_none(value) for key, value in wire.items()
-                    if key not in _SEQUENCE_OWN_KEYS
-                    and not isinstance(value, (dict, list))},
+        children=tuple(
+            _sequence_node(child, key)
+            for key in _SEQUENCE_CHILDREN
+            for child in wire.get(key) or ()
+            if isinstance(child, dict)
+        ),
+        attributes={
+            key: nan_to_none(value)
+            for key, value in wire.items()
+            if key not in _SEQUENCE_OWN_KEYS and not isinstance(value, (dict, list))
+        },
     )
 
 
@@ -660,8 +690,11 @@ def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
         iterations=None,
         # The only nameless top-level node is the global-trigger wrapper, which
         # names itself through the key its children hang from.
-        children=tuple(_sequence_node(node, "GlobalTriggers")
-                       for node in wire if isinstance(node, dict)),
+        children=tuple(
+            _sequence_node(node, "GlobalTriggers")
+            for node in wire
+            if isinstance(node, dict)
+        ),
         attributes={},
     )
 
@@ -725,9 +758,13 @@ def _focus_curve(wire: dict) -> tuple[FocusPoint, ...]:
         # `_positive`, because a measurement of 0 is the star detector finding
         # nothing usable. `Error` is not held to that rule: zero spread is a
         # real reading, if a suspicious one.
-        swept.append(FocusPoint(position=position,
-                                value=_positive(_number(point, "Value")),
-                                error=_number(point, "Error")))
+        swept.append(
+            FocusPoint(
+                position=position,
+                value=_positive(_number(point, "Value")),
+                error=_number(point, "Error"),
+            )
+        )
     return tuple(sorted(swept, key=lambda point: point.position))
 
 
@@ -773,9 +810,12 @@ def _curve_fits(wire: dict) -> tuple[CurveFit, ...]:
     squares = wire.get("RSquares")
     squares = squares if isinstance(squares, dict) else {}
     return tuple(
-        CurveFit(name=name, equation=equation,
-                 coefficients=_polynomial(equation),
-                 r_squared=_numeric(squares.get(name)))
+        CurveFit(
+            name=name,
+            equation=equation,
+            coefficients=_polynomial(equation),
+            r_squared=_numeric(squares.get(name)),
+        )
         for name, equation in fittings.items()
         if isinstance(equation, str) and equation.strip()
     )
@@ -796,8 +836,13 @@ def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
     for name, point in intersections.items():
         position = _integer(point, "Position")
         if position is not None:
-            found.append(FitMinimum(name=name, position=position,
-                                    value=_positive(_number(point, "Value"))))
+            found.append(
+                FitMinimum(
+                    name=name,
+                    position=position,
+                    value=_positive(_number(point, "Value")),
+                )
+            )
     return tuple(found)
 
 
@@ -835,11 +880,15 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     method = _text(wire, "Method")
     is_hfr = method is None or method.upper() in _HFR_METHODS
     squares = wire.get("RSquares")
-    computed = [
-        value
-        for value in (_numeric(v) for v in (squares or {}).values())
-        if value is not None
-    ] if isinstance(squares, dict) else []
+    computed = (
+        [
+            value
+            for value in (_numeric(v) for v in (squares or {}).values())
+            if value is not None
+        ]
+        if isinstance(squares, dict)
+        else []
+    )
     curve = _focus_curve(wire)
     measured = [point.value for point in curve if point.value is not None]
     return AutoFocusReport(
@@ -881,12 +930,15 @@ def map_profile(wire: dict) -> ProfileSettings:
     return ProfileSettings(
         focal_length=_number(wire, "TelescopeSettings", "FocalLength"),
         pixel_size=_number(wire, "CameraSettings", "PixelSize"),
-        autofocus_timeout_seconds=_number(wire, "FocuserSettings",
-                                          "AutoFocusTimeoutSeconds"),
+        autofocus_timeout_seconds=_number(
+            wire, "FocuserSettings", "AutoFocusTimeoutSeconds"
+        ),
         r_squared_threshold=_number(wire, "FocuserSettings", "RSquaredThreshold"),
-        min_minutes_after_meridian=_number(wire, "MeridianFlipSettings",
-                                           "MinutesAfterMeridian"),
-        max_minutes_after_meridian=_number(wire, "MeridianFlipSettings",
-                                           "MaxMinutesAfterMeridian"),
+        min_minutes_after_meridian=_number(
+            wire, "MeridianFlipSettings", "MinutesAfterMeridian"
+        ),
+        max_minutes_after_meridian=_number(
+            wire, "MeridianFlipSettings", "MaxMinutesAfterMeridian"
+        ),
         use_side_of_pier=_flag(wire, "MeridianFlipSettings", "UseSideOfPier"),
     )

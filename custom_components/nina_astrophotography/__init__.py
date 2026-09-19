@@ -1,4 +1,5 @@
 """N.I.N.A. Astrophotography integration for Home Assistant."""
+
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict
 from datetime import timedelta
@@ -271,8 +272,13 @@ async def _async_update_listener(hass: HomeAssistant, entry: NinaConfigEntry) ->
 
 # ─── Service registration ─────────────────────────────────────────────────────
 
-_TARGET_FIELDS = (ATTR_AREA_ID, ATTR_DEVICE_ID, ATTR_ENTITY_ID, ATTR_FLOOR_ID,
-                  ATTR_LABEL_ID)
+_TARGET_FIELDS = (
+    ATTR_AREA_ID,
+    ATTR_DEVICE_ID,
+    ATTR_ENTITY_ID,
+    ATTR_FLOOR_ID,
+    ATTR_LABEL_ID,
+)
 
 
 async def _entry_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaConfigEntry:
@@ -288,8 +294,11 @@ async def _entry_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaConfi
     rig whenever the other one's N.I.N.A. was down — which is exactly when
     nobody is watching.
     """
-    configured = [entry for entry in hass.config_entries.async_entries(DOMAIN)
-                  if not entry.disabled_by]
+    configured = [
+        entry
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if not entry.disabled_by
+    ]
     # Whether a target was GIVEN, not whether it resolved: a target naming
     # something unknown must be refused, never widened back to "the only rig".
     if any(call.data.get(field) for field in _TARGET_FIELDS):
@@ -324,8 +333,9 @@ async def _client_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaClie
     return (await _entry_for_target(hass, call)).runtime_data.client
 
 
-def _bounded(field: str, kind: type[int | float], minimum: float,
-             maximum: float | None = None) -> vol.All:
+def _bounded(
+    field: str, kind: type[int | float], minimum: float, maximum: float | None = None
+) -> vol.All:
     """Coerce, then refuse out-of-range input as a validation error rather than
     a `vol.Invalid`.
 
@@ -344,7 +354,9 @@ def _bounded(field: str, kind: type[int | float], minimum: float,
                 translation_domain=DOMAIN,
                 translation_key="out_of_range",
                 translation_placeholders={
-                    "field": field, "value": str(value), "limits": limits,
+                    "field": field,
+                    "value": str(value),
+                    "limits": limits,
                 },
             )
         return value
@@ -361,6 +373,7 @@ def _service(handler: Callable[[ServiceCall], Awaitable[None]]):
     a traceback and the frontend offers to file a bug. A disconnected mount is
     not a bug in this integration.
     """
+
     @functools.wraps(handler)
     async def wrapped(call: ServiceCall) -> None:
         try:
@@ -398,7 +411,9 @@ def _register_services(hass: HomeAssistant) -> None:
         defect rather than reaching the rig.
         """
         hass.services.async_register(
-            DOMAIN, service, _service(handler),
+            DOMAIN,
+            service,
+            _service(handler),
             schema=vol.Schema({**cv.TARGET_SERVICE_FIELDS, **(fields or {})}),
         )
 
@@ -406,6 +421,7 @@ def _register_services(hass: HomeAssistant) -> None:
         service: str, command: Callable[[NinaClientV2], Awaitable[None]]
     ) -> None:
         """An action whose whole body is one no-argument client call."""
+
         async def handle(call: ServiceCall) -> None:
             await command(await _client_for_target(hass, call))
 
@@ -429,38 +445,51 @@ def _register_services(hass: HomeAssistant) -> None:
 
     async def handle_camera_cool(call: ServiceCall) -> None:
         client = await _client_for_target(hass, call)
-        await client.cool_camera(call.data["temperature"],
-                                 minutes=call.data.get("minutes", -1))
+        await client.cool_camera(
+            call.data["temperature"], minutes=call.data.get("minutes", -1)
+        )
 
     # `minutes` is unset by default rather than 10: the client sends -1, which
     # asks N.I.N.A. for the ramp the profile specifies for this camera.
-    register(SERVICE_CAMERA_COOL, handle_camera_cool, {
-        vol.Required("temperature"): vol.Coerce(float),
-        vol.Optional("minutes"): _bounded("Ramp time", float, 0),
-    })
+    register(
+        SERVICE_CAMERA_COOL,
+        handle_camera_cool,
+        {
+            vol.Required("temperature"): vol.Coerce(float),
+            vol.Optional("minutes"): _bounded("Ramp time", float, 0),
+        },
+    )
 
     async def handle_camera_warm(call: ServiceCall) -> None:
         client = await _client_for_target(hass, call)
         await client.warm_camera(minutes=call.data.get("minutes", -1))
 
-    register(SERVICE_CAMERA_WARM, handle_camera_warm, {
-        vol.Optional("minutes"): _bounded("Ramp time", float, 0),
-    })
+    register(
+        SERVICE_CAMERA_WARM,
+        handle_camera_warm,
+        {
+            vol.Optional("minutes"): _bounded("Ramp time", float, 0),
+        },
+    )
 
     async def handle_camera_capture(call: ServiceCall) -> None:
         client = await _client_for_target(hass, call)
-        await client.capture_image(call.data["duration"],
-                                   gain=call.data.get("gain"),
-                                   save=call.data["save"])
+        await client.capture_image(
+            call.data["duration"], gain=call.data.get("gain"), save=call.data["save"]
+        )
 
     # `binning` and `filter_index` are gone rather than accepted and dropped:
     # `/equipment/camera/capture` binds neither, and a parameter that looks
     # like it works is worse than no parameter.
-    register(SERVICE_CAMERA_CAPTURE, handle_camera_capture, {
-        vol.Required("duration"): _bounded("Duration", float, 0),
-        vol.Optional("gain"): _bounded("Gain", int, 0),
-        vol.Optional("save", default=False): cv.boolean,
-    })
+    register(
+        SERVICE_CAMERA_CAPTURE,
+        handle_camera_capture,
+        {
+            vol.Required("duration"): _bounded("Duration", float, 0),
+            vol.Optional("gain"): _bounded("Gain", int, 0),
+            vol.Optional("save", default=False): cv.boolean,
+        },
+    )
 
     # ── Mount ────────────────────────────────────────────────────────────────
 
@@ -472,19 +501,27 @@ def _register_services(hass: HomeAssistant) -> None:
     # MOUNT's epoch and in HOURS, so feeding a reported value back here is
     # wrong twice — and 22.07 is a valid figure either way, so nothing catches
     # it. Catalogues quote h:m:s; multiply hours by 15.
-    register(SERVICE_MOUNT_SLEW, handle_mount_slew, {
-        vol.Required("ra_degrees"): _bounded("Right ascension", float, 0, 360),
-        vol.Required("dec_degrees"): _bounded("Declination", float, -90, 90),
-    })
+    register(
+        SERVICE_MOUNT_SLEW,
+        handle_mount_slew,
+        {
+            vol.Required("ra_degrees"): _bounded("Right ascension", float, 0, 360),
+            vol.Required("dec_degrees"): _bounded("Declination", float, -90, 90),
+        },
+    )
 
     async def handle_mount_set_tracking(call: ServiceCall) -> None:
         client = await _client_for_target(hass, call)
         mode = TrackingMode.SIDEREAL if call.data["enabled"] else TrackingMode.STOPPED
         await client.set_tracking_mode(int(mode))
 
-    register(SERVICE_MOUNT_TRACKING, handle_mount_set_tracking, {
-        vol.Required("enabled"): cv.boolean,
-    })
+    register(
+        SERVICE_MOUNT_TRACKING,
+        handle_mount_set_tracking,
+        {
+            vol.Required("enabled"): cv.boolean,
+        },
+    )
 
     # ── Focuser ──────────────────────────────────────────────────────────────
 
@@ -494,9 +531,13 @@ def _register_services(hass: HomeAssistant) -> None:
 
     # No upper bound: the focuser's travel is per-device, and the driver
     # reports it.
-    register(SERVICE_FOCUSER_MOVE, handle_focuser_move, {
-        vol.Required("position"): _bounded("Position", int, 0),
-    })
+    register(
+        SERVICE_FOCUSER_MOVE,
+        handle_focuser_move,
+        {
+            vol.Required("position"): _bounded("Position", int, 0),
+        },
+    )
 
     # ── Filter Wheel ─────────────────────────────────────────────────────────
 
@@ -504,9 +545,13 @@ def _register_services(hass: HomeAssistant) -> None:
         client = await _client_for_target(hass, call)
         await client.change_filter(call.data["filter_index"])
 
-    register(SERVICE_FILTERWHEEL_CHANGE, handle_filterwheel_change_filter, {
-        vol.Required("filter_index"): _bounded("Filter index", int, 0),
-    })
+    register(
+        SERVICE_FILTERWHEEL_CHANGE,
+        handle_filterwheel_change_filter,
+        {
+            vol.Required("filter_index"): _bounded("Filter index", int, 0),
+        },
+    )
 
     # ── Guider ───────────────────────────────────────────────────────────────
 
@@ -514,9 +559,13 @@ def _register_services(hass: HomeAssistant) -> None:
         client = await _client_for_target(hass, call)
         await client.start_guiding(force_calibration=call.data["force_calibration"])
 
-    register(SERVICE_GUIDER_START, handle_guider_start, {
-        vol.Optional("force_calibration", default=False): cv.boolean,
-    })
+    register(
+        SERVICE_GUIDER_START,
+        handle_guider_start,
+        {
+            vol.Optional("force_calibration", default=False): cv.boolean,
+        },
+    )
 
     # ── Sequence ─────────────────────────────────────────────────────────────
 
@@ -526,6 +575,10 @@ def _register_services(hass: HomeAssistant) -> None:
 
     # A NAME — the one N.I.N.A. lists under its sequence folder. The endpoint
     # binds no path.
-    register(SERVICE_SEQUENCE_LOAD, handle_sequence_load, {
-        vol.Required("sequence_name"): cv.string,
-    })
+    register(
+        SERVICE_SEQUENCE_LOAD,
+        handle_sequence_load,
+        {
+            vol.Required("sequence_name"): cv.string,
+        },
+    )

@@ -8,6 +8,7 @@ The path-per-button table therefore drives the descriptors' `press` callables
 through a real client, which is the only way to cover all twelve; the entity
 wiring above them is proved separately through `button.press`.
 """
+
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
 from homeassistant.const import ATTR_ENTITY_ID, EntityCategory
 from homeassistant.core import HomeAssistant
@@ -55,9 +56,7 @@ def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
     )
 
 
-@pytest.mark.parametrize(
-    "description", DESCRIPTIONS, ids=[d.key for d in DESCRIPTIONS]
-)
+@pytest.mark.parametrize("description", DESCRIPTIONS, ids=[d.key for d in DESCRIPTIONS])
 async def test_each_button_sends_its_own_command_path(rig, description) -> None:
     """Twelve buttons differing only in the endpoint they send: the mapping
     from key to path is the whole of this platform's logic.
@@ -76,9 +75,7 @@ async def test_a_press_returns_when_the_api_accepts_the_command(
     assert rig.sent == [("/equipment/focuser/auto-focus", None)]
 
 
-async def test_a_refused_command_raises(
-    hass: HomeAssistant, loaded_entry, rig
-) -> None:
+async def test_a_refused_command_raises(hass: HomeAssistant, loaded_entry, rig) -> None:
     """A refusal is HTTP 200 carrying StatusCode 409 (§3.5)."""
     rig.respond("/equipment/focuser/auto-focus", failure("Focuser not connected"))
     with pytest.raises(HomeAssistantError):
@@ -123,7 +120,9 @@ async def test_every_button_lands_on_the_device_its_entity_id_names(
     The dome's four are absent: no capture observes a dome.
     """
     await advance("imaging_guiding")
-    assert sorted(state.entity_id for state in hass.states.async_all(BUTTON_DOMAIN)) == [
+    assert sorted(
+        state.entity_id for state in hass.states.async_all(BUTTON_DOMAIN)
+    ) == [
         "button.n_i_n_a_camera_abort_exposure",
         "button.n_i_n_a_focuser_auto_focus",
         "button.n_i_n_a_guider_clear_calibration",

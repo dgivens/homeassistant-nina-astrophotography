@@ -1,4 +1,5 @@
 """The floors script fails on a breach and on an unmeasured file."""
+
 import json
 from pathlib import Path
 import sys
@@ -14,25 +15,30 @@ FLOORS = {"derive.py": 95, "session.py": 95, "api/v2/mapper.py": 90}
 
 
 def _report(tmp_path: Path, files: dict[str, float]) -> None:
-    (tmp_path / "coverage.json").write_text(json.dumps({
-        "files": {PREFIX + name: {"summary": {"percent_covered": pct}}
-                  for name, pct in files.items()}
-    }), encoding="utf-8")
+    (tmp_path / "coverage.json").write_text(
+        json.dumps(
+            {
+                "files": {
+                    PREFIX + name: {"summary": {"percent_covered": pct}}
+                    for name, pct in files.items()
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 def test_a_met_floor_passes(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(coverage_floors, "FLOORS", FLOORS)
-    _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0,
-                       "api/v2/mapper.py": 90.0})
+    _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0, "api/v2/mapper.py": 90.0})
     assert coverage_floors.main() == 0
 
 
 def test_a_breached_floor_fails(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(coverage_floors, "FLOORS", FLOORS)
-    _report(tmp_path, {"derive.py": 94.9, "session.py": 95.0,
-                       "api/v2/mapper.py": 90.0})
+    _report(tmp_path, {"derive.py": 94.9, "session.py": 95.0, "api/v2/mapper.py": 90.0})
     assert coverage_floors.main() == 1
 
 

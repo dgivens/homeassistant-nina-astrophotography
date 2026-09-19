@@ -9,6 +9,7 @@ in `nina-image-panel-card.js` for a release after it was fixed everywhere else.
 Source checks: there is no JavaScript test harness here, and adding one to pin
 a handful of string literals would cost more than it returns.
 """
+
 from functools import cache
 import json
 from pathlib import Path
@@ -22,14 +23,21 @@ WWW_DIR = ROOT / "custom_components" / "nina_astrophotography" / "www"
 CARDS = sorted(WWW_DIR.glob("*.js"))
 assert CARDS, "no cards found"
 
-DOMAINS = ("sensor", "binary_sensor", "switch", "light", "number", "select",
-           "button", "image", "event")
+DOMAINS = (
+    "sensor",
+    "binary_sensor",
+    "switch",
+    "light",
+    "number",
+    "select",
+    "button",
+    "image",
+    "event",
+)
 # A card builds its ids from the instance prefix it is configured with:
 # `sensor.${prefix}_mount_altitude`.
-TEMPLATED = re.compile(
-    rf"(?:{'|'.join(DOMAINS)})\.\$\{{[\w.]+\}}_([a-z0-9_]+)\b")
-LITERAL = re.compile(
-    rf"([\"'`])(?:{'|'.join(DOMAINS)})\.[a-z][a-z0-9_]*\1")
+TEMPLATED = re.compile(rf"(?:{'|'.join(DOMAINS)})\.\$\{{[\w.]+\}}_([a-z0-9_]+)\b")
+LITERAL = re.compile(rf"([\"'`])(?:{'|'.join(DOMAINS)})\.[a-z][a-z0-9_]*\1")
 
 # The instance name the registry snapshot was taken under, slugified.
 INSTANCE = "n_i_n_a"
@@ -38,7 +46,9 @@ INSTANCE = "n_i_n_a"
 # (docs/2.0-renames.md): every dome entity, since nobody involved has the
 # hardware, and the three weather channels this source reports as "NaN".
 ABSENT_FROM_THE_SNAPSHOT = {
-    "weather_cloud_cover", "weather_sky_quality", "weather_star_fwhm",
+    "weather_cloud_cover",
+    "weather_sky_quality",
+    "weather_star_fwhm",
 }
 
 
@@ -53,11 +63,14 @@ def _entity_suffixes() -> frozenset[str]:
     Read from the plain committed list rather than scraped out of syrupy's
     `.ambr`, which is a snapshot serialization and not a stable interface.
     """
-    listed = (ROOT / "tests" / "ha" / "snapshots" / "entity_ids.txt")
-    return frozenset(
-        entity.split(".", 1)[1].removeprefix(f"{INSTANCE}_")
-        for entity in listed.read_text(encoding="utf-8").split()
-    ) | ABSENT_FROM_THE_SNAPSHOT
+    listed = ROOT / "tests" / "ha" / "snapshots" / "entity_ids.txt"
+    return (
+        frozenset(
+            entity.split(".", 1)[1].removeprefix(f"{INSTANCE}_")
+            for entity in listed.read_text(encoding="utf-8").split()
+        )
+        | ABSENT_FROM_THE_SNAPSHOT
+    )
 
 
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
@@ -84,7 +97,6 @@ def test_no_card_hardcodes_an_entity_id(card: Path) -> None:
     assert not hardcoded, f"{card.name} hardcodes: {sorted(hardcoded)}"
 
 
-
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
 def test_no_card_asks_for_the_stretch_by_the_wrong_name(card: Path) -> None:
     """`useAutoStretch` is not a parameter on /image/{index}; `autoPrepare` is."""
@@ -106,9 +118,12 @@ def test_the_documented_action_fields_are_the_translated_ones() -> None:
     services = yaml.safe_load((component / "services.yaml").read_text(encoding="utf-8"))
     strings = json.loads((component / "strings.json").read_text(encoding="utf-8"))
 
-    documented = {name: set(spec.get("fields") or {})
-                  for name, spec in services.items()}
-    translated = {name: set(spec.get("fields") or {})
-                  for name, spec in strings["services"].items()}
+    documented = {
+        name: set(spec.get("fields") or {}) for name, spec in services.items()
+    }
+    translated = {
+        name: set(spec.get("fields") or {})
+        for name, spec in strings["services"].items()
+    }
 
     assert documented == translated

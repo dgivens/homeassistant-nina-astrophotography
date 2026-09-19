@@ -1,4 +1,5 @@
 """The HA harness itself works: the custom component is discoverable."""
+
 from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 

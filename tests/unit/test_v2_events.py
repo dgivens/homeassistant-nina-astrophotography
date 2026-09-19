@@ -1,4 +1,5 @@
 """The socket is a data source, not a hint — and it lives inside the seam."""
+
 import asyncio
 from datetime import UTC, datetime, timedelta, timezone
 import json
@@ -99,8 +100,7 @@ def test_a_timeless_frameless_payload_is_stamped_on_arrival() -> None:
 
 @pytest.mark.parametrize(
     ("success", "expected"),
-    [(True, ["IMAGE-SAVE"]),
-     pytest.param(False, [], marks=pytest.mark.synthetic)],
+    [(True, ["IMAGE-SAVE"]), pytest.param(False, [], marks=pytest.mark.synthetic)],
     ids=["success", "failure"],
 )
 def test_a_socket_frame_is_unwrapped_like_any_other_envelope(success, expected) -> None:
@@ -169,23 +169,33 @@ def test_a_scheduler_wait_carries_its_end_as_rig_local_time() -> None:
     `WaitEndTime` carries the rig's own offset. Read by the `Time` rule the
     wait would end five hours late.
     """
-    wire = next(e for e in load_fixture("scheduler_waiting_event_history.json")
-                if e["Event"] == "TS-WAITSTART")
+    wire = next(
+        e
+        for e in load_fixture("scheduler_waiting_event_history.json")
+        if e["Event"] == "TS-WAITSTART"
+    )
     event = map_event(wire, generation="g1")
-    assert event.wait_end == datetime(2026, 9, 15, 21, 5, 40, 808306,
-                                      tzinfo=timezone(timedelta(hours=-5)))
+    assert event.wait_end == datetime(
+        2026, 9, 15, 21, 5, 40, 808306, tzinfo=timezone(timedelta(hours=-5))
+    )
 
 
 @pytest.mark.parametrize(
     ("payload", "offset", "expected"),
     [
-        ({"WaitEndTime": "2026-09-15T21:05:40"}, timedelta(hours=-5),
-         datetime(2026, 9, 15, 21, 5, 40, tzinfo=timezone(timedelta(hours=-5)))),
+        (
+            {"WaitEndTime": "2026-09-15T21:05:40"},
+            timedelta(hours=-5),
+            datetime(2026, 9, 15, 21, 5, 40, tzinfo=timezone(timedelta(hours=-5))),
+        ),
         ({"WaitEndTime": "2026-09-15T21:05:40"}, None, None),
         ({}, timedelta(hours=-5), None),
     ],
-    ids=["naive resolves against the rig clock", "naive without a clock is nothing",
-         "no WaitEndTime at all"],
+    ids=[
+        "naive resolves against the rig clock",
+        "naive without a clock is nothing",
+        "no WaitEndTime at all",
+    ],
 )
 @pytest.mark.synthetic
 def test_a_naive_wait_end_needs_the_rigs_clock(

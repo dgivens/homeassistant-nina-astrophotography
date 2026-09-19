@@ -10,6 +10,7 @@ pins it field by field, and the only connected device the corpus ever shows
 reporting `"NaN"` is the weather station, whose channels answer `unavailable`
 rather than `unknown` by a rule of their own (§5.2.2).
 """
+
 import json
 from pathlib import Path
 
@@ -158,8 +159,13 @@ async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
 
 def test_the_blueprint_reads_the_attribute_by_that_name() -> None:
     """The other half of the seam: nothing else connects the two."""
-    blueprint = (Path(__file__).resolve().parents[2] / "blueprints" / "automation"
-                 / "nina_astrophotography" / "meridian_flip_warning.yaml")
+    blueprint = (
+        Path(__file__).resolve().parents[2]
+        / "blueprints"
+        / "automation"
+        / "nina_astrophotography"
+        / "meridian_flip_warning.yaml"
+    )
 
     assert "flip_fires_at_minutes" in blueprint.read_text(encoding="utf-8")
 
@@ -215,9 +221,10 @@ async def test_the_last_autofocus_time_is_published_in_utc(
     to a previous night, which every other autofocus reading depends on.
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    assert hass.states.get(
-        "sensor.n_i_n_a_focuser_last_autofocus"
-    ).state == "2026-09-05T06:10:14+00:00"
+    assert (
+        hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").state
+        == "2026-09-05T06:10:14+00:00"
+    )
 
 
 async def test_the_last_autofocus_carries_what_measured_it(
@@ -240,8 +247,7 @@ async def test_the_last_autofocus_publishes_the_curve_a_card_plots(
     reach a Lovelace card as plain JSON rows rather than as models.
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    curve = hass.states.get(
-        "sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
+    curve = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
 
     assert [sorted(row) for row in curve] == [["error", "position", "value"]] * 9
 
@@ -253,11 +259,11 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
     coefficients have to survive as a JSON array, not a Python tuple.
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    fits = hass.states.get(
-        "sensor.n_i_n_a_focuser_last_autofocus").attributes["fits"]
+    fits = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").attributes["fits"]
 
     assert json.loads(json.dumps(fits))[0]["coefficients"] == pytest.approx(
-        [0.0003058854621319121, -1.4293365331583652, 1671.5984427459177])
+        [0.0003058854621319121, -1.4293365331583652, 1671.5984427459177]
+    )
 
 
 async def test_the_autofocus_readings_exist_before_a_run_reports(
@@ -266,5 +272,6 @@ async def test_the_autofocus_readings_exist_before_a_run_reports(
     """The dawn snapshot serves no report. The entities still belong to the
     focuser, and an automation may point at one from the first restart.
     """
-    assert hass.states.get(
-        "sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"
+    assert (
+        hass.states.get("sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"
+    )

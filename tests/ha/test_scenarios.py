@@ -1,4 +1,5 @@
 """The scenario fixtures move a loaded entry between captured rig states."""
+
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry

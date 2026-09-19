@@ -9,6 +9,7 @@ gets, and an `enabled: !input` branch that is off by default is otherwise never
 built. A blueprint that fails this is inert on the rig, and for the abort
 blueprint that means a roof that never closes.
 """
+
 from pathlib import Path
 
 from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
@@ -91,17 +92,22 @@ OPTIONAL: dict[str, dict[str, object]] = {
         "escalations": 3,
     },
     "meridian_flip_warning.yaml": {},
-    "session_shutdown.yaml": {
-        "close_dome": True, "notify_target": ["notify.phone"]},
+    "session_shutdown.yaml": {"close_dome": True, "notify_target": ["notify.phone"]},
     "session_startup.yaml": {
-        "open_dome": True, "sequence_name": "Autumn",
-        "notify_target": ["notify.phone"]},
+        "open_dome": True,
+        "sequence_name": "Autumn",
+        "notify_target": ["notify.phone"],
+    },
     "weather_abort.yaml": {
-        "close_dome": True, "auto_resume": True,
+        "close_dome": True,
+        "auto_resume": True,
         "notify_target": ["notify.phone"],
         "resume_conditions": [
-            {"condition": "numeric_state",
-             "entity_id": "sensor.rig_weather_wind_speed", "below": 10},
+            {
+                "condition": "numeric_state",
+                "entity_id": "sensor.rig_weather_wind_speed",
+                "below": 10,
+            },
         ],
     },
 }
@@ -113,18 +119,24 @@ async def test_a_blueprint_builds_an_automation(
     hass: HomeAssistant, installed, path: Path, configured: bool
 ) -> None:
     inputs = REQUIRED[path.name] | (OPTIONAL[path.name] if configured else {})
-    assert await async_setup_component(hass, AUTOMATION_DOMAIN, {
-        AUTOMATION_DOMAIN: {
-            "use_blueprint": {
-                "path": f"nina_astrophotography/{path.name}",
-                "input": inputs,
+    assert await async_setup_component(
+        hass,
+        AUTOMATION_DOMAIN,
+        {
+            AUTOMATION_DOMAIN: {
+                "use_blueprint": {
+                    "path": f"nina_astrophotography/{path.name}",
+                    "input": inputs,
+                },
             },
         },
-    })
+    )
     await hass.async_block_till_done()
 
     # A blueprint Home Assistant rejects still yields an automation entity —
     # an `unavailable` one. `on` is what says the config was accepted.
-    states = [hass.states.get(entity).state
-              for entity in hass.states.async_entity_ids(AUTOMATION_DOMAIN)]
+    states = [
+        hass.states.get(entity).state
+        for entity in hass.states.async_entity_ids(AUTOMATION_DOMAIN)
+    ]
     assert states == ["on"]

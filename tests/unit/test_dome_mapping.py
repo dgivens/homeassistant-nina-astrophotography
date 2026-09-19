@@ -8,6 +8,7 @@ drift guard cannot see dome fields at all.
 Reachability only, never values: what the fixture proves is that the connected
 branch runs, not what a real dome would report through it.
 """
+
 import json
 from pathlib import Path
 
@@ -35,8 +36,9 @@ def test_the_other_ten_blocks_are_the_captures_own(snapshot) -> None:
     second block would put the rest of the suite on invented wire data.
     """
     captured = json.loads(
-        (_FIXTURE.parents[1] / "fixtures" / "restart_equipment_partial_connect.json")
-        .read_text(encoding="utf-8")
+        (
+            _FIXTURE.parents[1] / "fixtures" / "restart_equipment_partial_connect.json"
+        ).read_text(encoding="utf-8")
     )["Response"]
     wire = json.loads(_FIXTURE.read_text(encoding="utf-8"))["Response"]
     assert {k: v for k, v in wire.items() if k != "Dome"} == {

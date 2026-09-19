@@ -62,6 +62,7 @@ full; each task below supplies its own descriptor table.
 
 ```python
 """Shared across the platform modules in phase C."""
+
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -121,43 +122,47 @@ These were bought with a live rig and a near-miss; do not retype them from the
 spec, which is wrong about request parameter names (§3.2).
 
 ```python
-    async def slew_mount(self, ra_degrees: float, dec_degrees: float) -> None:
-        """Slew to J2000 coordinates, in DEGREES.
+async def slew_mount(self, ra_degrees: float, dec_degrees: float) -> None:
+    """Slew to J2000 coordinates, in DEGREES.
 
-        All three branches construct
-        `new Coordinates(Angle.ByDegree(ra), Angle.ByDegree(dec), Epoch.J2000)`
-        and N.I.N.A. transforms to the mount's own EquatorialSystem internally.
-        Never pre-transform.
+    All three branches construct
+    `new Coordinates(Angle.ByDegree(ra), Angle.ByDegree(dec), Epoch.J2000)`
+    and N.I.N.A. transforms to the mount's own EquatorialSystem internally.
+    Never pre-transform.
 
-        The round trip is asymmetric: MountInfo.Coordinates / RightAscension are
-        reported in the MOUNT's epoch (JNOW here) and in HOURS. Feeding a
-        reported RA back into slew is wrong twice — a 15x unit error and a
-        precession error — and 22.07 is a valid RA read either way, so nothing
-        catches it.
-        """
-        await self._get("/equipment/mount/slew", {"ra": ra_degrees, "dec": dec_degrees})
+    The round trip is asymmetric: MountInfo.Coordinates / RightAscension are
+    reported in the MOUNT's epoch (JNOW here) and in HOURS. Feeding a
+    reported RA back into slew is wrong twice — a 15x unit error and a
+    precession error — and 22.07 is a valid RA read either way, so nothing
+    catches it.
+    """
+    await self._get("/equipment/mount/slew", {"ra": ra_degrees, "dec": dec_degrees})
 
-    async def change_filter(self, index: int) -> None:
-        """The parameter is `filterId`, not `filter` or `index`."""
-        await self._get("/equipment/filterwheel/change-filter", {"filterId": index})
 
-    async def capture_image(self, duration: float, *, gain: int | None = None,
-                            save: bool = False) -> None:
-        """The parameter is `duration`. 1.4.5 sent `time`, so exposure time was
-        silently ignored — the API defaulted it and answered Success: true.
+async def change_filter(self, index: int) -> None:
+    """The parameter is `filterId`, not `filter` or `index`."""
+    await self._get("/equipment/filterwheel/change-filter", {"filterId": index})
 
-        `binning` and `filter_index` are deliberately absent: they bind nothing,
-        and a parameter that looks like it works is worse than no parameter.
-        """
-        params: dict[str, Any] = {"duration": duration, "save": str(save).lower()}
-        if gain is not None:
-            params["gain"] = gain
-        await self._get("/equipment/camera/capture", params)
 
-    async def load_sequence(self, sequence_name: str) -> None:
-        """The parameter is `sequenceName`, and it is a NAME, not a path.
-        1.4.5 sent `path`, so the sequence never loaded."""
-        await self._get("/sequence/load", {"sequenceName": sequence_name})
+async def capture_image(
+    self, duration: float, *, gain: int | None = None, save: bool = False
+) -> None:
+    """The parameter is `duration`. 1.4.5 sent `time`, so exposure time was
+    silently ignored — the API defaulted it and answered Success: true.
+
+    `binning` and `filter_index` are deliberately absent: they bind nothing,
+    and a parameter that looks like it works is worse than no parameter.
+    """
+    params: dict[str, Any] = {"duration": duration, "save": str(save).lower()}
+    if gain is not None:
+        params["gain"] = gain
+    await self._get("/equipment/camera/capture", params)
+
+
+async def load_sequence(self, sequence_name: str) -> None:
+    """The parameter is `sequenceName`, and it is a NAME, not a path.
+    1.4.5 sent `path`, so the sequence never loaded."""
+    await self._get("/sequence/load", {"sequenceName": sequence_name})
 ```
 
 - [x] **Step 2: Pin every parameter name by test**
@@ -170,22 +175,38 @@ that appears to work. One row per method:
 @pytest.mark.parametrize(
     ("call", "path", "params"),
     [
-        (lambda c: c.slew_mount(331.07, 56.6), "/equipment/mount/slew",
-         {"ra": 331.07, "dec": 56.6}),
-        (lambda c: c.change_filter(3), "/equipment/filterwheel/change-filter",
-         {"filterId": 3}),
-        (lambda c: c.capture_image(30), "/equipment/camera/capture",
-         {"duration": 30, "save": "false"}),
-        (lambda c: c.load_sequence("Autumn"), "/sequence/load",
-         {"sequenceName": "Autumn"}),
-        (lambda c: c.move_focuser(12000), "/equipment/focuser/move",
-         {"position": 12000}),
-        (lambda c: c.set_tracking_mode(0), "/equipment/mount/tracking",
-         {"mode": 0}),
-        (lambda c: c.start_guiding(force_calibration=False),
-         "/equipment/guider/start", {"calibrate": "false"}),
-        (lambda c: c.move_rotator(90.0), "/equipment/rotator/move",
-         {"position": 90.0}),
+        (
+            lambda c: c.slew_mount(331.07, 56.6),
+            "/equipment/mount/slew",
+            {"ra": 331.07, "dec": 56.6},
+        ),
+        (
+            lambda c: c.change_filter(3),
+            "/equipment/filterwheel/change-filter",
+            {"filterId": 3},
+        ),
+        (
+            lambda c: c.capture_image(30),
+            "/equipment/camera/capture",
+            {"duration": 30, "save": "false"},
+        ),
+        (
+            lambda c: c.load_sequence("Autumn"),
+            "/sequence/load",
+            {"sequenceName": "Autumn"},
+        ),
+        (
+            lambda c: c.move_focuser(12000),
+            "/equipment/focuser/move",
+            {"position": 12000},
+        ),
+        (lambda c: c.set_tracking_mode(0), "/equipment/mount/tracking", {"mode": 0}),
+        (
+            lambda c: c.start_guiding(force_calibration=False),
+            "/equipment/guider/start",
+            {"calibrate": "false"},
+        ),
+        (lambda c: c.move_rotator(90.0), "/equipment/rotator/move", {"position": 90.0}),
         # …one row per command method in the Interfaces block.
     ],
 )
@@ -271,6 +292,7 @@ every user hits exactly once, at the worst possible moment. **Amend §5.2.1 and
 
 ```python
 """binary_sensor: the cuts, and the two entities whose absence would be unsafe."""
+
 import pytest
 
 
@@ -292,11 +314,13 @@ async def test_safety_is_on_when_conditions_are_unsafe(hass, loaded_entry, advan
     """HA's SAFETY device class is on = problem, and the shipped blueprint
     triggers on `to: "on"`. Getting this backwards ships an abort that fires
     when the sky clears and stays silent under cloud."""
-    await advance("imaging")                      # IsSafe true
+    await advance("imaging")  # IsSafe true
     assert hass.states.get("binary_sensor.n_i_n_a_unsafe").state == "off"
 
 
-async def test_the_safety_monitor_keeps_its_connected_sensor(hass, loaded_entry) -> None:
+async def test_the_safety_monitor_keeps_its_connected_sensor(
+    hass, loaded_entry
+) -> None:
     """The only asymmetric-risk entity in the set.
 
     Availability alone cannot carry this: `unavailable` conflates
@@ -331,6 +355,7 @@ async def test_sequence_running_is_off_on_an_idle_rig_with_running_nodes(
 async def test_every_dome_descriptor_is_marked_unverified(hass) -> None:
     """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
     from custom_components.nina_astrophotography.binary_sensor import DESCRIPTIONS
+
     assert all(d.verified is False for d in DESCRIPTIONS if d.kind == "dome")
 ```
 
@@ -358,6 +383,7 @@ Read-only mirrors of a switch, number or select are gone too; the survivor's
 state is the ACTUAL value, not the last commanded one. rotator_synced stays
 because sky-PA Position is meaningful only when synced.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -391,8 +417,11 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         kind="safety_monitor",
         # HA's SAFETY device class is on = problem. IsSafe true therefore maps
         # to off. Automations trigger on `to: "on"`.
-        value=lambda data: None if data.snapshot.safety_monitor is None
-        else _not_none(data.snapshot.safety_monitor.is_safe, invert=True),
+        value=lambda data: (
+            None
+            if data.snapshot.safety_monitor is None
+            else _not_none(data.snapshot.safety_monitor.is_safe, invert=True)
+        ),
     ),
     NinaBinarySensorDescription(
         key="safety_monitor_connected",
@@ -400,8 +429,11 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="safety_monitor",
-        value=lambda data: None if data.snapshot.safety_monitor is None
-        else data.snapshot.safety_monitor.connected,
+        value=lambda data: (
+            None
+            if data.snapshot.safety_monitor is None
+            else data.snapshot.safety_monitor.connected
+        ),
     ),
     NinaBinarySensorDescription(
         key="autofocus_failed",
@@ -457,6 +489,7 @@ git commit -m "feat: rebuild binary sensors on models, cutting mirrors and conne
 
 ```python
 """number and select: per-device ranges, and client-side validation."""
+
 import pytest
 from homeassistant.exceptions import ServiceValidationError
 
@@ -476,7 +509,8 @@ async def test_out_of_range_input_is_refused_rather_than_silently_clamped(
     """set-brightness?brightness=99999 answers Success: true and clamps."""
     with pytest.raises(ServiceValidationError):
         await hass.services.async_call(
-            "number", "set_value",
+            "number",
+            "set_value",
             {"entity_id": "number.n_i_n_a_flat_panel_brightness", "value": 99999},
             blocking=True,
         )
@@ -485,7 +519,9 @@ async def test_out_of_range_input_is_refused_rather_than_silently_clamped(
 async def test_tracking_modes_come_from_the_mount(hass, loaded_entry) -> None:
     """TrackingModes differs by mount; a hardcoded list offers rates this mount
     does not have."""
-    options = hass.states.get("select.n_i_n_a_mount_tracking_rate").attributes["options"]
+    options = hass.states.get("select.n_i_n_a_mount_tracking_rate").attributes[
+        "options"
+    ]
     assert options == ["Sidereal", "Lunar", "Solar", "King", "Stopped"]
 
 
@@ -497,8 +533,10 @@ async def test_the_tracking_select_uses_the_wire_spelling(hass, loaded_entry) ->
 async def test_a_filter_not_in_this_wheel_is_refused(hass, loaded_entry) -> None:
     with pytest.raises(ServiceValidationError):
         await hass.services.async_call(
-            "select", "select_option",
-            {"entity_id": "select.n_i_n_a_filter", "option": "Ha"}, blocking=True,
+            "select",
+            "select_option",
+            {"entity_id": "select.n_i_n_a_filter", "option": "Ha"},
+            blocking=True,
         )
 
 
@@ -592,7 +630,8 @@ async def test_a_commands_own_response_never_sets_the_state(
     still showed LightOn: false; it changed seconds later."""
     client.livestack_running = False
     await hass.services.async_call(
-        "switch", "turn_on", {"entity_id": "switch.n_i_n_a_livestack"}, blocking=True)
+        "switch", "turn_on", {"entity_id": "switch.n_i_n_a_livestack"}, blocking=True
+    )
     assert hass.states.get("switch.n_i_n_a_livestack").state == "off"
 
 
@@ -643,6 +682,7 @@ git commit -m "feat: rebuild switches on models and keep the livestack switch"
 
 ```python
 """button: fire-and-forget, with a real error surfaced as a real error."""
+
 import pytest
 from homeassistant.exceptions import HomeAssistantError
 
@@ -653,8 +693,11 @@ async def test_a_button_returns_when_the_api_accepts_the_command(
     """Long-running commands are fire-and-forget: there is no request id under
     v2, so a completion event cannot be attributed to a caller."""
     await hass.services.async_call(
-        "button", "press", {"entity_id": "button.n_i_n_a_focuser_auto_focus"},
-        blocking=True)
+        "button",
+        "press",
+        {"entity_id": "button.n_i_n_a_focuser_auto_focus"},
+        blocking=True,
+    )
     assert "auto_focus" in client.calls
 
 
@@ -662,8 +705,11 @@ async def test_a_refused_command_raises(hass, loaded_entry, client) -> None:
     client.refuse("auto_focus", "Focuser not connected", 409)
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
-            "button", "press", {"entity_id": "button.n_i_n_a_focuser_auto_focus"},
-            blocking=True)
+            "button",
+            "press",
+            {"entity_id": "button.n_i_n_a_focuser_auto_focus"},
+            blocking=True,
+        )
 
 
 async def test_success_false_from_clear_calibration_is_not_an_error(
@@ -673,8 +719,11 @@ async def test_success_false_from_clear_calibration_is_not_an_error(
     from a driver boolean, answering Success: false, Error: "", StatusCode: 200."""
     client.respond_success_false("clear_calibration")
     await hass.services.async_call(
-        "button", "press",
-        {"entity_id": "button.n_i_n_a_guider_clear_calibration"}, blocking=True)
+        "button",
+        "press",
+        {"entity_id": "button.n_i_n_a_guider_clear_calibration"},
+        blocking=True,
+    )
 ```
 
 - [x] **Step 2: Implement, run, commit**
@@ -723,9 +772,11 @@ async def test_the_image_is_stretched(hass, loaded_entry, client) -> None:
     """autoPrepare, not useAutoStretch: an unknown parameter binds nothing and
     is not rejected, so the request succeeds and returns the linear frame."""
     await hass.services.async_call(
-        "image", "snapshot",
+        "image",
+        "snapshot",
         {"entity_id": "image.n_i_n_a_last_frame", "filename": "/tmp/x.jpg"},
-        blocking=True)
+        blocking=True,
+    )
     assert client.last_image_params["autoPrepare"] == "true"
 
 
@@ -782,7 +833,9 @@ async def test_the_meridian_24_sentinel_is_unknown_but_twelve_hours_is_a_value(
     mount inside the pier-side window that adds 12 h reads it — so a
     "≥12 → unknown" rule would be wrong."""
     await advance("sequence_complete_tracking_off")
-    assert hass.states.get("sensor.n_i_n_a_mount_time_to_meridian_flip").state == "unknown"
+    assert (
+        hass.states.get("sensor.n_i_n_a_mount_time_to_meridian_flip").state == "unknown"
+    )
 
 
 async def test_the_focuser_position_sensor_carries_a_state_class(
@@ -791,11 +844,14 @@ async def test_the_focuser_position_sensor_carries_a_state_class(
     """Long-term statistics: focuser position against temperature is the
     standard temp-comp-slope diagnostic, and this rig has TempCompAvailable false."""
     entity_registry.async_update_entity(
-        "sensor.n_i_n_a_focuser_position", disabled_by=None)
+        "sensor.n_i_n_a_focuser_position", disabled_by=None
+    )
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get(
-        "sensor.n_i_n_a_focuser_position").attributes["state_class"] == "measurement"
+    assert (
+        hass.states.get("sensor.n_i_n_a_focuser_position").attributes["state_class"]
+        == "measurement"
+    )
 
 
 async def test_the_rotator_position_sensors_are_gone(hass, loaded_entry) -> None:
@@ -851,8 +907,9 @@ async def test_the_last_image_sensors_ignore_calibration_frames(
 async def test_integration_time_sums_actual_exposures(hass, loaded_entry, advance):
     """6.20 h on the observed night; count x shortest exposure gives 2.75 h."""
     await advance("dawn_flats")
-    assert float(hass.states.get(
-        "sensor.n_i_n_a_session_integration_time").state) == pytest.approx(6.20, abs=0.02)
+    assert float(
+        hass.states.get("sensor.n_i_n_a_session_integration_time").state
+    ) == pytest.approx(6.20, abs=0.02)
 
 
 async def test_the_per_target_breakdown_is_an_attribute_not_an_entity(
@@ -862,7 +919,11 @@ async def test_the_per_target_breakdown_is_an_attribute_not_an_entity(
     await advance("dawn_flats")
     state = hass.states.get("sensor.n_i_n_a_session_avg_hfr")
     assert set(state.attributes["by_target"]) == {
-        "Dark Shark Nebula", "Lobster & Bubble", "NGC 281", "Wizard Nebula"}
+        "Dark Shark Nebula",
+        "Lobster & Bubble",
+        "NGC 281",
+        "Wizard Nebula",
+    }
 
 
 async def test_the_session_start_sensor_is_the_most_recent_local_noon(
@@ -870,8 +931,9 @@ async def test_the_session_start_sensor_is_the_most_recent_local_noon(
 ) -> None:
     """Frames at 2026-09-03T21:39 and 2026-09-04T02:35 are one session."""
     await advance("dawn_flats")
-    assert hass.states.get(
-        "sensor.n_i_n_a_session_start").state.startswith("2026-09-03T12:00")
+    assert hass.states.get("sensor.n_i_n_a_session_start").state.startswith(
+        "2026-09-03T12:00"
+    )
 ```
 
 ```python
@@ -919,8 +981,9 @@ async def test_the_unique_id_does_not_change_with_the_source(
     await advance("weather_physical_station")
     before = entity_registry.async_get("sensor.n_i_n_a_sky_temperature").unique_id
     await advance("weather_openmeteo")
-    assert entity_registry.async_get(
-        "sensor.n_i_n_a_sky_temperature").unique_id == before
+    assert (
+        entity_registry.async_get("sensor.n_i_n_a_sky_temperature").unique_id == before
+    )
 
 
 async def test_transiently_nan_fields_are_not_dynamic_channels(
@@ -950,27 +1013,33 @@ channels through the **entity** registry.
 # one that established it.
 WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
     NinaSensorDescription(
-        key="cloud_cover", translation_key="cloud_cover",
+        key="cloud_cover",
+        translation_key="cloud_cover",
         native_unit_of_measurement=PERCENTAGE,
-        state_class=SensorStateClass.MEASUREMENT, kind="weather",
+        state_class=SensorStateClass.MEASUREMENT,
+        kind="weather",
         value=lambda data: data.snapshot.weather.channels.get("cloud_cover"),
     ),
     NinaSensorDescription(
-        key="sky_brightness", translation_key="sky_brightness",
+        key="sky_brightness",
+        translation_key="sky_brightness",
         # LUX, not mag/arcsec2. SkyBrightness and SkyQuality are two distinct
         # ASCOM ObservingConditions properties and the glossary conflates them:
         # the rig reports SkyBrightness 5692 (lux, at dawn) alongside
         # SkyQuality "NaN". Labelling this mag/arcsec2 makes it nonsense.
         device_class=SensorDeviceClass.ILLUMINANCE,
         native_unit_of_measurement=LIGHT_LUX,
-        state_class=SensorStateClass.MEASUREMENT, kind="weather",
+        state_class=SensorStateClass.MEASUREMENT,
+        kind="weather",
         value=lambda data: data.snapshot.weather.channels.get("sky_brightness"),
     ),
     NinaSensorDescription(
-        key="sky_quality", translation_key="sky_quality",
+        key="sky_quality",
+        translation_key="sky_quality",
         # No device class: HA has none for mag/arcsec2.
         native_unit_of_measurement="mag/arcsec²",
-        state_class=SensorStateClass.MEASUREMENT, kind="weather",
+        state_class=SensorStateClass.MEASUREMENT,
+        kind="weather",
         value=lambda data: data.snapshot.weather.channels.get("sky_quality"),
     ),
     # …one per channel: dew_point, humidity, pressure, rain_rate,
@@ -994,8 +1063,11 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
     }
     established = {d.key for d in WEATHER_CHANNELS if d.key in known}
     added = set(established)
-    async_add_entities(NinaWeatherSensor(coordinator, entry, d)
-                       for d in WEATHER_CHANNELS if d.key in established)
+    async_add_entities(
+        NinaWeatherSensor(coordinator, entry, d)
+        for d in WEATHER_CHANNELS
+        if d.key in established
+    )
 
     def _add_newly_seen() -> None:
         """First-sight at the channel granularity: a channel appears the first
@@ -1003,8 +1075,11 @@ async def async_setup_entry(hass, entry, async_add_entities) -> None:
         weather = coordinator.data.snapshot.weather
         if weather is None:
             return
-        fresh = [d for d in WEATHER_CHANNELS
-                 if d.key not in added and weather.channels.get(d.key) is not None]
+        fresh = [
+            d
+            for d in WEATHER_CHANNELS
+            if d.key not in added and weather.channels.get(d.key) is not None
+        ]
         if fresh:
             added.update(d.key for d in fresh)
             async_add_entities(NinaWeatherSensor(coordinator, entry, d) for d in fresh)
@@ -1034,8 +1109,10 @@ class NinaWeatherSensor(NinaEntity, SensorEntity):
         # CloudCover; OpenMeteo the reverse. Accumulating the union would leave
         # channels at `unknown` forever, which is a lie — the active source
         # CANNOT report them. `unavailable` is the honest state.
-        return weather.channels.get(self.entity_description.key) is not None \
+        return (
+            weather.channels.get(self.entity_description.key) is not None
             or self._established_by == weather.meta.device_id
+        )
 ```
 
 **Do not generalise this to every `"NaN"` field.** The rule applies only where
@@ -1139,21 +1216,27 @@ git commit -m "feat: expose the N.I.N.A. switch device's channels by shape"
 async def test_a_platesolve_error_fires_the_event_entity(hass, loaded_entry, push):
     push(_event("ERROR-PLATESOLVE"))
     await hass.async_block_till_done()
-    assert hass.states.get("event.n_i_n_a_error").attributes[
-        "event_type"] == "platesolve_failed"
+    assert (
+        hass.states.get("event.n_i_n_a_error").attributes["event_type"]
+        == "platesolve_failed"
+    )
 
 
 async def test_an_autofocus_timeout_fires_it_too(hass, loaded_entry, advance):
     await advance("autofocus_timed_out")
-    assert hass.states.get("event.n_i_n_a_error").attributes[
-        "event_type"] == "autofocus_timeout"
+    assert (
+        hass.states.get("event.n_i_n_a_error").attributes["event_type"]
+        == "autofocus_timeout"
+    )
 ```
 
 ```python
 """Flats: disabled by default, because /flats/status observes only API-started runs."""
 
 
-async def test_flats_entities_are_disabled_by_default(hass, loaded_entry, entity_registry):
+async def test_flats_entities_are_disabled_by_default(
+    hass, loaded_entry, entity_registry
+):
     """This rig runs Target Scheduler Flats, so /flats/status reads
     {State: "Finished", TotalIterations: -1, CompletedIterations: -1} straight
     through a completed dawn run — confirmed."""
@@ -1162,9 +1245,12 @@ async def test_flats_entities_are_disabled_by_default(hass, loaded_entry, entity
     assert entry.entity_category == "diagnostic"
 
 
-async def test_the_idle_iteration_sentinel_is_unknown(hass, loaded_entry, entity_registry):
+async def test_the_idle_iteration_sentinel_is_unknown(
+    hass, loaded_entry, entity_registry
+):
     entity_registry.async_update_entity(
-        "sensor.n_i_n_a_flats_total_iterations", disabled_by=None)
+        "sensor.n_i_n_a_flats_total_iterations", disabled_by=None
+    )
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
     assert hass.states.get("sensor.n_i_n_a_flats_total_iterations").state == "unknown"
@@ -1213,6 +1299,7 @@ missing fields, Azimuth typed integer while sending "NaN"). The drift guard
 cannot see dome fields at all; this synthetic fixture exercises the mapper path
 and asserts BRANCH REACHABILITY ONLY, never values.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -1228,7 +1315,8 @@ PLATFORMS = ("binary_sensor", "sensor", "number", "switch", "button")
 def test_every_dome_descriptor_is_marked_unverified(module_name: str) -> None:
     """tests/ha only — these modules import Home Assistant."""
     module = importlib.import_module(
-        f"custom_components.nina_astrophotography.{module_name}")
+        f"custom_components.nina_astrophotography.{module_name}"
+    )
     dome = [d for d in getattr(module, "DESCRIPTIONS", ()) if d.kind == "dome"]
     assert dome, f"{module_name} declares no dome entities — remove it from PLATFORMS"
     assert all(d.verified is False for d in dome)
@@ -1391,6 +1479,7 @@ Snapshot regeneration is its own commit: with ~172 entities the diff IS the
 review. Its job here is review, not regression — a changed unique_id is not a
 bug, it just has to be seen.
 """
+
 import pytest
 from homeassistant.const import Platform
 from homeassistant.helpers import entity_registry as er
@@ -1399,15 +1488,28 @@ from syrupy.assertion import SnapshotAssertion
 
 @pytest.mark.parametrize(
     "platform",
-    [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.NUMBER, Platform.SELECT,
-     Platform.SWITCH, Platform.BUTTON, Platform.LIGHT, Platform.IMAGE, Platform.EVENT],
+    [
+        Platform.SENSOR,
+        Platform.BINARY_SENSOR,
+        Platform.NUMBER,
+        Platform.SELECT,
+        Platform.SWITCH,
+        Platform.BUTTON,
+        Platform.LIGHT,
+        Platform.IMAGE,
+        Platform.EVENT,
+    ],
 )
-async def test_registry_snapshot(hass, loaded_entry, snapshot: SnapshotAssertion,
-                                 platform: Platform) -> None:
+async def test_registry_snapshot(
+    hass, loaded_entry, snapshot: SnapshotAssertion, platform: Platform
+) -> None:
     registry = er.async_get(hass)
     entries = sorted(
-        (e for e in er.async_entries_for_config_entry(registry, loaded_entry.entry_id)
-         if e.domain == platform),
+        (
+            e
+            for e in er.async_entries_for_config_entry(registry, loaded_entry.entry_id)
+            if e.domain == platform
+        ),
         key=lambda e: e.unique_id,
     )
     assert [
@@ -1426,9 +1528,11 @@ async def test_a_small_state_snapshot_pins_the_value_contracts(
     hass, loaded_entry, snapshot: SnapshotAssertion
 ) -> None:
     """Separate and deliberately small — the registry snapshot covers naming."""
-    watched = ["sensor.n_i_n_a_session_avg_hfr",
-               "sensor.n_i_n_a_session_integration_time",
-               "binary_sensor.n_i_n_a_unsafe"]
+    watched = [
+        "sensor.n_i_n_a_session_avg_hfr",
+        "sensor.n_i_n_a_session_integration_time",
+        "binary_sensor.n_i_n_a_unsafe",
+    ]
     assert {e: hass.states.get(e).state for e in watched} == snapshot
 ```
 
@@ -1446,8 +1550,10 @@ async def test_entity_id_inventory_is_current(hass, loaded_entry) -> None:
     the snapshot commit.
     """
     registry = er.async_get(hass)
-    ids = sorted(e.entity_id for e in
-                 er.async_entries_for_config_entry(registry, loaded_entry.entry_id))
+    ids = sorted(
+        e.entity_id
+        for e in er.async_entries_for_config_entry(registry, loaded_entry.entry_id)
+    )
     path = Path(__file__).parent / "snapshots" / "entity_ids.txt"
     if path.read_text(encoding="utf-8").split() != ids:
         path.write_text("\n".join(ids) + "\n", encoding="utf-8")

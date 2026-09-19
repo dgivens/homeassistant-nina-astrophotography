@@ -14,6 +14,7 @@ default, read from the blueprint itself. Borrowing `test_blueprints.py`'s map
 made cases silently vacuous: it pins `night_only` off, so the default that
 mutes the twelve-hour daytime wait was never once executed.
 """
+
 import asyncio
 from datetime import timedelta
 
@@ -42,6 +43,7 @@ def _defaults() -> dict:
     a test stops matching the moment the default moves, and the test goes quiet
     instead of failing.
     """
+
     class Loader(yaml.SafeLoader):
         pass
 
@@ -129,6 +131,7 @@ async def watching(hass: HomeAssistant, installed, freezer):
     input rather than on a state. `notify=False` leaves the notify integration
     unloaded, so `notify.send_message` does not exist.
     """
+
     async def _set_up(notify: bool = True, **overrides):
         freezer.move_to(T0)
         hass.states.async_set("sun.sun", "below_horizon")
@@ -137,10 +140,18 @@ async def watching(hass: HomeAssistant, installed, freezer):
         assert await async_setup_component(hass, "persistent_notification", {})
         if notify:
             assert await async_setup_component(hass, "notify", {})
-        assert await async_setup_component(hass, AUTOMATION_DOMAIN, {
-            AUTOMATION_DOMAIN: {"use_blueprint": {
-                "path": f"nina_astrophotography/{BLUEPRINT}",
-                "input": INPUTS | overrides}}})
+        assert await async_setup_component(
+            hass,
+            AUTOMATION_DOMAIN,
+            {
+                AUTOMATION_DOMAIN: {
+                    "use_blueprint": {
+                        "path": f"nina_astrophotography/{BLUEPRINT}",
+                        "input": INPUTS | overrides,
+                    }
+                }
+            },
+        )
         await hass.async_block_till_done()
         return freezer
 
@@ -165,13 +176,16 @@ async def test_a_quiet_rig_is_reported(hass: HomeAssistant, watching) -> None:
     assert alert(hass) is not None
 
 
-@pytest.mark.parametrize(("entity", "state"), [
-    ("binary_sensor.rig_sequencer_running", "off"),
-    ("binary_sensor.rig_scheduler_waiting", "on"),
-    (SAFETY, "on"),
-    ("sun.sun", "above_horizon"),
-], ids=["sequencer stopped", "scheduler waiting", "conditions unsafe",
-        "daylight"])
+@pytest.mark.parametrize(
+    ("entity", "state"),
+    [
+        ("binary_sensor.rig_sequencer_running", "off"),
+        ("binary_sensor.rig_scheduler_waiting", "on"),
+        (SAFETY, "on"),
+        ("sun.sun", "above_horizon"),
+    ],
+    ids=["sequencer stopped", "scheduler waiting", "conditions unsafe", "daylight"],
+)
 async def test_a_gate_suppresses_the_alert(
     hass: HomeAssistant, watching, entity: str, state: str
 ) -> None:
@@ -228,11 +242,15 @@ async def test_a_solar_imager_can_alert_in_daylight(
     assert alert(hass) is not None
 
 
-@pytest.mark.parametrize(("wired", "state", "alerts"), [
-    ([], "on", True),
-    ([SAFETY], "on", False),
-    ([SAFETY], "unknown", True),
-], ids=["no monitor to wire", "monitor says unsafe", "monitor dropped out"])
+@pytest.mark.parametrize(
+    ("wired", "state", "alerts"),
+    [
+        ([], "on", True),
+        ([SAFETY], "on", False),
+        ([SAFETY], "unknown", True),
+    ],
+    ids=["no monitor to wire", "monitor says unsafe", "monitor dropped out"],
+)
 async def test_the_safety_gate(
     hass: HomeAssistant, watching, wired: list, state: str, alerts: bool
 ) -> None:
@@ -253,8 +271,11 @@ async def test_the_safety_gate(
     assert (alert(hass) is not None) is alerts
 
 
-@pytest.mark.parametrize(("sequencer", "alerts"), [("on", True), ("off", False)],
-                         ids=["sequencer running", "sequencer stopped"])
+@pytest.mark.parametrize(
+    ("sequencer", "alerts"),
+    [("on", True), ("off", False)],
+    ids=["sequencer running", "sequencer stopped"],
+)
 async def test_a_mount_that_parked_itself(
     hass: HomeAssistant, watching, sequencer: str, alerts: bool
 ) -> None:
@@ -274,9 +295,7 @@ async def test_a_mount_that_parked_itself(
     assert (alert(hass) is not None) is alerts
 
 
-async def test_a_just_started_sequence_is_silent(
-    hass: HomeAssistant, watching
-) -> None:
+async def test_a_just_started_sequence_is_silent(hass: HomeAssistant, watching) -> None:
     """No clock may start before the sequencer does.
 
     `imaging` has been off all day and `last_frame_at` holds last night's
@@ -373,8 +392,9 @@ async def test_reminders_stop_at_the_configured_count(
 ) -> None:
     """Zero is a valid count: an operator can ask for one alert and no more."""
     sent = async_mock_service(hass, "notify", "send_message")
-    clock = await watching(notify=False, notify_target=["notify.phone"],
-                           escalations=escalations)
+    clock = await watching(
+        notify=False, notify_target=["notify.phone"], escalations=escalations
+    )
     await start_sequence(hass, clock)
     now = T0 + STALLED
     clock.move_to(now)

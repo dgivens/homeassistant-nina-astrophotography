@@ -5,6 +5,7 @@ clamps an out-of-range value silently and answers `Success: true`, so proving
 the request was never made is the whole point — an exception raised after the
 command left would be no protection at all.
 """
+
 from homeassistant.components.number import (
     ATTR_VALUE,
     DOMAIN as NUMBER_DOMAIN,
@@ -28,8 +29,10 @@ USB_LIMIT = "number.n_i_n_a_camera_usb_limit"
 
 async def _set(hass: HomeAssistant, entity_id: str, value: float) -> None:
     await hass.services.async_call(
-        NUMBER_DOMAIN, SERVICE_SET_VALUE,
-        {ATTR_ENTITY_ID: entity_id, ATTR_VALUE: value}, blocking=True,
+        NUMBER_DOMAIN,
+        SERVICE_SET_VALUE,
+        {ATTR_ENTITY_ID: entity_id, ATTR_VALUE: value},
+        blocking=True,
     )
 
 
@@ -150,8 +153,12 @@ async def test_the_kept_numbers_keep_their_1_4_5_unique_id(
     "key",
     # No client method binds gain, offset or binning, and `models.py` is closed
     # to fields nothing consumes; the filter wheel slot is `select.filter`.
-    ["camera_gain_control", "camera_offset_control", "camera_binning_control",
-     "filterwheel_slot_control"],
+    [
+        "camera_gain_control",
+        "camera_offset_control",
+        "camera_binning_control",
+        "filterwheel_slot_control",
+    ],
 )
 async def test_the_cut_numbers_are_not_registered(
     loaded_entry: MockConfigEntry, entity_registry, key: str
@@ -177,7 +184,8 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     """
     entry = entity_registry.async_get(_registered(entity_registry, loaded_entry, key))
     assert (entry.entity_category, entry.disabled_by is not None) == (
-        EntityCategory.DIAGNOSTIC, True
+        EntityCategory.DIAGNOSTIC,
+        True,
     )
 
 

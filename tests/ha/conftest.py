@@ -1,4 +1,5 @@
 """Fixtures for the Home-Assistant-dependent suite."""
+
 from dataclasses import replace
 from pathlib import Path
 import shutil
@@ -44,8 +45,7 @@ def pytest_collection_modifyitems(config, items):
     """
     if "nina_astrophotography" in sys.modules:
         pytest.exit(
-            "tests/unit's import stub leaked into tests/ha — run the suites "
-            "separately",
+            "tests/unit's import stub leaked into tests/ha — run the suites separately",
             returncode=1,
         )
 
@@ -70,7 +70,8 @@ async def installed(hass: HomeAssistant):
     yield
     if entities := hass.states.async_entity_ids(AUTOMATION_DOMAIN):
         await hass.services.async_call(
-            AUTOMATION_DOMAIN, "turn_off", {"entity_id": entities}, blocking=True)
+            AUTOMATION_DOMAIN, "turn_off", {"entity_id": entities}, blocking=True
+        )
 
 
 @pytest.fixture
@@ -126,6 +127,7 @@ def nina_responses(rig):
 @pytest.fixture
 def advance(hass, loaded_entry, rig):
     """Move the fake rig to a named state and let Home Assistant settle."""
+
     async def _advance(name: str) -> None:
         if name in AWAITING_CAPTURE:
             pytest.skip(f"awaiting capture: {name}")
@@ -167,14 +169,17 @@ async def two_rigs(hass, monkeypatch) -> TwoRigs:
     request reached the right one. The rigs come back too, so a test can move
     one instance without touching the other.
     """
-    instances = [("nina.local", "N.I.N.A.", "imaging"),
-                 ("other.local", "Dome", "nina_restarted")]
+    instances = [
+        ("nina.local", "N.I.N.A.", "imaging"),
+        ("other.local", "Dome", "nina_restarted"),
+    ]
     rigs = {host: FakeRig(STATES, start=state) for host, _, state in instances}
     _serve(monkeypatch, _RigRouter(rigs))
     entries = []
     for index, (host, title, _) in enumerate(instances):
         entry = MockConfigEntry(
-            domain=DOMAIN, title=title,
+            domain=DOMAIN,
+            title=title,
             data={CONF_HOST: host, CONF_PORT: 1888},
             unique_id=f"{host}:1888",
             entry_id=f"01JTESTENTRY000000000000{index}",
@@ -198,6 +203,7 @@ def push(config_entry):
     The runtime is read per call, not captured, so a test may set the entry up
     itself rather than through `loaded_entry`.
     """
+
     def _push(payload: dict) -> None:
         runtime = config_entry.runtime_data
         runtime.events._dispatch(payload, runtime.coordinator.generation)  # noqa: SLF001
@@ -233,6 +239,7 @@ def set_up_at():
     differs in either has to be in force before the entry loads. Advancing on
     to it arrives too late for both.
     """
+
     async def go(hass, entry, rig, state: str) -> None:
         rig.goto(state)
         entry.add_to_hass(hass)
@@ -273,10 +280,15 @@ def set_up_with_flat_device(hass, config_entry, nina_responses, monkeypatch):
     hand-written wire documents, and every flat-panel state a test needs is one
     field away from the panel the rig actually reported.
     """
+
     async def _set_up(**changes):
         snapshot = map_equipment_info(nina_responses("dawn_equipment_info.json"))
-        snapshot = replace(snapshot, flat_device=replace(snapshot.flat_device, **changes))
-        monkeypatch.setattr(NinaClientV2, "get_equipment", lambda self: _async(snapshot))
+        snapshot = replace(
+            snapshot, flat_device=replace(snapshot.flat_device, **changes)
+        )
+        monkeypatch.setattr(
+            NinaClientV2, "get_equipment", lambda self: _async(snapshot)
+        )
         config_entry.add_to_hass(hass)
         assert await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
@@ -301,8 +313,11 @@ async def idle_flat_panel_entry(set_up_with_flat_device):
 async def disconnected_flat_panel_entry(set_up_with_flat_device):
     """Observed once, now down: Min 0 / Max 0 is what a disconnected panel reports."""
     return await set_up_with_flat_device(
-        connected=False, brightness=None, light_on=None,
-        min_brightness=0.0, max_brightness=0.0,
+        connected=False,
+        brightness=None,
+        light_on=None,
+        min_brightness=0.0,
+        max_brightness=0.0,
     )
 
 

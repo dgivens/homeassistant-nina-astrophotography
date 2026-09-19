@@ -1,4 +1,5 @@
 """Setup and unload, through public interfaces only."""
+
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -33,8 +34,11 @@ async def test_setup_stores_state_on_runtime_data_not_hass_data(
 
 @pytest.mark.parametrize(
     "error",
-    [NinaConnectionError("refused"), NinaUnavailableError("500"),
-     NinaCommandError("Camera not connected")],
+    [
+        NinaConnectionError("refused"),
+        NinaUnavailableError("500"),
+        NinaCommandError("Camera not connected"),
+    ],
     ids=["unreachable", "unavailable", "refusing"],
 )
 async def test_a_rig_that_is_not_ready_retries_rather_than_failing_the_entry(
@@ -81,26 +85,37 @@ async def test_unload_leaves_no_state_behind(
     await hass.async_block_till_done()
     assert loaded_entry.state is ConfigEntryState.NOT_LOADED
     state = hass.states.get(LIGHT)
-    assert (state.state, state.attributes.get(ATTR_RESTORED)) == (STATE_UNAVAILABLE, True)
+    assert (state.state, state.attributes.get(ATTR_RESTORED)) == (
+        STATE_UNAVAILABLE,
+        True,
+    )
 
 
 async def test_the_configured_poll_interval_drives_the_coordinator(
     hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses
 ) -> None:
     config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(config_entry, options={CONF_POLL_INTERVAL: 15})
+    hass.config_entries.async_update_entry(
+        config_entry, options={CONF_POLL_INTERVAL: 15}
+    )
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    assert config_entry.runtime_data.coordinator.update_interval == timedelta(seconds=15)
+    assert config_entry.runtime_data.coordinator.update_interval == timedelta(
+        seconds=15
+    )
 
 
 async def test_an_options_update_reloads_the_entry(
     hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
     """The interval is read once at setup, so a new value needs a reload."""
-    hass.config_entries.async_update_entry(loaded_entry, options={CONF_POLL_INTERVAL: 30})
+    hass.config_entries.async_update_entry(
+        loaded_entry, options={CONF_POLL_INTERVAL: 30}
+    )
     await hass.async_block_till_done()
-    assert loaded_entry.runtime_data.coordinator.update_interval == timedelta(seconds=30)
+    assert loaded_entry.runtime_data.coordinator.update_interval == timedelta(
+        seconds=30
+    )
 
 
 async def test_home_assistant_started_before_nina_loads_once_the_rig_answers(

@@ -29,13 +29,15 @@ test-all: test test-ha
 typecheck *paths:
     uv run --group dev --group test-ha pyright {{ paths }}
 
-# Ruff, as CI runs it.
+# Ruff, as CI runs it: lint, then check formatting without changing anything.
 lint:
     uv run --group dev ruff check .
+    uv run --group dev ruff format --check .
 
-# Apply ruff's fixes.
+# Apply ruff's fixes and formatting.
 fmt:
     uv run --group dev ruff check --fix .
+    uv run --group dev ruff format .
 
 # The coverage floors, exactly as CI computes them.
 coverage:

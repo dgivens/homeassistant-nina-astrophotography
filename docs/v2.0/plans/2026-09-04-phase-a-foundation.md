@@ -200,6 +200,7 @@ This must not apply to tests/ha: Home Assistant loads the integration as
 `custom_components.nina_astrophotography`, and registering it under a second
 name would import the same source twice into two distinct class objects.
 """
+
 from __future__ import annotations
 
 import sys
@@ -207,9 +208,7 @@ import types
 from pathlib import Path
 
 _COMPONENT = (
-    Path(__file__).resolve().parents[2]
-    / "custom_components"
-    / "nina_astrophotography"
+    Path(__file__).resolve().parents[2] / "custom_components" / "nina_astrophotography"
 )
 
 if "nina_astrophotography" not in sys.modules:
@@ -233,6 +232,7 @@ Shared *data* helpers live in tests/helpers.py, which imports neither.
 
 ```python
 """Fixtures for the Home-Assistant-dependent suite."""
+
 from __future__ import annotations
 
 import sys
@@ -256,8 +256,7 @@ def pytest_collection_modifyitems(config, items):
     """
     if "nina_astrophotography" in sys.modules:
         pytest.exit(
-            "tests/unit's import stub leaked into tests/ha — run the suites "
-            "separately",
+            "tests/unit's import stub leaked into tests/ha — run the suites separately",
             returncode=1,
         )
 
@@ -285,6 +284,7 @@ not set up an entry yet — that arrives in Task A15.
 
 ```python
 """The HA harness itself works: the custom component is discoverable."""
+
 from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 
@@ -357,6 +357,7 @@ Static, not runtime. Once pytest-homeassistant-custom-component is installed its
 pytest11 entry point imports Home Assistant before collection, so a sys.modules
 check can never pass.
 """
+
 from __future__ import annotations
 
 import ast
@@ -365,9 +366,7 @@ from pathlib import Path
 import pytest
 
 COMPONENT = (
-    Path(__file__).resolve().parents[2]
-    / "custom_components"
-    / "nina_astrophotography"
+    Path(__file__).resolve().parents[2] / "custom_components" / "nina_astrophotography"
 )
 
 SEAM_ROOTS = ("api", "derive.py", "session.py", "const.py")
@@ -405,8 +404,9 @@ def _first_party_imports(path: Path) -> set[str]:
             parts = parts[: len(parts) - (node.level - 1)] if node.level > 1 else parts
             base = ".".join(p for p in [*parts, node.module or ""] if p)
             found.add(base)
-            found.update(f"{base}.{alias.name}" if base else alias.name
-                         for alias in node.names)
+            found.update(
+                f"{base}.{alias.name}" if base else alias.name for alias in node.names
+            )
     return found
 
 
@@ -420,8 +420,9 @@ def test_seam_module_does_not_import_homeassistant(path: Path) -> None:
             names = [node.module or ""]
         else:
             continue
-        assert not any(n == "homeassistant" or n.startswith("homeassistant.")
-                       for n in names), f"{path.name} imports Home Assistant"
+        assert not any(
+            n == "homeassistant" or n.startswith("homeassistant.") for n in names
+        ), f"{path.name} imports Home Assistant"
 
 
 def test_seam_guard_sees_the_modules_it_claims_to() -> None:
@@ -434,13 +435,23 @@ def test_nothing_above_the_seam_imports_the_wire_layer() -> None:
     not. Holding a NinaClientV2 is not knowing a wire format — calling
     map_equipment_info, or naming a TypedDict, is.
     """
-    above = [p for p in COMPONENT.rglob("*.py")
-             if "api" not in p.relative_to(COMPONENT).parts]
+    above = [
+        p
+        for p in COMPONENT.rglob("*.py")
+        if "api" not in p.relative_to(COMPONENT).parts
+    ]
     offenders = [
-        p.name for p in above
-        if any(m in p.read_text(encoding="utf-8")
-               for m in ("api.v2.mapper", "api.v2.schema",
-                         "from .api.v2.mapper", "from .api.v2.schema"))
+        p.name
+        for p in above
+        if any(
+            m in p.read_text(encoding="utf-8")
+            for m in (
+                "api.v2.mapper",
+                "api.v2.schema",
+                "from .api.v2.mapper",
+                "from .api.v2.schema",
+            )
+        )
     ]
     assert not offenders, f"wire layer imported above the seam: {offenders}"
 ```
@@ -487,6 +498,7 @@ coverage.py has no per-file threshold and this project has no global gate:
 coverage is deliberately uneven. Reads coverage.json, written by
 `coverage json` after `coverage combine`.
 """
+
 from __future__ import annotations
 
 import json
@@ -520,8 +532,10 @@ def main() -> int:
         if actual + 1e-9 < floor:
             failures.append(f"{relative}: {actual:.1f}% < {floor}%")
     for relative, floor in PENDING.items():
-        print(f"coverage floor pending (not enforced): {relative} >= {floor}%",
-              file=sys.stderr)
+        print(
+            f"coverage floor pending (not enforced): {relative} >= {floor}%",
+            file=sys.stderr,
+        )
     for line in failures:
         print(f"coverage floor breached: {line}", file=sys.stderr)
     return 1 if failures else 0
@@ -537,6 +551,7 @@ if __name__ == "__main__":
 
 ```python
 """The floors script fails on a breach and on an unmeasured file."""
+
 from __future__ import annotations
 
 import json
@@ -550,23 +565,28 @@ PREFIX = coverage_floors.PREFIX
 
 
 def _report(tmp_path: Path, files: dict[str, float]) -> None:
-    (tmp_path / "coverage.json").write_text(json.dumps({
-        "files": {PREFIX + name: {"summary": {"percent_covered": pct}}
-                  for name, pct in files.items()}
-    }), encoding="utf-8")
+    (tmp_path / "coverage.json").write_text(
+        json.dumps(
+            {
+                "files": {
+                    PREFIX + name: {"summary": {"percent_covered": pct}}
+                    for name, pct in files.items()
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 def test_a_met_floor_passes(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0,
-                       "api/v2/mapper.py": 90.0})
+    _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0, "api/v2/mapper.py": 90.0})
     assert coverage_floors.main() == 0
 
 
 def test_a_breached_floor_fails(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    _report(tmp_path, {"derive.py": 94.9, "session.py": 95.0,
-                       "api/v2/mapper.py": 90.0})
+    _report(tmp_path, {"derive.py": 94.9, "session.py": 95.0, "api/v2/mapper.py": 90.0})
     assert coverage_floors.main() == 1
 
 
@@ -880,6 +900,7 @@ would then fail on a third-party import, which is the intended backstop.
 Nothing above this package knows a wire format, and no dict crosses this
 boundary. Everything that does live under api/<version>/.
 """
+
 from .errors import (
     NinaCommandError,
     NinaConnectionError,
@@ -903,6 +924,7 @@ __all__ = [
 
 ```python
 """ninaAPI v2 (2.2.15.x)."""
+
 from .client import NinaClientV2
 
 __all__ = ["NinaClientV2"]
@@ -919,6 +941,7 @@ lands `client.py`, in that order.
 
 A hand-edit to a generated file is invisible in review and survives forever.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -927,7 +950,9 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SCHEMA = ROOT / "custom_components" / "nina_astrophotography" / "api" / "v2" / "schema.py"
+SCHEMA = (
+    ROOT / "custom_components" / "nina_astrophotography" / "api" / "v2" / "schema.py"
+)
 
 
 @pytest.mark.slow
@@ -1014,6 +1039,7 @@ reason to abandon the capture.
 
 ```python
 """Redaction rules — one module, shared by the capture script and the guard."""
+
 from __future__ import annotations
 
 import pytest
@@ -1052,8 +1078,11 @@ def test_redaction_preserves_json_type() -> None:
 
 
 def test_device_ids_become_stable_distinct_pseudonyms() -> None:
-    payload = {"a": {"DeviceId": "ASCOM.X"}, "b": {"DeviceId": "ASCOM.Y"},
-               "c": {"DeviceId": "ASCOM.X"}}
+    payload = {
+        "a": {"DeviceId": "ASCOM.X"},
+        "b": {"DeviceId": "ASCOM.Y"},
+        "c": {"DeviceId": "ASCOM.X"},
+    }
     out = redact(payload)
     assert out["a"]["DeviceId"] == out["c"]["DeviceId"] != out["b"]["DeviceId"]
     assert out["a"]["DeviceId"].startswith("device-")
@@ -1090,8 +1119,12 @@ def test_the_meridian_flip_inputs_survive_redaction() -> None:
     synthetic triple — which the fixture rules forbid. Pinned so a later
     "tightening" cannot break the maths silently.
     """
-    mount = {"SiteLatitude": 31.5478, "SiderealTime": 21.021944,
-             "RightAscension": 22.071111, "SideOfPier": "pierWest"}
+    mount = {
+        "SiteLatitude": 31.5478,
+        "SiderealTime": 21.021944,
+        "RightAscension": 22.071111,
+        "SideOfPier": "pierWest",
+    }
     assert redact(mount) == mount
 
 
@@ -1149,6 +1182,7 @@ against and force a hand-written substitute, which the fixture rules forbid.
 Credentials, absolute paths, hostnames, IPv4 addresses, UUIDs and Home Assistant
 entity ids are a different matter and are still redacted.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -1172,18 +1206,28 @@ _PSEUDONYM_KEYS = ("deviceid", "entityid")
 #   site + pointing fields   the site is a public hosting facility, and
 #                            SiderealTime is §11's LST input
 _KEEP = (
-    "targetname", "sideofpier",
-    "sitelatitude", "sitelongitude", "siteelevation",
-    "latitude", "longitude", "elevation",
-    "altitude", "altitudestring", "siderealtime", "siderealtimestring",
+    "targetname",
+    "sideofpier",
+    "sitelatitude",
+    "sitelongitude",
+    "siteelevation",
+    "latitude",
+    "longitude",
+    "elevation",
+    "altitude",
+    "altitudestring",
+    "siderealtime",
+    "siderealtimestring",
 )
 
 _VALUE_PATTERNS = (
-    re.compile(r"[A-Za-z]:\\"),                                  # Windows path
-    re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"),                  # bare IPv4
+    re.compile(r"[A-Za-z]:\\"),  # Windows path
+    re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b"),  # bare IPv4
     re.compile(r"\b[0-9a-f]{8}(?:-?[0-9a-f]{4}){3}-?[0-9a-f]{12}\b", re.I),  # UUID
-    re.compile(r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
-               r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"),  # HA entity id
+    re.compile(
+        r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
+        r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"
+    ),  # HA entity id
 )
 
 # Site or facility identifiers seen in device Name/DisplayName/Description.
@@ -1216,7 +1260,7 @@ def _digest(value: str, prefix: str, width: int, suffix: str = "") -> str:
     if re.fullmatch(rf"{re.escape(prefix)}\d{{{width}}}{re.escape(suffix)}", value):
         return value
     digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
-    return f"{prefix}{int(digest, 16) % 10 ** width:0{width}d}{suffix}"
+    return f"{prefix}{int(digest, 16) % 10**width:0{width}d}{suffix}"
 
 
 def _typed_redaction(value: Any) -> Any:
@@ -1287,13 +1331,19 @@ def scan(value: Any) -> list[str]:
 
 def _differing_paths(before: Any, after: Any, prefix: str = "") -> list[str]:
     if isinstance(before, dict) and isinstance(after, dict):
-        return [path for key in before
-                for path in _differing_paths(before[key], after.get(key),
-                                             f"{prefix}.{key}" if prefix else key)]
+        return [
+            path
+            for key in before
+            for path in _differing_paths(
+                before[key], after.get(key), f"{prefix}.{key}" if prefix else key
+            )
+        ]
     if isinstance(before, list) and isinstance(after, list):
-        return [path for index, item in enumerate(before)
-                for path in _differing_paths(item, after[index],
-                                             f"{prefix}[{index}]")]
+        return [
+            path
+            for index, item in enumerate(before)
+            for path in _differing_paths(item, after[index], f"{prefix}[{index}]")
+        ]
     return [] if before == after else [prefix]
 ```
 
@@ -1331,6 +1381,7 @@ change, focuser move, flat light, dome, sequence start/stop, profile switch. A
 rig may be imaging, and a wasted night is not recoverable. If you are unsure
 whether a call mutates state, do not make it.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -1388,15 +1439,17 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
     async with aiohttp.ClientSession() as session:
         versions = {}
         for slug, path, params in ENDPOINTS:
-            async with session.get(base + path, params=params,
-                                   timeout=aiohttp.ClientTimeout(total=30)) as resp:
+            async with session.get(
+                base + path, params=params, timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
                 envelope = await resp.json(content_type=None)
 
             if slug == "version":
                 versions["api_version"] = str(envelope.get("Response"))
             if slug == "profile":
-                envelope["Response"] = _project(envelope.get("Response"),
-                                                PROFILE_ALLOWLIST)
+                envelope["Response"] = _project(
+                    envelope.get("Response"), PROFILE_ALLOWLIST
+                )
 
             envelope = redact(envelope)
             leaks = scan(envelope)
@@ -1513,6 +1566,7 @@ repos:
 CI is the backstop, not the guard: it fires after the push, by which time a
 leaked credential is permanent.
 """
+
 from __future__ import annotations
 
 import json
@@ -1654,6 +1708,7 @@ _meta.endpoint. Without that, the per-device captures contribute bare leaves —
 `Connected`, `Name`, `Position` — that collide across devices, and no waiver key
 could ever match an observed path.
 """
+
 from __future__ import annotations
 
 import json
@@ -1702,8 +1757,14 @@ def _type_name(value: object) -> str:
         return "null"
     if value == NAN:
         return "nan"
-    return {bool: "bool", int: "int", float: "float", str: "str",
-            dict: "dict", list: "list"}[type(value)]
+    return {
+        bool: "bool",
+        int: "int",
+        float: "float",
+        str: "str",
+        dict: "dict",
+        list: "list",
+    }[type(value)]
 
 
 def _collapse(path: str) -> str:
@@ -1753,7 +1814,7 @@ def _corpus() -> dict[str, set[str]]:
         # JSON list. Guard it, or the whole guard dies on an AttributeError.
         if not isinstance(document, dict):
             continue
-        meta = document.pop("_meta", {})              # ours, not N.I.N.A.'s
+        meta = document.pop("_meta", {})  # ours, not N.I.N.A.'s
         prefix = _NAMESPACE.get(meta.get("endpoint", ""), "")
         for dotted, types_ in _observe(document.get("Response"), prefix).items():
             merged[dotted] |= types_
@@ -1768,10 +1829,16 @@ def test_a_disconnected_device_drops_keys_rather_than_nulling_them() -> None:
     DeviceId" is the observation signal.
     """
     connected = json.loads(
-        (FIXTURES / "dawn_equipment_info.json").read_text(encoding="utf-8"))
+        (FIXTURES / "dawn_equipment_info.json").read_text(encoding="utf-8")
+    )
     disconnected = json.loads(
-        (FIXTURES / "restart_equipment_partial_connect.json").read_text(encoding="utf-8"))
-    absent = set(connected["Response"]["Mount"]) - set(disconnected["Response"]["Mount"])
+        (FIXTURES / "restart_equipment_partial_connect.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    absent = set(connected["Response"]["Mount"]) - set(
+        disconnected["Response"]["Mount"]
+    )
     assert {"DeviceId", "Name", "TrackingMode", "TrackingModes"} <= absent
 
 
@@ -1793,15 +1860,20 @@ def test_an_always_empty_container_is_still_observed() -> None:
 
 def test_observed_wire_shape_matches_snapshot(snapshot) -> None:
     """Fires when the WIRE changes — which the spec cannot tell you."""
-    shape = {path: "|".join(sorted(types_)) for path, types_ in sorted(_corpus().items())}
+    shape = {
+        path: "|".join(sorted(types_)) for path, types_ in sorted(_corpus().items())
+    }
     assert shape == snapshot
 
 
 def test_no_waiver_is_stale() -> None:
     """A waiver naming a path the corpus no longer contains is a lie."""
     observed = set(_corpus())
-    stale = [dotted for dotted, entry in DEVIATIONS.items()
-             if entry["wire"] != "absent" and dotted not in observed]
+    stale = [
+        dotted
+        for dotted, entry in DEVIATIONS.items()
+        if entry["wire"] != "absent" and dotted not in observed
+    ]
     assert not stale, f"waivers that no longer describe the corpus: {stale}"
 
 
@@ -1809,8 +1881,11 @@ def test_no_field_waived_as_absent_is_present() -> None:
     """ImageStatistics.Index is documented by the spec and on neither path.
     If it ever appears, the waiver must go."""
     observed = set(_corpus())
-    present = [dotted for dotted, entry in DEVIATIONS.items()
-               if entry["wire"] == "absent" and dotted in observed]
+    present = [
+        dotted
+        for dotted, entry in DEVIATIONS.items()
+        if entry["wire"] == "absent" and dotted in observed
+    ]
     assert not present, f"fields waived as absent but present on the wire: {present}"
 ```
 
@@ -1873,6 +1948,7 @@ git commit -m "test: guard the wire shape against drift, with the deviations rec
 
 ```python
 """The error taxonomy is semantic, not HTTP."""
+
 import pytest
 
 from nina_astrophotography.api.errors import (
@@ -1894,21 +1970,32 @@ from nina_astrophotography.api.errors import (
         (NinaRequestError("malformed"), False),
     ],
 )
-def test_retryability_is_a_property_of_the_type(error: NinaError, retryable: bool) -> None:
+def test_retryability_is_a_property_of_the_type(
+    error: NinaError, retryable: bool
+) -> None:
     assert error.retryable is retryable
 
 
 def test_command_error_carries_the_envelope_status_not_the_http_one() -> None:
-    error = NinaCommandError("refused", status_code=409, api_error="Camera not connected")
+    error = NinaCommandError(
+        "refused", status_code=409, api_error="Camera not connected"
+    )
     assert (error.status_code, error.api_error) == (409, "Camera not connected")
 
 
 def test_errors_subclass_builtins_only() -> None:
     """api/ must stay importable without Home Assistant (§7.1)."""
-    for cls in (NinaConnectionError, NinaUnavailableError, NinaEndpointError,
-                NinaRequestError, NinaCommandError):
-        assert all(base.__module__ in ("builtins", "nina_astrophotography.api.errors")
-                   for base in cls.__mro__)
+    for cls in (
+        NinaConnectionError,
+        NinaUnavailableError,
+        NinaEndpointError,
+        NinaRequestError,
+        NinaCommandError,
+    ):
+        assert all(
+            base.__module__ in ("builtins", "nina_astrophotography.api.errors")
+            for base in cls.__mro__
+        )
 ```
 
 - [ ] **Step 2: Run it**
@@ -1930,6 +2017,7 @@ HA-free. Mapping to Home Assistant happens in __init__.py and coordinator.py.
 Definitions are semantic, not HTTP: the Advanced API answers HTTP 200 for
 almost everything and carries the real outcome in the envelope's StatusCode.
 """
+
 from __future__ import annotations
 
 
@@ -1976,8 +2064,9 @@ class NinaCommandError(NinaError):
     seven routes and 400 on two.
     """
 
-    def __init__(self, message: str, *, status_code: int | None = None,
-                 api_error: str = "") -> None:
+    def __init__(
+        self, message: str, *, status_code: int | None = None, api_error: str = ""
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.api_error = api_error
@@ -2057,6 +2146,7 @@ prevents assignment — that tests the standard library.
 
 ```python
 """models.py distinguishes 'never seen' from 'present but disconnected'."""
+
 from nina_astrophotography.api.models import (
     DeviceMeta,
     EquipmentSnapshot,
@@ -2069,23 +2159,46 @@ def test_absent_device_is_none_and_disconnected_device_is_a_model() -> None:
     """§5.2.2 and §7.3 both need this distinction from one snapshot."""
     snapshot = EquipmentSnapshot(
         camera=None,
-        mount=None, focuser=None, filter_wheel=None, guider=None, rotator=None,
-        dome=None, flat_device=None,
-        weather=WeatherModel(connected=False, meta=DeviceMeta(None, None, None, None, None),
-                             channels={}),
-        safety_monitor=None, switch_device=None,
+        mount=None,
+        focuser=None,
+        filter_wheel=None,
+        guider=None,
+        rotator=None,
+        dome=None,
+        flat_device=None,
+        weather=WeatherModel(
+            connected=False, meta=DeviceMeta(None, None, None, None, None), channels={}
+        ),
+        safety_monitor=None,
+        switch_device=None,
     )
-    assert snapshot.camera is None                 # never seen
-    assert snapshot.weather is not None            # seen, currently down
+    assert snapshot.camera is None  # never seen
+    assert snapshot.weather is not None  # seen, currently down
     assert snapshot.weather.connected is False
 
 
 def test_a_switch_channel_is_binary_when_its_range_is_one_step() -> None:
     """§5.3.5: Max − Min == StepSize means the channel goes on the switch platform."""
-    outlet = SwitchChannelModel(index=0, name="Outlet 1", description="", value=1.0,
-                                minimum=0.0, maximum=1.0, step_size=1.0, writable=True)
-    dew = SwitchChannelModel(index=1, name="Dew A", description="", value=40.0,
-                             minimum=0.0, maximum=100.0, step_size=1.0, writable=True)
+    outlet = SwitchChannelModel(
+        index=0,
+        name="Outlet 1",
+        description="",
+        value=1.0,
+        minimum=0.0,
+        maximum=1.0,
+        step_size=1.0,
+        writable=True,
+    )
+    dew = SwitchChannelModel(
+        index=1,
+        name="Dew A",
+        description="",
+        value=40.0,
+        minimum=0.0,
+        maximum=100.0,
+        step_size=1.0,
+        writable=True,
+    )
     assert outlet.binary is True
     assert dew.binary is False
 ```
@@ -2130,6 +2243,7 @@ This module is closed to fields no entity, service, session.py or derive.py
 consumes. A guideline, not a test — the enforcement needs an exemption list on
 its first service-only field.
 """
+
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -2247,6 +2361,7 @@ These are the behaviours §3.5 and §7.1 name. Each is one behaviour.
 
 ```python
 """The envelope, not the HTTP status, carries the outcome."""
+
 import pytest
 from helpers import FakeResponse, FakeSession, failure, ok
 
@@ -2272,18 +2387,24 @@ async def test_empty_history_is_no_data_not_an_error() -> None:
 
 async def test_uninitialised_sequencer_is_no_data_not_an_error() -> None:
     """A ~7.5 s window at N.I.N.A. startup, on the ordinary startup path."""
-    client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", 409)}))
+    client = _client(
+        FakeSession({"sequence/json": failure("Sequence is not initialized", 409)})
+    )
     assert await client.get_sequence_json() is None
 
 
 async def test_uninitialised_sequencer_is_recognised_at_400_too() -> None:
     """Ten guards, two codes for one condition — match on the message (§7.1)."""
-    client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", 400)}))
+    client = _client(
+        FakeSession({"sequence/json": failure("Sequence is not initialized", 400)})
+    )
     assert await client.get_sequence_json() is None
 
 
 async def test_a_real_envelope_failure_raises_a_command_error() -> None:
-    client = _client(FakeSession({"equipment/info": failure("Camera not connected", 409)}))
+    client = _client(
+        FakeSession({"equipment/info": failure("Camera not connected", 409)})
+    )
     with pytest.raises(NinaCommandError) as caught:
         await client.get_equipment()
     assert caught.value.status_code == 409
@@ -2291,30 +2412,49 @@ async def test_a_real_envelope_failure_raises_a_command_error() -> None:
 
 async def test_success_false_with_no_error_and_200_is_success() -> None:
     """Seven handlers assign Success from a driver boolean (§3.5)."""
-    body = {"Response": {"Camera": {"Connected": True}}, "Error": "",
-            "StatusCode": 200, "Success": False, "Type": "API"}
-    client = _client(FakeSession({"equipment/info": ok({"Camera": {"Connected": True}})}))
+    body = {
+        "Response": {"Camera": {"Connected": True}},
+        "Error": "",
+        "StatusCode": 200,
+        "Success": False,
+        "Type": "API",
+    }
+    client = _client(
+        FakeSession({"equipment/info": ok({"Camera": {"Connected": True}})})
+    )
     assert (await client.get_equipment()).camera.connected is True
 
 
 async def test_a_zero_length_200_is_unavailable_not_a_crash() -> None:
     """Sequence serialization failure: empty body, no envelope (§3.5)."""
-    client = _client(FakeSession({"sequence/json": FakeResponse("", content_type="text/plain")}))
+    client = _client(
+        FakeSession({"sequence/json": FakeResponse("", content_type="text/plain")})
+    )
     with pytest.raises(NinaUnavailableError):
         await client.get_sequence_json()
 
 
 async def test_pre_handler_html_404_is_an_endpoint_error() -> None:
-    session = FakeSession({"livestack": FakeResponse("<html>404</html>", status=404,
-                                                     content_type="text/html")})
+    session = FakeSession(
+        {
+            "livestack": FakeResponse(
+                "<html>404</html>", status=404, content_type="text/html"
+            )
+        }
+    )
     with pytest.raises(NinaEndpointError):
         await _client(session).get_livestack_status()
 
 
 async def test_pre_handler_html_400_is_a_request_error_not_a_transient_one() -> None:
     """A pre-handler 400 is permanent; an envelope 400 may be transient (§7.1)."""
-    session = FakeSession({"image-history": FakeResponse("<html>400</html>", status=400,
-                                                         content_type="text/html")})
+    session = FakeSession(
+        {
+            "image-history": FakeResponse(
+                "<html>400</html>", status=400, content_type="text/html"
+            )
+        }
+    )
     with pytest.raises(NinaRequestError):
         await _client(session).get_frames()
 
@@ -2328,6 +2468,7 @@ async def test_envelope_5xx_is_unavailable_and_retryable() -> None:
 
 async def test_a_dropped_connection_is_a_connection_error() -> None:
     import aiohttp
+
     session = FakeSession({"version": aiohttp.ClientError("boom")})
     with pytest.raises(NinaConnectionError):
         await _client(session).get_version()
@@ -2382,7 +2523,9 @@ async def test_image_history_all_sends_all_true() -> None:
 async def test_the_image_endpoint_sends_autoPrepare_not_useAutoStretch() -> None:
     """An unknown parameter binds nothing and is not rejected, so the request
     succeeds and quietly returns the linear frame."""
-    session = FakeSession({"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")})
+    session = FakeSession(
+        {"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")}
+    )
     await _client(session).get_image_bytes(0)
     _, params = session.requests[-1]
     assert params["autoPrepare"] == "true"
@@ -2416,6 +2559,7 @@ Classification is on the pair (StatusCode, Error), never the code alone:
 /sequence/{edit,load}. The OpenAPI document calls it "Sequencer not
 initialized"; the wire says "Sequence is not initialized". Match the wire.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -2475,7 +2619,11 @@ class NinaClientV2:
     @staticmethod
     def _pre_handler_error(path: str, status: int, body: str) -> Exception:
         summary = " ".join(body.split())[:120]
-        message = f"GET {path} -> {status}: {summary}" if summary else f"GET {path} -> {status}"
+        message = (
+            f"GET {path} -> {status}: {summary}"
+            if summary
+            else f"GET {path} -> {status}"
+        )
         if status in _NOT_SERVED:
             return NinaEndpointError(message)
         if 400 <= status < 500:
@@ -2533,8 +2681,9 @@ class NinaClientV2:
         self._rig_offset = rig_offset(wire) or self._rig_offset
         return map_equipment_info(wire)
 
-    async def get_frames(self, *, include_all: bool = False,
-                         generation: str | None = None) -> list[Frame]:
+    async def get_frames(
+        self, *, include_all: bool = False, generation: str | None = None
+    ) -> list[Frame]:
         """`include_all`, not `all` — the builtin is shadowed in this module.
 
         The wire parameter stays `all`; only the keyword differs.
@@ -2570,8 +2719,9 @@ class NinaClientV2:
     async def get_livestack_available(self) -> list[dict]:
         return await self._get("/livestack/image/available") or []
 
-    async def get_image_bytes(self, index: int, *, quality: int = 85,
-                              auto_prepare: bool = True) -> bytes:
+    async def get_image_bytes(
+        self, index: int, *, quality: int = 85, auto_prepare: bool = True
+    ) -> bytes:
         """Fetch a rendered frame.
 
         autoPrepare, not useAutoStretch: an unknown parameter binds nothing and
@@ -2583,8 +2733,9 @@ class NinaClientV2:
             params["autoPrepare"] = "true"
         url = self.base_url + path
         try:
-            async with self._session.get(url, params=params,
-                                         timeout=_IMAGE_TIMEOUT) as resp:
+            async with self._session.get(
+                url, params=params, timeout=_IMAGE_TIMEOUT
+            ) as resp:
                 if resp.status != 200:
                     raise self._pre_handler_error(path, resp.status, "")
                 # With stream=true a real image is served as image/*; a refusal
@@ -2609,12 +2760,14 @@ class NinaClientV2:
     # seconds later. Read state back from the poll.
 
     async def set_flat_light(self, on: bool) -> None:
-        await self._get("/equipment/flatdevice/set-light",
-                        {"on": "true" if on else "false"})
+        await self._get(
+            "/equipment/flatdevice/set-light", {"on": "true" if on else "false"}
+        )
 
     async def set_flat_brightness(self, brightness: int) -> None:
-        await self._get("/equipment/flatdevice/set-brightness",
-                        {"brightness": brightness})
+        await self._get(
+            "/equipment/flatdevice/set-brightness", {"brightness": brightness}
+        )
 ```
 
 - [ ] **Step 4: Run**
@@ -2662,6 +2815,7 @@ Fixtures are ground truth. Load them; do not hand-write wire data.
 
 ```python
 """wire → models. Every sentinel, timezone and quirk dies in this module."""
+
 from __future__ import annotations
 
 import json
@@ -2716,8 +2870,14 @@ def test_tracking_mode_is_the_wire_spelling_not_the_specs() -> None:
     # FlatDevice, Focuser, Guider, Mount, Rotator, SafetyMonitor, Switch and
     # WeatherData. The per-device /equipment/<x>/info captures are a BARE device
     # object — do not feed them to map_equipment_info.
-    assert snapshot.mount.tracking_mode in {"Sidereal", "Lunar", "Solar", "King",
-                                            "Stopped", None}
+    assert snapshot.mount.tracking_mode in {
+        "Sidereal",
+        "Lunar",
+        "Solar",
+        "King",
+        "Stopped",
+        None,
+    }
 
 
 def test_the_meridian_24_sentinel_maps_to_none() -> None:
@@ -2744,8 +2904,11 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
 def test_calibration_frames_lose_their_hfr_but_keep_their_adu() -> None:
     """Keyed on ImageType, which is on both paths. HFR 0 is a reliable
     calibration signal but not a sufficient one — see the clouded-light test."""
-    flats = [f for f in load("dawn_image_history_with_flats.json")
-             if f["ImageType"] == "FLAT"]
+    flats = [
+        f
+        for f in load("dawn_image_history_with_flats.json")
+        if f["ImageType"] == "FLAT"
+    ]
     frame = map_frame(flats[0], generation="g1")
     assert frame.hfr is None
     assert frame.stars is None
@@ -2753,8 +2916,11 @@ def test_calibration_frames_lose_their_hfr_but_keep_their_adu() -> None:
 
 
 def test_light_frames_keep_their_hfr() -> None:
-    lights = [f for f in load("dawn_image_history_with_flats.json")
-              if f["ImageType"] == "LIGHT"]
+    lights = [
+        f
+        for f in load("dawn_image_history_with_flats.json")
+        if f["ImageType"] == "LIGHT"
+    ]
     assert map_frame(lights[0], generation="g1").hfr is not None
 
 
@@ -2766,9 +2932,15 @@ def test_a_clouded_light_keeps_its_zero_star_count() -> None:
     The corpus cannot show this: no captured LIGHT has HFR 0, and the minimum
     star count across the 55 lights is 3758. Constructed deliberately.
     """
-    clouded = {"ImageType": "LIGHT", "HFR": 0.0, "Stars": 0, "Mean": 612.0,
-               "Date": "2026-09-04T02:00:00.000-05:00",
-               "Filename": "frame_9999.fits", "ExposureTime": 300.0}
+    clouded = {
+        "ImageType": "LIGHT",
+        "HFR": 0.0,
+        "Stars": 0,
+        "Mean": 612.0,
+        "Date": "2026-09-04T02:00:00.000-05:00",
+        "Filename": "frame_9999.fits",
+        "ExposureTime": 300.0,
+    }
     frame = map_frame(clouded, generation="g1")
     assert frame.stars == 0
     assert frame.hfr is None
@@ -2783,15 +2955,17 @@ def test_a_dark_is_calibration_even_though_its_star_count_is_positive() -> None:
 
 
 def test_mediator_event_times_are_offset_aware_local() -> None:
-    event = map_event({"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"},
-                      generation="g1")
+    event = map_event(
+        {"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"}, generation="g1"
+    )
     assert event.time.utcoffset() is not None
 
 
 def test_ts_event_times_are_naive_utc() -> None:
     """Two naive formats, indistinguishable by shape — key on the event name."""
-    event = map_event({"Event": "TS-TARGETSTART", "Time": "2026-09-04T02:15:32.78"},
-                      generation="g1")
+    event = map_event(
+        {"Event": "TS-TARGETSTART", "Time": "2026-09-04T02:15:32.78"}, generation="g1"
+    )
     assert event.time.utcoffset().total_seconds() == 0
 
 
@@ -2801,8 +2975,11 @@ def test_log_scraped_event_times_are_local_and_still_offset_aware() -> None:
     and offset-aware datetimes". Every NinaEvent.time is aware."""
     from datetime import timedelta
 
-    event = map_event({"Event": "ERROR-PLATESOLVE", "Time": "2026-09-03T21:54:26.93"},
-                      generation="g1", rig_offset=timedelta(hours=-5))
+    event = map_event(
+        {"Event": "ERROR-PLATESOLVE", "Time": "2026-09-03T21:54:26.93"},
+        generation="g1",
+        rig_offset=timedelta(hours=-5),
+    )
     assert event.time.utcoffset() == timedelta(hours=-5)
 
 
@@ -2812,18 +2989,30 @@ def test_every_event_class_sorts_together() -> None:
 
     offset = timedelta(hours=-5)
     events = [
-        map_event({"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"},
-                  "g1", rig_offset=offset),
-        map_event({"Event": "TS-TARGETSTART", "Time": "2026-09-04T02:15:32.78"},
-                  "g1", rig_offset=offset),
-        map_event({"Event": "ERROR-PLATESOLVE", "Time": "2026-09-03T21:54:26.93"},
-                  "g1", rig_offset=offset),
+        map_event(
+            {"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"},
+            "g1",
+            rig_offset=offset,
+        ),
+        map_event(
+            {"Event": "TS-TARGETSTART", "Time": "2026-09-04T02:15:32.78"},
+            "g1",
+            rig_offset=offset,
+        ),
+        map_event(
+            {"Event": "ERROR-PLATESOLVE", "Time": "2026-09-03T21:54:26.93"},
+            "g1",
+            rig_offset=offset,
+        ),
     ]
     # TS-* is naive UTC, so 02:15:32.78 is 21:15 local and sorts FIRST — before
     # the 21:54 local ERROR-PLATESOLVE. Reading the three wall-clock strings and
     # assuming they order as written gets this backwards.
     assert [e.name for e in sorted(events, key=lambda e: e.time)] == [
-        "TS-TARGETSTART", "ERROR-PLATESOLVE", "IMAGE-SAVE"]
+        "TS-TARGETSTART",
+        "ERROR-PLATESOLVE",
+        "IMAGE-SAVE",
+    ]
 
 
 def test_idle_flat_wizard_iterations_are_not_a_count() -> None:
@@ -2874,14 +3063,23 @@ Every wire quirk lives here and nowhere else:
 If a sentinel reaches derive.py, models.py carries sentinel values and the seam
 is broken.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
 
 from ..models import (  # the full model set from Task A9
-    CameraModel, DeviceMeta, EquipmentSnapshot, FlatDeviceModel, FlatsStatus,
-    Frame, LivestackStatus, MountModel, NinaEvent, WeatherModel,
+    CameraModel,
+    DeviceMeta,
+    EquipmentSnapshot,
+    FlatDeviceModel,
+    FlatsStatus,
+    Frame,
+    LivestackStatus,
+    MountModel,
+    NinaEvent,
+    WeatherModel,
 )
 
 _MERIDIAN_IDLE_SENTINEL = 24.0
@@ -2902,7 +3100,11 @@ def nan_to_none(value: Any) -> Any:
 
 def _number(wire: dict, key: str) -> float | None:
     value = nan_to_none(wire.get(key))
-    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+    return (
+        float(value)
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+        else None
+    )
 
 
 def _event_time(name: str, raw: str) -> datetime:
@@ -2911,7 +3113,7 @@ def _event_time(name: str, raw: str) -> datetime:
         return parsed
     if name.startswith("TS-"):
         return parsed.replace(tzinfo=UTC)
-    return parsed          # log-scraped: naive local, left naive deliberately
+    return parsed  # log-scraped: naive local, left naive deliberately
 ```
 
 …plus one `map_*` function per Interfaces entry, each doing nothing but reading
@@ -2984,6 +3186,7 @@ that displays it.
 
 ```python
 """Pure, version-independent maths. No wire vocabulary reaches this module."""
+
 from datetime import datetime, timedelta
 
 import pytest
@@ -3010,7 +3213,9 @@ from nina_astrophotography.derive import (
     ],
 )
 def test_the_session_boundary_is_the_most_recent_local_noon(moment, expected) -> None:
-    assert session_start(datetime.fromisoformat(moment)) == datetime.fromisoformat(expected)
+    assert session_start(datetime.fromisoformat(moment)) == datetime.fromisoformat(
+        expected
+    )
 
 
 def test_the_rollover_hour_is_configurable() -> None:
@@ -3034,7 +3239,8 @@ def test_binning_multiplies_the_scale() -> None:
     """At bin 2 the true scale is 2x, so an unbinned formula halves every
     derived arcsecond figure."""
     assert image_scale_arcsec_per_px(3.76, 500.0, binning=2) == pytest.approx(
-        3.1022, abs=1e-4)
+        3.1022, abs=1e-4
+    )
 
 
 def test_hfr_in_arcseconds_is_pixels_times_scale() -> None:
@@ -3050,7 +3256,9 @@ def test_hours_to_meridian_matches_the_rig() -> None:
 
 
 def test_time_to_meridian_flip_adds_the_profile_offset() -> None:
-    assert time_to_meridian_flip(1.0, max_minutes_after_meridian=15.0) == pytest.approx(1.25)
+    assert time_to_meridian_flip(1.0, max_minutes_after_meridian=15.0) == pytest.approx(
+        1.25
+    )
 
 
 def test_an_already_flipped_mount_is_twelve_hours_out() -> None:
@@ -3059,8 +3267,12 @@ def test_an_already_flipped_mount_is_twelve_hours_out() -> None:
 
 def test_the_flip_warning_threshold_is_not_a_bare_number() -> None:
     """The flip fires at (Max − Min), not zero, so `below: 10` warns AT the flip."""
-    assert flip_threshold_minutes(warning_minutes=10, min_minutes_after=5,
-                                  max_minutes_after=15) == 20
+    assert (
+        flip_threshold_minutes(
+            warning_minutes=10, min_minutes_after=5, max_minutes_after=15
+        )
+        == 20
+    )
 ```
 
 - [ ] **Step 2: Run**
@@ -3083,6 +3295,7 @@ meridian 24 into None.
 The /sequence/json walk is deliberately absent — the tree shape is partly a
 Target Scheduler fact, so the mapper normalizes it into a SequenceNode first.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
@@ -3102,8 +3315,9 @@ def session_start(moment: datetime, rollover_hour: int = 12) -> datetime:
     return boundary if moment >= boundary else boundary - timedelta(days=1)
 
 
-def image_scale_arcsec_per_px(pixel_size_um: float, focal_length_mm: float,
-                              binning: int = 1) -> float | None:
+def image_scale_arcsec_per_px(
+    pixel_size_um: float, focal_length_mm: float, binning: int = 1
+) -> float | None:
     """206.265 × pixel size (µm) × binning ÷ focal length (mm).
 
     The focal length is the frame's own, not the active profile's — it is the
@@ -3127,7 +3341,9 @@ def hfr_arcsec(hfr_px: float | None, scale_arcsec_per_px: float | None) -> float
     return hfr_px * scale_arcsec_per_px
 
 
-def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) -> float:
+def hours_to_meridian(
+    right_ascension_hours: float, sidereal_time_hours: float
+) -> float:
     """(RA_JNOW − LST) mod 12.
 
     RA here is the mount's own epoch and in hours, as MountInfo reports it —
@@ -3136,9 +3352,12 @@ def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) 
     return (right_ascension_hours - sidereal_time_hours) % 12
 
 
-def time_to_meridian_flip(hours_to_meridian_value: float,
-                          max_minutes_after_meridian: float,
-                          *, flipped: bool = False) -> float:
+def time_to_meridian_flip(
+    hours_to_meridian_value: float,
+    max_minutes_after_meridian: float,
+    *,
+    flipped: bool = False,
+) -> float:
     """Hours until the flip fires.
 
     `MountInfo.TimeToMeridianFlip` is AUTHORITATIVE — it is the number N.I.N.A.
@@ -3157,8 +3376,9 @@ def time_to_meridian_flip(hours_to_meridian_value: float,
     return value + 12 if flipped else value
 
 
-def flip_threshold_minutes(warning_minutes: float, min_minutes_after: float,
-                           max_minutes_after: float) -> float:
+def flip_threshold_minutes(
+    warning_minutes: float, min_minutes_after: float, max_minutes_after: float
+) -> float:
     """Minutes-to-flip at which a warning should fire.
 
     The flip fires when TimeToMeridianFlip reaches (Max − Min), not zero, so a
@@ -3211,6 +3431,7 @@ git commit -m "feat: add the pure derivation maths"
 
 ```python
 """fold() is pure, idempotent, and order-independent."""
+
 from __future__ import annotations
 
 import json
@@ -3285,9 +3506,13 @@ def test_an_unmatched_autofocus_start_past_the_timeout_is_a_failure() -> None:
 
     start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
     events = [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")]
-    stats = fold([], events, generation="g1",
-                 autofocus_timeout_seconds=300,
-                 now=start + timedelta(seconds=301))
+    stats = fold(
+        [],
+        events,
+        generation="g1",
+        autofocus_timeout_seconds=300,
+        now=start + timedelta(seconds=301),
+    )
     assert stats.autofocus.failed is True
 
 
@@ -3295,8 +3520,13 @@ def test_an_autofocus_still_inside_its_timeout_has_not_failed() -> None:
     from nina_astrophotography.api.models import NinaEvent
 
     start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
-    stats = fold([], [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")], generation="g1",
-                 autofocus_timeout_seconds=300, now=start + timedelta(seconds=60))
+    stats = fold(
+        [],
+        [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")],
+        generation="g1",
+        autofocus_timeout_seconds=300,
+        now=start + timedelta(seconds=60),
+    )
     assert stats.autofocus.failed is False
 ```
 
@@ -3329,6 +3559,7 @@ The process boundary is the generation tag, applied by FILTERING. Clearing races
 a concurrent poll, produces a false positive on the first read when no baseline
 exists, and loses events arriving during the refetch.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -3343,10 +3574,15 @@ def _identity(frame: Frame) -> tuple[datetime, str]:
     return (frame.date, frame.filename)
 
 
-def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
-         generation: str | None, *, autofocus_timeout_seconds: float = 300.0,
-         now: datetime | None = None, rollover_hour: int = 12) -> SessionStats:
-    ...
+def fold(
+    frames: Iterable[Frame],
+    events: Iterable[NinaEvent],
+    generation: str | None,
+    *,
+    autofocus_timeout_seconds: float = 300.0,
+    now: datetime | None = None,
+    rollover_hour: int = 12,
+) -> SessionStats: ...
 ```
 
 The implementation is a set-union on `_identity`, a generation filter, a
@@ -3372,6 +3608,7 @@ The implementation is a set-union on `_identity`, a generation filter, a
 Every generated input is real wire data — hypothesis samples the corpus rather
 than inventing frames, so a passing property says something about N.I.N.A.
 """
+
 from __future__ import annotations
 
 import json
@@ -3390,8 +3627,13 @@ _document = json.loads(
 _document.pop("_meta", None)
 FRAMES = [map_frame(f, generation="g1") for f in _document["Response"]]
 
-settings.register_profile("nina", max_examples=50, deadline=None, derandomize=True,
-                          suppress_health_check=[HealthCheck.function_scoped_fixture])
+settings.register_profile(
+    "nina",
+    max_examples=50,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
 settings.load_profile("nina")
 
 
@@ -3462,6 +3704,7 @@ git commit -m "feat: fold frames and events into session statistics, purely"
 
 ```python
 """Setup and unload, through public interfaces only."""
+
 from unittest.mock import patch
 
 import pytest
@@ -3486,6 +3729,7 @@ async def test_setup_stores_state_on_runtime_data_not_hass_data(
     await hass.async_block_till_done()
     assert config_entry.runtime_data.coordinator is not None
     from custom_components.nina_astrophotography.const import DOMAIN
+
     assert DOMAIN not in hass.data
 
 
@@ -3535,6 +3779,7 @@ async def test_unload_leaves_no_state_behind(
     # The claim is that nothing survives the unload — not that HA's own unload
     # machinery works, which is Home Assistant's test to write.
     from custom_components.nina_astrophotography.const import DOMAIN
+
     assert DOMAIN not in hass.data
 ```
 
@@ -3558,12 +3803,19 @@ def nina_responses(monkeypatch):
     from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 
     monkeypatch.setattr(NinaClientV2, "get_version", lambda self: _async("2.2.15.2"))
-    monkeypatch.setattr(NinaClientV2, "get_equipment",
-                        lambda self: _async(map_equipment_info(
-                            _response("dawn_equipment_info.json"))))
-    monkeypatch.setattr(NinaClientV2, "get_image_history_count", lambda self: _async(122))
-    monkeypatch.setattr(NinaClientV2, "get_application_start",
-                        lambda self: _async("2026-09-04T10:58:59"))
+    monkeypatch.setattr(
+        NinaClientV2,
+        "get_equipment",
+        lambda self: _async(map_equipment_info(_response("dawn_equipment_info.json"))),
+    )
+    monkeypatch.setattr(
+        NinaClientV2, "get_image_history_count", lambda self: _async(122)
+    )
+    monkeypatch.setattr(
+        NinaClientV2,
+        "get_application_start",
+        lambda self: _async("2026-09-04T10:58:59"),
+    )
     return _response
 
 
@@ -3615,6 +3867,7 @@ assembled from a pre-event read, so the frame appears, vanishes and reappears.
 Phase A polls the fast tier only. Tiering, the push path and generation handling
 land in phase B.
 """
+
 from __future__ import annotations
 
 import logging
@@ -3626,8 +3879,15 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api.errors import NinaEndpointError, NinaError, NinaRequestError
 from .api.models import (
-    EquipmentSnapshot, FlatsStatus, Frame, LivestackStatus, NinaEvent,
-    ProfileSettings, SequenceNode, SessionStats, VersionInfo,
+    EquipmentSnapshot,
+    FlatsStatus,
+    Frame,
+    LivestackStatus,
+    NinaEvent,
+    ProfileSettings,
+    SequenceNode,
+    SessionStats,
+    VersionInfo,
 )
 from .api.v2 import NinaClientV2
 from .session import fold
@@ -3653,8 +3913,12 @@ class NinaData:
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def __init__(self, hass: HomeAssistant, client: NinaClientV2) -> None:
-        super().__init__(hass, _LOGGER, name="N.I.N.A. Astrophotography",
-                         update_interval=FAST_INTERVAL)
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="N.I.N.A. Astrophotography",
+            update_interval=FAST_INTERVAL,
+        )
         self.client = client
         self.frames: dict[tuple[datetime, str], Frame] = {}
         self.events: list[NinaEvent] = []
@@ -3679,8 +3943,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return NinaData(
             snapshot=snapshot,
             session=fold(self.frames.values(), self.events, generation),
-            sequence=None, flats=..., livestack=..., profile=...,
-            generation=generation, version=...,
+            sequence=None,
+            flats=...,
+            livestack=...,
+            profile=...,
+            generation=generation,
+            version=...,
         )
 ```
 
@@ -3699,6 +3967,7 @@ the call, so the fast tier's byte cost is real from the start.
 Bronze common-modules puts it here; Bronze has-entity-name means every entity
 name derives from its device, so `_attr_name` is the channel, never the rig.
 """
+
 from __future__ import annotations
 
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -3711,8 +3980,9 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator: NinaCoordinator, entry: NinaConfigEntry,
-                 key: str) -> None:
+    def __init__(
+        self, coordinator: NinaCoordinator, entry: NinaConfigEntry, key: str
+    ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_{key}"
 ```
@@ -3807,6 +4077,7 @@ on them.
 
 ```python
 """The flat panel light — §5.3.4's three fixes, on real hardware numbers."""
+
 import pytest
 from homeassistant.components.light import ATTR_BRIGHTNESS, DOMAIN as LIGHT_DOMAIN
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_ON
@@ -3821,8 +4092,10 @@ async def test_brightness_scales_into_the_drivers_own_range(
 ) -> None:
     """This panel reports MaxBrightness 4096; an Alnitak reports 255."""
     await hass.services.async_call(
-        LIGHT_DOMAIN, SERVICE_TURN_ON,
-        {ATTR_ENTITY_ID: ENTITY, ATTR_BRIGHTNESS: 255}, blocking=True,
+        LIGHT_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: ENTITY, ATTR_BRIGHTNESS: 255},
+        blocking=True,
     )
     assert sent.brightness == 4096
 
@@ -3848,7 +4121,10 @@ async def test_a_bare_turn_on_does_not_go_to_full_output(
     tempts a falsy-fallback implementation into sending 255.
     """
     await hass.services.async_call(
-        LIGHT_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: ENTITY}, blocking=True,
+        LIGHT_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: ENTITY},
+        blocking=True,
     )
     assert sent.brightness <= 4096 // 4
 
@@ -3857,13 +4133,18 @@ async def test_a_bare_turn_on_restores_the_last_level_used(
     hass: HomeAssistant, flat_panel_entry, sent
 ) -> None:
     await hass.services.async_call(
-        LIGHT_DOMAIN, SERVICE_TURN_ON,
-        {ATTR_ENTITY_ID: ENTITY, ATTR_BRIGHTNESS: 64}, blocking=True)
+        LIGHT_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: ENTITY, ATTR_BRIGHTNESS: 64},
+        blocking=True,
+    )
     await hass.services.async_call(
-        LIGHT_DOMAIN, "turn_off", {ATTR_ENTITY_ID: ENTITY}, blocking=True)
+        LIGHT_DOMAIN, "turn_off", {ATTR_ENTITY_ID: ENTITY}, blocking=True
+    )
     await hass.services.async_call(
-        LIGHT_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: ENTITY}, blocking=True)
-    assert sent.brightness == 1028   # round(64 / 255 * 4096)
+        LIGHT_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: ENTITY}, blocking=True
+    )
+    assert sent.brightness == 1028  # round(64 / 255 * 4096)
 
 
 # Client-side range validation is NOT tested here: Home Assistant's own light
@@ -3885,7 +4166,10 @@ async def test_turn_off_uses_set_light_not_brightness_zero(
 ) -> None:
     """Brightness 0 is not off."""
     await hass.services.async_call(
-        LIGHT_DOMAIN, "turn_off", {ATTR_ENTITY_ID: ENTITY}, blocking=True,
+        LIGHT_DOMAIN,
+        "turn_off",
+        {ATTR_ENTITY_ID: ENTITY},
+        blocking=True,
     )
     assert sent.last_call == ("set_flat_light", False)
 
@@ -3925,6 +4209,7 @@ Success: true before the state changes. FLAT-LIGHT-TOGGLED carries an empty
 payload and FLAT-BRIGHTNESS-CHANGED fires repeatedly through a ramp with
 inconsistent Previous values — both are change hints, nothing more.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -3973,8 +4258,12 @@ class NinaFlatLight(NinaEntity, LightEntity):
     @property
     def available(self) -> bool:
         panel = self._panel
-        return bool(super().available and panel and panel.connected
-                    and (panel.max_brightness or 0) > 0)
+        return bool(
+            super().available
+            and panel
+            and panel.connected
+            and (panel.max_brightness or 0) > 0
+        )
 
     @property
     def is_on(self) -> bool | None:
@@ -4030,8 +4319,9 @@ class NinaFlatLight(NinaEntity, LightEntity):
         await self.coordinator.async_request_refresh()
 
 
-async def async_setup_entry(hass: HomeAssistant, entry, 
-                            async_add_entities: AddConfigEntryEntitiesCallback) -> None:
+async def async_setup_entry(
+    hass: HomeAssistant, entry, async_add_entities: AddConfigEntryEntitiesCallback
+) -> None:
     coordinator: NinaCoordinator = entry.runtime_data.coordinator
     panel = coordinator.data.snapshot.flat_device
     # Gate on the panel having been OBSERVED, not on SupportsOnOff being true

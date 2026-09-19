@@ -6,6 +6,7 @@ itself. What's ours beyond that: which files are exposed, that registering
 them is idempotent, that it degrades gracefully without lovelace, and that a
 failure in it can't take the rest of the integration down with it.
 """
+
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.setup import async_setup_component
 import pytest

@@ -26,6 +26,7 @@ binary** — `Max - Min == StepSize` (§5.3.5) — and its on/off values are tha
 channel's own range ends, not 1 and 0. It reads `Value`, the channel's state,
 never `TargetValue`, which is only what the channel was last asked for.
 """
+
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 import logging
@@ -123,6 +124,7 @@ def _cover_open(data: NinaData) -> bool | None:
 
 def _toggle(method: str) -> Callable[[NinaClientV2, NinaData, bool], Awaitable[None]]:
     """A command whose whole payload is the direction."""
+
     async def send(client: NinaClientV2, data: NinaData, on: bool) -> None:
         await getattr(client, method)(on)
 
@@ -133,6 +135,7 @@ def _either(
     on_method: str, off_method: str
 ) -> Callable[[NinaClientV2, NinaData, bool], Awaitable[None]]:
     """Two directions that are two different endpoints."""
+
     async def send(client: NinaClientV2, data: NinaData, on: bool) -> None:
         await getattr(client, on_method if on else off_method)()
 
@@ -310,7 +313,9 @@ class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="channel_gone",
-                translation_placeholders={"channel": self._attr_name or str(self._index)},
+                translation_placeholders={
+                    "channel": self._attr_name or str(self._index)
+                },
             )
         try:
             await self.coordinator.client.set_switch_value(self._index, value)
@@ -350,8 +355,11 @@ async def async_setup_entry(
                 "N.I.N.A. switch channel %s (%r) is writable but reports no "
                 "usable range (min=%s max=%s step=%s), so no entity was "
                 "created for it",
-                channel.index, channel.name,
-                channel.minimum, channel.maximum, channel.step_size,
+                channel.index,
+                channel.name,
+                channel.minimum,
+                channel.maximum,
+                channel.step_size,
             )
 
     @callback
@@ -366,15 +374,12 @@ async def async_setup_entry(
         descriptions = [
             description
             for description in DESCRIPTIONS
-            if description.key not in added
-            and _usable(coordinator.data, description)
+            if description.key not in added and _usable(coordinator.data, description)
         ]
         channels = [
             channel
             for channel in channels_of(coordinator.data)
-            if channel.binary
-            and channel.writable
-            and channel_key(channel) not in added
+            if channel.binary and channel.writable and channel_key(channel) not in added
         ]
         if not descriptions and not channels:
             return

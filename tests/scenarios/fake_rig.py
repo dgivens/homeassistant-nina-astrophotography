@@ -12,6 +12,7 @@ not appear in the URL: the client passes them to `session.get` separately.
 
 Imports nothing from Home Assistant: `tests/unit` uses this too.
 """
+
 from collections.abc import Iterable, Mapping
 
 from helpers import FakeResponse, FakeSession, ok
@@ -23,7 +24,13 @@ _PREFIX = "/v2/api"
 # `/equipment/focuser/last-af`. A command is recorded and answered
 # `Success: true`: no command on this API can be confirmed from its own
 # response, so no state carries one and the poll reads the result back.
-_COMMAND_ROOTS = ("/equipment/", "/sequence/", "/flats/", "/livestack/", "/application/")
+_COMMAND_ROOTS = (
+    "/equipment/",
+    "/sequence/",
+    "/flats/",
+    "/livestack/",
+    "/application/",
+)
 _READ_SEGMENTS = frozenset({"info", "json", "last-af", "show", "state", "status"})
 
 # What EmbedIO answers for a route it does not serve: HTML, not an envelope.
@@ -31,7 +38,10 @@ _NOT_FOUND = "<html>404</html>"
 
 
 def _is_command(path: str) -> bool:
-    return path.startswith(_COMMAND_ROOTS) and path.rsplit("/", 1)[-1] not in _READ_SEGMENTS
+    return (
+        path.startswith(_COMMAND_ROOTS)
+        and path.rsplit("/", 1)[-1] not in _READ_SEGMENTS
+    )
 
 
 class FakeRig(FakeSession):
@@ -88,8 +98,11 @@ class FakeRig(FakeSession):
 
         What left the integration, rather than any coordinator internal.
         """
-        return sum(1 for url, sent in self.requests
-                   if url.endswith(path) and (params is None or sent == params))
+        return sum(
+            1
+            for url, sent in self.requests
+            if url.endswith(path) and (params is None or sent == params)
+        )
 
     def _lookup(self, path: str, params: dict | None):
         state = self.states[self.state_name]

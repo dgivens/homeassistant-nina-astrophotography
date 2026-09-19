@@ -1,4 +1,5 @@
 """fold() is pure, idempotent, and order-independent."""
+
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
@@ -23,8 +24,10 @@ _AFTER_THE_ROLLOVER = datetime.fromisoformat("2026-09-05T13:00:00-05:00")
 
 @pytest.fixture
 def night() -> list:
-    return [map_frame(f, generation="g1")
-            for f in load_fixture("dawn_image_history_with_flats.json")]
+    return [
+        map_frame(f, generation="g1")
+        for f in load_fixture("dawn_image_history_with_flats.json")
+    ]
 
 
 @pytest.fixture
@@ -89,15 +92,18 @@ def test_recent_lights_are_every_light_oldest_first(night) -> None:
     assert len(stats.recent_lights) == 55
     assert stats.recent_lights[-1] == stats.last_frame
     assert [f.date for f in stats.recent_lights] == sorted(
-        f.date for f in stats.recent_lights)
+        f.date for f in stats.recent_lights
+    )
 
 
 @pytest.mark.synthetic
 def test_recent_lights_keep_only_the_newest_sixty() -> None:
     """Fabricates 61 lights a minute apart; the oldest is the one dropped."""
     start = datetime.fromisoformat("2026-09-03T21:00:00-05:00")
-    lights = [_light(date=start + timedelta(minutes=i), filename=f"f{i}.fits")
-              for i in range(61)]
+    lights = [
+        _light(date=start + timedelta(minutes=i), filename=f"f{i}.fits")
+        for i in range(61)
+    ]
     recent = fold(lights, [], generation="g1").recent_lights
     assert [f.filename for f in recent] == [f"f{i}.fits" for i in range(1, 61)]
 
@@ -141,9 +147,13 @@ def test_an_unmatched_autofocus_start_hangs_at_the_profiles_timeout(
     """
     start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
     events = [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")]
-    stats = fold([], events, generation="g1",
-                 autofocus_timeout_seconds=timeout,
-                 now=start + timedelta(seconds=elapsed))
+    stats = fold(
+        [],
+        events,
+        generation="g1",
+        autofocus_timeout_seconds=timeout,
+        now=start + timedelta(seconds=elapsed),
+    )
     assert stats.autofocus.failed is failed
 
 
@@ -161,25 +171,43 @@ _START = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
         ("IMAGE-SAVE", {}),
     ],
 )
-def test_a_start_interrupted_inside_its_timeout_is_aborted_not_failed(name, data) -> None:
+def test_a_start_interrupted_inside_its_timeout_is_aborted_not_failed(
+    name, data
+) -> None:
     """Unsafe conditions, the sequence ending, a park, a disconnect or the
     sequencer simply moving on to the next exposure all cancel a running
     autofocus; none of them is the focuser failing to find focus.
     """
-    events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
-              NinaEvent(name, _START + timedelta(seconds=37), data, "g1")]
-    stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
-                 now=_START + timedelta(seconds=600))
+    events = [
+        NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
+        NinaEvent(name, _START + timedelta(seconds=37), data, "g1"),
+    ]
+    stats = fold(
+        [],
+        events,
+        generation="g1",
+        autofocus_timeout_seconds=300,
+        now=_START + timedelta(seconds=600),
+    )
     assert stats.autofocus == AutoFocusState(None, None, False)
 
 
 @pytest.mark.synthetic
 def test_a_safe_reading_does_not_abort_a_running_autofocus() -> None:
     """Only IsSafe false is an interruption; SAFETY-CHANGED fires for both."""
-    events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
-              NinaEvent("SAFETY-CHANGED", _START + timedelta(seconds=37), {"IsSafe": True}, "g1")]
-    stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
-                 now=_START + timedelta(seconds=60))
+    events = [
+        NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
+        NinaEvent(
+            "SAFETY-CHANGED", _START + timedelta(seconds=37), {"IsSafe": True}, "g1"
+        ),
+    ]
+    stats = fold(
+        [],
+        events,
+        generation="g1",
+        autofocus_timeout_seconds=300,
+        now=_START + timedelta(seconds=60),
+    )
     assert stats.autofocus.running_since == _START
 
 
@@ -188,17 +216,29 @@ def test_the_sequencer_moving_on_after_the_timeout_keeps_the_failure_verdict() -
     """An exposure saved only after the timeout has elapsed shows the sequence
     carried on past a hung autofocus; it clears the run without excusing it.
     """
-    events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
-              NinaEvent("IMAGE-SAVE", _START + timedelta(seconds=400), {}, "g1")]
-    stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
-                 now=_START + timedelta(seconds=500))
+    events = [
+        NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
+        NinaEvent("IMAGE-SAVE", _START + timedelta(seconds=400), {}, "g1"),
+    ]
+    stats = fold(
+        [],
+        events,
+        generation="g1",
+        autofocus_timeout_seconds=300,
+        now=_START + timedelta(seconds=500),
+    )
     assert (stats.autofocus.running_since, stats.autofocus.failed) == (None, True)
 
 
 def test_an_autofocus_still_inside_its_timeout_has_not_failed() -> None:
     start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
-    stats = fold([], [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")], generation="g1",
-                 autofocus_timeout_seconds=300, now=start + timedelta(seconds=60))
+    stats = fold(
+        [],
+        [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")],
+        generation="g1",
+        autofocus_timeout_seconds=300,
+        now=start + timedelta(seconds=60),
+    )
     assert stats.autofocus.failed is False
 
 
@@ -280,7 +320,7 @@ def test_an_unclassified_frame_is_counted_but_never_aggregated(field, expected) 
 
 
 def test_a_breakdown_row_with_no_measured_hfr_reports_none() -> None:
-    row, = fold([_light(hfr=None)], [], generation="g1").by_target
+    (row,) = fold([_light(hfr=None)], [], generation="g1").by_target
     assert row.hfr_mean is None
 
 
@@ -299,7 +339,9 @@ def test_a_session_of_only_calibration_frames_has_no_last_frame(night) -> None:
 def test_the_hfr_extremes_are_the_best_and_worst_light(night) -> None:
     """Best is the tightest star, so the smallest HFR."""
     stats = fold(night, [], generation="g1")
-    assert (stats.hfr_best, stats.hfr_worst) == pytest.approx((1.42873, 1.89118), abs=1e-5)
+    assert (stats.hfr_best, stats.hfr_worst) == pytest.approx(
+        (1.42873, 1.89118), abs=1e-5
+    )
 
 
 def test_frames_before_the_noon_rollover_are_outside_the_session(night) -> None:
@@ -314,7 +356,8 @@ def test_the_last_autofocus_to_finish_is_reported(night_events) -> None:
     """
     stats = fold([], night_events, generation="g1")
     assert stats.autofocus.last_finished_at == datetime.fromisoformat(
-        "2026-09-04T03:21:11.414439-05:00")
+        "2026-09-04T03:21:11.414439-05:00"
+    )
 
 
 def test_the_nights_unanswered_start_was_an_abort_not_a_failure(night_events) -> None:
@@ -322,8 +365,12 @@ def test_the_nights_unanswered_start_was_an_abort_not_a_failure(night_events) ->
     SAFETY-CHANGED IsSafe false — the sky closed on it. Read at 07:30 rig time,
     long past any timeout, it is neither running nor failed.
     """
-    stats = fold([], night_events, generation="g1",
-                 now=datetime.fromisoformat("2026-09-04T07:30:00-05:00"))
+    stats = fold(
+        [],
+        night_events,
+        generation="g1",
+        now=datetime.fromisoformat("2026-09-04T07:30:00-05:00"),
+    )
     assert (stats.autofocus.running_since, stats.autofocus.failed) == (None, False)
 
 
@@ -336,7 +383,9 @@ def test_an_autofocus_that_finished_is_no_longer_running() -> None:
     assert fold([], events, generation="g1").autofocus.running_since is None
 
 
-def test_events_from_a_previous_session_do_not_report_an_autofocus(night_events) -> None:
+def test_events_from_a_previous_session_do_not_report_an_autofocus(
+    night_events,
+) -> None:
     tomorrow = max(e.time for e in night_events) + timedelta(days=1)
     stats = fold([], night_events, generation="g1", now=tomorrow)
     assert stats.autofocus == AutoFocusState(None, None, False)
@@ -369,8 +418,12 @@ def test_a_stack_update_missing_half_its_pair_names_nothing(
     """Both halves are path segments, and `/livestack/image//O` is not a route
     — so an empty string has to be refused as firmly as a missing key.
     """
-    payload = {"Event": "STACK-UPDATED", "Time": "2026-09-04T04:25:58-05:00",
-               "Target": "NGC 281", "Filter": "S"}
+    payload = {
+        "Event": "STACK-UPDATED",
+        "Time": "2026-09-04T04:25:58-05:00",
+        "Target": "NGC 281",
+        "Filter": "S",
+    }
     if how == "absent":
         del payload[half]
     else:
@@ -379,8 +432,10 @@ def test_a_stack_update_missing_half_its_pair_names_nothing(
 
 
 def test_no_stack_update_is_no_stack(night_events) -> None:
-    assert latest_stack([e for e in night_events if e.name != "STACK-UPDATED"],
-                        "g1") is None
+    assert (
+        latest_stack([e for e in night_events if e.name != "STACK-UPDATED"], "g1")
+        is None
+    )
 
 
 def test_the_target_is_the_one_the_newest_start_announced(night_events) -> None:
@@ -392,8 +447,10 @@ def test_the_target_is_the_one_the_newest_start_announced(night_events) -> None:
 
 def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> None:
     """A plain N.I.N.A. sequence emits no TS-* event; its target is in the tree."""
-    assert latest_target([e for e in night_events
-                          if not e.name.startswith("TS-")], "g1") is None
+    assert (
+        latest_target([e for e in night_events if not e.name.startswith("TS-")], "g1")
+        is None
+    )
 
 
 @pytest.mark.parametrize(
@@ -403,8 +460,7 @@ def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> Non
         ("imaging_guiding", False),
         ("scheduler_waiting", False),
     ],
-    ids=["stopped for a scheduler wait", "guiding",
-         "only a GUIDER-CONNECTED logged"],
+    ids=["stopped for a scheduler wait", "guiding", "only a GUIDER-CONNECTED logged"],
 )
 def test_a_stop_is_pending_when_it_is_the_newest_start_or_stop(
     capture: str, expected: bool
@@ -430,8 +486,12 @@ def test_neither_a_dither_nor_a_previous_process_moves_the_verdict(
     not a start; a stop from before a N.I.N.A. restart says nothing.
     """
     events = [
-        NinaEvent(name=name, time=datetime(2026, 9, 18, 21, minute, tzinfo=RIG),
-                  data={}, generation=generation)
+        NinaEvent(
+            name=name,
+            time=datetime(2026, 9, 18, 21, minute, tzinfo=RIG),
+            data={},
+            generation=generation,
+        )
         for minute, (name, generation) in enumerate(logged)
     ]
     assert (pending_guider_stop(events, "g1") is not None) is expected
@@ -443,15 +503,27 @@ WAIT_END = datetime(2026, 9, 15, 21, 5, 40, tzinfo=RIG)
 WAITING_AT = datetime(2026, 9, 15, 20, 45, tzinfo=RIG)
 
 
-def _waiting_events(*ending: str, at: int = 40,
-                    wait_end: datetime | None = WAIT_END) -> list[NinaEvent]:
+def _waiting_events(
+    *ending: str, at: int = 40, wait_end: datetime | None = WAIT_END
+) -> list[NinaEvent]:
     """`TS-WAITSTART` at 20:33 announcing 21:05, plus whatever ends it."""
     return [
-        NinaEvent(name="TS-WAITSTART", time=datetime(2026, 9, 15, 20, 33, tzinfo=RIG),
-                  data={}, generation="g1", wait_end=wait_end),
-        *(NinaEvent(name=name, time=datetime(2026, 9, 15, 20, at, tzinfo=RIG),
-                    data={}, generation="g1")
-          for name in ending),
+        NinaEvent(
+            name="TS-WAITSTART",
+            time=datetime(2026, 9, 15, 20, 33, tzinfo=RIG),
+            data={},
+            generation="g1",
+            wait_end=wait_end,
+        ),
+        *(
+            NinaEvent(
+                name=name,
+                time=datetime(2026, 9, 15, 20, at, tzinfo=RIG),
+                data={},
+                generation="g1",
+            )
+            for name in ending
+        ),
     ]
 
 
@@ -466,9 +538,15 @@ def _waiting_events(*ending: str, at: int = 40,
         (_waiting_events("TS-TARGETSTART", at=30), WAITING_AT, WAIT_END),
         (_waiting_events(wait_end=None), WAITING_AT, None),
     ],
-    ids=["waiting", "a target started", "the sequence was stopped",
-         "the wait end has passed", "no wait announced",
-         "the target start came BEFORE the wait", "the rig clock was unknown"],
+    ids=[
+        "waiting",
+        "a target started",
+        "the sequence was stopped",
+        "the wait end has passed",
+        "no wait announced",
+        "the target start came BEFORE the wait",
+        "the rig clock was unknown",
+    ],
 )
 @pytest.mark.synthetic
 def test_a_wait_ends_at_its_time_or_when_something_supersedes_it(

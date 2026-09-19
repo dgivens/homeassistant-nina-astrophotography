@@ -7,6 +7,7 @@ meridian 24 into None.
 The /sequence/json walk is deliberately absent — the tree shape is partly a
 Target Scheduler fact, so the mapper normalizes it into a SequenceNode first.
 """
+
 from datetime import datetime, timedelta
 
 _ARCSEC_PER_RADIAN_MICRON_MM = 206.265
@@ -25,8 +26,9 @@ def session_start(moment: datetime, rollover_hour: int = 12) -> datetime:
     return boundary if moment >= boundary else boundary - timedelta(days=1)
 
 
-def image_scale_arcsec_per_px(pixel_size_um: float, focal_length_mm: float,
-                              binning: int = 1) -> float | None:
+def image_scale_arcsec_per_px(
+    pixel_size_um: float, focal_length_mm: float, binning: int = 1
+) -> float | None:
     """206.265 × pixel size (µm) × binning ÷ focal length (mm).
 
     The focal length is the frame's own, not the active profile's — it is the
@@ -50,7 +52,9 @@ def hfr_arcsec(hfr_px: float | None, scale_arcsec_per_px: float | None) -> float
     return hfr_px * scale_arcsec_per_px
 
 
-def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) -> float:
+def hours_to_meridian(
+    right_ascension_hours: float, sidereal_time_hours: float
+) -> float:
     """(RA_JNOW − LST) mod 12.
 
     RA here is the mount's own epoch and in hours, as MountInfo reports it —
@@ -61,8 +65,9 @@ def hours_to_meridian(right_ascension_hours: float, sidereal_time_hours: float) 
     return (right_ascension_hours - sidereal_time_hours) % 12
 
 
-def time_to_meridian_flip(hours_to_meridian_value: float,
-                          max_minutes_after_meridian: float) -> float:
+def time_to_meridian_flip(
+    hours_to_meridian_value: float, max_minutes_after_meridian: float
+) -> float:
     """Hours until the flip fires: `(HoursToMeridian + Max/60) mod 12`.
 
     `MountInfo.TimeToMeridianFlip` is AUTHORITATIVE — it is the number N.I.N.A.
@@ -82,8 +87,7 @@ def time_to_meridian_flip(hours_to_meridian_value: float,
     return (hours_to_meridian_value + max_minutes_after_meridian / 60) % 12
 
 
-def flip_offset_minutes(min_minutes_after: float,
-                        max_minutes_after: float) -> float:
+def flip_offset_minutes(min_minutes_after: float, max_minutes_after: float) -> float:
     """The `TimeToMeridianFlip` reading at which the flip actually fires.
 
     It is (Max − Min), not zero, so a warning written as a bare `below: 10`

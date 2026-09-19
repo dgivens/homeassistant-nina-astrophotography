@@ -29,6 +29,7 @@ applies only where absence is a permanent driver property. `CoolerPower` and
 `TimeToMeridianFlip` are transiently `NaN`, and a rig whose camera is warm at
 setup must not lose its cooler-power entity.
 """
+
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -101,6 +102,7 @@ class NinaSensorDescription(SensorEntityDescription):
 
 def _frame(field: str) -> Callable[[NinaData], Any]:
     """One field off the newest LIGHT frame; `None` before the first one."""
+
     def value(data: NinaData) -> Any:
         frame: Frame | None = data.session.last_frame
         return None if frame is None else getattr(frame, field)
@@ -116,12 +118,15 @@ def _breakdown(field: str) -> Callable[[NinaData], Mapping[str, Any]]:
     1.513 on one observed night — so the split is worth carrying. As attributes
     rather than entities: the target list changes with the night.
     """
+
     def value(data: NinaData) -> Mapping[str, Any]:
         rows: tuple[TargetBreakdown, ...] = getattr(data.session, field)
         return {
             row.name: {
                 "count": row.count,
-                "integration_hours": round(row.integration_seconds / _SECONDS_PER_HOUR, 2),
+                "integration_hours": round(
+                    row.integration_seconds / _SECONDS_PER_HOUR, 2
+                ),
                 "hfr_mean": None if row.hfr_mean is None else round(row.hfr_mean, 3),
             }
             for row in rows
@@ -153,7 +158,8 @@ def _flip_bounds(data: NinaData) -> Mapping[str, Any]:
     minimum = data.profile.min_minutes_after_meridian
     maximum = data.profile.max_minutes_after_meridian
     return {
-        "flip_fires_at_minutes": None if minimum is None or maximum is None
+        "flip_fires_at_minutes": None
+        if minimum is None or maximum is None
         else derive.flip_offset_minutes(minimum, maximum)
     }
 
@@ -167,6 +173,7 @@ def _autofocus(field: str) -> Callable[[NinaData], Any]:
     focuser's last known state, and `autofocus_last_run` is what says how old
     it is.
     """
+
     def value(data: NinaData) -> Any:
         report = data.autofocus_report
         return None if report is None else getattr(report, field)
@@ -296,8 +303,10 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         suggested_display_precision=2,
         kind=None,
         value=lambda data: data.session.hfr_mean,
-        attributes=lambda data: {"by_target": _BY_TARGET(data),
-                                 "by_filter": _BY_FILTER(data)},
+        attributes=lambda data: {
+            "by_target": _BY_TARGET(data),
+            "by_filter": _BY_FILTER(data),
+        },
     ),
     NinaSensorDescription(
         key="session_best_hfr",
@@ -782,7 +791,9 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         # The newest frame of ANY type, so dawn flats count as the rig working.
         # `now() - last_frame_at` is what a stall looks like, and it needs a
         # timestamp the seven other `last_image_*` sensors do not carry.
-        value=lambda data: None if data.newest_frame is None else data.newest_frame.date,
+        value=lambda data: (
+            None if data.newest_frame is None else data.newest_frame.date
+        ),
     ),
     NinaSensorDescription(
         key="sequence_progress",
@@ -862,9 +873,7 @@ def _channel(key: str) -> Callable[[NinaData], float | None]:
     return value
 
 
-def _weather(
-    key: str, unique_id_suffix: str, **fields: Any
-) -> NinaSensorDescription:
+def _weather(key: str, unique_id_suffix: str, **fields: Any) -> NinaSensorDescription:
     """One ObservingConditions channel. Every one is the same four lines."""
     return NinaSensorDescription(
         key=key,
@@ -878,39 +887,45 @@ def _weather(
 
 WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
     _weather(
-        "cloud_cover", "weather_cloud_cover",
+        "cloud_cover",
+        "weather_cloud_cover",
         # No device class: Home Assistant has none for cloud cover.
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     _weather(
-        "dew_point", "weather_dew_point",
+        "dew_point",
+        "weather_dew_point",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
     _weather(
-        "humidity", "weather_humidity",
+        "humidity",
+        "weather_humidity",
         device_class=SensorDeviceClass.HUMIDITY,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     _weather(
-        "pressure", "weather_pressure",
+        "pressure",
+        "weather_pressure",
         device_class=SensorDeviceClass.ATMOSPHERIC_PRESSURE,
         native_unit_of_measurement=UnitOfPressure.HPA,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
     _weather(
-        "rain_rate", "weather_rain_rate",
+        "rain_rate",
+        "weather_rain_rate",
         device_class=SensorDeviceClass.PRECIPITATION_INTENSITY,
         native_unit_of_measurement=UnitOfVolumetricFlux.MILLIMETERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
     ),
     _weather(
-        "sky_brightness", "weather_sky_brightness",
+        "sky_brightness",
+        "weather_sky_brightness",
         # LUX, not mag/arcsec2. SkyBrightness and SkyQuality are two distinct
         # ASCOM ObservingConditions properties: a station reports SkyBrightness
         # 5692 (lux, at dawn) alongside SkyQuality "NaN".
@@ -919,34 +934,39 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
     ),
     _weather(
-        "sky_quality", "weather_sky_quality",
+        "sky_quality",
+        "weather_sky_quality",
         # No device class: Home Assistant has none for mag/arcsec².
         native_unit_of_measurement="mag/arcsec²",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
     ),
     _weather(
-        "sky_temperature", "weather_sky_temperature",
+        "sky_temperature",
+        "weather_sky_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
     _weather(
-        "star_fwhm", "weather_seeing",
+        "star_fwhm",
+        "weather_seeing",
         native_unit_of_measurement="arcsec",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
     ),
     _weather(
-        "temperature", "weather_temperature",
+        "temperature",
+        "weather_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
     _weather(
-        "wind_direction", "weather_wind_direction",
+        "wind_direction",
+        "weather_wind_direction",
         # MEASUREMENT_ANGLE, not MEASUREMENT: averaging a compass bearing the
         # ordinary way puts north between east and west.
         device_class=SensorDeviceClass.WIND_DIRECTION,
@@ -954,14 +974,16 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT_ANGLE,
     ),
     _weather(
-        "wind_gust", "weather_wind_gust",
+        "wind_gust",
+        "weather_wind_gust",
         device_class=SensorDeviceClass.WIND_SPEED,
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
     ),
     _weather(
-        "wind_speed", "weather_wind_speed",
+        "wind_speed",
+        "weather_wind_speed",
         device_class=SensorDeviceClass.WIND_SPEED,
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
         state_class=SensorStateClass.MEASUREMENT,

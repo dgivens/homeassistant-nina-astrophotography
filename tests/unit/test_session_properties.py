@@ -3,21 +3,29 @@
 Every generated input is real wire data — hypothesis samples the corpus rather
 than inventing frames, so a passing property says something about N.I.N.A.
 """
+
 from hypothesis import HealthCheck, given, settings, strategies as st
 from nina_astrophotography.api.v2.mapper import map_frame
 from nina_astrophotography.session import fold
 
 from helpers import load_fixture
 
-FRAMES = [map_frame(f, generation="g1")
-          for f in load_fixture("dawn_image_history_with_flats.json")]
+FRAMES = [
+    map_frame(f, generation="g1")
+    for f in load_fixture("dawn_image_history_with_flats.json")
+]
 # Frames 50-69 straddle the LIGHT → FLAT transition (5 lights, then flats), so
 # a permutation reorders calibration frames among lights, which is where an
 # order-dependent aggregate would show.
 STRADDLE = FRAMES[50:70]
 
-settings.register_profile("nina", max_examples=50, deadline=None, derandomize=True,
-                          suppress_health_check=[HealthCheck.function_scoped_fixture])
+settings.register_profile(
+    "nina",
+    max_examples=50,
+    deadline=None,
+    derandomize=True,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
 settings.load_profile("nina")
 
 
