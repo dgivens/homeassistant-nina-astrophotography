@@ -12,6 +12,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DOMAIN
+from custom_components.nina_astrophotography.sensor import WEATHER_CHANNELS
 
 CLOUD_COVER = "sensor.n_i_n_a_weather_cloud_cover"
 SKY_BRIGHTNESS = "sensor.n_i_n_a_weather_sky_brightness"
@@ -169,7 +170,6 @@ def test_every_weather_channel_keeps_a_1_4_5_unique_id() -> None:
     source reports, and no capture reports StarFWHM or SkyQuality — so a
     renamed suffix on those two would ship unnoticed and orphan the row.
     """
-    from custom_components.nina_astrophotography.sensor import WEATHER_CHANNELS
 
     shipped = {d.unique_id_suffix or d.key for d in WEATHER_CHANNELS}
     # `weather_name` is the fourteenth 1.4.5 key and ships as `weather_source`

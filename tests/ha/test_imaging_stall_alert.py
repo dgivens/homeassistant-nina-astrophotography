@@ -45,7 +45,7 @@ def _defaults() -> dict:
     class Loader(yaml.SafeLoader):
         pass
 
-    Loader.add_constructor("!input", lambda l, n: l.construct_scalar(n))
+    Loader.add_constructor("!input", lambda loader, node: loader.construct_scalar(node))
     doc = yaml.load(FILE.read_text(), Loader=Loader)
     leaves: dict = {}
     for name, spec in doc["blueprint"]["input"].items():

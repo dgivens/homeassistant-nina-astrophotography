@@ -186,7 +186,7 @@ async def test_a_stack_that_starts_after_home_assistant_did_gets_its_entity(
     """
     entry = two_rigs.entries[1]
     assert hass.states.get("image.dome_livestack") is None
-    entry.runtime_data.events._dispatch(
+    entry.runtime_data.events._dispatch(  # noqa: SLF001
         {"Event": "STACK-UPDATED", "Time": "2026-09-04T04:30:00-05:00",
          "Target": "NGC 281", "Filter": "S"},
         entry.runtime_data.coordinator.generation,

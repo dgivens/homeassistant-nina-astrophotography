@@ -47,6 +47,7 @@ is broken.
 """
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta, timezone
+import math
 import re
 from types import MappingProxyType
 from typing import Any
@@ -136,7 +137,7 @@ def nan_to_none(value: Any) -> Any:
     """The blanket rule."""
     if isinstance(value, str) and value.strip().lower() == "nan":
         return None
-    if isinstance(value, float) and value != value:
+    if isinstance(value, float) and math.isnan(value):
         return None
     return value
 

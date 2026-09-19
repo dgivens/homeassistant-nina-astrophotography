@@ -10,6 +10,7 @@ Source checks: there is no JavaScript test harness here, and adding one to pin
 a handful of string literals would cost more than it returns.
 """
 from functools import cache
+import json
 from pathlib import Path
 import re
 
@@ -101,7 +102,6 @@ def test_the_documented_action_fields_are_the_translated_ones() -> None:
     them with, and a field in one and not the other is invisible or unlabelled.
     Phase D renamed three user-facing fields across both.
     """
-    import json
 
     component = ROOT / "custom_components" / "nina_astrophotography"
     services = yaml.safe_load((component / "services.yaml").read_text(encoding="utf-8"))

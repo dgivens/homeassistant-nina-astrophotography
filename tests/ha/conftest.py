@@ -200,7 +200,7 @@ def push(config_entry):
     """
     def _push(payload: dict) -> None:
         runtime = config_entry.runtime_data
-        runtime.events._dispatch(payload, runtime.coordinator.generation)
+        runtime.events._dispatch(payload, runtime.coordinator.generation)  # noqa: SLF001
 
     return _push
 

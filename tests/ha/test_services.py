@@ -154,7 +154,7 @@ def test_every_documented_selector_is_one_home_assistant_accepts(
     """`services.yaml` is validated by hassfest, in CI, after the push. This
     is the same check in the suite, where it costs seconds instead.
     """
-    for field, spec in SERVICES_YAML[service]["fields"].items():
+    for spec in SERVICES_YAML[service]["fields"].values():
         if "selector" in spec:
             selector(spec["selector"])
 

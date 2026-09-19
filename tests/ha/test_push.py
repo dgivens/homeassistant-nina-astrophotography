@@ -10,6 +10,9 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from scenarios.fake_rig import FakeRig
 
+from custom_components.nina_astrophotography.api.errors import NinaEndpointError
+from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+
 LIGHT = "light.n_i_n_a_flat_panel_light"
 AT = "2026-09-05T01:41:53.9-05:00"
 
@@ -135,7 +138,7 @@ async def test_only_a_socket_reconnect_reseeds_and_replays(
     connection and `start` is stubbed, so driving the transition by hand is the
     minimal seam. Everything it reaches is public.
     """
-    connect = loaded_entry.runtime_data.events._set_connected
+    connect = loaded_entry.runtime_data.events._set_connected  # noqa: SLF001
     rig.requests.clear()
 
     connect(True)
@@ -169,8 +172,6 @@ async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
     `/event-history`, and dropping the route from one would rewrite a catalogue
     entry other tests read.
     """
-    from custom_components.nina_astrophotography.api.errors import NinaEndpointError
-    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 
     asked = 0
 

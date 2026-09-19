@@ -81,6 +81,8 @@ extend-exclude = ["custom_components/nina_astrophotography/api/v2/schema.py"]
 force-exclude = true
 
 [tool.ruff.lint]
+# Maths typography in docstrings, not lookalikes.
+allowed-confusables = ["×", "−", "–"]
 select = [
   "A001",   # Variable {name} is shadowing a Python builtin
   "ASYNC",  # flake8-async
@@ -264,6 +266,11 @@ split-on-trailing-comma = false
 # Relative imports within the integration's subpackages.
 "custom_components/*/*/*" = ["TID252"]
 "scripts/*" = ["T20"]
+# tests/ is not a package: pytest's pythonpath imports these as `helpers`,
+# `redaction` and so on, and an __init__.py would change that.
+"tests/*.py" = ["INP001"]
+# The unit suite tests the event socket's own dispatch and task handling.
+"tests/unit/*" = ["SLF001"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 25

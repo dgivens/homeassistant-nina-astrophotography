@@ -65,7 +65,7 @@ async def test_a_pushed_event_says_which_rig_it_came_from(
     hass.bus.async_listen("nina_image_save", lambda e: fired.append(e.data))
 
     second = two_rigs.entries[1]
-    second.runtime_data.events._dispatch(
+    second.runtime_data.events._dispatch(  # noqa: SLF001
         nina_responses("live_image_save_push.json"),
         second.runtime_data.coordinator.generation,
     )

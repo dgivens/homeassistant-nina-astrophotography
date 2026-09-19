@@ -13,6 +13,7 @@ what it folds.
 """
 import asyncio
 from collections.abc import Callable
+import contextlib
 from datetime import UTC, datetime, timedelta
 import json
 import logging
@@ -129,10 +130,8 @@ class NinaEventStream:
             await self._ws.close()
         if self._task is not None:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
 
     def _set_connected(self, connected: bool) -> None:
