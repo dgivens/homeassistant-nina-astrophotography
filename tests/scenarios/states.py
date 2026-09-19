@@ -356,6 +356,15 @@ STATES: dict[str, State] = {
     # before the history window leaves the event ledger silent, so the ledger
     # cannot be the only running signal.
     "scheduler_waiting": _captured("scheduler_waiting"),
+    # 22:23, a later night's wait: Target Scheduler sent GUIDER-STOP before it,
+    # and N.I.N.A. still reports the guider `LostLock` — PHD2 lost the star as
+    # guiding stopped, and nothing moved the state on. Frames and a running
+    # stack, so both image routes answer bytes.
+    "scheduler_waiting_lost_lock": {
+        **_captured("scheduler_waiting_lost_lock"),
+        _newest_image("scheduler_waiting_lost_lock_image_history_count.json"): _JPEG,
+        "/livestack/image/Rotten%20Fish/R": _JPEG,
+    },
     # 20:49, ten seconds after SEQUENCE-STARTING: every container still CREATED
     # on a sequence that IS running. The tree lags the start, so it cannot be
     # the only running signal either.

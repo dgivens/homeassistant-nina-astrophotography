@@ -81,6 +81,16 @@ async def test_the_guider_switch_is_on_whenever_the_guider_is_running(
     assert hass.states.get(GUIDER).state == expected
 
 
+async def test_a_lost_lock_left_over_from_a_stop_reads_off(
+    hass: HomeAssistant, config_entry, rig
+) -> None:
+    """N.I.N.A. keeps `LostLock` after `GUIDER-STOP`, and a switch reading on
+    would never let a "restart guiding when it stops" automation fire. Set up
+    in the state because `/event-history` is replayed once."""
+    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    assert hass.states.get(GUIDER).state == "off"
+
+
 @pytest.mark.parametrize(
     ("service", "expected"),
     [

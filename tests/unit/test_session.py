@@ -12,6 +12,7 @@ from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import (
     scheduler_wait,
     fold,
+    guider_stopped,
     latest_stack,
     latest_target,
     newest_frame,
@@ -385,6 +386,45 @@ def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> Non
     """A plain N.I.N.A. sequence emits no TS-* event; its target is in the tree."""
     assert latest_target([e for e in night_events
                           if not e.name.startswith("TS-")], "g1") is None
+
+
+@pytest.mark.parametrize(
+    ("capture", "expected"),
+    [
+        ("scheduler_waiting_lost_lock", True),
+        ("imaging_guiding", False),
+        ("scheduler_waiting", False),
+    ],
+    ids=["stopped for a scheduler wait", "guiding", "no start or stop logged"],
+)
+def test_the_guider_is_stopped_when_a_stop_is_its_newest_event(
+    capture: str, expected: bool
+) -> None:
+    """The newest start or stop decides; a history with neither is not a stop."""
+    events = [map_event(e, "g1") for e in load_fixture(f"{capture}_event_history.json")]
+    assert guider_stopped(events, "g1") is expected
+
+
+@pytest.mark.parametrize(
+    ("names", "generations", "expected"),
+    [
+        (["GUIDER-STOP", "GUIDER-DITHER"], ["g1", "g1"], False),
+        (["GUIDER-START", "GUIDER-STOP"], ["g1", "g0"], False),
+    ],
+    ids=["a dither after the stop", "the stop was the previous process's"],
+)
+@pytest.mark.synthetic
+def test_only_this_generations_newest_guider_event_counts(
+    names: list[str], generations: list[str], expected: bool
+) -> None:
+    """A dither is issued only to a guiding guider, so it restarts the clock
+    as a start does; a stop from before a N.I.N.A. restart says nothing."""
+    events = [
+        NinaEvent(name=name, time=datetime(2026, 9, 18, 21, minute, tzinfo=RIG),
+                  data={}, generation=generation)
+        for minute, (name, generation) in enumerate(zip(names, generations))
+    ]
+    assert guider_stopped(events, "g1") is expected
 
 
 # The rig's own offset; every N.I.N.A. timestamp is local to its clock.

@@ -65,6 +65,7 @@ from .sequence import running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
     fold,
+    guider_stopped,
     latest_stack,
     latest_target,
     recent_frames,
@@ -154,6 +155,9 @@ class NinaData:
     wait_ends_at: datetime | None
     """When the wait Target Scheduler is in ends, or None if it is not waiting.
     The event names no reason, so neither can this."""
+    guider_stopped: bool
+    """Whether the newest `GUIDER-START`/`-DITHER`/`-STOP` is a stop — what
+    tells a stale `LostLock` from a guider hunting for its star."""
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
@@ -682,6 +686,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             imaging=self._imaging,
             running=running(self._sequence, self.events, self.generation),
             wait_ends_at=scheduler_wait(self.events, self.generation, now=moment),
+            guider_stopped=guider_stopped(self.events, self.generation),
         )
 
 

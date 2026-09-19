@@ -277,6 +277,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
+- **`switch.<instance>_guider` reads off once guiding has been stopped**, even
+  while N.I.N.A. still reports the guider `LostLock`. When PHD2 loses its star
+  as guiding stops — Target Scheduler stopping it for a wait, say — N.I.N.A.
+  keeps reporting `LostLock` afterwards, and the switch read on for the whole
+  wait. A `LostLock` whose newest guider event is `GUIDER-STOP` is now off; one
+  mid-guiding still reads on. `sensor.<instance>_guider_status` still reports
+  N.I.N.A.'s state as it is.
 - **`Last Image HFR` no longer reads `0` after a flat run.** Calibration frames
   report `HFR 0` and `Stars -1` as sentinels; those, and a calibration
   frame's guide RMS, are `unknown` now, the
