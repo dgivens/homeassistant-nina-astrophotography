@@ -3,6 +3,7 @@
 The tracking index is the one thing here that cannot be inferred from the
 options list, and getting it wrong parks a mount on the wrong rate.
 """
+
 from dataclasses import replace
 
 from homeassistant.components.select import (
@@ -29,8 +30,10 @@ TRACKING = "select.n_i_n_a_mount_tracking_rate"
 
 async def _select(hass: HomeAssistant, entity_id: str, option: str) -> None:
     await hass.services.async_call(
-        SELECT_DOMAIN, SERVICE_SELECT_OPTION,
-        {ATTR_ENTITY_ID: entity_id, ATTR_OPTION: option}, blocking=True,
+        SELECT_DOMAIN,
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: entity_id, ATTR_OPTION: option},
+        blocking=True,
     )
 
 
@@ -42,6 +45,7 @@ def set_up_with_mount(hass, config_entry, nina_responses, monkeypatch):
     hand-written wire documents, and a mount reporting a tracking mode this API
     cannot encode is one field away from the mount the rig actually reported.
     """
+
     async def _set_up(**changes) -> MockConfigEntry:
         snapshot = map_equipment_info(nina_responses("dawn_equipment_info.json"))
         snapshot = replace(snapshot, mount=replace(snapshot.mount, **changes))
@@ -65,7 +69,10 @@ async def test_the_tracking_options_come_from_the_mount(
     hardcoded list offers rates the mount does not have.
     """
     assert hass.states.get(TRACKING).attributes[ATTR_OPTIONS] == [
-        "Sidereal", "Lunar", "Solar", "Stopped"
+        "Sidereal",
+        "Lunar",
+        "Solar",
+        "Stopped",
     ]
 
 
@@ -140,9 +147,12 @@ async def test_a_refused_command_surfaces_as_a_home_assistant_error(
 async def test_the_kept_selects_keep_their_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    assert entity_registry.async_get_entity_id(
-        SELECT_DOMAIN, DOMAIN, f"{loaded_entry.entry_id}_{suffix}"
-    ) is not None
+    assert (
+        entity_registry.async_get_entity_id(
+            SELECT_DOMAIN, DOMAIN, f"{loaded_entry.entry_id}_{suffix}"
+        )
+        is not None
+    )
 
 
 def test_every_dome_descriptor_is_marked_unverified() -> None:
@@ -164,7 +174,9 @@ async def test_the_filter_change_sends_the_wheels_slot_not_the_list_position(
     """
     await advance("filter_wheel_numbered_from_four")
     await hass.services.async_call(
-        SELECT_DOMAIN, SERVICE_SELECT_OPTION,
-        {ATTR_ENTITY_ID: FILTER, ATTR_OPTION: "H"}, blocking=True,
+        SELECT_DOMAIN,
+        SERVICE_SELECT_OPTION,
+        {ATTR_ENTITY_ID: FILTER, ATTR_OPTION: "H"},
+        blocking=True,
     )
     assert rig.sent[-1] == ("/equipment/filterwheel/change-filter", {"filterId": 8})

@@ -1,4 +1,5 @@
 """wire → models. Every sentinel, timezone and quirk dies in this module."""
+
 from datetime import timedelta
 
 from nina_astrophotography.api.v2.mapper import (
@@ -24,8 +25,14 @@ from helpers import load_fixture as load
 
 @pytest.mark.parametrize(
     ("value", "expected"),
-    [("NaN", None), ("nan", None), (0.0, 0.0), (None, None), ("Sidereal", "Sidereal"),
-     (float("nan"), None)],
+    [
+        ("NaN", None),
+        ("nan", None),
+        (0.0, 0.0),
+        (None, None),
+        ("Sidereal", "Sidereal"),
+        (float("nan"), None),
+    ],
 )
 def test_the_blanket_nan_rule(value, expected) -> None:
     """.NET serializes double.NaN as a JSON string, and json.loads also accepts
@@ -74,8 +81,8 @@ def test_tracking_mode_is_mapped_verbatim() -> None:
 @pytest.mark.parametrize(
     ("tracking", "flip", "expected"),
     [
-        (False, 24, None),      # the dawn capture verbatim: tracking off
-        (True, 24, None),       # the literal sentinel, whatever TrackingEnabled says
+        (False, 24, None),  # the dawn capture verbatim: tracking off
+        (True, 24, None),  # the literal sentinel, whatever TrackingEnabled says
         # A mount inside the pier-side window that adds 12 h: legitimate,
         # not "unknown".
         (True, 12, 12.0),
@@ -117,7 +124,7 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("camera", "gain", 100),
         ("camera", "binning_modes", ("1x1", "2x2", "3x3", "4x4")),
         ("camera", "target_temperature", 20.0),
-        ("camera", "battery", None),            # Battery -1 with HasBattery false
+        ("camera", "battery", None),  # Battery -1 with HasBattery false
         # Per-camera, and narrower than the 0-100 a range-free reading suggests.
         ("camera", "usb_limit_min", 40),
         ("camera", "usb_limit_max", 100),
@@ -126,10 +133,10 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("focuser", "position", 2332),
         ("filter_wheel", "selected_filter", "R"),
         ("filter_wheel", "available_filters", ("L", "R", "G", "B", "H", "O", "S")),
-        ("guider", "state", None),              # no capture has a connected guider
+        ("guider", "state", None),  # no capture has a connected guider
         ("rotator", "synced", True),
-        ("dome", "azimuth", None),              # "NaN" on a dome that never existed
-        ("dome", "shutter_status", None),       # ShutterNone from a disconnected driver
+        ("dome", "azimuth", None),  # "NaN" on a dome that never existed
+        ("dome", "shutter_status", None),  # ShutterNone from a disconnected driver
         ("flat_device", "cover_state", "Closed"),
         ("safety_monitor", "is_safe", False),
     ],
@@ -157,8 +164,14 @@ def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
 
 
 def test_switch_channels_carry_their_writability_and_range() -> None:
-    channel = map_equipment_info(load("dawn_equipment_info.json")).switch_device.channels[0]
-    assert (channel.name, channel.writable, channel.binary) == ("Flat Panel", True, True)
+    channel = map_equipment_info(
+        load("dawn_equipment_info.json")
+    ).switch_device.channels[0]
+    assert (channel.name, channel.writable, channel.binary) == (
+        "Flat Panel",
+        True,
+        True,
+    )
 
 
 @pytest.mark.synthetic
@@ -176,9 +189,20 @@ def test_the_channel_map_is_the_thirteen_channels_not_average_period() -> None:
     """AveragePeriod is a driver setting, not a reading (§5.2.2)."""
     weather = map_equipment_info(load("weather_source_openmeteo.json")).weather
     assert sorted(weather.channels) == [
-        "cloud_cover", "dew_point", "humidity", "pressure", "rain_rate",
-        "sky_brightness", "sky_quality", "sky_temperature", "star_fwhm",
-        "temperature", "wind_direction", "wind_gust", "wind_speed"]
+        "cloud_cover",
+        "dew_point",
+        "humidity",
+        "pressure",
+        "rain_rate",
+        "sky_brightness",
+        "sky_quality",
+        "sky_temperature",
+        "star_fwhm",
+        "temperature",
+        "wind_direction",
+        "wind_gust",
+        "wind_speed",
+    ]
 
 
 def test_a_channel_this_source_reports_keeps_its_reading() -> None:
@@ -207,14 +231,20 @@ def test_the_rig_offset_is_unknown_without_a_mount_clock() -> None:
 
 @pytest.fixture
 def first_flat() -> dict:
-    return next(f for f in load("dawn_image_history_with_flats.json")
-                if f["ImageType"] == "FLAT")
+    return next(
+        f
+        for f in load("dawn_image_history_with_flats.json")
+        if f["ImageType"] == "FLAT"
+    )
 
 
 @pytest.fixture
 def first_light() -> dict:
-    return next(f for f in load("dawn_image_history_with_flats.json")
-                if f["ImageType"] == "LIGHT")
+    return next(
+        f
+        for f in load("dawn_image_history_with_flats.json")
+        if f["ImageType"] == "LIGHT"
+    )
 
 
 def test_calibration_frames_lose_their_hfr_but_keep_their_adu(first_flat) -> None:
@@ -237,8 +267,13 @@ def test_a_nan_adu_range_is_none() -> None:
     applies to them the same as Mean and Median. No captured frame carries
     it; constructed deliberately.
     """
-    wire = {"ImageType": "LIGHT", "Date": "2026-09-04T02:00:00.000-05:00",
-            "Filename": "frame_9998.fits", "Min": "NaN", "Max": "NaN"}
+    wire = {
+        "ImageType": "LIGHT",
+        "Date": "2026-09-04T02:00:00.000-05:00",
+        "Filename": "frame_9998.fits",
+        "Min": "NaN",
+        "Max": "NaN",
+    }
     frame = map_frame(wire, generation="g1")
     assert (frame.min, frame.max) == (None, None)
 
@@ -293,14 +328,20 @@ def test_a_frame_of_unknown_type_keeps_the_readings_it_has(first_light) -> None:
     """The type decides only what is dropped. No captured frame is missing its
     ImageType, so a captured light is stripped of it deliberately.
     """
-    frame = map_frame({k: v for k, v in first_light.items() if k != "ImageType"},
-                      generation="g1")
+    frame = map_frame(
+        {k: v for k, v in first_light.items() if k != "ImageType"}, generation="g1"
+    )
     assert (frame.hfr, frame.stars, frame.rms_arcsec) == (
-        first_light["HFR"], first_light["Stars"], 0.42)
+        first_light["HFR"],
+        first_light["Stars"],
+        0.42,
+    )
 
 
 def test_an_unparsable_rms_text_is_no_reading(first_light) -> None:
-    assert map_frame({**first_light, "RmsText": "n/a"}, generation="g1").rms_arcsec is None
+    assert (
+        map_frame({**first_light, "RmsText": "n/a"}, generation="g1").rms_arcsec is None
+    )
 
 
 @pytest.mark.synthetic
@@ -312,9 +353,15 @@ def test_a_clouded_light_keeps_its_zero_star_count() -> None:
     The corpus cannot show this: no captured LIGHT has HFR 0, and the minimum
     star count across the 55 lights is 3758. Constructed deliberately.
     """
-    clouded = {"ImageType": "LIGHT", "HFR": 0.0, "Stars": 0, "Mean": 612.0,
-               "Date": "2026-09-04T02:00:00.000-05:00",
-               "Filename": "frame_9999.fits", "ExposureTime": 300.0}
+    clouded = {
+        "ImageType": "LIGHT",
+        "HFR": 0.0,
+        "Stars": 0,
+        "Mean": 612.0,
+        "Date": "2026-09-04T02:00:00.000-05:00",
+        "Filename": "frame_9999.fits",
+        "ExposureTime": 300.0,
+    }
     frame = map_frame(clouded, generation="g1")
     assert frame.stars == 0
     assert frame.hfr is None
@@ -359,8 +406,11 @@ def test_log_scraped_event_times_are_local_and_still_offset_aware() -> None:
     events crashes fold()'s sorted iteration with "can't compare offset-naive
     and offset-aware datetimes". Every NinaEvent.time is aware.
     """
-    event = map_event(_first_event("ERROR-PLATESOLVE"), generation="g1",
-                      rig_offset=timedelta(hours=-5))
+    event = map_event(
+        _first_event("ERROR-PLATESOLVE"),
+        generation="g1",
+        rig_offset=timedelta(hours=-5),
+    )
     assert event.time.utcoffset() == timedelta(hours=-5)
 
 
@@ -375,13 +425,18 @@ def test_a_naive_local_time_falls_back_to_utc_before_the_offset_is_known() -> No
 def test_every_event_class_sorts_together() -> None:
     """The property that matters: one comparable ordering across all three."""
     offset = timedelta(hours=-5)
-    events = [map_event(_first_event(name), "g1", rig_offset=offset)
-              for name in ("IMAGE-SAVE", "TS-NEWTARGETSTART", "ERROR-PLATESOLVE")]
+    events = [
+        map_event(_first_event(name), "g1", rig_offset=offset)
+        for name in ("IMAGE-SAVE", "TS-NEWTARGETSTART", "ERROR-PLATESOLVE")
+    ]
     # In UTC: TS-NEWTARGETSTART 02:15:32 is already UTC; IMAGE-SAVE 21:26:56-05:00
     # is 02:26:56; ERROR-PLATESOLVE 21:54:26 local is 02:54:26. Reading the
     # wall-clock strings as written puts the TS-* event last instead of first.
     assert [e.name for e in sorted(events, key=lambda e: e.time)] == [
-        "TS-NEWTARGETSTART", "IMAGE-SAVE", "ERROR-PLATESOLVE"]
+        "TS-NEWTARGETSTART",
+        "IMAGE-SAVE",
+        "ERROR-PLATESOLVE",
+    ]
 
 
 def test_a_socket_image_save_is_timed_by_the_frame_it_carries() -> None:
@@ -391,8 +446,10 @@ def test_a_socket_image_save_is_timed_by_the_frame_it_carries() -> None:
     assert event.time == event.frame.date
 
 
-@pytest.mark.parametrize("wire", [{"Event": "SEQUENCE-FINISHED"},
-                                  {"Event": "SEQUENCE-FINISHED", "Time": "07:06"}])
+@pytest.mark.parametrize(
+    "wire",
+    [{"Event": "SEQUENCE-FINISHED"}, {"Event": "SEQUENCE-FINISHED", "Time": "07:06"}],
+)
 def test_an_event_with_no_usable_time_and_no_frame_is_not_an_event(wire) -> None:
     with pytest.raises(ValueError):
         map_event(wire, generation="g1")
@@ -402,8 +459,9 @@ def test_event_payloads_keep_their_scalars_and_drop_the_empty_coordinates() -> N
     """TS-* payloads carry "Coordinates": {"RA": [], …} — empty arrays where
     scalars belong. Nothing above the seam can use them.
     """
-    wire = next(e for e in load("dawn_event_history.json")
-                if e["Event"] == "TS-TARGETSTART")
+    wire = next(
+        e for e in load("dawn_event_history.json") if e["Event"] == "TS-TARGETSTART"
+    )
     data = map_event(wire, generation="g1").data
     assert data["TargetName"] == "Lobster & Bubble"
     assert "Coordinates" not in data
@@ -444,15 +502,22 @@ def test_idle_flat_wizard_iterations_are_not_a_count() -> None:
         pytest.param("stopped", (False, "stopped"), marks=pytest.mark.synthetic),
         # The spec's documented shape, kept because the enum is lowercase there
         # and a live rig has answered "Stopped".
-        pytest.param({"Status": "Running"}, (True, "Running"),
-                     marks=pytest.mark.synthetic),
-        pytest.param({"Status": "STOPPED"}, (False, "STOPPED"),
-                     marks=pytest.mark.synthetic),
+        pytest.param(
+            {"Status": "Running"}, (True, "Running"), marks=pytest.mark.synthetic
+        ),
+        pytest.param(
+            {"Status": "STOPPED"}, (False, "STOPPED"), marks=pytest.mark.synthetic
+        ),
         # The plugin may not be installed; the empty state is "", not "None".
         pytest.param({}, (False, ""), marks=pytest.mark.synthetic),
     ],
-    ids=["captured bare string", "bare string stopped", "spec dict running",
-         "spec dict stopped", "absent"],
+    ids=[
+        "captured bare string",
+        "bare string stopped",
+        "spec dict running",
+        "spec dict stopped",
+        "absent",
+    ],
 )
 def test_livestack_status_reads_both_wire_shapes(wire, expected) -> None:
     status = map_livestack_status(wire)
@@ -463,18 +528,30 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
     """/profile/show is captured as an allowlist projection and never as a
     fixture — a full dump held a live WeatherUnderground key (§8.3).
     """
-    profile = map_profile({
-        "TelescopeSettings": {"FocalLength": 500},
-        "CameraSettings": {"PixelSize": 3.76},
-        "FocuserSettings": {"AutoFocusTimeoutSeconds": 600, "RSquaredThreshold": 0.9},
-        "MeridianFlipSettings": {"MinutesAfterMeridian": 5,
-                                 "MaxMinutesAfterMeridian": 15,
-                                 "UseSideOfPier": True},
-    })
+    profile = map_profile(
+        {
+            "TelescopeSettings": {"FocalLength": 500},
+            "CameraSettings": {"PixelSize": 3.76},
+            "FocuserSettings": {
+                "AutoFocusTimeoutSeconds": 600,
+                "RSquaredThreshold": 0.9,
+            },
+            "MeridianFlipSettings": {
+                "MinutesAfterMeridian": 5,
+                "MaxMinutesAfterMeridian": 15,
+                "UseSideOfPier": True,
+            },
+        }
+    )
     assert profile == type(profile)(
-        focal_length=500.0, pixel_size=3.76, autofocus_timeout_seconds=600.0,
-        r_squared_threshold=0.9, min_minutes_after_meridian=5.0,
-        max_minutes_after_meridian=15.0, use_side_of_pier=True)
+        focal_length=500.0,
+        pixel_size=3.76,
+        autofocus_timeout_seconds=600.0,
+        r_squared_threshold=0.9,
+        min_minutes_after_meridian=5.0,
+        max_minutes_after_meridian=15.0,
+        use_side_of_pier=True,
+    )
 
 
 def test_an_absent_profile_section_is_no_reading() -> None:
@@ -529,11 +606,11 @@ def test_an_autofocus_runs_duration_is_seconds() -> None:
 @pytest.mark.parametrize(
     ("duration", "expected"),
     [
-        ("00:04:02", 242.0),             # a run that lands on a whole second
-        ("1.02:03:04", 93784.0),         # days, which .NET writes with a dot
+        ("00:04:02", 242.0),  # a run that lands on a whole second
+        ("1.02:03:04", 93784.0),  # days, which .NET writes with a dot
         ("", None),
         ("4 minutes", None),
-        (242, None),                     # never observed as a number
+        (242, None),  # never observed as a number
     ],
 )
 def test_the_timespan_forms_a_duration_can_arrive_in(duration, expected) -> None:
@@ -542,11 +619,14 @@ def test_the_timespan_forms_a_duration_can_arrive_in(duration, expected) -> None
     """
     report = map_last_autofocus({"Duration": duration})
     assert report.duration_seconds == (
-        None if expected is None else pytest.approx(expected))
+        None if expected is None else pytest.approx(expected)
+    )
 
 
 @pytest.mark.synthetic
-@pytest.mark.parametrize("method", ["CONTRASTDETECTION", "ContrastDetection", "MYSTERY"])
+@pytest.mark.parametrize(
+    "method", ["CONTRASTDETECTION", "ContrastDetection", "MYSTERY"]
+)
 def test_only_a_star_hfr_run_reports_pixels(method: str) -> None:
     """Fabricates `Method`: the corpus is all STARHFR. CONTRASTDETECTION
     measures a contrast score, so its focus points are not pixels — publishing
@@ -567,8 +647,10 @@ def test_a_focus_point_of_zero_is_no_measurement() -> None:
     guard. A star has a size, and a 0 in a MEASUREMENT sensor is what corrupts
     a long-term statistic.
     """
-    wire = dict(load("imaging_guiding_last_af.json"),
-                InitialFocusPoint={"Position": 2352, "Value": 0, "Error": 0})
+    wire = dict(
+        load("imaging_guiding_last_af.json"),
+        InitialFocusPoint={"Position": 2352, "Value": 0, "Error": 0},
+    )
     assert map_last_autofocus(wire).initial_hfr is None
 
 
@@ -576,7 +658,16 @@ def test_the_autofocus_curve_ascends_in_focuser_position() -> None:
     """A plot needs monotonic x, and the report does not state its own order."""
     curve = map_last_autofocus(load("imaging_guiding_last_af.json")).curve
     assert [point.position for point in curve] == [
-        2212, 2247, 2282, 2317, 2352, 2387, 2422, 2457, 2492]
+        2212,
+        2247,
+        2282,
+        2317,
+        2352,
+        2387,
+        2422,
+        2457,
+        2492,
+    ]
 
 
 def test_an_autofocus_curve_point_carries_its_spread() -> None:
@@ -592,10 +683,15 @@ def failed_sweep_point():
     """A two-point sweep whose first frame measured nothing. Fabricated —
     every captured sweep is complete — and marked `synthetic` at each use.
     """
-    return map_last_autofocus(dict(
-        load("imaging_guiding_last_af.json"),
-        MeasurePoints=[{"Position": 2317, "Value": 0, "Error": 0},
-                       {"Position": 2352, "Value": 1.5, "Error": 0.1}]))
+    return map_last_autofocus(
+        dict(
+            load("imaging_guiding_last_af.json"),
+            MeasurePoints=[
+                {"Position": 2317, "Value": 0, "Error": 0},
+                {"Position": 2352, "Value": 1.5, "Error": 0.1},
+            ],
+        )
+    )
 
 
 @pytest.mark.synthetic
@@ -607,7 +703,9 @@ def test_a_position_the_sweep_measured_nothing_at_stays_on_the_curve(
     the line where the sweep actually lost a frame.
     """
     assert [(p.position, p.value) for p in failed_sweep_point.curve] == [
-        (2317, None), (2352, 1.5)]
+        (2317, None),
+        (2352, 1.5),
+    ]
 
 
 @pytest.mark.synthetic
@@ -617,8 +715,7 @@ def test_only_the_positions_that_measured_something_are_counted(
     """`measured_points` is what the run got; the curve's length is what it
     paid for, failures included.
     """
-    assert (failed_sweep_point.measured_points,
-            len(failed_sweep_point.curve)) == (1, 2)
+    assert (failed_sweep_point.measured_points, len(failed_sweep_point.curve)) == (1, 2)
 
 
 @pytest.mark.synthetic
@@ -634,9 +731,13 @@ def test_a_sweep_point_without_a_position_cannot_be_plotted() -> None:
     """Fabricates a positionless entry. A position is the x axis: a row
     lacking one has nowhere to go on the chart, unlike a failed measurement.
     """
-    wire = dict(load("imaging_guiding_last_af.json"),
-                MeasurePoints=[{"Value": 1.7, "Error": 0.1},
-                               {"Position": 2352, "Value": 1.5, "Error": 0.1}])
+    wire = dict(
+        load("imaging_guiding_last_af.json"),
+        MeasurePoints=[
+            {"Value": 1.7, "Error": 0.1},
+            {"Position": 2352, "Value": 1.5, "Error": 0.1},
+        ],
+    )
     assert [p.position for p in map_last_autofocus(wire).curve] == [2352]
 
 
@@ -658,29 +759,40 @@ def test_a_fitted_curve_is_published_as_coefficients() -> None:
     it, and parsing it once here beats parsing it in JavaScript on every
     render.
     """
-    quadratic = next(f for f in map_last_autofocus(
-        load("imaging_guiding_last_af.json")).fits if f.name == "Quadratic")
+    quadratic = next(
+        f
+        for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits
+        if f.name == "Quadratic"
+    )
     assert quadratic.coefficients == pytest.approx(
-        (0.0003058854621319121, -1.4293365331583652, 1671.5984427459177))
+        (0.0003058854621319121, -1.4293365331583652, 1671.5984427459177)
+    )
 
 
 def test_each_fit_keeps_its_own_r_squared() -> None:
     """`AutoFocusReport.r_squared` is the worst fit of the run, which is right
     for a threshold and cannot label an individual line in a chart legend.
     """
-    fits = {f.name: f.r_squared
-            for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits}
-    assert fits == pytest.approx({"Quadratic": 0.9710548595560263,
-                                  "LeftTrend": 0.9902518159347956,
-                                  "RightTrend": 0.9998991212499581})
+    fits = {
+        f.name: f.r_squared
+        for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits
+    }
+    assert fits == pytest.approx(
+        {
+            "Quadratic": 0.9710548595560263,
+            "LeftTrend": 0.9902518159347956,
+            "RightTrend": 0.9998991212499581,
+        }
+    )
 
 
 def test_a_fitting_this_run_did_not_use_is_not_published() -> None:
     """N.I.N.A. carries one entry per fitting it knows and an empty equation
     for the ones it did not run, which is no curve to draw.
     """
-    names = [f.name for f in map_last_autofocus(
-        load("imaging_guiding_last_af.json")).fits]
+    names = [
+        f.name for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits
+    ]
     assert "Hyperbolic" not in names and "Gaussian" not in names
 
 
@@ -691,7 +803,9 @@ def test_the_fit_minima_are_read_by_the_names_the_rig_uses() -> None:
     """
     minima = map_last_autofocus(load("imaging_guiding_last_af.json")).minima
     assert [(m.name, m.position) for m in minima] == [
-        ("TrendLineIntersection", 2344), ("QuadraticMinimum", 2336)]
+        ("TrendLineIntersection", 2344),
+        ("QuadraticMinimum", 2336),
+    ]
 
 
 @pytest.mark.synthetic
@@ -700,10 +814,10 @@ def test_the_fit_minima_are_read_by_the_names_the_rig_uses() -> None:
     [
         ("y = 2 * x^2 + -3 * x + 4", (2.0, -3.0, 4.0)),
         ("y = -0.5 * x + 1.25", (-0.5, 1.25)),
-        ("y = 3 * x^3 + 1", (3.0, 0.0, 0.0, 1.0)),   # zero-filled, not skipped
-        ("y = 1E+05 * x + 2", (100000.0, 2.0)),      # the split must not be on "+"
+        ("y = 3 * x^3 + 1", (3.0, 0.0, 0.0, 1.0)),  # zero-filled, not skipped
+        ("y = 1E+05 * x + 2", (100000.0, 2.0)),  # the split must not be on "+"
         ("", None),
-        ("y = a / (x - b)", None),                   # no hyperbolic form observed
+        ("y = a / (x - b)", None),  # no hyperbolic form observed
     ],
 )
 def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
@@ -712,8 +826,7 @@ def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
     so anything that is not a polynomial yields no coefficients rather than a
     guess.
     """
-    wire = dict(load("imaging_guiding_last_af.json"),
-                Fittings={"Quadratic": equation})
+    wire = dict(load("imaging_guiding_last_af.json"), Fittings={"Quadratic": equation})
     fits = map_last_autofocus(wire).fits
     if expected is None:
         assert [f.coefficients for f in fits] in ([], [None])

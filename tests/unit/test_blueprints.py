@@ -4,6 +4,7 @@
 inside a template string. An input referenced from `{{ }}` must first be
 bound in a `variables:` block, or it renders empty and fails silently.
 """
+
 from pathlib import Path
 import re
 
@@ -61,8 +62,7 @@ def bound(doc: dict) -> set[str]:
 def bindings(doc: dict) -> dict[str, str]:
     """Variable name -> the input it binds, for both variables blocks."""
     both = {**(doc.get("variables") or {}), **(doc.get("trigger_variables") or {})}
-    return {alias: source for alias, source in both.items()
-            if source in declared(doc)}
+    return {alias: source for alias, source in both.items() if source in declared(doc)}
 
 
 def binding_lines(raw: str) -> set[int]:
@@ -115,7 +115,8 @@ def test_every_declared_input_is_read(path: Path) -> None:
     text = templates(raw)
 
     read = {name for name, line in referenced if line not in skip} | {
-        source for alias, source in bindings(doc).items()
+        source
+        for alias, source in bindings(doc).items()
         if re.search(rf"\b{re.escape(alias)}\b", text)
     }
     unused = declared(doc) - read
@@ -159,8 +160,10 @@ def test_the_abort_triggers_on_the_safety_signals_and_nothing_else() -> None:
     """
     triggers = _blueprint("weather_abort.yaml")["triggers"]
 
-    assert [(t["id"], t["entity_id"], t.get("from"), t["to"], t.get("for"))
-            for t in triggers] == [
+    assert [
+        (t["id"], t["entity_id"], t.get("from"), t["to"], t.get("for"))
+        for t in triggers
+    ] == [
         ("unsafe", "safety_unsafe", None, "on", None),
         ("monitor_lost", "safety_connected", "on", "off", "00:00:30"),
         ("rig_unreachable", "safety_connected", None, "unavailable", "00:02:00"),
@@ -173,8 +176,10 @@ def test_the_meridian_warning_triggers_on_the_flip_event() -> None:
     the only reliable signal that it is happening.
     """
     ids = [t["id"] for t in _blueprint("meridian_flip_warning.yaml")["triggers"]]
-    events = [t.get("event_type")
-              for t in _blueprint("meridian_flip_warning.yaml")["triggers"]]
+    events = [
+        t.get("event_type")
+        for t in _blueprint("meridian_flip_warning.yaml")["triggers"]
+    ]
 
     assert ids == ["approaching", "committed", "complete"]
     assert events == [None, "nina_mount_before_flip", "nina_mount_after_flip"]

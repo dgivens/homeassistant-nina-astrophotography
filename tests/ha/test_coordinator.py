@@ -4,6 +4,7 @@
 entities read, so reading them here is reading the public surface — not the
 coordinator's internals.
 """
+
 from datetime import datetime, timedelta, timezone
 import logging
 
@@ -48,7 +49,9 @@ async def test_the_session_boundary_is_the_rigs_local_noon(
 async def test_an_unreachable_rig_makes_the_entities_unavailable(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, monkeypatch
 ) -> None:
-    monkeypatch.setattr(NinaClientV2, "get_equipment", _raising(NinaConnectionError("down")))
+    monkeypatch.setattr(
+        NinaClientV2, "get_equipment", _raising(NinaConnectionError("down"))
+    )
     await loaded_entry.runtime_data.coordinator.async_refresh()
     assert hass.states.get(LIGHT).state == "unavailable"
 
@@ -60,13 +63,18 @@ async def test_a_rejected_request_keeps_the_previous_state_and_logs_once(
     unavailable and an error per poll would be noise about one condition.
     """
     before = hass.states.get(LIGHT).state
-    monkeypatch.setattr(NinaClientV2, "get_equipment", _raising(NinaRequestError("400")))
+    monkeypatch.setattr(
+        NinaClientV2, "get_equipment", _raising(NinaRequestError("400"))
+    )
     with caplog.at_level(logging.ERROR):
         await loaded_entry.runtime_data.coordinator.async_refresh()
         await loaded_entry.runtime_data.coordinator.async_refresh()
-    errors = [r for r in caplog.records
-              if r.levelno == logging.ERROR
-              and r.name.startswith("custom_components.nina_astrophotography")]
+    errors = [
+        r
+        for r in caplog.records
+        if r.levelno == logging.ERROR
+        and r.name.startswith("custom_components.nina_astrophotography")
+    ]
     assert hass.states.get(LIGHT).state == before
     assert len(errors) == 1
 
@@ -77,7 +85,9 @@ async def test_a_rejected_first_refresh_fails_the_entry_rather_than_retrying(
     """With nothing to fall back on, a permanent rejection is ConfigEntryError:
     ConfigEntryNotReady would retry a condition that never clears.
     """
-    monkeypatch.setattr(NinaClientV2, "get_equipment", _raising(NinaRequestError("400")))
+    monkeypatch.setattr(
+        NinaClientV2, "get_equipment", _raising(NinaRequestError("400"))
+    )
     config_entry.add_to_hass(hass)
     await hass.config_entries.async_setup(config_entry.entry_id)
     assert config_entry.state is ConfigEntryState.SETUP_ERROR

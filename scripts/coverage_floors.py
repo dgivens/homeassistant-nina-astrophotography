@@ -5,6 +5,7 @@ coverage.py has no per-file threshold and this project has no global gate:
 coverage is deliberately uneven. Reads coverage.json, written by
 `coverage json` after `coverage combine`.
 """
+
 import json
 from pathlib import Path
 import sys

@@ -2,13 +2,16 @@
 
 A hand-edit to a generated file is invisible in review and survives forever.
 """
+
 from pathlib import Path
 import subprocess
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SCHEMA = ROOT / "custom_components" / "nina_astrophotography" / "api" / "v2" / "schema.py"
+SCHEMA = (
+    ROOT / "custom_components" / "nina_astrophotography" / "api" / "v2" / "schema.py"
+)
 
 
 @pytest.mark.slow

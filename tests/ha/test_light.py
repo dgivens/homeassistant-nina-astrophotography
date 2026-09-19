@@ -1,4 +1,5 @@
 """The flat panel light — §5.3.4's three fixes, on real hardware numbers."""
+
 from dataclasses import replace
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, DOMAIN as LIGHT_DOMAIN
@@ -17,13 +18,19 @@ ENTITY = "light.n_i_n_a_flat_panel_light"
 
 async def _turn_on(hass: HomeAssistant, **data) -> None:
     await hass.services.async_call(
-        LIGHT_DOMAIN, SERVICE_TURN_ON, {ATTR_ENTITY_ID: ENTITY, **data}, blocking=True,
+        LIGHT_DOMAIN,
+        SERVICE_TURN_ON,
+        {ATTR_ENTITY_ID: ENTITY, **data},
+        blocking=True,
     )
 
 
 async def _turn_off(hass: HomeAssistant) -> None:
     await hass.services.async_call(
-        LIGHT_DOMAIN, SERVICE_TURN_OFF, {ATTR_ENTITY_ID: ENTITY}, blocking=True,
+        LIGHT_DOMAIN,
+        SERVICE_TURN_OFF,
+        {ATTR_ENTITY_ID: ENTITY},
+        blocking=True,
     )
 
 
@@ -56,7 +63,7 @@ async def test_a_bare_turn_on_does_not_go_to_full_output(
     tempts a falsy-fallback implementation into sending 255.
     """
     await _turn_on(hass)
-    assert sent.brightness == 16   # round(1 / 255 * 4096): HA level 1, the dim default
+    assert sent.brightness == 16  # round(1 / 255 * 4096): HA level 1, the dim default
 
 
 async def test_a_bare_turn_on_restores_the_last_level_used(
@@ -65,7 +72,7 @@ async def test_a_bare_turn_on_restores_the_last_level_used(
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 64})
     await _turn_off(hass)
     await _turn_on(hass)
-    assert sent.brightness == 1028   # round(64 / 255 * 4096)
+    assert sent.brightness == 1028  # round(64 / 255 * 4096)
 
 
 async def test_turn_on_sends_the_brightness_before_switching_the_light_on(
@@ -125,10 +132,16 @@ async def test_a_panel_that_disconnects_after_being_observed_stays_as_unavailabl
     not vanish.
     """
     snapshot = idle_flat_panel_entry.runtime_data.coordinator.data.snapshot
-    down = replace(snapshot, flat_device=replace(
-        snapshot.flat_device, meta=DeviceMeta(None, None, None, None, None),
-        connected=False, min_brightness=0.0, max_brightness=0.0,
-    ))
+    down = replace(
+        snapshot,
+        flat_device=replace(
+            snapshot.flat_device,
+            meta=DeviceMeta(None, None, None, None, None),
+            connected=False,
+            min_brightness=0.0,
+            max_brightness=0.0,
+        ),
+    )
 
     async def get_equipment(self):
         return down
@@ -166,7 +179,8 @@ async def test_a_panel_never_observed_has_no_entity(
     the rig has one (§5.2.2).
     """
     await set_up_with_flat_device(
-        meta=DeviceMeta(None, None, None, None, None), connected=False,
+        meta=DeviceMeta(None, None, None, None, None),
+        connected=False,
     )
     assert hass.states.get(ENTITY) is None
 
@@ -178,7 +192,8 @@ async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
     started; the light must arrive with it, as the panel's other entities do.
     """
     entry = await set_up_with_flat_device(
-        meta=DeviceMeta(None, None, None, None, None), connected=False,
+        meta=DeviceMeta(None, None, None, None, None),
+        connected=False,
     )
     assert hass.states.get(ENTITY) is None
     dawn = map_equipment_info(nina_responses("dawn_equipment_info.json"))
@@ -194,8 +209,10 @@ async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
 
 @pytest.mark.parametrize(
     ("command", "act"),
-    [("set_flat_brightness", lambda hass: _turn_on(hass, **{ATTR_BRIGHTNESS: 10})),
-     ("set_flat_light", _turn_off)],
+    [
+        ("set_flat_brightness", lambda hass: _turn_on(hass, **{ATTR_BRIGHTNESS: 10})),
+        ("set_flat_light", _turn_off),
+    ],
     ids=["turn_on", "turn_off"],
 )
 async def test_a_refused_command_surfaces_as_a_home_assistant_error(

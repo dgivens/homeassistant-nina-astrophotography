@@ -7,6 +7,7 @@ Definitions are semantic, not HTTP: the Advanced API answers HTTP 200 for
 almost everything and carries the real outcome in the envelope's StatusCode.
 """
 
+
 class NinaError(Exception):
     """Base for everything the client raises."""
 
@@ -60,8 +61,9 @@ class NinaCommandError(NinaError):
     seven routes and 400 on two.
     """
 
-    def __init__(self, message: str, *, status_code: int | None = None,
-                 api_error: str = "") -> None:
+    def __init__(
+        self, message: str, *, status_code: int | None = None, api_error: str = ""
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.api_error = api_error

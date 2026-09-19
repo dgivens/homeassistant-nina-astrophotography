@@ -3,6 +3,7 @@
 Deliberately NOT under `api/`: same reasoning as `views.py` — this imports
 `homeassistant`, and `api/` is the HA-free seam.
 """
+
 import logging
 from pathlib import Path
 

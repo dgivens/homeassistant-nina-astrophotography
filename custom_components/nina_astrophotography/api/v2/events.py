@@ -11,6 +11,7 @@ timestamp; it can never reconstruct a frame's measurements.
 cap, eviction or pagination; it grows for the life of the process. Replay caps
 what it folds.
 """
+
 import asyncio
 from collections.abc import Callable
 import contextlib
@@ -31,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 
 WS_URL = "ws://{host}:{port}/v2/socket"
 
-REPLAY_CAP = 2000            # a full night emitted 628; a long-lived process, more
+REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
 
 _RECONNECT_DELAY = 5
 _MAX_RECONNECT_DELAY = 60
@@ -103,8 +104,9 @@ class NinaEventStream:
 
     # ── replay ───────────────────────────────────────────────────────────────
 
-    async def replay(self, client: NinaClientV2,
-                     generation: str | None) -> list[NinaEvent]:
+    async def replay(
+        self, client: NinaClientV2, generation: str | None
+    ) -> list[NinaEvent]:
         """Fold `/event-history` at setup and on reconnect.
 
         An empty `/event-history` at setup is a normal state, not a failure — a
@@ -171,8 +173,9 @@ class NinaEventStream:
                 # With the traceback: this catch is what keeps the socket
                 # reconnecting, so without it an unanticipated failure loops
                 # silently every 5 s with nothing to diagnose it by.
-                _LOGGER.warning("N.I.N.A. event socket: unexpected error: %s",
-                                exc, exc_info=True)
+                _LOGGER.warning(
+                    "N.I.N.A. event socket: unexpected error: %s", exc, exc_info=True
+                )
             finally:
                 self._ws = None
 

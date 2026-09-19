@@ -16,6 +16,7 @@ Success: true before the state changes. FLAT-LIGHT-TOGGLED carries an empty
 payload and FLAT-BRIGHTNESS-CHANGED fires repeatedly through a ramp with
 inconsistent Previous values — both are change hints, nothing more.
 """
+
 from typing import Any
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, LightEntity

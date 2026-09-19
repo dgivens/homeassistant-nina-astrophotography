@@ -3,6 +3,7 @@
 Every assertion goes through `hass.states` or the entity registry — the
 registry for the long tail, which ships disabled and so has no state.
 """
+
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
@@ -48,14 +49,26 @@ async def _set_up_at(hass: HomeAssistant, entry: MockConfigEntry, rig, state: st
     "key",
     [
         # §5.2.1 — availability carries these.
-        "camera_connected", "mount_connected", "focuser_connected",
-        "filterwheel_connected", "guider_connected", "rotator_connected",
-        "dome_connected", "flatdevice_connected", "weather_connected",
+        "camera_connected",
+        "mount_connected",
+        "focuser_connected",
+        "filterwheel_connected",
+        "guider_connected",
+        "rotator_connected",
+        "dome_connected",
+        "flatdevice_connected",
+        "weather_connected",
         "switch_connected",
         # §5.2.3 — read-only mirrors of a switch, number, select or sensor.
-        "camera_cooling_enabled", "camera_dew_heater_on", "dome_following",
-        "rotator_reversed", "guider_is_guiding", "dome_shutter_open",
-        "flatdevice_cover_open", "flatdevice_light_on", "mount_tracking",
+        "camera_cooling_enabled",
+        "camera_dew_heater_on",
+        "dome_following",
+        "rotator_reversed",
+        "guider_is_guiding",
+        "dome_shutter_open",
+        "flatdevice_cover_open",
+        "flatdevice_light_on",
+        "mount_tracking",
         "livestack_running",
         # No `Slewing` on MountModel: nothing above the seam can compute it.
         "mount_slewing",
@@ -74,10 +87,18 @@ async def test_the_cut_binary_sensors_are_not_registered(
     "suffix",
     # The four 1.4.5 spellings are the point: a survivor keeps its unique_id,
     # so an upgraded install keeps the registry row and the automations on it.
-    ["safetymonitor_is_safe", "safetymonitor_connected", "mount_parked",
-     "camera_exposing", "mount_at_home", "focuser_is_moving",
-     "filterwheel_is_moving", "rotator_is_moving", "rotator_synced",
-     "autofocus_failed"],
+    [
+        "safetymonitor_is_safe",
+        "safetymonitor_connected",
+        "mount_parked",
+        "camera_exposing",
+        "mount_at_home",
+        "focuser_is_moving",
+        "filterwheel_is_moving",
+        "rotator_is_moving",
+        "rotator_synced",
+        "autofocus_failed",
+    ],
 )
 async def test_the_kept_binary_sensors_are_registered(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
@@ -166,8 +187,12 @@ async def test_imaging_follows_activity_and_not_node_status(
     ids=["waiting until 21:05", "stopped, with the wait still in the history"],
 )
 async def test_the_waiting_sensor_clears_when_the_sequence_stops(
-    hass: HomeAssistant, config_entry, rig, during_the_scheduler_wait,
-    state: str, expected: str
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    during_the_scheduler_wait,
+    state: str,
+    expected: str,
 ) -> None:
     """There is no TS-WAITSTOP: `sequence_stopped` still holds two TS-WAITSTART
     naming 21:05, so a sensor keyed on the newest wait alone would report a
@@ -191,8 +216,12 @@ async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
 
 @pytest.mark.parametrize(
     "suffix",
-    ["focuser_is_moving", "filterwheel_is_moving", "rotator_is_moving",
-     "rotator_synced"],
+    [
+        "focuser_is_moving",
+        "filterwheel_is_moving",
+        "rotator_is_moving",
+        "rotator_synced",
+    ],
 )
 async def test_the_long_tail_ships_diagnostic_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
@@ -200,11 +229,10 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     """Gold entity-category / entity-disabled-by-default. The dome's three are
     not here: no capture observes a dome, so they are never registered.
     """
-    row = entity_registry.async_get(
-        _registered(entity_registry, loaded_entry, suffix)
-    )
+    row = entity_registry.async_get(_registered(entity_registry, loaded_entry, suffix))
     assert (row.entity_category, row.disabled_by is not None) == (
-        EntityCategory.DIAGNOSTIC, True,
+        EntityCategory.DIAGNOSTIC,
+        True,
     )
 
 

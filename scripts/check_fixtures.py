@@ -4,6 +4,7 @@
 CI is the backstop, not the guard: it fires after the push, by which time a
 leaked credential is permanent.
 """
+
 import json
 from pathlib import Path
 import sys

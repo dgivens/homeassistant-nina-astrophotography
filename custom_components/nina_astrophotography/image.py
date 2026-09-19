@@ -12,6 +12,7 @@ The timestamp is the state, and Home Assistant refetches only when it moves.
 frame was captured — and `image.livestack` from the `STACK-UPDATED` that named
 its target and filter.
 """
+
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime

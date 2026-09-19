@@ -86,6 +86,7 @@ constrain services) stands either way.
 
 ```python
 """Services: device targeting, and the three redesigns."""
+
 import pytest
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
@@ -96,7 +97,8 @@ async def test_a_service_targets_a_specific_rig(hass, two_rigs) -> None:
     """_get_client()'s "first entry wins" is what phase D removes."""
     first, second = two_rigs
     await hass.services.async_call(
-        DOMAIN, "mount_park", {"device_id": second.hub_device_id}, blocking=True)
+        DOMAIN, "mount_park", {"device_id": second.hub_device_id}, blocking=True
+    )
     assert second.client.calls == ["park_mount"]
     assert first.client.calls == []
 
@@ -113,7 +115,8 @@ async def test_a_service_with_no_target_and_one_rig_works(hass, loaded_entry) ->
 async def test_camera_capture_sends_duration_not_time(hass, loaded_entry, client):
     """1.4.5 sent `time`; the API reads `duration`, so exposure time was ignored."""
     await hass.services.async_call(
-        DOMAIN, "camera_capture", {"duration": 30}, blocking=True)
+        DOMAIN, "camera_capture", {"duration": 30}, blocking=True
+    )
     assert client.last_params["duration"] == 30
 
 
@@ -128,15 +131,18 @@ def test_camera_capture_no_longer_offers_parameters_that_bind_nothing() -> None:
     from pathlib import Path
 
     services = yaml.safe_load(
-        (Path("custom_components/nina_astrophotography/services.yaml")
-         ).read_text(encoding="utf-8"))
+        (Path("custom_components/nina_astrophotography/services.yaml")).read_text(
+            encoding="utf-8"
+        )
+    )
     fields = services["camera_capture"]["fields"]
     assert set(fields) == {"device_id", "duration", "gain", "save"}
 
 
 async def test_sequence_load_sends_sequence_name_not_path(hass, loaded_entry, client):
     await hass.services.async_call(
-        DOMAIN, "sequence_load", {"sequence_name": "Autumn"}, blocking=True)
+        DOMAIN, "sequence_load", {"sequence_name": "Autumn"}, blocking=True
+    )
     assert client.last_params["sequenceName"] == "Autumn"
 
 
@@ -146,23 +152,25 @@ async def test_mount_slew_takes_j2000_degrees_and_never_pre_transforms(
     """All three branches construct Epoch.J2000 and N.I.N.A. transforms to the
     mount's own EquatorialSystem internally."""
     await hass.services.async_call(
-        DOMAIN, "mount_slew", {"ra_degrees": 331.07, "dec_degrees": 56.6}, blocking=True)
+        DOMAIN, "mount_slew", {"ra_degrees": 331.07, "dec_degrees": 56.6}, blocking=True
+    )
     assert client.last_params == {"ra": 331.07, "dec": 56.6}
 
 
-@pytest.mark.parametrize(
-    ("ra", "dec"), [(-1, 0), (361, 0), (0, -91), (0, 91)]
-)
+@pytest.mark.parametrize(("ra", "dec"), [(-1, 0), (361, 0), (0, -91), (0, 91)])
 async def test_out_of_range_coordinates_are_refused_client_side(
     hass, loaded_entry, ra, dec
 ) -> None:
     """Out-of-range input is silently clamped and answers Success: true."""
     with pytest.raises(ServiceValidationError):
         await hass.services.async_call(
-            DOMAIN, "mount_slew", {"ra_degrees": ra, "dec_degrees": dec}, blocking=True)
+            DOMAIN, "mount_slew", {"ra_degrees": ra, "dec_degrees": dec}, blocking=True
+        )
 
 
-async def test_a_refused_command_raises_a_home_assistant_error(hass, loaded_entry, client):
+async def test_a_refused_command_raises_a_home_assistant_error(
+    hass, loaded_entry, client
+):
     client.refuse("park_mount", "Mount not connected", 409)
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(DOMAIN, "mount_park", {}, blocking=True)
@@ -307,6 +315,7 @@ triggers:
 
 ```python
 """Blueprints reference entities that exist, and fail safe."""
+
 from __future__ import annotations
 
 import json
@@ -315,8 +324,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-BLUEPRINTS = Path(__file__).resolve().parents[2] / "blueprints" / "automation" / \
-    "nina_astrophotography"
+BLUEPRINTS = (
+    Path(__file__).resolve().parents[2]
+    / "blueprints"
+    / "automation"
+    / "nina_astrophotography"
+)
 SNAPSHOT = Path(__file__).resolve().parents[1] / "ha" / "snapshots"
 
 
@@ -327,16 +340,18 @@ def _entity_ids() -> set[str]:
     .ambr format, which is a snapshot serialization and not a stable interface.
     Task C12 writes it.
     """
-    return set(
-        (SNAPSHOT / "entity_ids.txt").read_text(encoding="utf-8").split()
-    )
+    return set((SNAPSHOT / "entity_ids.txt").read_text(encoding="utf-8").split())
 
 
-ENTITY = re.compile(r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
-                    r"image|event)\.[a-z0-9_]+\b")
+ENTITY = re.compile(
+    r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
+    r"image|event)\.[a-z0-9_]+\b"
+)
 
 
-@pytest.mark.parametrize("path", sorted(BLUEPRINTS.glob("*.yaml")), ids=lambda p: p.name)
+@pytest.mark.parametrize(
+    "path", sorted(BLUEPRINTS.glob("*.yaml")), ids=lambda p: p.name
+)
 def test_every_entity_named_anywhere_still_exists(path: Path) -> None:
     """The whole document, not just input defaults.
 
@@ -360,7 +375,8 @@ def test_the_abort_fires_on_unsafe_not_on_safe() -> None:
     failure it prevents is silent, and its cost is an open roof under cloud.
     """
     document = yaml.safe_load(
-        (BLUEPRINTS / "weather_abort.yaml").read_text(encoding="utf-8"))
+        (BLUEPRINTS / "weather_abort.yaml").read_text(encoding="utf-8")
+    )
     unsafe = [t for t in document["triggers"] if t.get("id") == "unsafe"]
     assert unsafe and unsafe[0]["to"] == "on"
 
@@ -369,14 +385,16 @@ def test_the_abort_also_fires_when_the_monitor_itself_disappears() -> None:
     """A separate trigger, not a merged state set — `unavailable` on the safety
     entity fires on every HA restart."""
     document = yaml.safe_load(
-        (BLUEPRINTS / "weather_abort.yaml").read_text(encoding="utf-8"))
+        (BLUEPRINTS / "weather_abort.yaml").read_text(encoding="utf-8")
+    )
     assert any(t.get("id") == "monitor_lost" for t in document["triggers"])
 
 
 def test_the_meridian_blueprint_triggers_on_the_event_not_a_bare_number() -> None:
     """The flip fires at (Max − Min), not zero, and both bounds are per-profile."""
     document = yaml.safe_load(
-        (BLUEPRINTS / "meridian_flip_warning.yaml").read_text(encoding="utf-8"))
+        (BLUEPRINTS / "meridian_flip_warning.yaml").read_text(encoding="utf-8")
+    )
     assert "MOUNT-BEFORE-FLIP" in json.dumps(document["triggers"])
 ```
 
@@ -412,19 +430,22 @@ git commit -m "feat: retrigger the blueprints on proven events and fail-safe sta
 
 ```python
 """Cards name entities that exist, and tolerate an absent weather channel."""
+
 import re
 from pathlib import Path
 
 import pytest
 
 WWW = Path(__file__).resolve().parents[2] / "www"
-ENTITY = re.compile(r"['\"]((?:sensor|binary_sensor|switch|light|number|select|"
-                    r"button|image|event)\.[a-z0-9_]+)['\"]")
+ENTITY = re.compile(
+    r"['\"]((?:sensor|binary_sensor|switch|light|number|select|"
+    r"button|image|event)\.[a-z0-9_]+)['\"]"
+)
 
 
 @pytest.mark.parametrize("path", sorted(WWW.glob("*.js")), ids=lambda p: p.name)
 def test_cards_name_no_removed_entity(path: Path) -> None:
-    from test_blueprints import _entity_ids          # the same snapshot source
+    from test_blueprints import _entity_ids  # the same snapshot source
 
     named = set(ENTITY.findall(path.read_text(encoding="utf-8")))
     # Cards template over an instance prefix, so compare on the suffix.

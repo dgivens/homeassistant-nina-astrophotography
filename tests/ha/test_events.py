@@ -1,4 +1,5 @@
 """The push path's Home Assistant surface: the bus contract and unload."""
+
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 

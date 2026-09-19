@@ -9,14 +9,13 @@ This must not apply to tests/ha: Home Assistant loads the integration as
 `custom_components.nina_astrophotography`, and registering it under a second
 name would import the same source twice into two distinct class objects.
 """
+
 from pathlib import Path
 import sys
 import types
 
 _COMPONENT = (
-    Path(__file__).resolve().parents[2]
-    / "custom_components"
-    / "nina_astrophotography"
+    Path(__file__).resolve().parents[2] / "custom_components" / "nina_astrophotography"
 )
 
 if "nina_astrophotography" not in sys.modules:

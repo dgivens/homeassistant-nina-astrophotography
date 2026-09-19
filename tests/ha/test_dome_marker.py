@@ -5,6 +5,7 @@ Assistant, so this cannot run under `pytest tests/unit -p no:homeassistant`.
 The mapper half, which touches `api/v2/mapper.py` and nothing else, is
 `tests/unit/test_dome_mapping.py`.
 """
+
 import importlib
 
 from homeassistant.const import EntityCategory

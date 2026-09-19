@@ -12,6 +12,7 @@ Deliberately NOT under `api/`: `api/` is the version-independent, HA-free
 seam (nothing there imports `homeassistant`), and a `HomeAssistantView`
 inherently does. Keep it here even if that seems worth tidying later.
 """
+
 from aiohttp import web
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -47,6 +48,7 @@ def _bad_image_request() -> web.Response:
     return web.Response(
         status=400, text="index must be >= 0, quality between 1 and 100"
     )
+
 
 class NinaImageProxyView(HomeAssistantView):
     """`GET /api/nina_astrophotography/image/{entity_id}/{index}`.
@@ -91,7 +93,7 @@ class NinaImageProxyView(HomeAssistantView):
             image_bytes = await client.get_image_bytes(
                 count - 1 - frame_index, quality=quality, auto_prepare=auto_prepare
             )
-        except (NinaNoImageError, NinaCommandError):
+        except NinaNoImageError, NinaCommandError:
             # Nothing to render, or the handler declined — an empty history,
             # or an index the rig no longer holds. Ordinary, not a defect.
             return web.Response(status=404)

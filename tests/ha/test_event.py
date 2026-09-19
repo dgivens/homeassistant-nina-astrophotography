@@ -5,6 +5,7 @@ from a wire event to the type an automation triggers on, and the one rule that
 is easy to get wrong: replay must not re-fire the night's failures at whatever
 is listening.
 """
+
 from homeassistant.core import HomeAssistant
 
 ERROR = "event.n_i_n_a_error"

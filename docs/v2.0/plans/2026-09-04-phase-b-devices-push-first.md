@@ -124,6 +124,7 @@ deleted or faked from a hand-written file.
 A state is a dict of endpoint -> Response, exactly as the wire sent it.
 FakeNinaClient serves one state at a time and advance() moves between them.
 """
+
 from __future__ import annotations
 
 from helpers import load_fixture
@@ -144,8 +145,11 @@ STATES: dict[str, dict[str, object]] = {
 }
 
 AWAITING_CAPTURE = frozenset(
-    {"weather_physical_station", "camera_warm_at_setup",
-     "idle_with_stale_running_nodes"}
+    {
+        "weather_physical_station",
+        "camera_warm_at_setup",
+        "idle_with_stale_running_nodes",
+    }
 )
 
 
@@ -168,6 +172,7 @@ def disconnect(state: dict, device: str) -> dict:
 
 ```python
 """Every named state resolves, and the awaiting-capture list is honest."""
+
 import pytest
 
 from scenarios.states import AWAITING_CAPTURE, STATES
@@ -197,7 +202,7 @@ def load_fixture(name: str):
     path = Path(__file__).resolve().parent / "fixtures" / name
     document = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(document, dict):
-        return document                  # image_history_session.json is a list
+        return document  # image_history_session.json is a list
     document.pop("_meta", None)
     return document.get("Response", document)
 ```
@@ -208,12 +213,14 @@ def load_fixture(name: str):
 @pytest.fixture
 def advance(hass, loaded_entry):
     """Move the fake rig to a named state and let Home Assistant settle."""
+
     async def _advance(name: str):
         if name in AWAITING_CAPTURE:
             pytest.skip(f"awaiting capture: {name}")
         loaded_entry.runtime_data.client.goto(name)
         await loaded_entry.runtime_data.coordinator.async_refresh()
         await hass.async_block_till_done()
+
     return _advance
 ```
 
@@ -258,6 +265,7 @@ git commit -m "test: name the rig states the transition tests advance through"
 
 ```python
 """The socket is a data source, not a hint — and it lives inside the seam."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -270,9 +278,13 @@ def test_subscribe_returns_an_unsubscribe() -> None:
     stream = NinaEventStream(host="nina.local", port=1888, session=None)
     seen: list[NinaEvent] = []
     unsubscribe = stream.subscribe(seen.append)
-    stream._dispatch({"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"}, "g1")
+    stream._dispatch(
+        {"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:26:19.36-05:00"}, "g1"
+    )
     unsubscribe()
-    stream._dispatch({"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:27:19.36-05:00"}, "g1")
+    stream._dispatch(
+        {"Event": "IMAGE-SAVE", "Time": "2026-09-03T23:27:19.36-05:00"}, "g1"
+    )
     assert len(seen) == 1
 
 
@@ -281,7 +293,9 @@ def test_subscribers_receive_models_not_dicts() -> None:
     stream = NinaEventStream(host="nina.local", port=1888, session=None)
     seen: list[NinaEvent] = []
     stream.subscribe(seen.append)
-    stream._dispatch({"Event": "MOUNT-BEFORE-FLIP", "Time": "2026-09-03T23:26:19.36-05:00"}, "g1")
+    stream._dispatch(
+        {"Event": "MOUNT-BEFORE-FLIP", "Time": "2026-09-03T23:26:19.36-05:00"}, "g1"
+    )
     assert isinstance(seen[0], NinaEvent)
     assert isinstance(seen[0].time, datetime)
 
@@ -291,7 +305,9 @@ def test_one_failing_subscriber_does_not_starve_the_others() -> None:
     seen: list[NinaEvent] = []
     stream.subscribe(lambda _event: (_ for _ in ()).throw(RuntimeError("boom")))
     stream.subscribe(seen.append)
-    stream._dispatch({"Event": "SAFETY-CHANGED", "Time": "2026-09-03T23:26:19.36-05:00"}, "g1")
+    stream._dispatch(
+        {"Event": "SAFETY-CHANGED", "Time": "2026-09-03T23:26:19.36-05:00"}, "g1"
+    )
     assert len(seen) == 1
 
 
@@ -310,9 +326,15 @@ def test_image_save_from_the_socket_carries_statistics() -> None:
     stream = NinaEventStream(host="nina.local", port=1888, session=None)
     seen: list[NinaEvent] = []
     stream.subscribe(seen.append)
-    stream._dispatch({"Event": "IMAGE-SAVE",
-                      "ImageStatistics": load_fixture(
-                          "live_image_save_push.json")["ImageStatistics"]}, "g1")
+    stream._dispatch(
+        {
+            "Event": "IMAGE-SAVE",
+            "ImageStatistics": load_fixture("live_image_save_push.json")[
+                "ImageStatistics"
+            ],
+        },
+        "g1",
+    )
     assert seen[0].frame is not None
     assert seen[0].frame.filename == "frame_0000.fits"
 ```
@@ -345,6 +367,7 @@ WebSocketV2.Events on the N.I.N.A. side is an unbounded static list with no cap,
 eviction or pagination; it grows for the life of the process. Replay caps what
 it folds.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -358,7 +381,7 @@ from .mapper import map_event
 
 _LOGGER = logging.getLogger(__name__)
 
-REPLAY_CAP = 2000            # a full night emitted 628; a long-lived process, more
+REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
 
 
 class NinaEventStream:
@@ -389,7 +412,7 @@ class NinaEventStream:
         for callback in list(self._subscribers):
             try:
                 callback(event)
-            except Exception:                       # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 _LOGGER.exception("A N.I.N.A. event subscriber raised")
 
     async def replay(self, client, generation: str | None) -> list[NinaEvent]:
@@ -475,6 +498,7 @@ Three independent restart signals, all observed across two restarts in one day
 
 ```python
 """A N.I.N.A. restart wipes the history the design replays."""
+
 from __future__ import annotations
 
 import pytest
@@ -506,10 +530,12 @@ async def test_a_restart_filters_the_old_generation_rather_than_clearing_it(
     coordinator.generation = "2026-09-04T13:54:50.907"
     data = await coordinator._async_update_data()
     assert data.session.image_count == 0
-    assert coordinator.frames                      # the set is intact
+    assert coordinator.frames  # the set is intact
 
 
-async def test_a_fold_smaller_than_the_count_triggers_a_reseed(coordinator, client) -> None:
+async def test_a_fold_smaller_than_the_count_triggers_a_reseed(
+    coordinator, client
+) -> None:
     """?count=true's job is the invariant check: fold size != count => refetch."""
     client.image_history_count = 122
     await coordinator._async_update_data()
@@ -537,6 +563,7 @@ them, so this advances through ordered steps on demand.
 
 Its signatures are checked against NinaClientV2's by a conformance test.
 """
+
 from __future__ import annotations
 
 import json
@@ -578,18 +605,19 @@ class FakeNinaClient:
         self.calls.append("get_image_history_count")
         return len(self.state["/image-history"])
 
-    async def get_frames(self, *, include_all: bool = False,
-                         generation: str | None = None) -> list[Frame]:
+    async def get_frames(
+        self, *, include_all: bool = False, generation: str | None = None
+    ) -> list[Frame]:
         self.calls.append(f"get_frames(include_all={include_all})")
         wire = self.state["/image-history"]
-        return [map_frame(f, generation)
-                for f in (wire if include_all else wire[-1:])]
+        return [map_frame(f, generation) for f in (wire if include_all else wire[-1:])]
 ```
 
 …with one method per `NinaClientV2` getter, plus the conformance test (§8.7):
 
 ```python
 """FakeNinaClient must not drift from the real client's signatures."""
+
 import inspect
 
 from nina_astrophotography.api.v2.client import NinaClientV2
@@ -597,12 +625,16 @@ from scenarios.fake_client import FakeNinaClient
 
 
 def test_the_fake_matches_the_real_clients_signatures() -> None:
-    real = {n: inspect.signature(m) for n, m in inspect.getmembers(NinaClientV2,
-                                                                  inspect.isfunction)
-            if n.startswith("get_") or n.startswith("set_")}
-    fake = {n: inspect.signature(m) for n, m in inspect.getmembers(FakeNinaClient,
-                                                                  inspect.isfunction)
-            if n.startswith("get_") or n.startswith("set_")}
+    real = {
+        n: inspect.signature(m)
+        for n, m in inspect.getmembers(NinaClientV2, inspect.isfunction)
+        if n.startswith("get_") or n.startswith("set_")
+    }
+    fake = {
+        n: inspect.signature(m)
+        for n, m in inspect.getmembers(FakeNinaClient, inspect.isfunction)
+        if n.startswith("get_") or n.startswith("set_")
+    }
     assert set(real) - set(fake) == set(), "the fake is missing methods"
     for name, signature in real.items():
         assert fake[name] == signature, f"{name} drifted"
@@ -709,6 +741,7 @@ git commit -m "feat: tag every frame and event with the N.I.N.A. generation"
 
 ```python
 """Six tiers, one coordinator. Not three coordinators."""
+
 from __future__ import annotations
 
 import pytest
@@ -720,17 +753,21 @@ async def test_the_fast_tier_runs_every_tick(coordinator, client) -> None:
     assert client.calls.count("get_equipment") == 3
 
 
-async def test_the_sequence_tier_is_thirty_seconds_while_imaging(coordinator, client) -> None:
+async def test_the_sequence_tier_is_thirty_seconds_while_imaging(
+    coordinator, client
+) -> None:
     """Imaging is inferred from activity, never from node status."""
     client.image_history_count = 10
     await coordinator._async_update_data()
-    client.image_history_count = 11              # a rising count means imaging
+    client.image_history_count = 11  # a rising count means imaging
     coordinator._advance_clock(30)
     await coordinator._async_update_data()
     assert client.calls.count("get_sequence_json") == 2
 
 
-async def test_the_sequence_tier_falls_to_five_minutes_when_idle(coordinator, client) -> None:
+async def test_the_sequence_tier_falls_to_five_minutes_when_idle(
+    coordinator, client
+) -> None:
     """Three nodes read RUNNING on an idle rig with zero frames captured.
     Gating on tree status would poll at 30 s indefinitely — ~24 MB/day."""
     await coordinator._async_update_data()
@@ -739,7 +776,9 @@ async def test_the_sequence_tier_falls_to_five_minutes_when_idle(coordinator, cl
     assert client.calls.count("get_sequence_json") == 1
 
 
-async def test_sequence_finished_drops_the_tier_immediately(coordinator, client) -> None:
+async def test_sequence_finished_drops_the_tier_immediately(
+    coordinator, client
+) -> None:
     """A valid signal to stop polling fast, without waiting for the heuristic."""
     coordinator._on_event(_event("SEQUENCE-FINISHED"))
     coordinator._advance_clock(60)
@@ -747,7 +786,9 @@ async def test_sequence_finished_drops_the_tier_immediately(coordinator, client)
     assert client.calls.count("get_sequence_json") == 1
 
 
-async def test_ts_targetstart_does_not_refetch_the_sequence(coordinator, client) -> None:
+async def test_ts_targetstart_does_not_refetch_the_sequence(
+    coordinator, client
+) -> None:
     """It fires once per exposure — 27 in 3.8 h — and its payload already
     carries TargetName, ProjectName, Rotation and TargetEndTime."""
     before = client.calls.count("get_sequence_json")
@@ -863,6 +904,7 @@ git commit -m "perf: poll in six tiers behind one coordinator tick"
 
 ```python
 """Push, poll and replay are one idempotent operation."""
+
 from __future__ import annotations
 
 
@@ -871,7 +913,9 @@ async def test_a_pushed_frame_appears_without_waiting_for_the_poll(
 ) -> None:
     """async_set_updated_data, not async_request_refresh — the line that makes
     this design push-first rather than socket-as-a-hint."""
-    before = hass.states.get("sensor.n_i_n_a_astrophotography_session_image_count").state
+    before = hass.states.get(
+        "sensor.n_i_n_a_astrophotography_session_image_count"
+    ).state
     entry_with_socket.push(image_save_event)
     await hass.async_block_till_done()
     after = hass.states.get("sensor.n_i_n_a_astrophotography_session_image_count").state
@@ -887,9 +931,10 @@ async def test_the_same_frame_pushed_then_polled_is_counted_once(
     await hass.async_block_till_done()
     await entry_with_socket.poll()
     await hass.async_block_till_done()
-    assert hass.states.get(
-        "sensor.n_i_n_a_astrophotography_session_image_count"
-    ).state == "1"
+    assert (
+        hass.states.get("sensor.n_i_n_a_astrophotography_session_image_count").state
+        == "1"
+    )
 
 
 async def test_replayed_events_are_deduped_per_generation(coordinator) -> None:
@@ -898,7 +943,10 @@ async def test_replayed_events_are_deduped_per_generation(coordinator) -> None:
     coordinator.generation = "g1"
     coordinator._mark_seen(_event("IMAGE-SAVE", "2026-09-04T05:30:00-05:00"))
     coordinator.generation = "g2"
-    assert coordinator._already_seen(_event("IMAGE-SAVE", "2026-09-03T21:00:00-05:00")) is False
+    assert (
+        coordinator._already_seen(_event("IMAGE-SAVE", "2026-09-03T21:00:00-05:00"))
+        is False
+    )
 
 
 async def test_a_disconnect_event_makes_that_devices_entities_unavailable(
@@ -992,6 +1040,7 @@ Bronze `runtime-data` removes, and it leaks on failed unload (§4.0).
 
 ```python
 """One hub, one child per equipment type, linked by via_device."""
+
 from homeassistant.helpers import device_registry as dr
 
 
@@ -1021,7 +1070,9 @@ async def test_driver_metadata_lands_in_the_registry_not_entity_attributes(
 async def test_a_device_never_observed_is_not_created(hass, loaded_entry) -> None:
     """First-sight: create on first observation of the equipment, keep after."""
     registry = dr.async_get(hass)
-    assert registry.async_get_device({(DOMAIN, f"{loaded_entry.entry_id}_dome")}) is None
+    assert (
+        registry.async_get_device({(DOMAIN, f"{loaded_entry.entry_id}_dome")}) is None
+    )
 
 
 async def test_a_device_seen_once_survives_a_disconnection(hass, loaded_entry, advance):
@@ -1034,6 +1085,7 @@ async def test_a_device_seen_once_survives_a_disconnection(hass, loaded_entry, a
 async def test_a_sold_dome_can_be_deleted(hass, loaded_entry) -> None:
     """Gold stale-devices: pair dynamic creation with removal."""
     from custom_components.nina_astrophotography import async_remove_config_entry_device
+
     registry = dr.async_get(hass)
     camera = registry.async_get_device({(DOMAIN, f"{loaded_entry.entry_id}_camera")})
     assert await async_remove_config_entry_device(hass, loaded_entry, camera) is False
@@ -1090,13 +1142,19 @@ async def test_a_disconnected_device_makes_its_entities_unavailable(
     assert hass.states.get("sensor.n_i_n_a_camera_temperature").state == "unavailable"
 
 
-async def test_a_sentinel_reading_is_unknown_not_unavailable(hass, loaded_entry) -> None:
+async def test_a_sentinel_reading_is_unknown_not_unavailable(
+    hass, loaded_entry
+) -> None:
     """Reachable and connected but the value is missing: "NaN", HFR 0, the
     meridian 24 sentinel."""
-    assert hass.states.get("sensor.n_i_n_a_mount_time_to_meridian_flip").state == "unknown"
+    assert (
+        hass.states.get("sensor.n_i_n_a_mount_time_to_meridian_flip").state == "unknown"
+    )
 
 
-async def test_the_safety_monitor_keeps_its_connected_sensor(hass, loaded_entry) -> None:
+async def test_the_safety_monitor_keeps_its_connected_sensor(
+    hass, loaded_entry
+) -> None:
     """THE highest-value test in the file.
 
     A disconnected safety monitor would make safety_unsafe unavailable, so a
@@ -1114,9 +1172,9 @@ async def test_the_safety_monitor_connected_sensor_survives_disconnection(
     hass, loaded_entry, advance
 ) -> None:
     await advance("safety_monitor_disconnected")
-    assert hass.states.get(
-        "binary_sensor.n_i_n_a_safety_monitor_connected"
-    ).state == "off"
+    assert (
+        hass.states.get("binary_sensor.n_i_n_a_safety_monitor_connected").state == "off"
+    )
 
 
 async def test_unavailability_is_logged_once_and_recovery_once(
@@ -1162,6 +1220,7 @@ and the duplicate-entry guard.
 
 ```python
 """The config flow, at 100% branch coverage."""
+
 from unittest.mock import patch
 
 from homeassistant.data_entry_flow import FlowResultType
@@ -1171,12 +1230,15 @@ from custom_components.nina_astrophotography.api.errors import (
     NinaEndpointError,
 )
 
-CLIENT = "custom_components.nina_astrophotography.api.v2.client.NinaClientV2.get_version"
+CLIENT = (
+    "custom_components.nina_astrophotography.api.v2.client.NinaClientV2.get_version"
+)
 
 
 async def test_a_valid_rig_creates_an_entry(hass) -> None:
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"})
+        DOMAIN, context={"source": "user"}
+    )
     with patch(CLIENT, return_value="2.2.15.2"):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -1189,7 +1251,8 @@ async def test_a_valid_rig_creates_an_entry(hass) -> None:
 async def test_an_unreachable_rig_shows_cannot_connect_and_recovers(hass) -> None:
     """Bronze test-before-configure, plus the recovery branch."""
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"})
+        DOMAIN, context={"source": "user"}
+    )
     with patch(CLIENT, side_effect=NinaConnectionError("refused")):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -1206,7 +1269,8 @@ async def test_an_unreachable_rig_shows_cannot_connect_and_recovers(hass) -> Non
 
 async def test_a_build_without_the_api_shows_unsupported(hass) -> None:
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"})
+        DOMAIN, context={"source": "user"}
+    )
     with patch(CLIENT, side_effect=NinaEndpointError("no /version")):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -1217,7 +1281,8 @@ async def test_a_build_without_the_api_shows_unsupported(hass) -> None:
 
 async def test_the_same_host_and_port_cannot_be_added_twice(hass, loaded_entry) -> None:
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"})
+        DOMAIN, context={"source": "user"}
+    )
     with patch(CLIENT, return_value="2.2.15.2"):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -1230,7 +1295,8 @@ async def test_the_same_host_and_port_cannot_be_added_twice(hass, loaded_entry) 
 async def test_a_second_rig_on_a_different_host_is_allowed(hass, loaded_entry) -> None:
     """Two rigs must coexist — that is why the instance name exists."""
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"})
+        DOMAIN, context={"source": "user"}
+    )
     with patch(CLIENT, return_value="2.2.15.2"):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
@@ -1242,7 +1308,8 @@ async def test_a_second_rig_on_a_different_host_is_allowed(hass, loaded_entry) -
 async def test_the_options_flow_changes_the_poll_interval(hass, loaded_entry) -> None:
     result = await hass.config_entries.options.async_init(loaded_entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {CONF_POLL_INTERVAL: 30})
+        result["flow_id"], {CONF_POLL_INTERVAL: 30}
+    )
     assert result["type"] is FlowResultType.CREATE_ENTRY
 ```
 

@@ -3,6 +3,7 @@
 Asserted through `coordinator.data` and the light: phase B has no session
 sensors yet, and `data` is the published snapshot every phase-C entity reads.
 """
+
 from datetime import datetime
 
 from homeassistant.core import HomeAssistant
@@ -87,9 +88,7 @@ async def test_a_push_cannot_resurrect_a_failed_poll(
     assert _count(loaded_entry) == before + 1
 
 
-async def test_setup_replays_the_event_history(
-    loaded_entry, nina_responses
-) -> None:
+async def test_setup_replays_the_event_history(loaded_entry, nina_responses) -> None:
     """What the socket could not deliver, because it was not connected yet: the
     entry knows about an autofocus that finished before Home Assistant started.
     """
@@ -112,18 +111,19 @@ async def test_a_replayed_event_pushed_live_is_not_folded_again(
     """
     coordinator = loaded_entry.runtime_data.coordinator
     history = nina_responses("dawn_event_history.json")
-    replayed = next(event for event in reversed(history)
-                    if event["Event"] == "AUTOFOCUS-FINISHED")
+    replayed = next(
+        event for event in reversed(history) if event["Event"] == "AUTOFOCUS-FINISHED"
+    )
 
     before = coordinator.data
-    push({"Event": "AUTOFOCUS-FINISHED", "Time": AT})   # not in the history
+    push({"Event": "AUTOFOCUS-FINISHED", "Time": AT})  # not in the history
     await hass.async_block_till_done()
     published = coordinator.data
     push(replayed)
     await hass.async_block_till_done()
 
-    assert published is not before            # the unseen event was folded
-    assert coordinator.data is published      # the replayed one never reached it
+    assert published is not before  # the unseen event was folded
+    assert coordinator.data is published  # the replayed one never reached it
 
 
 async def test_only_a_socket_reconnect_reseeds_and_replays(

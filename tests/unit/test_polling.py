@@ -3,6 +3,7 @@
 Home-Assistant-free by design — the coordinator composes these, so they can be
 tested as functions of their arguments rather than through a config entry.
 """
+
 from dataclasses import fields, replace
 from datetime import datetime, timedelta
 
@@ -124,8 +125,14 @@ def test_a_sequence_refetch_is_debounced() -> None:
     """
     schedule = TierSchedule()
     assert schedule.request_sequence_refetch(1000.0) is True
-    assert schedule.request_sequence_refetch(1000.0 + TierSchedule.SEQUENCE_DEBOUNCE - 1) is False
-    assert schedule.request_sequence_refetch(1000.0 + TierSchedule.SEQUENCE_DEBOUNCE) is True
+    assert (
+        schedule.request_sequence_refetch(1000.0 + TierSchedule.SEQUENCE_DEBOUNCE - 1)
+        is False
+    )
+    assert (
+        schedule.request_sequence_refetch(1000.0 + TierSchedule.SEQUENCE_DEBOUNCE)
+        is True
+    )
 
 
 def test_a_refused_refetch_an_event_asked_for_stays_queued() -> None:
@@ -166,7 +173,9 @@ def test_the_sequence_cadence_follows_the_imaging_flag(imaging, elapsed, due) ->
     assert schedule.due("sequence", 1000.0 + elapsed) is due
 
 
-def test_sequence_finished_drops_the_cadence_without_waiting_for_the_heuristic() -> None:
+def test_sequence_finished_drops_the_cadence_without_waiting_for_the_heuristic() -> (
+    None
+):
     """SEQUENCE-FINISHED fires once at session end; the activity heuristic
     would keep the tier at 30 s for another five minutes after the last frame.
     """
@@ -198,8 +207,13 @@ def test_set_imaging_cannot_undo_sequence_finished_until_activity_returns() -> N
         (27, 27, False, 300.0, False),
         (27, 27, None, 9999.0, False),
     ],
-    ids=["count rose", "camera exposing", "a recent IMAGE-SAVE",
-         "the last save aged out", "nothing happening"],
+    ids=[
+        "count rose",
+        "camera exposing",
+        "a recent IMAGE-SAVE",
+        "the last save aged out",
+        "nothing happening",
+    ],
 )
 def test_imaging_is_inferred_from_activity(
     count, last_count, exposing, since_save, expected
@@ -226,8 +240,9 @@ def _snapshot_with_camera(*, is_exposing: bool | None) -> EquipmentSnapshot:
     """
     camera = map_equipment_info(load("imaging_guiding_equipment_info.json")).camera
     blanks = {f.name: None for f in fields(EquipmentSnapshot)}
-    return EquipmentSnapshot(**{**blanks,
-                                "camera": replace(camera, is_exposing=is_exposing)})
+    return EquipmentSnapshot(
+        **{**blanks, "camera": replace(camera, is_exposing=is_exposing)}
+    )
 
 
 @pytest.mark.parametrize(
@@ -252,8 +267,9 @@ def test_the_event_ledger_identifies_an_event_by_generation_name_and_time(
 
 
 def _event(name: str, time: str, generation: str) -> NinaEvent:
-    return NinaEvent(name=name, time=datetime.fromisoformat(time), data={},
-                     generation=generation)
+    return NinaEvent(
+        name=name, time=datetime.fromisoformat(time), data={}, generation=generation
+    )
 
 
 # A stop tonight and the one before it; only identity matters, never order.
@@ -271,15 +287,24 @@ EARLIER_STOP = datetime.fromisoformat("2026-09-18T19:02:00-05:00")
         ([("LostLock", STOP), ("Calibrating", STOP), ("LostLock", STOP)], STOP, False),
         ([("LostLock", EARLIER_STOP), ("Guiding", EARLIER_STOP)], STOP, True),
         ([("LostLock", STOP), ("Looping", STOP)], STOP + timedelta(seconds=2), False),
-        ([("LostLock", STOP), ("Looping", STOP), ("Guiding", None)],
-         STOP + timedelta(seconds=40), True),
+        (
+            [("LostLock", STOP), ("Looping", STOP), ("Guiding", None)],
+            STOP + timedelta(seconds=40),
+            True,
+        ),
         ([], None, False),
     ],
-    ids=["never polled", "only stopped states polled",
-         "polled looping after the stop", "running on the stop's first poll",
-         "a lock lost after running again", "ran past an earlier stop",
-         "the replayed copy of the passed stop",
-         "a new stop after a start, inside the tolerance", "no stop pending"],
+    ids=[
+        "never polled",
+        "only stopped states polled",
+        "polled looping after the stop",
+        "running on the stop's first poll",
+        "a lock lost after running again",
+        "ran past an earlier stop",
+        "the replayed copy of the passed stop",
+        "a new stop after a start, inside the tolerance",
+        "no stop pending",
+    ],
 )
 def test_a_stop_holds_until_a_later_poll_sees_the_guider_running_past_it(
     polled: list[tuple[str, datetime | None]], stop: datetime | None, stopped: bool

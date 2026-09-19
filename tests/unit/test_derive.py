@@ -1,4 +1,5 @@
 """Pure, version-independent maths. No wire vocabulary reaches this module."""
+
 from datetime import UTC, datetime, timedelta, timezone
 
 from nina_astrophotography.derive import (
@@ -24,14 +25,18 @@ import pytest
     ],
 )
 def test_the_session_boundary_is_the_most_recent_local_noon(moment, expected) -> None:
-    assert session_start(datetime.fromisoformat(moment)) == datetime.fromisoformat(expected)
+    assert session_start(datetime.fromisoformat(moment)) == datetime.fromisoformat(
+        expected
+    )
 
 
 def test_the_boundary_is_noon_in_the_moments_own_offset() -> None:
     """12:30 UTC is 07:30 on a UTC-5 rig, mid-way through its dawn flats: the
     session is still last night's, and the boundary is expressed at -05:00.
     """
-    moment = datetime(2026, 9, 4, 12, 30, tzinfo=UTC).astimezone(timezone(timedelta(hours=-5)))
+    moment = datetime(2026, 9, 4, 12, 30, tzinfo=UTC).astimezone(
+        timezone(timedelta(hours=-5))
+    )
     assert session_start(moment) == datetime.fromisoformat("2026-09-03T12:00:00-05:00")
 
 
@@ -52,7 +57,9 @@ def test_image_scale_is_the_standard_206_265_formula() -> None:
     [(3.76, 0.0), (0.0, 500.0)],
     ids=["no-focal-length", "no-pixel-size"],
 )
-def test_image_scale_is_none_when_either_input_is_missing(pixel_size, focal_length) -> None:
+def test_image_scale_is_none_when_either_input_is_missing(
+    pixel_size, focal_length
+) -> None:
     """Absent, not zero: a disconnected camera reports PixelSize 0, and a scale
     of 0 arcsec/px would make every HFR read as perfect.
     """
@@ -64,7 +71,8 @@ def test_binning_multiplies_the_scale() -> None:
     derived arcsecond figure.
     """
     assert image_scale_arcsec_per_px(3.76, 500.0, binning=2) == pytest.approx(
-        3.1022, abs=1e-4)
+        3.1022, abs=1e-4
+    )
 
 
 def test_hfr_in_arcseconds_is_pixels_times_scale() -> None:

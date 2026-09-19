@@ -6,6 +6,7 @@ silent no-op if it is got wrong: N.I.N.A. answers `Success: true` to a
 parameter it did not recognise, and the state changes seconds later, so nothing
 at the call site can tell.
 """
+
 from pathlib import Path
 
 from homeassistant.core import HomeAssistant
@@ -36,9 +37,11 @@ async def _call(hass: HomeAssistant, service: str, **data) -> None:
 
 def _hub(hass: HomeAssistant, entry) -> str:
     """The device id of an entry's hub, as a target picker would yield it."""
-    return dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, entry.entry_id), entry.entry_id
-    ).id
+    return (
+        dr.async_get(hass)
+        .async_get_device_by_identifier((DOMAIN, entry.entry_id), entry.entry_id)
+        .id
+    )
 
 
 async def test_a_service_reaches_the_rig_its_device_belongs_to(
@@ -101,7 +104,8 @@ async def test_an_entity_of_a_rig_targets_that_rig(
     """
     first, second = two_rigs.rigs
     entity = er.async_entries_for_config_entry(
-        er.async_get(hass), two_rigs.entries[1].entry_id)[0]
+        er.async_get(hass), two_rigs.entries[1].entry_id
+    )[0]
     await _call(hass, "mount_park", entity_id=entity.entity_id)
 
     assert second.sent[-1][0] == "/equipment/mount/park"
@@ -113,27 +117,57 @@ async def test_an_entity_of_a_rig_targets_that_rig(
     [
         # J2000 DEGREES, sent through untouched: all three N.I.N.A. branches
         # build Epoch.J2000 and transform to the mount's own system internally.
-        ("mount_slew", {"ra_degrees": 331.07, "dec_degrees": 56.6},
-         "/equipment/mount/slew", {"ra": 331.07, "dec": 56.6}),
+        (
+            "mount_slew",
+            {"ra_degrees": 331.07, "dec_degrees": 56.6},
+            "/equipment/mount/slew",
+            {"ra": 331.07, "dec": 56.6},
+        ),
         # A boolean over an enum: `Stopped` is one of the mount's own modes.
-        ("mount_set_tracking", {"enabled": True}, "/equipment/mount/tracking",
-         {"mode": 0}),
-        ("mount_set_tracking", {"enabled": False}, "/equipment/mount/tracking",
-         {"mode": 4}),
+        (
+            "mount_set_tracking",
+            {"enabled": True},
+            "/equipment/mount/tracking",
+            {"mode": 0},
+        ),
+        (
+            "mount_set_tracking",
+            {"enabled": False},
+            "/equipment/mount/tracking",
+            {"mode": 4},
+        ),
         # `sequenceName`, and it is the name N.I.N.A. lists, not a path.
-        ("sequence_load", {"sequence_name": "Autumn"}, "/sequence/load",
-         {"sequenceName": "Autumn"}),
+        (
+            "sequence_load",
+            {"sequence_name": "Autumn"},
+            "/sequence/load",
+            {"sequenceName": "Autumn"},
+        ),
         # `duration`, not `time`. 1.4.5 sent `time`, so the exposure length was
         # ignored and the API defaulted it.
-        ("camera_capture", {"duration": 30}, "/equipment/camera/capture",
-         {"duration": 30.0, "save": "false"}),
+        (
+            "camera_capture",
+            {"duration": 30},
+            "/equipment/camera/capture",
+            {"duration": 30.0, "save": "false"},
+        ),
     ],
-    ids=["slew-j2000-degrees", "tracking-on", "tracking-off",
-         "sequence-name", "capture-duration"],
+    ids=[
+        "slew-j2000-degrees",
+        "tracking-on",
+        "tracking-off",
+        "sequence-name",
+        "capture-duration",
+    ],
 )
 async def test_a_service_sends_what_the_api_reads(
-    hass: HomeAssistant, loaded_entry, rig,
-    service: str, data: dict, path: str, params: dict,
+    hass: HomeAssistant,
+    loaded_entry,
+    rig,
+    service: str,
+    data: dict,
+    path: str,
+    params: dict,
 ) -> None:
     await _call(hass, service, **data)
     assert rig.sent[-1] == (path, params)
@@ -144,7 +178,8 @@ def test_capture_offers_only_the_parameters_the_api_binds() -> None:
     parameter that looks like it works is worse than no parameter.
     """
     assert {"binning", "filter_index"}.isdisjoint(
-        SERVICES_YAML["camera_capture"]["fields"])
+        SERVICES_YAML["camera_capture"]["fields"]
+    )
 
 
 @pytest.mark.parametrize("service", sorted(SERVICES_YAML), ids=str)
@@ -213,8 +248,7 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": -91}),
         ("focuser_move", {"position": -1}),
     ],
-    ids=["ra-above-360", "ra-negative", "dec-above-90", "dec-below-90",
-         "position"],
+    ids=["ra-above-360", "ra-negative", "dec-above-90", "dec-below-90", "position"],
 )
 async def test_out_of_range_input_is_refused_rather_than_clamped(
     hass: HomeAssistant, loaded_entry, rig, service: str, data: dict

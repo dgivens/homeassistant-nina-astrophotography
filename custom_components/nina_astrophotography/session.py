@@ -16,6 +16,7 @@ The process boundary is the generation tag, applied by FILTERING. Clearing races
 a concurrent poll, produces a false positive on the first read when no baseline
 exists, and loses events arriving during the refetch.
 """
+
 from collections.abc import Callable, Container, Iterable, Sequence
 from datetime import datetime, timedelta
 import heapq
@@ -78,9 +79,18 @@ _RECENT_LIGHTS_LIMIT = 60
 """A dashboard sparkline's width."""
 
 _NOTHING = SessionStats(
-    session_start=None, image_count=0, light_count=0, integration_seconds=0.0,
-    hfr_mean=None, hfr_best=None, hfr_worst=None, star_count_mean=None,
-    last_frame=None, recent_lights=(), by_target=(), by_filter=(),
+    session_start=None,
+    image_count=0,
+    light_count=0,
+    integration_seconds=0.0,
+    hfr_mean=None,
+    hfr_best=None,
+    hfr_worst=None,
+    star_count_mean=None,
+    last_frame=None,
+    recent_lights=(),
+    by_target=(),
+    by_filter=(),
     autofocus=AutoFocusState(last_finished_at=None, running_since=None, failed=False),
 )
 
@@ -98,8 +108,9 @@ def _integration(frames: Sequence[Frame]) -> float:
     return fsum(f.exposure_time for f in frames if f.exposure_time is not None)
 
 
-def _breakdown(lights: Sequence[Frame],
-               key: Callable[[Frame], str | None]) -> tuple[TargetBreakdown, ...]:
+def _breakdown(
+    lights: Sequence[Frame], key: Callable[[Frame], str | None]
+) -> tuple[TargetBreakdown, ...]:
     """One row per named group, sorted by name.
 
     A light whose group name is missing gets no row: a row headed by nothing
@@ -111,9 +122,12 @@ def _breakdown(lights: Sequence[Frame],
         if name is not None:
             groups.setdefault(name, []).append(frame)
     return tuple(
-        TargetBreakdown(name=name, count=len(members),
-                        integration_seconds=_integration(members),
-                        hfr_mean=_mean(f.hfr for f in members))
+        TargetBreakdown(
+            name=name,
+            count=len(members),
+            integration_seconds=_integration(members),
+            hfr_mean=_mean(f.hfr for f in members),
+        )
         for name, members in sorted(groups.items())
     )
 
@@ -124,8 +138,9 @@ def _interrupts(event: NinaEvent) -> bool:
     return event.name in _INTERRUPTIONS or event.name.endswith("-DISCONNECTED")
 
 
-def _autofocus(events: Iterable[NinaEvent], moment: datetime,
-               timeout_seconds: float) -> AutoFocusState:
+def _autofocus(
+    events: Iterable[NinaEvent], moment: datetime, timeout_seconds: float
+) -> AutoFocusState:
     """There is no autofocus-failed event; a failure is an unanswered start.
 
     An interruption landing inside the timeout window aborts the run — nothing
@@ -134,15 +149,23 @@ def _autofocus(events: Iterable[NinaEvent], moment: datetime,
     failure verdict stands.
     """
     events = list(events)
-    finished = max((e.time for e in events if e.name == _AUTOFOCUS_FINISHED), default=None)
-    started = max((e.time for e in events if e.name == _AUTOFOCUS_STARTING), default=None)
+    finished = max(
+        (e.time for e in events if e.name == _AUTOFOCUS_FINISHED), default=None
+    )
+    started = max(
+        (e.time for e in events if e.name == _AUTOFOCUS_STARTING), default=None
+    )
     if started is None or (finished is not None and started <= finished):
-        return AutoFocusState(last_finished_at=finished, running_since=None, failed=False)
+        return AutoFocusState(
+            last_finished_at=finished, running_since=None, failed=False
+        )
 
     deadline = started + timedelta(seconds=timeout_seconds)
     interruptions = [e.time for e in events if e.time > started and _interrupts(e)]
     if any(t <= deadline for t in interruptions):
-        return AutoFocusState(last_finished_at=finished, running_since=None, failed=False)
+        return AutoFocusState(
+            last_finished_at=finished, running_since=None, failed=False
+        )
     return AutoFocusState(
         last_finished_at=finished,
         running_since=None if interruptions else started,
@@ -150,10 +173,15 @@ def _autofocus(events: Iterable[NinaEvent], moment: datetime,
     )
 
 
-def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
-         generation: str | None, *,
-         autofocus_timeout_seconds: float = DEFAULT_AUTOFOCUS_TIMEOUT,
-         now: datetime | None = None, rollover_hour: int = 12) -> SessionStats:
+def fold(
+    frames: Iterable[Frame],
+    events: Iterable[NinaEvent],
+    generation: str | None,
+    *,
+    autofocus_timeout_seconds: float = DEFAULT_AUTOFOCUS_TIMEOUT,
+    now: datetime | None = None,
+    rollover_hour: int = 12,
+) -> SessionStats:
     """Frames and events in, one session snapshot out.
 
     `now` is the clock the session window and the autofocus timeout are measured
@@ -167,8 +195,9 @@ def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
     and a refetched copy of the same `(date, filename)` in the store, and
     deduplicating first would let the stale copy win and then be discarded.
     """
-    kept_frames = list({_identity(f): f for f in frames
-                        if f.generation == generation}.values())
+    kept_frames = list(
+        {_identity(f): f for f in frames if f.generation == generation}.values()
+    )
     kept_events = [e for e in events if e.generation == generation]
 
     moment = now
@@ -197,21 +226,29 @@ def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
         recent_lights=tuple(lights[-_RECENT_LIGHTS_LIMIT:]),
         by_target=_breakdown(lights, lambda f: f.target_name),
         by_filter=_breakdown(lights, lambda f: f.filter_name),
-        autofocus=_autofocus((e for e in kept_events if e.time >= start),
-                             moment, autofocus_timeout_seconds),
+        autofocus=_autofocus(
+            (e for e in kept_events if e.time >= start),
+            moment,
+            autofocus_timeout_seconds,
+        ),
     )
 
 
-def _newest(events: Iterable[NinaEvent], names: Container[str],
-            generation: str | None) -> NinaEvent | None:
+def _newest(
+    events: Iterable[NinaEvent], names: Container[str], generation: str | None
+) -> NinaEvent | None:
     """The newest event this generation named, or None if it named none."""
-    matching = [event for event in events
-                if event.name in names and event.generation == generation]
+    matching = [
+        event
+        for event in events
+        if event.name in names and event.generation == generation
+    ]
     return max(matching, key=lambda event: event.time, default=None)
 
 
-def scheduler_wait(events: Iterable[NinaEvent], generation: str | None, *,
-                   now: datetime) -> datetime | None:
+def scheduler_wait(
+    events: Iterable[NinaEvent], generation: str | None, *, now: datetime
+) -> datetime | None:
     """When the wait Target Scheduler is currently in ends, or None if it is
     not waiting.
 
@@ -236,8 +273,9 @@ def scheduler_wait(events: Iterable[NinaEvent], generation: str | None, *,
     return wait.wait_end
 
 
-def latest_stack(events: Iterable[NinaEvent],
-                 generation: str | None) -> StackState | None:
+def latest_stack(
+    events: Iterable[NinaEvent], generation: str | None
+) -> StackState | None:
     """The stack `STACK-UPDATED` last reported, or None if none has.
 
     Generation-filtered like the fold, so a stack from the previous N.I.N.A.
@@ -257,9 +295,7 @@ def latest_stack(events: Iterable[NinaEvent],
         return None
     if not target or not filter_name:
         return None
-    return StackState(
-        target=target, filter_name=filter_name, updated=newest.time
-    )
+    return StackState(target=target, filter_name=filter_name, updated=newest.time)
 
 
 _RECENT_FRAMES_LIMIT = 20
@@ -291,8 +327,7 @@ def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | Non
     return newest[0] if newest else None
 
 
-def latest_target(events: Iterable[NinaEvent],
-                  generation: str | None) -> str | None:
+def latest_target(events: Iterable[NinaEvent], generation: str | None) -> str | None:
     """The target the newest `TS-*TARGETSTART` named, or None if none has.
 
     Target Scheduler only: a plain N.I.N.A. sequence emits no such event and
@@ -305,8 +340,9 @@ def latest_target(events: Iterable[NinaEvent],
     return name if isinstance(name, str) and name else None
 
 
-def pending_guider_stop(events: Iterable[NinaEvent],
-                        generation: str | None) -> datetime | None:
+def pending_guider_stop(
+    events: Iterable[NinaEvent], generation: str | None
+) -> datetime | None:
     """When the newest `GUIDER-STOP` was, if no `GUIDER-START` has followed it.
 
     `GuiderInfo.State` alone cannot say. It is N.I.N.A.'s cache of PHD2's
@@ -321,4 +357,6 @@ def pending_guider_stop(events: Iterable[NinaEvent],
     been seen running past.
     """
     newest = _newest(events, _GUIDER_STARTED_OR_STOPPED, generation)
-    return newest.time if newest is not None and newest.name == _GUIDER_STOPPED else None
+    return (
+        newest.time if newest is not None and newest.name == _GUIDER_STOPPED else None
+    )

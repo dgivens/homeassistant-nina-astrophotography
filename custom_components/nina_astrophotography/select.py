@@ -14,6 +14,7 @@ wire is what the options carry.
 Neither select confirms itself from the command response (§3.5): a filter change
 takes seconds, and the state is the next poll's reading.
 """
+
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -65,9 +66,7 @@ def _options(kind: str, field: str) -> Callable[[NinaData], tuple[str, ...]]:
     return value
 
 
-async def _set_tracking_mode(
-    client: NinaClientV2, option: str, data: NinaData
-) -> None:
+async def _set_tracking_mode(client: NinaClientV2, option: str, data: NinaData) -> None:
     """`mode` is the API's enum value, which the option's position is not."""
     try:
         mode = TrackingMode[option.upper()]
@@ -80,9 +79,7 @@ async def _set_tracking_mode(
     await client.set_tracking_mode(mode.value)
 
 
-async def _change_filter(
-    client: NinaClientV2, option: str, data: NinaData
-) -> None:
+async def _change_filter(client: NinaClientV2, option: str, data: NinaData) -> None:
     """`filterId` is the wheel's own slot `Id`, not the option's position.
 
     Every wheel in the corpus numbers its slots from zero in list order, so the

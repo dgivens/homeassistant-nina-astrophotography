@@ -5,6 +5,7 @@ station (device-09) reports SkyBrightness and SkyTemperature but not
 CloudCover; OpenMeteo (device-12) the reverse — which is what makes the
 `unavailable`-versus-`unknown` distinction observable at all.
 """
+
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.const import ATTR_RESTORED
 from homeassistant.core import HomeAssistant
@@ -22,10 +23,19 @@ WEATHER_SOURCE = "sensor.n_i_n_a_weather_source"
 # Every `sensor.weather_*` 1.4.5 shipped. A channel that keeps its suffix keeps
 # its registry row through the upgrade; one that does not, orphans it.
 LEGACY_WEATHER_KEYS = {
-    "weather_cloud_cover", "weather_dew_point", "weather_humidity",
-    "weather_name", "weather_pressure", "weather_rain_rate", "weather_seeing",
-    "weather_sky_brightness", "weather_sky_quality", "weather_sky_temperature",
-    "weather_temperature", "weather_wind_direction", "weather_wind_gust",
+    "weather_cloud_cover",
+    "weather_dew_point",
+    "weather_humidity",
+    "weather_name",
+    "weather_pressure",
+    "weather_rain_rate",
+    "weather_seeing",
+    "weather_sky_brightness",
+    "weather_sky_quality",
+    "weather_sky_temperature",
+    "weather_temperature",
+    "weather_wind_direction",
+    "weather_wind_gust",
     "weather_wind_speed",
 }
 
@@ -77,10 +87,19 @@ async def test_a_channel_no_source_has_ever_reported_is_not_registered(
 
 @pytest.mark.parametrize(
     "suffix",
-    ["weather_dew_point", "weather_humidity", "weather_pressure",
-     "weather_rain_rate", "weather_sky_brightness", "weather_sky_temperature",
-     "weather_temperature", "weather_wind_direction", "weather_wind_gust",
-     "weather_wind_speed", "weather_name"],
+    [
+        "weather_dew_point",
+        "weather_humidity",
+        "weather_pressure",
+        "weather_rain_rate",
+        "weather_sky_brightness",
+        "weather_sky_temperature",
+        "weather_temperature",
+        "weather_wind_direction",
+        "weather_wind_gust",
+        "weather_wind_speed",
+        "weather_name",
+    ],
 )
 async def test_a_surviving_weather_sensor_keeps_its_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str

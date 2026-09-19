@@ -16,6 +16,7 @@ Assistant's `SAFETY` device class — `on` means problem — and it is what the
 shipped abort blueprint triggers on. An entity named for safety that reads `on`
 for safe is a trap every user hits exactly once, at the worst possible moment.
 """
+
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -126,7 +127,8 @@ def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
     """
     return {
         "reason": _autofocus_reason(data),
-        "r_squared": None if (report := data.autofocus_report) is None
+        "r_squared": None
+        if (report := data.autofocus_report) is None
         else report.r_squared,
         "r_squared_threshold": data.profile.r_squared_threshold,
     }

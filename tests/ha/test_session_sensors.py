@@ -9,6 +9,7 @@ Every test here runs inside the captured session: the fold measures the
 rollover against a real clock, and 2026-09-03's frames are outside today's
 window.
 """
+
 from datetime import datetime, timedelta, timezone
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
@@ -44,9 +45,10 @@ async def test_the_last_image_sensors_ignore_calibration_frames(
     newest LIGHT is HFR 1.454, Mean ADU 548.6, and that is what these report.
     """
     await advance("dawn_flats")
-    assert (float(hass.states.get(LAST_IMAGE_HFR).state),
-            float(hass.states.get(LAST_IMAGE_MEAN_ADU).state)) == (
-        pytest.approx(1.454, abs=0.001), pytest.approx(548.6, abs=0.1))
+    assert (
+        float(hass.states.get(LAST_IMAGE_HFR).state),
+        float(hass.states.get(LAST_IMAGE_MEAN_ADU).state),
+    ) == (pytest.approx(1.454, abs=0.001), pytest.approx(548.6, abs=0.1))
 
 
 async def test_integration_time_sums_actual_exposures(
@@ -62,14 +64,19 @@ async def test_integration_time_sums_actual_exposures(
 @pytest.mark.parametrize(
     ("attribute", "expected"),
     [
-        ("by_target", {"Dark Shark Nebula", "Lobster & Bubble", "NGC 281",
-                       "Wizard Nebula"}),
+        (
+            "by_target",
+            {"Dark Shark Nebula", "Lobster & Bubble", "NGC 281", "Wizard Nebula"},
+        ),
         ("by_filter", {"B", "L", "O", "R", "S"}),
     ],
 )
 async def test_the_breakdowns_are_attributes_not_entities(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance,
-    attribute: str, expected: set[str],
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    advance,
+    attribute: str,
+    expected: set[str],
 ) -> None:
     """Per-target HFR means ranged 1.429-1.667 against a session-wide 1.513, so
     the breakdown is worth carrying — but as attributes of the summary sensor,
@@ -115,7 +122,11 @@ async def test_recent_lights_name_their_target(
     await advance("dawn_flats")
     recent = hass.states.get(LAST_IMAGE_HFR).attributes["recent_lights"]
     assert {light["target"] for light in recent} == {
-        "Dark Shark Nebula", "Lobster & Bubble", "NGC 281", "Wizard Nebula"}
+        "Dark Shark Nebula",
+        "Lobster & Bubble",
+        "NGC 281",
+        "Wizard Nebula",
+    }
 
 
 async def test_the_session_start_sensor_is_the_most_recent_local_noon(
@@ -138,11 +149,21 @@ async def test_the_session_start_sensor_is_the_most_recent_local_noon(
     # The 1.4.5 spellings are the point: the pushed family won (§5.2.4), so the
     # survivor keeps the PUSHED entity's unique_id and the polled duplicate is
     # the one that goes.
-    ["frame_session_count", "frame_session_integration", "frame_session_avg_hfr",
-     "frame_session_min_hfr", "frame_session_max_hfr", "frame_session_avg_stars",
-     "frame_last_hfr", "frame_last_stars", "frame_last_mean_adu",
-     "frame_last_target", "frame_last_filter", "frame_last_exposure",
-     "frame_last_rms"],
+    [
+        "frame_session_count",
+        "frame_session_integration",
+        "frame_session_avg_hfr",
+        "frame_session_min_hfr",
+        "frame_session_max_hfr",
+        "frame_session_avg_stars",
+        "frame_last_hfr",
+        "frame_last_stars",
+        "frame_last_mean_adu",
+        "frame_last_target",
+        "frame_last_filter",
+        "frame_last_exposure",
+        "frame_last_rms",
+    ],
 )
 async def test_a_surviving_session_sensor_keeps_its_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
@@ -153,17 +174,28 @@ async def test_a_surviving_session_sensor_keeps_its_1_4_5_unique_id(
 @pytest.mark.parametrize(
     "suffix",
     # The polled duplicates of the collapsed family (§5.2.4)...
-    ["image_last_hfr", "image_last_star_count", "image_last_mean_adu",
-     "image_count",
-     # ...and the pushed family's presentation tail, which the cards compute
-     # for themselves in phase D.
-     "frame_rolling_avg_hfr", "frame_rolling_avg_stars", "frame_rolling_avg_adu",
-     "frame_hfr_trend", "frame_hfr_trend_delta", "frame_per_filter_counts",
-     "frame_sparkline_data",
-     # Min, Max, Median, StDev and HFRStDev have no `Frame` field: models.py is
-     # closed to fields nothing above the seam consumes.
-     "frame_last_min_adu", "frame_last_max_adu", "frame_last_median_adu",
-     "frame_last_std_dev_adu", "frame_last_hfr_std_dev"],
+    [
+        "image_last_hfr",
+        "image_last_star_count",
+        "image_last_mean_adu",
+        "image_count",
+        # ...and the pushed family's presentation tail, which the cards compute
+        # for themselves in phase D.
+        "frame_rolling_avg_hfr",
+        "frame_rolling_avg_stars",
+        "frame_rolling_avg_adu",
+        "frame_hfr_trend",
+        "frame_hfr_trend_delta",
+        "frame_per_filter_counts",
+        "frame_sparkline_data",
+        # Min, Max, Median, StDev and HFRStDev have no `Frame` field: models.py is
+        # closed to fields nothing above the seam consumes.
+        "frame_last_min_adu",
+        "frame_last_max_adu",
+        "frame_last_median_adu",
+        "frame_last_std_dev_adu",
+        "frame_last_hfr_std_dev",
+    ],
 )
 async def test_the_cut_session_sensors_are_not_registered(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str

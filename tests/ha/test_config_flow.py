@@ -1,4 +1,5 @@
 """The config and options flows, at 100% branch coverage (Bronze)."""
+
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -26,7 +27,9 @@ from custom_components.nina_astrophotography.const import (
     DOMAIN,
 )
 
-PROBE = "custom_components.nina_astrophotography.api.v2.client.NinaClientV2.get_versions"
+PROBE = (
+    "custom_components.nina_astrophotography.api.v2.client.NinaClientV2.get_versions"
+)
 SETUP = "custom_components.nina_astrophotography.async_setup_entry"
 
 VERSIONS = VersionInfo(api_version="2.2.15.2", nina_version="3.2.0.9001")
@@ -135,8 +138,7 @@ async def test_a_blank_instance_name_is_refused(hass: HomeAssistant, name: str) 
     length check alone accepts a string of spaces.
     """
     with pytest.raises(vol.Invalid):
-        await _submit(hass, ROOFTOP | {CONF_INSTANCE_NAME: name},
-                      return_value=VERSIONS)
+        await _submit(hass, ROOFTOP | {CONF_INSTANCE_NAME: name}, return_value=VERSIONS)
     assert not hass.config_entries.async_entries(DOMAIN)
 
 

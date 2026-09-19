@@ -11,6 +11,7 @@ The service checks read the source rather than the registry, because the
 registry lives in `__init__.py`, which imports Home Assistant and this suite
 deliberately does not.
 """
+
 import json
 from pathlib import Path
 
@@ -19,9 +20,7 @@ from nina_astrophotography.api.v2.events import NinaEventStream
 import yaml
 
 COMPONENT = (
-    Path(__file__).resolve().parents[2]
-    / "custom_components"
-    / "nina_astrophotography"
+    Path(__file__).resolve().parents[2] / "custom_components" / "nina_astrophotography"
 )
 
 

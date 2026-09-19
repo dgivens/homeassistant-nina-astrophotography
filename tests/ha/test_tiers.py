@@ -8,6 +8,7 @@ timers and `TierSchedule` both read `time.monotonic`, and freezing after setup
 moves that clock by decades in one step — every tier reads as overdue, and the
 first tick fires twice.
 """
+
 import logging
 
 from freezegun.api import FrozenDateTimeFactory
@@ -35,8 +36,11 @@ def captured(name: str) -> dict:
     captured time is one the fold has already taken. A live event is by
     definition one the history did not hold.
     """
-    event = next(event for event in load_fixture("dawn_event_history.json")
-                 if event["Event"] == name)
+    event = next(
+        event
+        for event in load_fixture("dawn_event_history.json")
+        if event["Event"] == name
+    )
     return {**event, "Time": AT}
 
 
@@ -46,8 +50,9 @@ def captured(name: str) -> dict:
 _MARGIN = 1.0
 
 
-async def tick(hass: HomeAssistant, freezer: FrozenDateTimeFactory,
-               seconds: float) -> None:
+async def tick(
+    hass: HomeAssistant, freezer: FrozenDateTimeFactory, seconds: float
+) -> None:
     """Advance the clock past `seconds` and let the coordinator's timer fire."""
     freezer.tick(seconds + _MARGIN)
     async_fire_time_changed(hass)
@@ -57,6 +62,7 @@ async def tick(hass: HomeAssistant, freezer: FrozenDateTimeFactory,
 @pytest.fixture
 async def tiers(hass, freezer, rig, config_entry):
     """A loaded entry on a named rig state, its setup traffic cleared away."""
+
     async def _load(state: str = "imaging", *, clear: bool = True) -> FakeRig:
         rig.goto(state)
         config_entry.add_to_hass(hass)
@@ -165,7 +171,7 @@ async def test_an_event_cannot_re_arm_an_endpoint_the_build_does_not_serve(
     a build with no livestack plugin buys another 404.
     """
     rig = await tiers(clear=False)
-    assert rig.reads("/livestack/status") == 1          # the setup attempt
+    assert rig.reads("/livestack/status") == 1  # the setup attempt
     push(captured("STACK-STATUS"))
     await tick(hass, freezer, TierSchedule.FAST)
     assert rig.reads("/livestack/status") == 1
@@ -227,6 +233,7 @@ async def test_a_tier_read_that_raises_anything_does_not_fail_the_poll(
     scalar-defensive, so no captured or malformed `/sequence/json` document can
     produce the raise this guards against.
     """
+
     async def get_sequence(self):
         raise TypeError("a shape no mapper anticipated")
 
@@ -235,9 +242,12 @@ async def test_a_tier_read_that_raises_anything_does_not_fail_the_poll(
     with caplog.at_level(logging.WARNING):
         for _ in range(2):
             await tick(hass, freezer, TierSchedule.SEQUENCE_IDLE)
-    warnings = [r for r in caplog.records
-                if r.levelno == logging.WARNING
-                and r.name == "custom_components.nina_astrophotography.coordinator"]
+    warnings = [
+        r
+        for r in caplog.records
+        if r.levelno == logging.WARNING
+        and r.name == "custom_components.nina_astrophotography.coordinator"
+    ]
     assert hass.states.get(LIGHT).state != "unavailable"
     assert len(warnings) == 1
 
@@ -268,7 +278,7 @@ async def test_a_restart_re_asks_an_endpoint_the_old_process_did_not_serve(
     new `/application-start` and a build that serves it.
     """
     rig = await tiers(clear=False)
-    assert rig.reads("/livestack/status") == 1          # the setup 404
+    assert rig.reads("/livestack/status") == 1  # the setup 404
     rig.goto("imaging_guiding")
     await tick(hass, freezer, TierSchedule.FLOOR)
     assert rig.reads("/livestack/status") == 2
