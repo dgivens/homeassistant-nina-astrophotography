@@ -791,7 +791,11 @@ class NinaImagePanelCard extends HTMLElement {
   }
 }
 
-customElements.define("nina-image-panel-card", NinaImagePanelCard);
+// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
+// defining the same tag would otherwise throw and abort this whole module.
+if (!customElements.get("nina-image-panel-card")) {
+  customElements.define("nina-image-panel-card", NinaImagePanelCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -799,7 +803,7 @@ window.customCards.push({
   name: "N.I.N.A. Image Panel",
   description: "Live last-frame viewer with stats overlay, histogram, and frame strip.",
   preview: false,
-  documentationURL: "https://github.com/christian-photo/ninaAPI",
+  documentationURL: "https://github.com/dgivens/homeassistant-nina-astrophotography#lovelace-cards",
 });
 
 console.info(

@@ -75,6 +75,7 @@ from .const import (
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 from .device import async_sync_devices, kind_of
+from .frontend import async_register_frontend_resources
 from .views import async_register_views
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,10 +97,11 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the actions and the image proxy, once, before any entry is
-    set up."""
+    """Register the actions, the image proxy and the Lovelace cards, once,
+    before any entry is set up."""
     _register_services(hass)
     async_register_views(hass)
+    await async_register_frontend_resources(hass)
     return True
 
 

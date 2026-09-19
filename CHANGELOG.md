@@ -81,6 +81,22 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
     only used to hold back a resume.
 - **The Lovelace cards take a `prefix:`** — the slugified instance name their
   entity ids carry, `n_i_n_a` by default. Without it a card reads nothing.
+- **The Lovelace cards are no longer copied into `/config/www/`.** They ship
+  inside the integration and register themselves as dashboard resources on
+  load. An existing install that copied 1.4.5's cards manually **must** delete
+  those files and, more importantly, the `/local/<file>.js` resource entries
+  that pointed at them: left in place, they shadow the integration's own,
+  freshly-registered ones, and which copy a dashboard actually gets is a race
+  each page load — not consistently the old one, so this can look like it
+  "mostly works." Each card logs `NINA-…-CARD vX.Y.Z` to the browser console;
+  `v1.4.5` there means a stale resource is winning. Hard-reload after
+  removing it. A YAML-managed dashboard (`lovelace: resource_mode: yaml`, or
+  the older `mode: yaml`) can't be written to automatically — the six
+  entries are logged for you to add by hand, or switch to
+  `resource_mode: storage` to keep YAML dashboards with automatic resources.
+  Removing the integration does not remove the resources it registered; Home
+  Assistant has no way to unregister those, so delete them yourself if you're
+  not reinstalling.
 - **`binary_sensor.<instance>_sequence_running` is removed**, replaced by
   `_sequencer_running` and `_imaging`. It reported frames arriving under a name
   that promised the sequencer, so it read `off` through every Target Scheduler

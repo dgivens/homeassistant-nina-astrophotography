@@ -19,7 +19,8 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-CARDS = sorted((ROOT / "www").glob("*.js"))
+WWW_DIR = ROOT / "custom_components" / "nina_astrophotography" / "www"
+CARDS = sorted(WWW_DIR.glob("*.js"))
 assert CARDS, "no cards found"
 
 DOMAINS = ("sensor", "binary_sensor", "switch", "light", "number", "select",

@@ -8,16 +8,14 @@
  * Reads the mount's altitude, azimuth, RA, declination, sidereal time, time to
  * meridian flip and tracking rate, its park state, and the sequence target.
  *
- * Installation:
- *   1. Copy to /config/www/nina-sky-map-card.js
- *   2. Add resource: /local/nina-sky-map-card.js  (JavaScript Module)
- *   3. Add card:  type: custom:nina-sky-map-card
- *      Optional config:
- *        latitude: 38.5    # your observing latitude — REQUIRED in practice:
- *                          # it projects the whole star field, and defaults
- *                          # to 40, which is the wrong sky for most people
- *        trail_length: 60  # number of historical positions to keep (default 60)
- *        prefix: n_i_n_a   # the slugified instance name your entities carry
+ * Ships with the integration and registers itself as a dashboard resource —
+ * nothing to copy or add under Resources. Add card:  type: custom:nina-sky-map-card
+ *   Optional config:
+ *     latitude: 38.5    # your observing latitude — REQUIRED in practice:
+ *                       # it projects the whole star field, and defaults
+ *                       # to 40, which is the wrong sky for most people
+ *     trail_length: 60  # number of historical positions to keep (default 60)
+ *     prefix: n_i_n_a   # the slugified instance name your entities carry
  */
 
 const VERSION = "2.0.0";
@@ -652,7 +650,11 @@ function decToString(dec) {
 }
 
 /* ── Register ─────────────────────────────────────────────────────────── */
-customElements.define("nina-sky-map-card", NinaSkyMapCard);
+// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
+// defining the same tag would otherwise throw and abort this whole module.
+if (!customElements.get("nina-sky-map-card")) {
+  customElements.define("nina-sky-map-card", NinaSkyMapCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -660,7 +662,7 @@ window.customCards.push({
   name: "N.I.N.A. Sky Map Card",
   description: "Live all-sky stereographic map showing telescope pointing, star field, and meridian.",
   preview: true,
-  documentationURL: "https://github.com/christian-photo/ninaAPI",
+  documentationURL: "https://github.com/dgivens/homeassistant-nina-astrophotography#lovelace-cards",
 });
 
 console.info(

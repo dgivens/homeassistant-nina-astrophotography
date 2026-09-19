@@ -4,12 +4,10 @@
  * per-filter frame counts, sampled from the last-frame sensors as N.I.N.A.
  * saves each image.
  *
- * Installation:
- *   1. Copy to /config/www/nina-frame-stats-card.js
- *   2. Add resource: /local/nina-frame-stats-card.js (JavaScript Module)
- *   3. Add card:
- *        type: custom:nina-frame-stats-card
- *        prefix: n_i_n_a   # the slugified instance name your entities carry
+ * Ships with the integration and registers itself as a dashboard resource —
+ * nothing to copy or add under Resources. Add card:
+ *   type: custom:nina-frame-stats-card
+ *   prefix: n_i_n_a   # the slugified instance name your entities carry
  */
 
 const VERSION = "2.0.0";
@@ -460,7 +458,14 @@ class NinaFrameStatsCard extends HTMLElement {
   static getStubConfig() { return {}; }
 }
 
-customElements.define("nina-frame-stats-card", NinaFrameStatsCard);
+// Guarded: a stale 1.4.5 `/local/nina-frame-stats-card.js` resource left over
+// from a manual install defines the same tag. A second `define` throws
+// `NotSupportedError` and aborts the rest of this module — including the
+// `customCards.push` below — so whichever copy loses the race silently
+// disappears from the picker instead of just being redundant.
+if (!customElements.get("nina-frame-stats-card")) {
+  customElements.define("nina-frame-stats-card", NinaFrameStatsCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -468,6 +473,7 @@ window.customCards.push({
   name: "N.I.N.A. Frame Statistics Card",
   description: "Live per-frame HFR trend, star count, ADU, and filter breakdown.",
   preview: true,
+  documentationURL: "https://github.com/dgivens/homeassistant-nina-astrophotography#lovelace-cards",
 });
 
 console.info(
