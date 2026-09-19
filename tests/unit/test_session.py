@@ -80,6 +80,7 @@ def test_calibration_frames_do_not_drag_the_hfr_aggregate(night) -> None:
 def test_the_last_frame_is_the_last_light_not_the_last_flat(night) -> None:
     """A dawn flat run left `Last Image Mean ADU` reading 33,139 on 1.4.4."""
     stats = fold(night, [], generation="g1")
+    assert stats.last_frame is not None
     assert stats.last_frame.image_type == "LIGHT"
     assert stats.last_frame.mean == pytest.approx(548.6, rel=0.2)
 
@@ -277,6 +278,7 @@ def test_a_stale_copy_of_a_refetched_frame_never_wins_the_dedupe(
     light = next(f for f in night if f.image_type == "LIGHT")
     both = [replace(light, generation="g2"), replace(light, generation="g1")]
     stats = fold(both[::-1] if reversed_arrival else both, [], generation="g2")
+    assert stats.last_frame is not None
     assert (stats.image_count, stats.last_frame.generation) == (1, "g2")
 
 
@@ -397,6 +399,7 @@ def test_the_newest_frame_ignores_the_session_window(night) -> None:
     frame — which `fold`'s own `last_frame` has by then dropped.
     """
     newest = newest_frame(night, "g1")
+    assert newest is not None
     assert newest.date == max(f.date for f in night)
     assert fold(night, [], "g1", now=_AFTER_THE_ROLLOVER).last_frame is None
 
@@ -407,6 +410,7 @@ def test_the_newest_frame_of_another_process_is_not_offered(night) -> None:
 
 def test_the_stack_is_the_pair_the_newest_update_named(night_events) -> None:
     stack = latest_stack(night_events, "g1")
+    assert stack is not None
     assert (stack.target, stack.filter_name) == ("NGC 281", "S")
 
 

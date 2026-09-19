@@ -63,7 +63,7 @@ async def test_a_pushed_event_says_which_rig_it_came_from(
     blueprint filters on.
     """
     fired: list[dict] = []
-    hass.bus.async_listen("nina_image_save", lambda e: fired.append(e.data))
+    hass.bus.async_listen("nina_image_save", lambda e: fired.append(dict(e.data)))
 
     second = two_rigs.entries[1]
     second.runtime_data.events._dispatch(  # noqa: SLF001

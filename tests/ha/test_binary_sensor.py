@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.binary_sensor import DESCRIPTIONS
 from custom_components.nina_astrophotography.const import DOMAIN
+from helpers import state_of
 
 AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
@@ -122,7 +123,7 @@ async def test_the_safety_sensor_reads_on_when_conditions_are_unsafe(
     sky clears and stays silent under cloud.
     """
     await advance(state)
-    assert hass.states.get(UNSAFE).state == expected
+    assert state_of(hass, UNSAFE).state == expected
 
 
 @pytest.mark.parametrize(
@@ -141,7 +142,7 @@ async def test_only_the_connectivity_sensor_survives_the_monitors_disconnection(
     coordinator-failed. The exemption is per descriptor, not per device.
     """
     await advance("safety_monitor_disconnected")
-    assert hass.states.get(entity_id).state == expected
+    assert state_of(hass, entity_id).state == expected
 
 
 async def test_an_unreachable_rig_still_makes_the_connectivity_sensor_unavailable(
@@ -151,7 +152,7 @@ async def test_an_unreachable_rig_still_makes_the_connectivity_sensor_unavailabl
     is known about the rig.
     """
     await advance("nina_unreachable")
-    assert hass.states.get(MONITOR_CONNECTED).state == "unavailable"
+    assert state_of(hass, MONITOR_CONNECTED).state == "unavailable"
 
 
 async def test_an_unanswered_autofocus_start_raises_the_problem_sensor(
@@ -161,7 +162,7 @@ async def test_an_unanswered_autofocus_start_raises_the_problem_sensor(
     AUTOFOCUS-STARTING going unanswered past the timeout is the whole signal.
     """
     await _set_up_at(hass, config_entry, rig, "autofocus_timed_out")
-    assert hass.states.get(AUTOFOCUS_FAILED).state == "on"
+    assert state_of(hass, AUTOFOCUS_FAILED).state == "on"
 
 
 @pytest.mark.parametrize(
@@ -178,7 +179,7 @@ async def test_imaging_follows_activity_and_not_node_status(
     RUNNING throughout and takes nothing.
     """
     await advance(state)
-    assert hass.states.get(IMAGING).state == expected
+    assert state_of(hass, IMAGING).state == expected
 
 
 @pytest.mark.parametrize(
@@ -199,7 +200,7 @@ async def test_the_waiting_sensor_clears_when_the_sequence_stops(
     stopped rig as waiting.
     """
     await _set_up_at(hass, config_entry, rig, state)
-    assert hass.states.get(SCHEDULER_WAITING).state == expected
+    assert state_of(hass, SCHEDULER_WAITING).state == expected
 
 
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
@@ -210,8 +211,8 @@ async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
     blueprint gates on.
     """
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting")
-    assert hass.states.get(SEQUENCER_RUNNING).state == "on"
-    assert hass.states.get(IMAGING).state == "off"
+    assert state_of(hass, SEQUENCER_RUNNING).state == "on"
+    assert state_of(hass, IMAGING).state == "off"
 
 
 @pytest.mark.parametrize(
@@ -288,7 +289,7 @@ async def test_a_completed_autofocus_rejected_on_its_curve_fit_raises_the_proble
     profile's `RSquaredThreshold` is the only evidence there is (§4.4).
     """
     await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
-    assert hass.states.get(AUTOFOCUS_FAILED).state == "on"
+    assert state_of(hass, AUTOFOCUS_FAILED).state == "on"
 
 
 async def test_a_completed_autofocus_that_fitted_well_raises_nothing(
@@ -296,7 +297,7 @@ async def test_a_completed_autofocus_that_fitted_well_raises_nothing(
 ) -> None:
     """The same captured report unmodified: 0.971 against a 0.7 threshold."""
     await _set_up_at(hass, config_entry, rig, "imaging_guiding")
-    assert hass.states.get(AUTOFOCUS_FAILED).state == "off"
+    assert state_of(hass, AUTOFOCUS_FAILED).state == "off"
 
 
 @pytest.mark.synthetic
@@ -307,7 +308,7 @@ async def test_a_rejected_run_publishes_what_it_was_judged_against(
     what turn the verdict into a number the operator can check.
     """
     await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
-    attributes = hass.states.get(AUTOFOCUS_FAILED).attributes
+    attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
     assert attributes["reason"] == "rejected"
     assert attributes["r_squared"] < attributes["r_squared_threshold"] == 0.7
 
@@ -320,7 +321,7 @@ async def test_a_hung_run_says_so_because_the_report_is_another_runs(
     belonging to the run that just failed.
     """
     await _set_up_at(hass, config_entry, rig, "autofocus_timed_out")
-    assert hass.states.get(AUTOFOCUS_FAILED).attributes["reason"] == "hung"
+    assert state_of(hass, AUTOFOCUS_FAILED).attributes["reason"] == "hung"
 
 
 async def test_a_run_that_fitted_well_has_no_reason(
@@ -330,7 +331,7 @@ async def test_a_run_that_fitted_well_has_no_reason(
     says how much headroom a passing run had.
     """
     await _set_up_at(hass, config_entry, rig, "imaging_guiding")
-    attributes = hass.states.get(AUTOFOCUS_FAILED).attributes
+    attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
     assert attributes["reason"] is None
     assert attributes["r_squared_threshold"] == 0.7
 
@@ -344,4 +345,4 @@ async def test_a_report_older_than_the_session_is_not_tonights_problem(
     started.
     """
     await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
-    assert hass.states.get(AUTOFOCUS_FAILED).state == "off"
+    assert state_of(hass, AUTOFOCUS_FAILED).state == "off"

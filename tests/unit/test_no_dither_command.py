@@ -14,7 +14,9 @@ deliberately does not.
 
 import json
 from pathlib import Path
+from typing import cast
 
+from aiohttp import ClientSession
 from nina_astrophotography.api.v2.client import NinaClientV2
 from nina_astrophotography.api.v2.events import NinaEventStream
 import yaml
@@ -40,7 +42,9 @@ def test_no_dither_service_is_translated() -> None:
 
 def test_the_dither_event_is_still_delivered() -> None:
     """Removing the command must not lose the notification that it happened."""
-    stream = NinaEventStream(host="nina.local", port=1888, session=None)
+    stream = NinaEventStream(
+        host="nina.local", port=1888, session=cast(ClientSession, None)
+    )
     seen: list[str] = []
     stream.subscribe(lambda event: seen.append(event.name))
     stream._dispatch({"Event": "GUIDER-DITHER"}, None)

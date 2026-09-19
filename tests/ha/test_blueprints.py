@@ -12,10 +12,12 @@ blueprint that means a roof that never closes.
 
 from pathlib import Path
 
-from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
+from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 import pytest
+
+from helpers import state_of
 
 BLUEPRINTS = sorted(
     (Path(__file__).resolve().parents[2] / "blueprints").rglob("*.yaml")
@@ -136,7 +138,7 @@ async def test_a_blueprint_builds_an_automation(
     # A blueprint Home Assistant rejects still yields an automation entity —
     # an `unavailable` one. `on` is what says the config was accepted.
     states = [
-        hass.states.get(entity).state
+        state_of(hass, entity).state
         for entity in hass.states.async_entity_ids(AUTOMATION_DOMAIN)
     ]
     assert states == ["on"]

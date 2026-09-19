@@ -9,12 +9,13 @@ and the flat panel has; `imaging_guiding` is the mirror image. Which state a
 test starts from is therefore load-bearing, not incidental.
 """
 
-from homeassistant.components.switch import (
-    DOMAIN as SWITCH_DOMAIN,
+from homeassistant.components.switch.const import DOMAIN as SWITCH_DOMAIN
+from homeassistant.const import (
+    ATTR_ENTITY_ID,
     SERVICE_TURN_OFF,
     SERVICE_TURN_ON,
+    EntityCategory,
 )
-from homeassistant.const import ATTR_ENTITY_ID, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 import pytest
@@ -24,6 +25,7 @@ from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.switch import DESCRIPTIONS
+from helpers import state_of
 
 GUIDER = "switch.n_i_n_a_guider"
 COOLER = "switch.n_i_n_a_camera_cooler"
@@ -80,7 +82,7 @@ async def test_the_guider_switch_is_on_whenever_the_guider_is_running(
     forces a re-settle mid-exposure. "Running" is the honest predicate.
     """
     await advance(state)
-    assert hass.states.get(GUIDER).state == expected
+    assert state_of(hass, GUIDER).state == expected
 
 
 async def test_a_lost_lock_left_over_from_a_stop_reads_off(
@@ -91,7 +93,7 @@ async def test_a_lost_lock_left_over_from_a_stop_reads_off(
     in the state because `/event-history` is replayed once.
     """
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
-    assert hass.states.get(GUIDER).state == "off"
+    assert state_of(hass, GUIDER).state == "off"
 
 
 @pytest.mark.synthetic
@@ -113,7 +115,7 @@ async def test_a_lock_lost_while_guiding_restarts_reads_on(
         rig.goto(state)
         await coordinator.async_refresh()
     await hass.async_block_till_done()
-    assert hass.states.get(GUIDER).state == "on"
+    assert state_of(hass, GUIDER).state == "on"
 
 
 @pytest.mark.synthetic
@@ -136,7 +138,7 @@ async def test_a_stop_pushed_while_a_poll_is_in_flight_is_not_passed_by_it(
     await advance("imaging_guiding")
     monkeypatch.setattr(NinaClientV2, "get_equipment", fetch)
     await advance("guider_lost_lock")
-    assert hass.states.get(GUIDER).state == "off"
+    assert state_of(hass, GUIDER).state == "off"
 
 
 @pytest.mark.synthetic
@@ -149,7 +151,7 @@ async def test_a_guider_start_after_the_stop_reads_the_lost_lock_as_running(
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     push({"Event": "GUIDER-START"})
     await hass.async_block_till_done()
-    assert hass.states.get(GUIDER).state == "on"
+    assert state_of(hass, GUIDER).state == "on"
 
 
 @pytest.mark.parametrize(
@@ -175,7 +177,7 @@ async def test_the_livestack_switch_reads_the_status_endpoint(
     so the comparison is case-insensitive.
     """
     await _set_up_at(hass, config_entry, rig, "imaging_guiding")
-    assert hass.states.get(LIVESTACK).state == "on"
+    assert state_of(hass, LIVESTACK).state == "on"
 
 
 async def test_the_livestack_switch_exists_and_reads_off_without_the_plugin(
@@ -185,7 +187,7 @@ async def test_the_livestack_switch_exists_and_reads_off_without_the_plugin(
     installed" — but a build without the route 404s, and that rig gets a switch
     that reads stopped rather than no switch at all.
     """
-    assert hass.states.get(LIVESTACK).state == "off"
+    assert state_of(hass, LIVESTACK).state == "off"
 
 
 async def test_a_commands_own_response_never_sets_the_state(
@@ -196,7 +198,7 @@ async def test_a_commands_own_response_never_sets_the_state(
     """
     await _call(hass, SERVICE_TURN_ON, LIVESTACK)
     assert rig.sent == [("/livestack/start", None)]
-    assert hass.states.get(LIVESTACK).state == "off"
+    assert state_of(hass, LIVESTACK).state == "off"
 
 
 @pytest.mark.synthetic
@@ -217,7 +219,7 @@ async def test_a_switch_channel_reads_its_value_not_its_target_value(
     commanded state — the thing §5.2.3 refuses to show as the state.
     """
     await advance("switch_channel_commanded_not_yet_switched")
-    assert hass.states.get(OUTLET).state == "off"
+    assert state_of(hass, OUTLET).state == "off"
 
 
 @pytest.mark.synthetic
@@ -252,7 +254,7 @@ async def test_on_and_off_are_the_channels_own_range_ends(
     sending a hardcoded 0 would be out of range and silently clamped.
     """
     await _set_up_at(hass, config_entry, rig, "switch_channel_with_a_shifted_range")
-    assert hass.states.get(OUTLET).state == "off"
+    assert state_of(hass, OUTLET).state == "off"
     await _call(hass, SERVICE_TURN_ON, OUTLET)
     assert rig.sent == [("/equipment/switch/set", {"index": 0, "value": 2.0})]
 
@@ -314,7 +316,7 @@ async def test_the_cover_switch_needs_a_panel_that_can_open_and_close(
 async def test_the_cover_switch_is_off_while_the_cover_is_closed(
     hass: HomeAssistant, loaded_entry
 ) -> None:
-    assert hass.states.get(COVER).state == "off"
+    assert state_of(hass, COVER).state == "off"
 
 
 async def test_a_cover_between_positions_reads_unknown(
@@ -324,7 +326,7 @@ async def test_a_cover_between_positions_reads_unknown(
     would report a shut cover over an open one.
     """
     await set_up_with_flat_device(cover_state="NeitherOpenNorClosed")
-    assert hass.states.get(COVER).state == "unknown"
+    assert state_of(hass, COVER).state == "unknown"
 
 
 async def test_opening_the_cover_inverts_the_parameter_the_api_takes(

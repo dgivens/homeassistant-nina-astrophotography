@@ -2,6 +2,8 @@
 
 from homeassistant.core import HomeAssistant
 
+from helpers import state_of
+
 STATE = "sensor.n_i_n_a_flats_state"
 TOTAL = "sensor.n_i_n_a_flats_total_iterations"
 
@@ -26,4 +28,4 @@ async def test_the_idle_iteration_sentinel_is_unknown(
     entity_registry.async_update_entity(TOTAL, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get(TOTAL).state == "unknown"
+    assert state_of(hass, TOTAL).state == "unknown"

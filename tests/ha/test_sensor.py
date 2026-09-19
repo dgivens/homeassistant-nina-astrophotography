@@ -20,6 +20,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DOMAIN
+from helpers import state_of
 
 FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip"
 FOCUSER_POSITION = "sensor.n_i_n_a_focuser_position"
@@ -42,9 +43,9 @@ async def test_the_meridian_sentinel_is_unknown_but_a_real_reading_is_minutes(
     The unit is minutes, which is what a flip warning is written in.
     """
     await advance("imaging_guiding")
-    assert float(hass.states.get(FLIP).state) > 0
+    assert float(state_of(hass, FLIP).state) > 0
     await advance("sequence_complete_tracking_off")
-    assert hass.states.get(FLIP).state == "unknown"
+    assert state_of(hass, FLIP).state == "unknown"
 
 
 async def test_the_focuser_position_sensor_carries_a_state_class(
@@ -56,7 +57,7 @@ async def test_the_focuser_position_sensor_carries_a_state_class(
     entity_registry.async_update_entity(FOCUSER_POSITION, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get(FOCUSER_POSITION).attributes["state_class"] == "measurement"
+    assert state_of(hass, FOCUSER_POSITION).attributes["state_class"] == "measurement"
 
 
 @pytest.mark.parametrize(
@@ -130,7 +131,7 @@ async def test_the_sequence_target_is_the_one_the_scheduler_announced(
     imaging container holds the list internally — so `TS-TARGETSTART` is where
     the name comes from.
     """
-    assert hass.states.get("sensor.n_i_n_a_sequence_target").state == "NGC 281"
+    assert state_of(hass, "sensor.n_i_n_a_sequence_target").state == "NGC 281"
 
 
 async def test_sequence_progress_is_unknown_where_no_node_counts_iterations(
@@ -142,7 +143,7 @@ async def test_sequence_progress_is_unknown_where_no_node_counts_iterations(
     entity_registry.async_update_entity(SEQUENCE_PROGRESS, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get(SEQUENCE_PROGRESS).state == "unknown"
+    assert state_of(hass, SEQUENCE_PROGRESS).state == "unknown"
 
 
 async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
@@ -152,7 +153,7 @@ async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
     early warning. Rename or drop it and the blueprint silently falls back to
     warning AT the flip — which is the bug the attribute exists to fix.
     """
-    flip = hass.states.get(FLIP)
+    flip = state_of(hass, FLIP)
 
     assert "flip_fires_at_minutes" in flip.attributes
 
@@ -178,7 +179,7 @@ async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
     `time` trigger with an offset needs.
     """
     await set_up_at(hass, config_entry, rig, "scheduler_waiting")
-    assert hass.states.get(WAIT_ENDS_AT).state == "2026-09-16T02:05:40+00:00"
+    assert state_of(hass, WAIT_ENDS_AT).state == "2026-09-16T02:05:40+00:00"
 
 
 async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(
@@ -189,7 +190,7 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(
     `sensor.last_image_*` reports.
     """
     await advance("dawn_flats")
-    assert hass.states.get(LAST_FRAME_AT).state == "2026-09-04T11:26:34+00:00"
+    assert state_of(hass, LAST_FRAME_AT).state == "2026-09-04T11:26:34+00:00"
 
 
 @pytest.mark.parametrize(
@@ -211,7 +212,7 @@ async def test_the_last_autofocus_run_is_published_reading_by_reading(
     focus drift against temperature is a chart over months.
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    assert float(hass.states.get(entity_id).state) == pytest.approx(expected)
+    assert float(state_of(hass, entity_id).state) == pytest.approx(expected)
 
 
 async def test_the_last_autofocus_time_is_published_in_utc(
@@ -222,7 +223,7 @@ async def test_the_last_autofocus_time_is_published_in_utc(
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
     assert (
-        hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").state
+        state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").state
         == "2026-09-05T06:10:14+00:00"
     )
 
@@ -234,7 +235,7 @@ async def test_the_last_autofocus_carries_what_measured_it(
     comparable with another taken the same way.
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    attributes = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").attributes
+    attributes = state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").attributes
 
     assert attributes["method"] == "STARHFR"
     assert attributes["star_detector"] == "Hocus Focus"
@@ -247,7 +248,7 @@ async def test_the_last_autofocus_publishes_the_curve_a_card_plots(
     reach a Lovelace card as plain JSON rows rather than as models.
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    curve = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
+    curve = state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
 
     assert [sorted(row) for row in curve] == [["error", "position", "value"]] * 9
 
@@ -259,7 +260,7 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
     coefficients have to survive as a JSON array, not a Python tuple.
     """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    fits = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").attributes["fits"]
+    fits = state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").attributes["fits"]
 
     assert json.loads(json.dumps(fits))[0]["coefficients"] == pytest.approx(
         [0.0003058854621319121, -1.4293365331583652, 1671.5984427459177]
@@ -273,5 +274,5 @@ async def test_the_autofocus_readings_exist_before_a_run_reports(
     focuser, and an automation may point at one from the first restart.
     """
     assert (
-        hass.states.get("sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"
+        state_of(hass, "sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"
     )

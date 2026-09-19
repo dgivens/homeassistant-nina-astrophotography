@@ -239,6 +239,7 @@ def _snapshot_with_camera(*, is_exposing: bool | None) -> EquipmentSnapshot:
     camera exposing, and no capture can hold both branches.
     """
     camera = map_equipment_info(load("imaging_guiding_equipment_info.json")).camera
+    assert camera is not None
     blanks = {f.name: None for f in fields(EquipmentSnapshot)}
     return EquipmentSnapshot(
         **{**blanks, "camera": replace(camera, is_exposing=is_exposing)}

@@ -17,6 +17,7 @@ from custom_components.nina_astrophotography.api.errors import (
     NinaRequestError,
 )
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+from helpers import state_of
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
 
@@ -53,7 +54,7 @@ async def test_an_unreachable_rig_makes_the_entities_unavailable(
         NinaClientV2, "get_equipment", _raising(NinaConnectionError("down"))
     )
     await loaded_entry.runtime_data.coordinator.async_refresh()
-    assert hass.states.get(LIGHT).state == "unavailable"
+    assert state_of(hass, LIGHT).state == "unavailable"
 
 
 async def test_a_rejected_request_keeps_the_previous_state_and_logs_once(
@@ -62,7 +63,7 @@ async def test_a_rejected_request_keeps_the_previous_state_and_logs_once(
     """A rejection does not become right by retrying: every entity going
     unavailable and an error per poll would be noise about one condition.
     """
-    before = hass.states.get(LIGHT).state
+    before = state_of(hass, LIGHT).state
     monkeypatch.setattr(
         NinaClientV2, "get_equipment", _raising(NinaRequestError("400"))
     )
@@ -75,7 +76,7 @@ async def test_a_rejected_request_keeps_the_previous_state_and_logs_once(
         if r.levelno == logging.ERROR
         and r.name.startswith("custom_components.nina_astrophotography")
     ]
-    assert hass.states.get(LIGHT).state == before
+    assert state_of(hass, LIGHT).state == before
     assert len(errors) == 1
 
 

@@ -1,8 +1,13 @@
 """The config and options flows, at 100% branch coverage (Bronze)."""
 
+# Every key but `type` and `flow_id` is NotRequired on `ConfigFlowResult`, and
+# which ones a step returns depends on its type — which each test asserts first.
+# pyright: reportTypedDictNotRequiredAccess=false
+
 from datetime import timedelta
 from unittest.mock import patch
 
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
@@ -36,7 +41,7 @@ VERSIONS = VersionInfo(api_version="2.2.15.2", nina_version="3.2.0.9001")
 ROOFTOP = {CONF_HOST: "nina.local", CONF_PORT: 1888, CONF_INSTANCE_NAME: "Rooftop"}
 
 
-async def _submit(hass: HomeAssistant, user_input: dict, **probe) -> dict:
+async def _submit(hass: HomeAssistant, user_input: dict, **probe) -> ConfigFlowResult:
     """Open the user step and answer it once, with `get_versions` stubbed."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}
@@ -142,7 +147,9 @@ async def test_a_blank_instance_name_is_refused(hass: HomeAssistant, name: str) 
     assert not hass.config_entries.async_entries(DOMAIN)
 
 
-async def _set_option(hass: HomeAssistant, entry: MockConfigEntry, **options) -> dict:
+async def _set_option(
+    hass: HomeAssistant, entry: MockConfigEntry, **options
+) -> ConfigFlowResult:
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], options
@@ -186,4 +193,5 @@ async def test_a_pre_2_0_entry_names_the_instance_from_its_title(
     hub = dr.async_get(hass).async_get_device_by_identifier(
         (DOMAIN, entry.entry_id), entry.entry_id
     )
+    assert hub is not None
     assert hub.name == "Dome"

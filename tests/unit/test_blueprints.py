@@ -24,7 +24,7 @@ def load(path: Path) -> tuple[dict, list[tuple[str, int]]]:
     class Loader(yaml.SafeLoader):
         pass
 
-    def construct(loader: yaml.SafeLoader, node: yaml.Node) -> str:
+    def construct(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> str:
         """Record the reference, and stand the input's own name in for it, so a
         `variables:` block reads as the mapping it is.
         """

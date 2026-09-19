@@ -16,12 +16,11 @@ mutes the twelve-hour daytime wait was never once executed.
 """
 
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
+from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
@@ -33,7 +32,7 @@ from tests.ha.conftest import BLUEPRINTS
 
 BLUEPRINT = "imaging_stall_alert.yaml"
 FILE = BLUEPRINTS / "automation/nina_astrophotography" / BLUEPRINT
-T0 = dt_util.parse_datetime("2026-09-17T01:00:00+00:00")
+T0 = datetime.fromisoformat("2026-09-17T01:00:00+00:00")
 
 
 def _defaults() -> dict:
@@ -47,7 +46,10 @@ def _defaults() -> dict:
     class Loader(yaml.SafeLoader):
         pass
 
-    Loader.add_constructor("!input", lambda loader, node: loader.construct_scalar(node))
+    def construct(loader: yaml.SafeLoader, node: yaml.ScalarNode) -> str:
+        return loader.construct_scalar(node)
+
+    Loader.add_constructor("!input", construct)
     doc = yaml.load(FILE.read_text(), Loader=Loader)
     leaves: dict = {}
     for name, spec in doc["blueprint"]["input"].items():
@@ -327,7 +329,9 @@ async def test_the_first_alert_of_a_night_does_not_claim_a_frame_age(
     clock.move_to(T0 + STALLED)
     await tick(hass, T0 + STALLED)
 
-    assert "since the sequence started" in alert(hass)["message"]
+    raised = alert(hass)
+    assert raised is not None
+    assert "since the sequence started" in raised["message"]
 
 
 async def test_an_unreachable_rig_reports_only_what_it_knows(
@@ -347,7 +351,9 @@ async def test_an_unreachable_rig_reports_only_what_it_knows(
     clock.move_to(T0 + timedelta(minutes=13))
     await tick(hass, T0 + timedelta(minutes=13))
 
-    message = alert(hass)["message"]
+    raised = alert(hass)
+    assert raised is not None
+    message = raised["message"]
     assert "Nothing further can be read" in message
     assert "mount" not in message
 

@@ -16,6 +16,7 @@ from custom_components.nina_astrophotography.api.errors import (
     NinaUnavailableError,
 )
 from custom_components.nina_astrophotography.const import CONF_POLL_INTERVAL, DOMAIN
+from helpers import state_of
 
 CLIENT = "custom_components.nina_astrophotography.api.v2.client.NinaClientV2"
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -61,6 +62,7 @@ async def test_a_build_that_does_not_serve_the_api_fails_the_entry(
     with patch(f"{CLIENT}.get_versions", side_effect=NinaEndpointError("no /version")):
         await hass.config_entries.async_setup(config_entry.entry_id)
     assert config_entry.state is ConfigEntryState.SETUP_ERROR
+    assert config_entry.reason is not None
     assert "API" in config_entry.reason
 
 
@@ -84,7 +86,7 @@ async def test_unload_leaves_no_state_behind(
     assert await hass.config_entries.async_unload(loaded_entry.entry_id)
     await hass.async_block_till_done()
     assert loaded_entry.state is ConfigEntryState.NOT_LOADED
-    state = hass.states.get(LIGHT)
+    state = state_of(hass, LIGHT)
     assert (state.state, state.attributes.get(ATTR_RESTORED)) == (
         STATE_UNAVAILABLE,
         True,

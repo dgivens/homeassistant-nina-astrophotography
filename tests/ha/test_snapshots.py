@@ -25,6 +25,8 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from syrupy.assertion import SnapshotAssertion
 
+from helpers import state_of
+
 # The snapshot extension's own directory (see conftest's `snapshot`), so the
 # plain-text inventory sits beside the .ambr it is regenerated with.
 SNAPSHOTS = Path(__file__).parent / "snapshots"
@@ -88,7 +90,7 @@ async def test_a_small_state_snapshot_pins_the_value_contracts(
         "sensor.n_i_n_a_session_integration_time",
         "binary_sensor.n_i_n_a_safety_monitor_unsafe",
     ]
-    assert {e: hass.states.get(e).state for e in watched} == snapshot
+    assert {e: state_of(hass, e).state for e in watched} == snapshot
 
 
 async def test_entity_id_inventory_is_current(hass: HomeAssistant, registered) -> None:

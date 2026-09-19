@@ -14,6 +14,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.sensor import WEATHER_CHANNELS
+from helpers import state_of
 
 CLOUD_COVER = "sensor.n_i_n_a_weather_cloud_cover"
 SKY_BRIGHTNESS = "sensor.n_i_n_a_weather_sky_brightness"
@@ -115,8 +116,8 @@ async def test_a_channel_the_active_source_cannot_provide_is_unavailable(
     `unknown` forever, which is a lie: OpenMeteo CANNOT report it.
     """
     await advance("weather_openmeteo")
-    assert hass.states.get(SKY_BRIGHTNESS).state == "unavailable"
-    assert hass.states.get(CLOUD_COVER).state != "unavailable"
+    assert state_of(hass, SKY_BRIGHTNESS).state == "unavailable"
+    assert state_of(hass, CLOUD_COVER).state != "unavailable"
 
 
 @pytest.mark.synthetic
@@ -128,7 +129,7 @@ async def test_a_channel_its_own_source_reads_nan_for_stays_available(
     missing reading, not a source that cannot report it.
     """
     await advance("weather_station_channel_nan")
-    assert hass.states.get(SKY_BRIGHTNESS).state == "unknown"
+    assert state_of(hass, SKY_BRIGHTNESS).state == "unknown"
 
 
 async def test_the_unique_id_does_not_change_with_the_source(
@@ -146,7 +147,7 @@ async def test_the_active_weather_source_is_inspectable(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
     await advance("weather_openmeteo")
-    assert hass.states.get(WEATHER_SOURCE).state == "OpenMeteo"
+    assert state_of(hass, WEATHER_SOURCE).state == "OpenMeteo"
 
 
 async def test_a_channel_the_active_source_cannot_feed_survives_a_restart(
@@ -165,8 +166,8 @@ async def test_a_channel_the_active_source_cannot_feed_survives_a_restart(
     """
     await advance("weather_openmeteo")
     await _reload(hass, loaded_entry)
-    assert ATTR_RESTORED not in hass.states.get(SKY_BRIGHTNESS).attributes
-    assert hass.states.get(SKY_BRIGHTNESS).state == "unavailable"
+    assert ATTR_RESTORED not in state_of(hass, SKY_BRIGHTNESS).attributes
+    assert state_of(hass, SKY_BRIGHTNESS).state == "unavailable"
 
 
 @pytest.mark.synthetic
@@ -181,7 +182,7 @@ async def test_the_establishing_source_survives_a_restart(
     await advance("weather_openmeteo")
     await _reload(hass, loaded_entry)
     await advance("weather_station_channel_nan")
-    assert hass.states.get(SKY_BRIGHTNESS).state == "unknown"
+    assert state_of(hass, SKY_BRIGHTNESS).state == "unknown"
 
 
 def test_every_weather_channel_keeps_a_1_4_5_unique_id() -> None:

@@ -6,7 +6,9 @@ read is not a state, and dispatch that cannot tell `?all=true` from
 """
 
 from dataclasses import fields
+from typing import cast
 
+from aiohttp import ClientSession
 from nina_astrophotography.api.errors import NinaConnectionError, NinaEndpointError
 from nina_astrophotography.api.v2.client import NinaClientV2
 import pytest
@@ -31,7 +33,7 @@ COMMON_ENDPOINTS = {
 
 
 def _client(rig: FakeRig) -> NinaClientV2:
-    return NinaClientV2(host="nina.local", port=1888, session=rig)
+    return NinaClientV2(host="nina.local", port=1888, session=cast(ClientSession, rig))
 
 
 def test_every_state_named_by_a_test_exists() -> None:
@@ -124,6 +126,7 @@ async def test_the_root_containers_do_not_tell_running_from_stopped_alone(
     """
     client = _client(FakeRig(STATES, start=state))
     root = await client.get_sequence()
+    assert root is not None
     assert {
         child.name: child.status for child in root.children if child.name in containers
     } == containers
