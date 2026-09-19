@@ -91,6 +91,18 @@ async def test_a_lost_lock_left_over_from_a_stop_reads_off(
     assert hass.states.get(GUIDER).state == "off"
 
 
+@pytest.mark.synthetic
+async def test_a_guider_start_after_the_stop_reads_the_lost_lock_as_running(
+    hass: HomeAssistant, config_entry, rig, push
+) -> None:
+    """The wait ending restarts guiding, and a lock lost from then on is a
+    guider hunting for its star. Fabricates the bare `GUIDER-START` push."""
+    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    push({"Event": "GUIDER-START"})
+    await hass.async_block_till_done()
+    assert hass.states.get(GUIDER).state == "on"
+
+
 @pytest.mark.parametrize(
     ("service", "expected"),
     [

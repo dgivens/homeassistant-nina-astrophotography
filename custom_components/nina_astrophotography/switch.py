@@ -8,11 +8,11 @@ a switch that optimistically assumed its new state would lie for a poll and
 then flip back. The state moves when the next poll says it moved.
 
 **`switch.guider` is on whenever the guider is RUNNING**, which is every state
-but `Stopped` — and a `LostLock` that outlived a `GUIDER-STOP`. `State ==
+but `Stopped` and a `LostLock` that outlived a `GUIDER-STOP`. `State ==
 "Guiding"` reads *off* through `LostLock` and `Calibrating`, and a dashboard
 tap on a switch that looks off sends `/equipment/guider/start` and forces a
 re-settle mid-exposure. `sensor.guider_status` is what distinguishes the
-running states, and reports the rig's `State` unreinterpreted.
+running states, and reports the rig's `State` as it is.
 
 **The cooler is two endpoints, not a toggle.** `/equipment/camera/cool` takes
 the setpoint and has no "resume at the existing target" form, so cooling starts
@@ -104,8 +104,8 @@ def _guider_running(data: NinaData) -> bool | None:
 
     `Looping`, `Calibrating` and `LostLock` are all a guider that has been
     started and has not been stopped; only `Stopped` is off. The exception is
-    a `LostLock` N.I.N.A. is still reporting after `GUIDER-STOP`: the star was
-    lost as guiding stopped, and nothing moves the state on afterwards.
+    a `LostLock` N.I.N.A. is still reporting after `GUIDER-STOP` — see
+    `session.guider_stopped` for why the state outlives the stop.
     """
     guider = data.snapshot.guider
     state = guider.state if guider is not None else None

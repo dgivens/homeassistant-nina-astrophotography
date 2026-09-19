@@ -49,9 +49,11 @@ _TARGET_STARTED = frozenset({"TS-TARGETSTART", "TS-NEWTARGETSTART"})
 # sequence stopping — `SEQUENCE-FINISHED` fires on a manual stop too.
 _WAIT_ENDED_BY = _TARGET_STARTED | {"SEQUENCE-FINISHED"}
 
-# A dither is only issued to a guider that is guiding, so it counts as a start.
-_GUIDER_STARTED = frozenset({"GUIDER-START", "GUIDER-DITHER"})
+# Not GUIDER-DITHER: N.I.N.A. raises it even for a dither it skipped because
+# the guider was not guiding, so it says nothing about the guider running.
+_GUIDER_STARTED = "GUIDER-START"
 _GUIDER_STOPPED = "GUIDER-STOP"
+_GUIDER_STARTED_OR_STOPPED = frozenset({_GUIDER_STARTED, _GUIDER_STOPPED})
 
 # Only a fallback: the rig's own `FocuserSettings.AutoFocusTimeoutSeconds` is
 # polled from /profile/show and is 600 on the captured rig, so folding against
@@ -308,11 +310,16 @@ def latest_target(events: Iterable[NinaEvent],
 def guider_stopped(events: Iterable[NinaEvent], generation: str | None) -> bool:
     """Whether the newest guider start or stop this generation logged is a stop.
 
-    `GuiderInfo.State` alone cannot say: N.I.N.A. keeps reporting `LostLock`
-    after `GUIDER-STOP` when PHD2 lost its star on the way down, so a guider
-    that has been stopped reads exactly like one hunting for a lost star. False
-    when neither event is in the history, which is the side that never offers
-    to restart a guider mid-exposure.
+    `GuiderInfo.State` alone cannot say. It is N.I.N.A.'s cache of PHD2's
+    events, and a stop that interrupts a guide exposure ends with PHD2 clearing
+    its lock position AFTER reporting looping stopped — which N.I.N.A. maps to
+    `LostLock` and keeps until the next start. A guider that has been stopped
+    then reads exactly like one hunting for a lost star.
+
+    False when neither event is in the history, which is the side that never
+    offers to restart a guider mid-exposure. `GUIDER-START` is raised only once
+    a start has settled, and guiding started from PHD2 itself raises none, so a
+    star lost before either reads as stopped.
     """
-    newest = _newest(events, _GUIDER_STARTED | {_GUIDER_STOPPED}, generation)
+    newest = _newest(events, _GUIDER_STARTED_OR_STOPPED, generation)
     return newest is not None and newest.name == _GUIDER_STOPPED

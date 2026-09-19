@@ -395,7 +395,8 @@ def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> Non
         ("imaging_guiding", False),
         ("scheduler_waiting", False),
     ],
-    ids=["stopped for a scheduler wait", "guiding", "no start or stop logged"],
+    ids=["stopped for a scheduler wait", "guiding",
+         "only a GUIDER-CONNECTED logged"],
 )
 def test_the_guider_is_stopped_when_a_stop_is_its_newest_event(
     capture: str, expected: bool
@@ -406,23 +407,23 @@ def test_the_guider_is_stopped_when_a_stop_is_its_newest_event(
 
 
 @pytest.mark.parametrize(
-    ("names", "generations", "expected"),
+    ("logged", "expected"),
     [
-        (["GUIDER-STOP", "GUIDER-DITHER"], ["g1", "g1"], False),
-        (["GUIDER-START", "GUIDER-STOP"], ["g1", "g0"], False),
+        ([("GUIDER-STOP", "g1"), ("GUIDER-DITHER", "g1")], True),
+        ([("GUIDER-START", "g1"), ("GUIDER-STOP", "g0")], False),
     ],
     ids=["a dither after the stop", "the stop was the previous process's"],
 )
 @pytest.mark.synthetic
-def test_only_this_generations_newest_guider_event_counts(
-    names: list[str], generations: list[str], expected: bool
+def test_neither_a_dither_nor_a_previous_process_moves_the_verdict(
+    logged: list[tuple[str, str]], expected: bool
 ) -> None:
-    """A dither is issued only to a guiding guider, so it restarts the clock
-    as a start does; a stop from before a N.I.N.A. restart says nothing."""
+    """N.I.N.A. raises GUIDER-DITHER even for a dither it skipped, so it is
+    not a start; a stop from before a N.I.N.A. restart says nothing."""
     events = [
         NinaEvent(name=name, time=datetime(2026, 9, 18, 21, minute, tzinfo=RIG),
                   data={}, generation=generation)
-        for minute, (name, generation) in enumerate(zip(names, generations))
+        for minute, (name, generation) in enumerate(logged)
     ]
     assert guider_stopped(events, "g1") is expected
 

@@ -156,7 +156,7 @@ class NinaData:
     """When the wait Target Scheduler is in ends, or None if it is not waiting.
     The event names no reason, so neither can this."""
     guider_stopped: bool
-    """Whether the newest `GUIDER-START`/`-DITHER`/`-STOP` is a stop — what
+    """Whether the newest `GUIDER-START`/`-STOP` is a stop — what
     tells a stale `LostLock` from a guider hunting for its star."""
 
 
