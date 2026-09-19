@@ -318,8 +318,8 @@ def test_events_from_a_previous_session_do_not_report_an_autofocus(night_events)
 
 def test_the_newest_frame_ignores_the_session_window(night) -> None:
     """The rig's image history does not roll over at local noon, so what
-    `/image/0` renders long after the rollover is still last night's frame —
-    which `fold`'s own `last_frame` has by then dropped."""
+    `image.last_frame` renders long after the rollover is still last night's
+    frame — which `fold`'s own `last_frame` has by then dropped."""
     newest = newest_frame(night, "g1")
     assert newest.date == max(f.date for f in night)
     assert fold(night, [], "g1", now=_AFTER_THE_ROLLOVER).last_frame is None

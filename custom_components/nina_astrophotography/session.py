@@ -271,8 +271,8 @@ def recent_frames(frames: Iterable[Frame], generation: str | None) -> tuple[Fram
 
 
 def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | None:
-    """The newest frame this process saved, of any type — what `/image/0`
-    serves.
+    """The newest frame this process saved, of any type — what `image.last_frame`
+    renders.
 
     Deliberately outside the session window that `fold` applies: the rig's
     image history does not roll over at local noon, so the frame the route

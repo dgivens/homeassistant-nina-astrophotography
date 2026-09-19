@@ -5,14 +5,17 @@ unauthenticated request — that is Home Assistant's own framework behaviour,
 not this integration's.
 
 Most cases force the count to 1 (`rig.respond("/image-history?count=true",
-ok(1))`) so index 0 translates to N.I.N.A.'s own index 0 — the path the
-`imaging` state already stubs with a real frame — leaving the translation
-arithmetic itself to `test_index_0_is_translated_to_nina_s_newest_index`.
+ok(1))`) so index 0 translates to N.I.N.A.'s own index 0, leaving the
+translation arithmetic itself to
+`test_index_0_is_translated_to_ninas_newest_index`. The `imaging` state serves
+bytes at its own newest index only, so a case that reads the body stubs
+`/image/0` for itself.
 """
 import pytest
 from helpers import FakeResponse, failure, ok
 
 ENTITY = "image.n_i_n_a_last_frame"
+FRAME = b"\xff\xd8\xff\xe0 not a frame"
 
 
 def _params(rig, fragment: str) -> dict | None:
@@ -31,12 +34,13 @@ async def test_a_real_image_proxies_through_with_its_content_type(
     hass, loaded_entry, rig, hass_client
 ) -> None:
     rig.respond("/image-history?count=true", ok(1))
+    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
     client = await hass_client()
     resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
     assert resp.status == 200
     assert resp.content_type == "image/jpeg"
-    # Not just a 200: the actual bytes the fake rig serves at `/image/0`.
-    assert await resp.read() == b"\xff\xd8\xff\xe0 not a frame"
+    # Not just a 200: the bytes proxied through are the ones the rig served.
+    assert await resp.read() == FRAME
 
 
 async def test_index_0_is_translated_to_ninas_newest_index(
@@ -140,6 +144,7 @@ async def test_autoprepare_is_only_sent_when_the_query_asks_for_it(
     absent query param must not default to stretched, or a `stretch: false`
     card would get N.I.N.A.'s auto-stretch anyway."""
     rig.respond("/image-history?count=true", ok(1))
+    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
     client = await hass_client()
     await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
     assert "autoPrepare" not in _params(rig, "/image/0")

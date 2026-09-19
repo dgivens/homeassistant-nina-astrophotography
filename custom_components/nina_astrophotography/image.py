@@ -40,6 +40,17 @@ PARALLEL_UPDATES = 0
 _QUALITY = 85
 
 
+async def _fetch_last_frame(client: NinaClientV2, _data: NinaData) -> bytes:
+    """`/image/{index}` counts OLDEST-first, so the newest frame is `count - 1`.
+
+    The count is read per call rather than taken from the fold, which can lag a
+    frame behind what N.I.N.A. holds right now; an off-by-one here silently
+    renders the wrong frame.
+    """
+    count = await client.get_image_history_count()
+    return await client.get_image_bytes(count - 1, quality=_QUALITY)
+
+
 @dataclass(frozen=True, kw_only=True)
 class NinaImageDescription(ImageEntityDescription):
     """An image, plus where its bytes and its timestamp come from.
@@ -66,7 +77,7 @@ DESCRIPTIONS: tuple[NinaImageDescription, ...] = (
         stamp=lambda data: (
             None if data.newest_frame is None else data.newest_frame.date
         ),
-        fetch=lambda client, _data: client.get_image_bytes(0, quality=_QUALITY),
+        fetch=_fetch_last_frame,
     ),
     NinaImageDescription(
         key="livestack",

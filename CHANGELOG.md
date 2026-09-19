@@ -299,6 +299,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   configuration mistake rather than a browser policy. The integration now
   proxies the bytes itself, same origin as the dashboard. The card's `host`
   and `port` options are gone; nothing replaces them.
+- **`image.<instance>_last_frame` renders the newest frame, not the oldest.**
+  N.I.N.A. counts `/image/{index}` oldest-first; the entity asked for index 0
+  believing that meant newest, so it rendered the first frame the rig ever
+  saved instead of the latest one.
 
 ### Removed
 

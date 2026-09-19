@@ -132,10 +132,10 @@ class NinaData:
     never run one. Dated against the session before it is believed — the report
     survives a restart, so an old bad run is not tonight's problem."""
     newest_frame: Frame | None
-    """The newest frame of any type this process saved — what `/image/0` serves,
-    and so `image.last_frame`'s timestamp. `session.last_frame` is the newest
-    LIGHT inside the session window: after a dawn flat run, and at any hour
-    after the noon rollover, the two name different frames or none at all."""
+    """The newest frame of any type this process saved — `image.last_frame`'s
+    timestamp. `session.last_frame` is the newest LIGHT inside the session
+    window: after a dawn flat run, and at any hour after the noon rollover,
+    the two name different frames or none at all."""
     recent_frames: tuple[Frame, ...]
     """The newest frames of any type, newest first, bounded — what the
     `recent_frames` sensor attribute publishes for a dashboard's thumbnail

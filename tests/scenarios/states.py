@@ -75,9 +75,12 @@ def _captured(slug: str) -> State:
     files, for the reason `_versions` gives — the captured `{slug}_version.json`
     is unreadable by anything but the drift guard, its `Response` redacted.
 
-    `/image/0` is served the bare path's envelope: a capture never calls it —
-    it answers bytes — and a history that has no frame 0 has nothing else to
-    send. `_RESTARTED` makes the same assumption.
+    `/image/0` defaults to the bare path's envelope: a capture never calls it —
+    it answers bytes — and this is only ever read where the history is empty
+    (`scheduler_waiting`, `sequence_restarted`, `sequence_stopped`), which has
+    nothing else to send at any index. A capture WITH frames overrides this key
+    with the real newest index — see `_IMAGING_GUIDING`. `_RESTARTED` makes the
+    same empty-history assumption.
     """
     return {
         **_versions(f"{slug}_equipment_info.json"),
@@ -221,6 +224,17 @@ def _gauge() -> dict:
 # pixels are never read. A JPEG magic number is the whole of what matters.
 _JPEG = FakeResponse(b"\xff\xd8\xff\xe0 not a frame", content_type="image/jpeg")
 
+
+def _newest_image(count_name: str) -> str:
+    """The `/image/{index}` path of a state's newest frame.
+
+    N.I.N.A. counts oldest-first, so that is `count - 1`. Read from the same
+    fixture the state serves at `/image-history?count=true`, so the two cannot
+    drift apart.
+    """
+    return f"/image/{load_envelope(count_name)['Response'] - 1}"
+
+
 # `/livestack/image/{target}/{filter}` is keyed by the pair the state's newest
 # STACK-UPDATED names, url-quoted as the client sends it. A state whose event
 # history holds no stack serves no such path, and creates no `image.livestack`.
@@ -239,7 +253,7 @@ _IMAGING: State = {
     "/event-history": load_envelope("dawn_event_history.json"),
     "/sequence/json": load_envelope("dawn_sequence_complete.json"),
     "/flats/status": load_envelope("dawn_flats_status_idle.json"),
-    "/image/0": _JPEG,
+    _newest_image("dawn_image_history_count.json"): _JPEG,
     _DAWN_STACK: _JPEG,
 }
 
@@ -249,7 +263,7 @@ _IMAGING: State = {
 _IMAGING_GUIDING: State = {
     **_captured("imaging_guiding"),
     # This state HAS frames, so both image routes answer bytes.
-    "/image/0": _JPEG,
+    _newest_image("imaging_guiding_image_history_count.json"): _JPEG,
     _GUIDING_STACK: _JPEG,
 }
 
@@ -393,6 +407,7 @@ STATES: dict[str, State] = {
             **load_envelope("dawn_image_history_count.json"),
             "Response": 123,
         },
+        "/image/122": _JPEG,
     },
     # The same rig with a SHORTER history under an UNCHANGED
     # /application-start: `?count=true` going backwards is a restart signal in
@@ -408,6 +423,7 @@ STATES: dict[str, State] = {
         "/image-history?all=true": _shorter_history(
             "dawn_image_history_with_flats.json", 100
         ),
+        "/image/99": _JPEG,
     },
     # The same rig answering /application-start with a null Response — the
     # generation unreadable for one tick. Also a scalar variant: the corpus
