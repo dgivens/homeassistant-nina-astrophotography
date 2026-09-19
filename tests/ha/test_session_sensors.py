@@ -102,6 +102,17 @@ async def test_recent_lights_survive_a_dawn_flat_run(
     assert recent[-1]["hfr"] == pytest.approx(float(state.state))
 
 
+async def test_recent_lights_name_their_target(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
+) -> None:
+    """A Target Scheduler night changes field mid-series, and star count moves
+    by whole factors with it; the card marks the change from this field."""
+    await advance("dawn_flats")
+    recent = hass.states.get(LAST_IMAGE_HFR).attributes["recent_lights"]
+    assert {light["target"] for light in recent} == {
+        "Dark Shark Nebula", "Lobster & Bubble", "NGC 281", "Wizard Nebula"}
+
+
 async def test_the_session_start_sensor_is_the_most_recent_local_noon(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, entity_registry
 ) -> None:

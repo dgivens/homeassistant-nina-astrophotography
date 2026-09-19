@@ -121,6 +121,7 @@ class NinaFrameStatsCard extends HTMLElement {
     this._stars = [];
     this._adu = [];
     this._filters = [];
+    this._boundaries = [];
   }
 
   setConfig(config) {
@@ -156,6 +157,12 @@ class NinaFrameStatsCard extends HTMLElement {
     this._stars = lights.map((light) => light.stars ?? null);
     this._adu = lights.map((light) => light.mean ?? null);
     this._filters = lights.map((light) => light.filter ?? null);
+    // A new target or exposure length moves star count and ADU by whole
+    // factors — a galaxy field against a Milky Way one — which would
+    // otherwise read as clouds rolling in.
+    this._boundaries = lights.flatMap((light, i) =>
+      i > 0 && (light.target !== lights[i - 1].target
+                || light.exposure !== lights[i - 1].exposure) ? [i] : []);
   }
 
   _mean(values) {
@@ -338,6 +345,16 @@ class NinaFrameStatsCard extends HTMLElement {
       const y = pad.t + (g / 3) * plotH;
       ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W - pad.r, y); ctx.stroke();
     }
+
+    // Target or exposure changes, midway between the two frames either side.
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 3]);
+    for (const i of this._boundaries) {
+      const x = (xOf(i - 1) + xOf(i)) / 2;
+      ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b); ctx.stroke();
+    }
+    ctx.setLineDash([]);
 
     // Filled area under line
     ctx.beginPath();
