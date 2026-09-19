@@ -238,7 +238,7 @@ class NinaNumber(NinaEntity, NumberEntity):
         """The range to offer, this poll; `None` when the driver reports none."""
         description = self.entity_description
         if description.bounds is None:
-            return description.native_min_value, description.native_max_value
+            return super().native_min_value, super().native_max_value
         return description.bounds(self.coordinator.data)
 
     @property
@@ -286,9 +286,11 @@ class NinaNumberChannel(NinaChannelEntity, NumberEntity):
         channel: SwitchChannelModel,
     ) -> None:
         super().__init__(coordinator, entry, channel)
+        assert channel.minimum is not None and channel.maximum is not None
         self._attr_native_min_value = channel.minimum
         self._attr_native_max_value = channel.maximum
-        self._attr_native_step = channel.step_size
+        if channel.step_size is not None:
+            self._attr_native_step = channel.step_size
 
     @property
     def native_value(self) -> float | None:
@@ -301,7 +303,7 @@ class NinaNumberChannel(NinaChannelEntity, NumberEntity):
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="channel_gone",
-                translation_placeholders={"channel": self.name or str(self._index)},
+                translation_placeholders={"channel": self._attr_name or str(self._index)},
             )
         try:
             await self.coordinator.client.set_switch_value(self._index, value)

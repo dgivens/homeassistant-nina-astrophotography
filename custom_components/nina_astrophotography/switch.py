@@ -294,6 +294,7 @@ class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
         channel: SwitchChannelModel,
     ) -> None:
         super().__init__(coordinator, entry, channel)
+        assert channel.minimum is not None and channel.maximum is not None
         self._off_value = channel.minimum
         self._on_value = channel.maximum
 
@@ -315,7 +316,7 @@ class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="channel_gone",
-                translation_placeholders={"channel": self.name or str(self._index)},
+                translation_placeholders={"channel": self._attr_name or str(self._index)},
             )
         try:
             await self.coordinator.client.set_switch_value(self._index, value)

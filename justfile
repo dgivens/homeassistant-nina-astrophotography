@@ -23,15 +23,11 @@ test-ha:
 
 test-all: test test-ha
 
-# Pyright against one file or directory, inside the synced test-ha venv (it's
-# what has `homeassistant` installed) — `--with pyright` adds it just for this
-# run rather than making it a project dependency. No whole-repo target: most
-# of the codebase is not pyright-clean (HA's own Entity base classes trip
-# reportIncompatibleVariableOverride on every cached_property override), and
-# CLAUDE.md already disclaims a configured linter. Point this at whatever
-# you're actively touching, e.g. `just typecheck custom_components/nina_astrophotography/frontend.py`.
-typecheck path:
-    uv run --group test-ha --with pyright pyright {{ path }}
+# Pyright, as CI runs it: the paths and rules are [tool.pyright] in
+# pyproject.toml. Pass paths to check others, e.g. `just typecheck tests/ha`
+# (tests/ is not gated yet).
+typecheck *paths:
+    uv run --group dev --group test-ha pyright {{ paths }}
 
 # The coverage floors, exactly as CI computes them.
 coverage:
@@ -46,7 +42,7 @@ fixtures-check:
     uv run python scripts/check_fixtures.py tests/fixtures/*.json
 
 # Everything CI checks, run locally.
-ci: test-all coverage fixtures-check
+ci: test-all coverage typecheck fixtures-check
 
 # Remove caches and coverage output.
 clean:

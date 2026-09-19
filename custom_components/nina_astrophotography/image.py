@@ -51,6 +51,14 @@ async def _fetch_last_frame(client: NinaClientV2, _data: NinaData) -> bytes:
     return await client.get_image_bytes(count - 1, quality=_QUALITY)
 
 
+async def _fetch_livestack(client: NinaClientV2, data: NinaData) -> bytes:
+    if data.stack is None:
+        raise NinaNoImageError("No live stack")
+    return await client.get_livestack_image_bytes(
+        data.stack.target, data.stack.filter_name, quality=_QUALITY
+    )
+
+
 @dataclass(frozen=True, kw_only=True)
 class NinaImageDescription(ImageEntityDescription):
     """An image, plus where its bytes and its timestamp come from.
@@ -83,9 +91,7 @@ DESCRIPTIONS: tuple[NinaImageDescription, ...] = (
         key="livestack",
         translation_key="livestack",
         stamp=lambda data: None if data.stack is None else data.stack.updated,
-        fetch=lambda client, data: client.get_livestack_image_bytes(
-            data.stack.target, data.stack.filter_name, quality=_QUALITY
-        ),
+        fetch=_fetch_livestack,
         observed=lambda data: data.stack is not None,
         # Which stack is on screen. On a mono rig the plugin holds one stack
         # per filter and this entity follows whichever updated last, so

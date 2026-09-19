@@ -15,10 +15,10 @@ inherently does. Keep it here even if that seems worth tidying later.
 from __future__ import annotations
 
 from aiohttp import web
-from homeassistant.components.http import KEY_HASS, HomeAssistantView
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.http import KEY_HASS, HomeAssistantView
 
 from .api.errors import NinaCommandError, NinaError, NinaNoImageError
 from .api.v2.client import NinaClientV2

@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.light import ATTR_BRIGHTNESS, ColorMode, LightEntity
+from homeassistant.components.light import ATTR_BRIGHTNESS, LightEntity
+from homeassistant.components.light.const import ColorMode
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -79,12 +80,13 @@ class NinaFlatLight(NinaEntity, LightEntity):
         # The panel's own two conditions, on top of the base's levels 1 and 2.
         # A cover-only panel and one whose driver reports no usable range are
         # unavailable, never absent: the entity must not appear and disappear
-        # across restarts. Past `super().available` the panel is present, so
-        # the short-circuit is what makes the attribute reads safe.
+        # across restarts.
+        panel = self._panel
         return bool(
             super().available
+            and panel is not None
             and self._span > 0
-            and self._panel.supports_on_off is not False
+            and panel.supports_on_off is not False
         )
 
     @property
@@ -112,7 +114,8 @@ class NinaFlatLight(NinaEntity, LightEntity):
             raise ServiceValidationError(
                 f"Brightness must be between 1 and {_HA_MAX}, got {ha_brightness}"
             )
-        low = self._panel.min_brightness or 0
+        panel = self._panel
+        low = 0 if panel is None else (panel.min_brightness or 0)
         return round(low + (ha_brightness / _HA_MAX) * self._span)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
