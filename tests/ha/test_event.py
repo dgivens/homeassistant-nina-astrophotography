@@ -28,7 +28,8 @@ async def test_a_camera_download_timeout_fires_it_too(
 ) -> None:
     """Named from the plugin's source and never seen in a capture: if the name
     is wrong this row costs nothing, and if it is right it is the one warning a
-    stalled camera gives."""
+    stalled camera gives.
+    """
     push(_wire("CAMERA-DOWNLOAD-TIMEOUT"))
     await hass.async_block_till_done()
     assert hass.states.get(ERROR).attributes["event_type"] == "camera_download_timeout"
@@ -48,7 +49,8 @@ async def test_the_nights_replayed_failures_do_not_fire_at_startup(
 ) -> None:
     """The dawn `/event-history` holds an ERROR-PLATESOLVE. Replay folds into
     the coordinator without reaching subscribers, so a Home Assistant restart
-    does not re-announce hours-old failures."""
+    does not re-announce hours-old failures.
+    """
     assert hass.states.get(ERROR).state == "unknown"
 
 
@@ -76,7 +78,8 @@ async def test_a_failure_that_predates_home_assistant_is_history_not_an_alarm(
     hass: HomeAssistant, config_entry, rig, inside_the_dawn_session
 ) -> None:
     """Set up with the verdict already true: seeding from the first published
-    fold is what keeps a restart from announcing last night's hung run."""
+    fold is what keeps a restart from announcing last night's hung run.
+    """
     rig.goto("autofocus_timed_out")
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
@@ -89,7 +92,8 @@ async def test_a_hung_autofocus_fires_once_and_not_on_every_publish(
 ) -> None:
     """The EDGE, not the level. The verdict stays true until the next run
     finishes, so a level-triggered entity would fire on every publish —
-    hundreds a night — and every existing test would stay green."""
+    hundreds a night — and every existing test would stay green.
+    """
     push({"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-04T11:00:00+00:00"})
     await hass.async_block_till_done()
     fired_at = hass.states.get(ERROR).state

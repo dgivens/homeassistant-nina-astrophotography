@@ -15,8 +15,6 @@ verdict rather than an event.
 appeared in a capture. It costs one table row and fires nothing if the name is
 wrong.
 """
-from __future__ import annotations
-
 from homeassistant.components.event import EventEntity, EventEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback

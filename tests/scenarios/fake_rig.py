@@ -12,8 +12,6 @@ not appear in the URL: the client passes them to `session.get` separately.
 
 Imports nothing from Home Assistant: `tests/unit` uses this too.
 """
-from __future__ import annotations
-
 from collections.abc import Iterable, Mapping
 
 from helpers import FakeResponse, FakeSession, ok

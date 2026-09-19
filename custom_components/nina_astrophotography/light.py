@@ -16,8 +16,6 @@ Success: true before the state changes. FLAT-LIGHT-TOGGLED carries an empty
 payload and FLAT-BRIGHTNESS-CHANGED fires repeatedly through a ramp with
 inconsistent Previous values — both are change hints, nothing more.
 """
-from __future__ import annotations
-
 from typing import Any
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, LightEntity
@@ -73,7 +71,7 @@ class NinaFlatLight(NinaEntity, LightEntity):
         if self._remembered is not None:
             return self._remembered
         current = self.brightness if self.is_on else None
-        return current if current else self._DEFAULT_ON_BRIGHTNESS
+        return current or self._DEFAULT_ON_BRIGHTNESS
 
     @property
     def available(self) -> bool:

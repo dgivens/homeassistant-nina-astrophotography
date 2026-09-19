@@ -25,10 +25,8 @@ returns `None` everywhere and the fallback is dead code. A capture of a loaded
 Advanced Sequencer run is what settles it; until then treat both as provisional
 and do not build on them.
 """
-from __future__ import annotations
-
-import logging
 from collections.abc import Iterable, Iterator
+import logging
 
 from .api.models import NinaEvent, SequenceNode
 

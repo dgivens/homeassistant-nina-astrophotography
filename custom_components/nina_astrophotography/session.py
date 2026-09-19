@@ -16,11 +16,9 @@ The process boundary is the generation tag, applied by FILTERING. Clearing races
 a concurrent poll, produces a false positive on the first read when no baseline
 exists, and loses events arriving during the refetch.
 """
-from __future__ import annotations
-
-import heapq
 from collections.abc import Callable, Container, Iterable, Sequence
 from datetime import datetime, timedelta
+import heapq
 from math import fsum
 from statistics import fmean
 

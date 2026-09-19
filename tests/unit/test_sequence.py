@@ -3,14 +3,11 @@
 Only the ROOT containers' `Status` is read, by `running`; nothing here asserts
 on the status of a node below them (§6.2).
 """
-from __future__ import annotations
-
-import pytest
 from helpers import load_fixture
-
 from nina_astrophotography.api.models import SequenceNode
 from nina_astrophotography.api.v2.mapper import map_event, map_sequence
 from nina_astrophotography.sequence import progress_percent, running, target_name
+import pytest
 
 
 def _node(name: str, *children: SequenceNode, **own) -> SequenceNode:
@@ -32,7 +29,8 @@ def test_a_target_scheduler_tree_names_no_target_and_counts_nothing(
     fixture: str,
 ) -> None:
     """Its imaging container holds the target list internally. `None` is the
-    truth about what this API exposes, not a parse that failed."""
+    truth about what this API exposes, not a parse that failed.
+    """
     tree = map_sequence(load_fixture(fixture))
     assert target_name(tree) is None
     assert progress_percent(tree) is None
@@ -56,7 +54,8 @@ def test_the_tree_seeds_the_running_signal_and_the_events_correct_it(
 ) -> None:
     """Neither source is enough alone: the tree still reads CREATED ten seconds
     into a run, and a sequence started before the history window leaves no
-    SEQUENCE-* event to read."""
+    SEQUENCE-* event to read.
+    """
     trees = {"dawn": "dawn_sequence_complete.json"}
     tree = map_sequence(load_fixture(trees.get(state, f"{state}_sequence_json.json")))
     events = [map_event(wire, generation="g1")
@@ -66,7 +65,8 @@ def test_the_tree_seeds_the_running_signal_and_the_events_correct_it(
 
 def test_the_last_named_target_in_pre_order_wins() -> None:
     """Last, not deepest — depth does not order sibling targets. Pinned so the
-    ordering is a decision rather than an accident of the walk."""
+    ordering is a decision rather than an accident of the walk.
+    """
     tree = _node("Sequence", _node("Targets", TargetName="M31"),
                  TargetName="Tonight")
     assert target_name(tree) == "M31"
@@ -90,7 +90,8 @@ def test_an_unusable_innermost_count_does_not_fall_out_to_its_container(
     innermost: str,
 ) -> None:
     """Reporting the enclosing container's fraction would present the night's
-    progress as this target's — plausible, unlogged, and wrong."""
+    progress as this target's — plausible, unlogged, and wrong.
+    """
     tree = _node("Sequence", _node("Target", iterations=innermost),
                  iterations="1/2")
     assert progress_percent(tree) is None
@@ -104,7 +105,8 @@ def test_a_count_outside_its_own_range_is_clamped(
 ) -> None:
     """`-1` is a live sentinel elsewhere in this API, and the sensor carries
     `state_class: measurement` — an out-of-range value would enter long-term
-    statistics and stay there."""
+    statistics and stay there.
+    """
     assert progress_percent(_node("Sequence", iterations=iterations)) == expected
 
 
@@ -115,7 +117,8 @@ def test_an_iteration_count_that_is_not_a_fraction_reads_nothing(
     iterations: str | None,
 ) -> None:
     """A percentage invented from a shape we did not recognise is worse than no
-    reading — a zero total included."""
+    reading — a zero total included.
+    """
     assert progress_percent(_node("Sequence", iterations=iterations)) is None
 
 

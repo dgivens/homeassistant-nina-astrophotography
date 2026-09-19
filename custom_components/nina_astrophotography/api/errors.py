@@ -6,8 +6,6 @@ HA-free. Mapping to Home Assistant happens in __init__.py and coordinator.py.
 Definitions are semantic, not HTTP: the Advanced API answers HTTP 200 for
 almost everything and carries the real outcome in the envelope's StatusCode.
 """
-from __future__ import annotations
-
 
 class NinaError(Exception):
     """Base for everything the client raises."""

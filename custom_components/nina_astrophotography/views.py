@@ -12,8 +12,6 @@ Deliberately NOT under `api/`: `api/` is the version-independent, HA-free
 seam (nothing there imports `homeassistant`), and a `HomeAssistantView`
 inherently does. Keep it here even if that seems worth tidying later.
 """
-from __future__ import annotations
-
 from aiohttp import web
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant

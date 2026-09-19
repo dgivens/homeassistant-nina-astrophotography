@@ -30,8 +30,6 @@ is the next poll's reading; `flat_panel_brightness` in particular is raw driver
 units, not the `light`'s HA 0–255, and setting it does not toggle the light —
 brightness 0 is not off (§5.3.4).
 """
-from __future__ import annotations
-
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 

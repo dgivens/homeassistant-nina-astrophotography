@@ -9,11 +9,9 @@ This must not apply to tests/ha: Home Assistant loads the integration as
 `custom_components.nina_astrophotography`, and registering it under a second
 name would import the same source twice into two distinct class objects.
 """
-from __future__ import annotations
-
+from pathlib import Path
 import sys
 import types
-from pathlib import Path
 
 _COMPONENT = (
     Path(__file__).resolve().parents[2]

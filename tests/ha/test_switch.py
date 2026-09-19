@@ -8,7 +8,6 @@ test that reads a state back after a command asserts it did **not** move.
 and the flat panel has; `imaging_guiding` is the mirror image. Which state a
 test starts from is therefore load-bearing, not incidental.
 """
-import pytest
 from homeassistant.components.switch import (
     DOMAIN as SWITCH_DOMAIN,
     SERVICE_TURN_OFF,
@@ -17,6 +16,7 @@ from homeassistant.components.switch import (
 from homeassistant.const import ATTR_ENTITY_ID, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
@@ -76,7 +76,8 @@ async def test_the_guider_switch_is_on_whenever_the_guider_is_running(
 ) -> None:
     """`State == "Guiding"` reads OFF through LostLock and Calibrating, so a
     dashboard tap on a switch that looks off sends /equipment/guider/start and
-    forces a re-settle mid-exposure. "Running" is the honest predicate."""
+    forces a re-settle mid-exposure. "Running" is the honest predicate.
+    """
     await advance(state)
     assert hass.states.get(GUIDER).state == expected
 
@@ -86,7 +87,8 @@ async def test_a_lost_lock_left_over_from_a_stop_reads_off(
 ) -> None:
     """N.I.N.A. keeps `LostLock` after `GUIDER-STOP`, and a switch reading on
     would never let a "restart guiding when it stops" automation fire. Set up
-    in the state because `/event-history` is replayed once."""
+    in the state because `/event-history` is replayed once.
+    """
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     assert hass.states.get(GUIDER).state == "off"
 
@@ -98,7 +100,8 @@ async def test_a_lock_lost_while_guiding_restarts_reads_on(
     """GUIDER-START waits for the settle, so a star lost during it is a
     `LostLock` with the stop still newest. The guider polled running since the
     stop is what keeps the switch on — off would invite a tap that interrupts
-    the start in progress."""
+    the start in progress.
+    """
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     coordinator = config_entry.runtime_data.coordinator
     for state in ("scheduler_waiting_lost_lock", "guider_restarting_after_stop",
@@ -115,7 +118,8 @@ async def test_a_stop_pushed_while_a_poll_is_in_flight_is_not_passed_by_it(
 ) -> None:
     """The poll's snapshot was taken while the guider was still guiding, so it
     says nothing about the stop pushed after it — the next `LostLock` is the
-    stop's leftover. Fabricates the bare `GUIDER-STOP` push."""
+    stop's leftover. Fabricates the bare `GUIDER-STOP` push.
+    """
     await advance("imaging_guiding")
     fetch = NinaClientV2.get_equipment
 
@@ -136,7 +140,8 @@ async def test_a_guider_start_after_the_stop_reads_the_lost_lock_as_running(
     hass: HomeAssistant, config_entry, rig, push
 ) -> None:
     """The wait ending restarts guiding, and a lock lost from then on is a
-    guider hunting for its star. Fabricates the bare `GUIDER-START` push."""
+    guider hunting for its star. Fabricates the bare `GUIDER-START` push.
+    """
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     push({"Event": "GUIDER-START"})
     await hass.async_block_till_done()
@@ -163,7 +168,8 @@ async def test_the_livestack_switch_reads_the_status_endpoint(
     hass: HomeAssistant, config_entry, rig
 ) -> None:
     """The endpoint answers `"Running"` where the spec's enum says `running`,
-    so the comparison is case-insensitive."""
+    so the comparison is case-insensitive.
+    """
     await _set_up_at(hass, config_entry, rig, "imaging_guiding")
     assert hass.states.get(LIVESTACK).state == "on"
 
@@ -173,7 +179,8 @@ async def test_the_livestack_switch_exists_and_reads_off_without_the_plugin(
 ) -> None:
     """`/livestack/status` "cannot fail, even if the livestack plugin is not
     installed" — but a build without the route 404s, and that rig gets a switch
-    that reads stopped rather than no switch at all."""
+    that reads stopped rather than no switch at all.
+    """
     assert hass.states.get(LIVESTACK).state == "off"
 
 
@@ -181,7 +188,8 @@ async def test_a_commands_own_response_never_sets_the_state(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """Measured: set-light?on=true answered success while an immediate re-read
-    still showed LightOn false; it changed seconds later."""
+    still showed LightOn false; it changed seconds later.
+    """
     await _call(hass, SERVICE_TURN_ON, LIVESTACK)
     assert rig.sent == [("/livestack/start", None)]
     assert hass.states.get(LIVESTACK).state == "off"
@@ -202,7 +210,8 @@ async def test_a_switch_channel_reads_its_value_not_its_target_value(
     hass: HomeAssistant, advance
 ) -> None:
     """`TargetValue` is what the channel was last asked for, which is the last
-    commanded state — the thing §5.2.3 refuses to show as the state."""
+    commanded state — the thing §5.2.3 refuses to show as the state.
+    """
     await advance("switch_channel_commanded_not_yet_switched")
     assert hass.states.get(OUTLET).state == "off"
 
@@ -212,7 +221,8 @@ async def test_a_switch_channel_sends_its_own_id_not_its_position(
     hass: HomeAssistant, config_entry, rig
 ) -> None:
     """`index` is the channel's `Id`. Every capture numbers from 0 in list
-    order, so a channel list starting at 5 is what tells them apart."""
+    order, so a channel list starting at 5 is what tells them apart.
+    """
     await _set_up_at(hass, config_entry, rig, "switch_channels_numbered_from_five")
     await _call(hass, SERVICE_TURN_OFF, OUTLET)
     assert rig.sent == [("/equipment/switch/set", {"index": 5, "value": 0.0})]
@@ -223,7 +233,8 @@ async def test_channels_the_driver_leaves_unnamed_do_not_collide(
     hass: HomeAssistant, config_entry, rig
 ) -> None:
     """An empty entity name resolves to the device's own under
-    `has_entity_name`, so two unnamed channels would be one entity id."""
+    `has_entity_name`, so two unnamed channels would be one entity id.
+    """
     await _set_up_at(hass, config_entry, rig, "switch_channels_with_no_names")
     numbered = ["switch.n_i_n_a_switch_channel_0", "switch.n_i_n_a_switch_channel_1"]
     assert [name for name in numbered if hass.states.get(name)] == numbered
@@ -234,7 +245,8 @@ async def test_on_and_off_are_the_channels_own_range_ends(
     hass: HomeAssistant, config_entry, rig
 ) -> None:
     """A channel numbering its two states 1 and 2 is on at 2 and off at 1;
-    sending a hardcoded 0 would be out of range and silently clamped."""
+    sending a hardcoded 0 would be out of range and silently clamped.
+    """
     await _set_up_at(hass, config_entry, rig, "switch_channel_with_a_shifted_range")
     assert hass.states.get(OUTLET).state == "off"
     await _call(hass, SERVICE_TURN_ON, OUTLET)
@@ -246,7 +258,8 @@ async def test_the_cooler_sends_the_setpoint_the_camera_reports(
 ) -> None:
     """/cool has no "resume at the existing target" form, so starting the
     cooler has to name a temperature: the captured -5 °C, not the -10 °C 1.4.5
-    hardcoded whatever the camera was set to."""
+    hardcoded whatever the camera was set to.
+    """
     await advance("imaging_guiding")
     await _call(hass, SERVICE_TURN_ON, COOLER)
     assert rig.sent == [
@@ -260,7 +273,8 @@ async def test_the_cooler_refuses_to_start_without_a_setpoint(
 ) -> None:
     """A camera with no cooling reports `TemperatureSetPoint: "NaN"`. Cooling
     to a guessed temperature is worse than refusing. Fabricated: no uncooled
-    camera has been captured."""
+    camera has been captured.
+    """
     await advance("camera_without_a_cooling_setpoint")
     with pytest.raises(ServiceValidationError):
         await _call(hass, SERVICE_TURN_ON, COOLER)
@@ -279,7 +293,8 @@ async def test_the_dew_heater_sends_the_parameter_the_api_binds(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """The parameter is `power`, not `on`; an unbound one is ignored and the
-    call still answers Success: true."""
+    call still answers Success: true.
+    """
     await _call(hass, SERVICE_TURN_ON, DEW_HEATER)
     assert rig.sent == [("/equipment/camera/dew-heater", {"power": "true"})]
 
@@ -302,7 +317,8 @@ async def test_a_cover_between_positions_reads_unknown(
     hass: HomeAssistant, set_up_with_flat_device
 ) -> None:
     """`NeitherOpenNorClosed` is a real `CoverState`, and calling it closed
-    would report a shut cover over an open one."""
+    would report a shut cover over an open one.
+    """
     await set_up_with_flat_device(cover_state="NeitherOpenNorClosed")
     assert hass.states.get(COVER).state == "unknown"
 
@@ -336,7 +352,8 @@ async def test_the_kept_switches_keep_their_1_4_5_unique_id(
     hass: HomeAssistant, loaded_entry, advance, entity_registry, suffix: str
 ) -> None:
     """The guider is only observed in `imaging_guiding`, and the camera is
-    observed in both, so one state registers the pair."""
+    observed in both, so one state registers the pair.
+    """
     await advance("imaging_guiding")
     assert _registered(entity_registry, loaded_entry, suffix) is not None
 
@@ -346,7 +363,8 @@ async def test_the_cut_switches_are_not_registered(
     loaded_entry: MockConfigEntry, entity_registry, key: str
 ) -> None:
     """Tracking is `select.mount_tracking_rate`, whose options include
-    `Stopped`; the panel's light is the `light` (§5.3.4)."""
+    `Stopped`; the panel's light is the `light` (§5.3.4).
+    """
     assert _registered(entity_registry, loaded_entry, key) is None
 
 
@@ -354,7 +372,8 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry
 ) -> None:
     """`dome_following` is absent from this assertion: no capture observes a
-    dome, so §5.2.2 gates it out entirely."""
+    dome, so §5.2.2 gates it out entirely.
+    """
     entry = entity_registry.async_get(
         _registered(entity_registry, loaded_entry, "rotator_reverse")
     )

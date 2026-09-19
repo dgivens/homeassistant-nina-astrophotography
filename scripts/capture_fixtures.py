@@ -11,19 +11,17 @@ change, focuser move, flat light, dome, sequence start/stop, profile switch. A
 rig may be imaging, and a wasted night is not recoverable. If you are unsure
 whether a call mutates state, do not make it.
 """
-from __future__ import annotations
-
 import argparse
 import asyncio
-import json
-import sys
 from datetime import UTC, datetime
+import json
 from pathlib import Path
+import sys
 
 import aiohttp
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
-from redaction import PROFILE_ALLOWLIST, project, redact, scan  # noqa: E402
+from redaction import PROFILE_ALLOWLIST, project, redact, scan
 
 FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures"
 

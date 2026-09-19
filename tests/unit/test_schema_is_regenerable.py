@@ -2,10 +2,8 @@
 
 A hand-edit to a generated file is invisible in review and survives forever.
 """
-from __future__ import annotations
-
-import subprocess
 from pathlib import Path
+import subprocess
 
 import pytest
 

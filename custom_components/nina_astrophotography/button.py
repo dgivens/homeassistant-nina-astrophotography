@@ -17,8 +17,6 @@ envelope classification already keys on `StatusCode` and `Error` rather than
 Guiding is not on this platform: it is a state that can be read back, so it is
 `switch.<instance>_guider` (§5.2.3).
 """
-from __future__ import annotations
-
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 

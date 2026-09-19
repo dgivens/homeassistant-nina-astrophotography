@@ -1,8 +1,5 @@
 """Redaction rules — one module, shared by the capture script and the guard."""
-from __future__ import annotations
-
 import pytest
-
 from redaction import PROFILE_ALLOWLIST, project, redact, scan
 
 
@@ -91,7 +88,8 @@ def test_filenames_become_stable_pseudonyms_derived_from_the_name() -> None:
     """Frame identity is (Date, Filename) and the fold spans fixtures, so a
     per-file counter would both collide distinct frames and split identical
     ones. The pseudonym is a digest of the name: the same name in two files
-    is one frame, and two names are two."""
+    is one frame, and two names are two.
+    """
     a = redact({"Filename": "D:\\astro\\M31_014.fits"})["Filename"]
     b = redact({"Other": 1, "Filename": "D:\\astro\\M31_014.fits"})["Filename"]
     c = redact({"Filename": "D:\\astro\\M31_015.fits"})["Filename"]
@@ -102,7 +100,8 @@ def test_filenames_become_stable_pseudonyms_derived_from_the_name() -> None:
 def test_legacy_pseudonyms_pass_through_unchanged() -> None:
     """The pre-script corpus used a narrower digest width (4 decimal digits
     for Filename, 2 for DeviceId); still accepted so redact() stays idempotent
-    over those already-committed fixtures."""
+    over those already-committed fixtures.
+    """
     assert redact({"Filename": "frame_0121.fits"})["Filename"] == "frame_0121.fits"
     assert redact({"DeviceId": "device-09"})["DeviceId"] == "device-09"
 
@@ -110,7 +109,8 @@ def test_legacy_pseudonyms_pass_through_unchanged() -> None:
 def test_the_facility_token_rule_is_idempotent() -> None:
     """It substitutes rather than replacing, so it must not match its own
     output — `scan()` is a diff against `redact()` and would otherwise report
-    every committed fixture as dirty forever."""
+    every committed fixture as dirty forever.
+    """
     once = redact({"Group": "SFRO / Lobster & Bubble"})
     assert redact(once) == once
 
@@ -126,7 +126,8 @@ def test_scan_is_clean_after_redaction_by_construction() -> None:
 
 def test_a_redacted_container_stays_a_container() -> None:
     """Type preservation covers dicts and lists, not only scalars — otherwise a
-    dict under a key containing "path" becomes the string "REDACTED"."""
+    dict under a key containing "path" becomes the string "REDACTED".
+    """
     out = redact({"ImagePathSettings": {"Enabled": True}})
     assert isinstance(out["ImagePathSettings"], dict)
 
@@ -147,7 +148,8 @@ def test_profile_projection_keeps_only_the_allowlist() -> None:
     """/profile/show is captured as a projection, never a redaction — its
     secret surface is too large to redact confidently. A leaf keeps its value,
     a listed section comes through whole, and an unlisted sibling — here the
-    key that leaked on a trial capture — is simply not there."""
+    key that leaked on a trial capture — is simply not there.
+    """
     profile = {
         "TelescopeSettings": {"FocalLength": 500, "Name": "Esprit 100"},
         "CameraSettings": {"PixelSize": 3.76, "Gain": 100},

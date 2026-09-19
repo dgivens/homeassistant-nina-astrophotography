@@ -1,12 +1,10 @@
 """The floors script fails on a breach and on an unmeasured file."""
-from __future__ import annotations
-
 import json
-import sys
 from pathlib import Path
+import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
-import coverage_floors  # noqa: E402
+import coverage_floors
 
 PREFIX = coverage_floors.PREFIX
 

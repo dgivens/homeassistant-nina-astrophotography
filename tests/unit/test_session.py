@@ -1,22 +1,19 @@
 """fold() is pure, idempotent, and order-independent."""
-from __future__ import annotations
-
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from helpers import load_fixture
-
 from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import (
-    scheduler_wait,
     fold,
     latest_stack,
     latest_target,
     newest_frame,
     pending_guider_stop,
+    scheduler_wait,
 )
+import pytest
 
 # Noon the day after the dawn corpus: every one of its frames is by then in
 # the previous session.
@@ -85,7 +82,8 @@ def test_the_last_frame_is_the_last_light_not_the_last_flat(night) -> None:
 
 def test_recent_lights_are_every_light_oldest_first(night) -> None:
     """The night ends in 67 flats; the series a sparkline draws must still end
-    on the last light, not be flushed by them."""
+    on the last light, not be flushed by them.
+    """
     stats = fold(night, [], generation="g1")
     assert len(stats.recent_lights) == 55
     assert stats.recent_lights[-1] == stats.last_frame
@@ -115,7 +113,8 @@ def test_the_breakdown_covers_every_target_imaged(night) -> None:
 
 def test_the_filter_breakdown_excludes_filters_only_flats_used(night) -> None:
     """All 122 frames carry six filters; the 55 lights carry five — the flats
-    add G. A per-filter row for a G flat with no G lights is noise."""
+    add G. A per-filter row for a G flat with no G lights is noise.
+    """
     assert len(fold(night, [], generation="g1").by_filter) == 5
 
 
@@ -137,7 +136,8 @@ def test_an_unmatched_autofocus_start_hangs_at_the_profiles_timeout(
     timeout is `FocuserSettings.AutoFocusTimeoutSeconds` — 600 on the captured
     rig, so a 300 s constant would call a seven-minute run failed. The corpus
     has no hung night — its one unanswered start was aborted — so the hang is
-    constructed."""
+    constructed.
+    """
     start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
     events = [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")]
     stats = fold([], events, generation="g1",
@@ -163,7 +163,8 @@ _START = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
 def test_a_start_interrupted_inside_its_timeout_is_aborted_not_failed(name, data) -> None:
     """Unsafe conditions, the sequence ending, a park, a disconnect or the
     sequencer simply moving on to the next exposure all cancel a running
-    autofocus; none of them is the focuser failing to find focus."""
+    autofocus; none of them is the focuser failing to find focus.
+    """
     events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
               NinaEvent(name, _START + timedelta(seconds=37), data, "g1")]
     stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
@@ -184,7 +185,8 @@ def test_a_safe_reading_does_not_abort_a_running_autofocus() -> None:
 @pytest.mark.synthetic
 def test_the_sequencer_moving_on_after_the_timeout_keeps_the_failure_verdict() -> None:
     """An exposure saved only after the timeout has elapsed shows the sequence
-    carried on past a hung autofocus; it clears the run without excusing it."""
+    carried on past a hung autofocus; it clears the run without excusing it.
+    """
     events = [NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
               NinaEvent("IMAGE-SAVE", _START + timedelta(seconds=400), {}, "g1")]
     stats = fold([], events, generation="g1", autofocus_timeout_seconds=300,
@@ -307,7 +309,8 @@ def test_frames_before_the_noon_rollover_are_outside_the_session(night) -> None:
 
 def test_the_last_autofocus_to_finish_is_reported(night_events) -> None:
     """A FINISHED is the report, not a verdict; whether it found focus is a
-    question for /last-af."""
+    question for /last-af.
+    """
     stats = fold([], night_events, generation="g1")
     assert stats.autofocus.last_finished_at == datetime.fromisoformat(
         "2026-09-04T03:21:11.414439-05:00")
@@ -316,7 +319,8 @@ def test_the_last_autofocus_to_finish_is_reported(night_events) -> None:
 def test_the_nights_unanswered_start_was_an_abort_not_a_failure(night_events) -> None:
     """The eighth AUTOFOCUS-STARTING (04:26:09) was followed 37 s later by
     SAFETY-CHANGED IsSafe false — the sky closed on it. Read at 07:30 rig time,
-    long past any timeout, it is neither running nor failed."""
+    long past any timeout, it is neither running nor failed.
+    """
     stats = fold([], night_events, generation="g1",
                  now=datetime.fromisoformat("2026-09-04T07:30:00-05:00"))
     assert (stats.autofocus.running_since, stats.autofocus.failed) == (None, False)
@@ -340,7 +344,8 @@ def test_events_from_a_previous_session_do_not_report_an_autofocus(night_events)
 def test_the_newest_frame_ignores_the_session_window(night) -> None:
     """The rig's image history does not roll over at local noon, so what
     `image.last_frame` renders long after the rollover is still last night's
-    frame — which `fold`'s own `last_frame` has by then dropped."""
+    frame — which `fold`'s own `last_frame` has by then dropped.
+    """
     newest = newest_frame(night, "g1")
     assert newest.date == max(f.date for f in night)
     assert fold(night, [], "g1", now=_AFTER_THE_ROLLOVER).last_frame is None
@@ -361,7 +366,8 @@ def test_a_stack_update_missing_half_its_pair_names_nothing(
     half: str, how: str
 ) -> None:
     """Both halves are path segments, and `/livestack/image//O` is not a route
-    — so an empty string has to be refused as firmly as a missing key."""
+    — so an empty string has to be refused as firmly as a missing key.
+    """
     payload = {"Event": "STACK-UPDATED", "Time": "2026-09-04T04:25:58-05:00",
                "Target": "NGC 281", "Filter": "S"}
     if how == "absent":
@@ -378,7 +384,8 @@ def test_no_stack_update_is_no_stack(night_events) -> None:
 
 def test_the_target_is_the_one_the_newest_start_announced(night_events) -> None:
     """TS-TARGETSTART fires once per exposure, so the newest is the current
-    target, not the first of the night."""
+    target, not the first of the night.
+    """
     assert latest_target(night_events, "g1") == "NGC 281"
 
 
@@ -419,7 +426,8 @@ def test_neither_a_dither_nor_a_previous_process_moves_the_verdict(
     logged: list[tuple[str, str]], expected: bool
 ) -> None:
     """N.I.N.A. raises GUIDER-DITHER even for a dither it skipped, so it is
-    not a start; a stop from before a N.I.N.A. restart says nothing."""
+    not a start; a stop from before a N.I.N.A. restart says nothing.
+    """
     events = [
         NinaEvent(name=name, time=datetime(2026, 9, 18, 21, minute, tzinfo=RIG),
                   data={}, generation=generation)
@@ -473,5 +481,6 @@ def test_a_wait_ends_at_its_time_or_when_something_supersedes_it(
 
     An unknown rig clock reports not-waiting rather than guessing, which is the
     conservative way round for the dashboard and the alarming way round for a
-    stall rule built on it."""
+    stall rule built on it.
+    """
     assert scheduler_wait(events, "g1", now=now) == expected

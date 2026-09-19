@@ -4,16 +4,13 @@ The states are read through the real client: a state that the mapper cannot
 read is not a state, and dispatch that cannot tell `?all=true` from
 `?count=true` would answer the reseed with a frame count.
 """
-from __future__ import annotations
-
 from dataclasses import fields
-
-import pytest
-from scenarios.fake_rig import FakeRig
-from scenarios.states import AWAITING_CAPTURE, SEQUENCES, STATES, disconnect
 
 from nina_astrophotography.api.errors import NinaConnectionError, NinaEndpointError
 from nina_astrophotography.api.v2.client import NinaClientV2
+import pytest
+from scenarios.fake_rig import FakeRig
+from scenarios.states import AWAITING_CAPTURE, SEQUENCES, STATES, disconnect
 
 # Every state serves all of these. A state missing one reads to the client as a
 # build that dropped a route, which is a different thing from the state's data.
@@ -47,12 +44,13 @@ def test_every_sequence_names_states_that_exist() -> None:
 @pytest.mark.parametrize("name", sorted(STATES))
 def test_every_state_serves_the_same_endpoints(name: str) -> None:
     """Advancing must not change which routes exist, only what they answer."""
-    assert COMMON_ENDPOINTS <= set(STATES[name])
+    assert set(STATES[name]) >= COMMON_ENDPOINTS
 
 
 async def test_the_history_parameters_dispatch_to_different_answers() -> None:
     """`?all=true` is the only reseed source, so answering it with the count —
-    or with the bare path's single newest frame — silently caps the session."""
+    or with the bare path's single newest frame — silently caps the session.
+    """
     client = _client(FakeRig(STATES, start="imaging"))
     assert await client.get_image_history_count() == 122
     assert len(await client.get_frames(include_all=True)) == 122
@@ -68,7 +66,8 @@ async def test_the_bare_history_path_is_served_by_every_state(
 ) -> None:
     """Bare /image-history answers the newest frame alone, as a one-element
     list — which is why it is not a reseed source — or `Index out of range`,
-    which is no data."""
+    which is no data.
+    """
     assert len(await _client(FakeRig(STATES, start=state)).get_frames()) == frames
 
 
@@ -77,7 +76,8 @@ async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> Non
 
     The dawn states leave /livestack/status unregistered on purpose — that is
     what a build without the plugin sends, and it keeps the coordinator's
-    not-served latch exercised. `imaging_guiding` serves the real capture."""
+    not-served latch exercised. `imaging_guiding` serves the real capture.
+    """
     client = _client(FakeRig(STATES, start="imaging"))
     with pytest.raises(NinaEndpointError):
         await client.get_livestack()
@@ -103,7 +103,8 @@ async def test_the_root_containers_do_not_tell_running_from_stopped_alone(
 ) -> None:
     """`Targets_Container` reads CREATED both ten seconds into a run and after
     a stop, so the tree seeds the running signal and the SEQUENCE-* events
-    correct it."""
+    correct it.
+    """
     client = _client(FakeRig(STATES, start=state))
     root = await client.get_sequence()
     assert {child.name: child.status
@@ -132,7 +133,8 @@ async def test_an_unreachable_rig_refuses_every_path() -> None:
 
 async def test_a_command_is_recorded_and_answered_success() -> None:
     """No state carries a command: nothing on this API can be confirmed from
-    its own response, so the fake records the call and the poll reads it back."""
+    its own response, so the fake records the call and the poll reads it back.
+    """
     rig = FakeRig(STATES, start="imaging")
     await _client(rig).set_flat_brightness(2048)
     assert rig.sent == [("/equipment/flatdevice/set-brightness", {"brightness": 2048})]
@@ -168,7 +170,8 @@ def test_disconnecting_leaves_the_state_it_was_derived_from_alone() -> None:
 @pytest.mark.synthetic
 async def test_every_device_is_down_in_the_fully_disconnected_state() -> None:
     """Four of the eleven down-blocks are derived: no capture has the camera,
-    flat panel, safety monitor or switch hub disconnected."""
+    flat panel, safety monitor or switch hub disconnected.
+    """
     rig = FakeRig(STATES, start="equipment_disconnected")
     snapshot = await _client(rig).get_equipment()
     devices = [getattr(snapshot, field.name) for field in fields(snapshot)]

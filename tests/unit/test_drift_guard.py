@@ -12,10 +12,8 @@ _meta.endpoint. Without that, the per-device captures contribute bare leaves —
 `Connected`, `Name`, `Position` — that collide across devices, and no waiver key
 could ever match an observed path.
 """
-from __future__ import annotations
-
-import json
 from collections import defaultdict
+import json
 from pathlib import Path
 
 TESTS = Path(__file__).resolve().parents[1]
@@ -168,7 +166,8 @@ def test_the_corpus_is_actually_being_read() -> None:
 def test_an_always_empty_container_is_still_observed() -> None:
     """Camera.Gains is always [] and Mount.TrackingRate always {} on this build.
     A container with no leaves contributes no path unless recorded explicitly,
-    and its waiver then reads as stale."""
+    and its waiver then reads as stale.
+    """
     observed = _corpus()
     assert observed["Camera.Gains"] == {"list"}
     assert observed["Mount.TrackingRate"] == {"dict"}
@@ -177,7 +176,8 @@ def test_an_always_empty_container_is_still_observed() -> None:
 def test_a_scalar_list_item_is_recorded_at_a_bracket_leaf() -> None:
     """A list of scalars (Mount.TrackingModes' strings) matches neither the
     dict nor the list recursion branch, so without a dedicated leaf it is
-    silently dropped rather than merely under-typed."""
+    silently dropped rather than merely under-typed.
+    """
     assert _observe({"Modes": ["Sidereal", "Lunar"], "Empty": []}, "Mount") == {
         "Mount.Modes": {"list"},
         "Mount.Modes[]": {"str"},
@@ -202,7 +202,8 @@ def test_no_waiver_is_stale() -> None:
 def test_waivers_state_the_observed_wire_type() -> None:
     """The "deviate only where recorded" check: a waiver's `wire` is exactly the
     type set the corpus shows at that path, so a waiver can neither under- nor
-    over-describe the deviation it excuses."""
+    over-describe the deviation it excuses.
+    """
     observed = _corpus()
     wrong = {dotted: ("|".join(sorted(observed[dotted])), entry["wire"])
              for dotted, entry in DEVIATIONS.items()
@@ -213,7 +214,8 @@ def test_waivers_state_the_observed_wire_type() -> None:
 
 def test_no_field_waived_as_absent_is_present() -> None:
     """ImageStatistics.Index is documented by the spec and on neither path.
-    If it ever appears, the waiver must go."""
+    If it ever appears, the waiver must go.
+    """
     observed = set(_corpus())
     present = [dotted for dotted, entry in DEVIATIONS.items()
                if entry["wire"] == "absent" and dotted in observed]

@@ -6,8 +6,6 @@ specific fragment first. `default` covers everything else.
 
 Imports neither Home Assistant nor the integration, so both suites can use it.
 """
-from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import Any

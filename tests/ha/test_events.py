@@ -9,7 +9,8 @@ async def test_a_pushed_event_reaches_the_bus_under_both_names(
     hass: HomeAssistant, loaded_entry, push, nina_responses
 ) -> None:
     """1.4.x automations trigger on `nina_<event>` or the catch-all `nina_event`;
-    the payload is now model-derived, so `frame` is a mapped Frame, not wire."""
+    the payload is now model-derived, so `frame` is a mapped Frame, not wire.
+    """
     fired = {}
     hass.bus.async_listen("nina_image_save", lambda e: fired.update(named=e.data))
     hass.bus.async_listen("nina_event", lambda e: fired.update(catch_all=e.data))
@@ -58,7 +59,8 @@ async def test_a_pushed_event_says_which_rig_it_came_from(
 ) -> None:
     """The event types are shared by every instance, so an automation with two
     rigs configured needs the payload to discriminate — which is what the flip
-    blueprint filters on."""
+    blueprint filters on.
+    """
     fired: list[dict] = []
     hass.bus.async_listen("nina_image_save", lambda e: fired.append(e.data))
 

@@ -4,8 +4,8 @@
 entities read, so reading them here is reading the public surface — not the
 coordinator's internals.
 """
-import logging
 from datetime import datetime, timedelta, timezone
+import logging
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -32,7 +32,8 @@ async def test_the_session_boundary_is_the_rigs_local_noon(
     """Frame dates carry the rig's offset (-5 h on the dawn capture), so the
     noon rollover must be the rig's noon. At 12:30 UTC — 07:30 on the rig, in
     the middle of its dawn flats — a UTC noon would start a new session and
-    Home Assistant's own zone (US/Pacific here) would start it at 19:00 UTC."""
+    Home Assistant's own zone (US/Pacific here) would start it at 19:00 UTC.
+    """
     freezer.move_to("2026-09-04T12:30:00+00:00")
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
@@ -57,7 +58,8 @@ async def test_a_rejected_request_keeps_the_previous_state_and_logs_once(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, monkeypatch, caplog
 ) -> None:
     """A rejection does not become right by retrying: every entity going
-    unavailable and an error per poll would be noise about one condition."""
+    unavailable and an error per poll would be noise about one condition.
+    """
     from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 
     before = hass.states.get(LIGHT).state
@@ -76,7 +78,8 @@ async def test_a_rejected_first_refresh_fails_the_entry_rather_than_retrying(
     hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses, monkeypatch
 ) -> None:
     """With nothing to fall back on, a permanent rejection is ConfigEntryError:
-    ConfigEntryNotReady would retry a condition that never clears."""
+    ConfigEntryNotReady would retry a condition that never clears.
+    """
     from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 
     monkeypatch.setattr(NinaClientV2, "get_equipment", _raising(NinaRequestError("400")))

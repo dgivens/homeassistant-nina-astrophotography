@@ -17,16 +17,16 @@ mutes the twelve-hour daytime wait was never once executed.
 import asyncio
 from datetime import timedelta
 
-import pytest
-import yaml
 from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
+import pytest
 from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
     async_mock_service,
 )
+import yaml
 
 from tests.ha.conftest import BLUEPRINTS
 
@@ -198,7 +198,8 @@ async def test_a_wait_that_just_ended_is_still_settling(
     hass: HomeAssistant, watching
 ) -> None:
     """Slew, rotation, filter change and settle follow a scheduler wait, and
-    none of them produces a frame."""
+    none of them produces a frame.
+    """
     clock = await watching()
     await start_sequence(hass, clock)
 
@@ -258,7 +259,8 @@ async def test_a_mount_that_parked_itself(
     hass: HomeAssistant, watching, sequencer: str, alerts: bool
 ) -> None:
     """A park under a running sequencer has already ended the night. A park
-    after it stopped is how every night ends."""
+    after it stopped is how every night ends.
+    """
     clock = await watching()
     await start_sequence(hass, clock)
     hass.states.async_set("binary_sensor.rig_sequencer_running", sequencer)
@@ -298,7 +300,8 @@ async def test_the_first_alert_of_a_night_does_not_claim_a_frame_age(
     """`quiet_seconds` is floored at the sequencer's uptime, so on a rig that
     has not framed since last night the figure is uptime, not frame age.
     Reported as frame age it would have a reader believing the rig went quiet
-    minutes ago rather than hours."""
+    minutes ago rather than hours.
+    """
     clock = await watching()
     await start_sequence(hass, clock)
 
@@ -313,7 +316,8 @@ async def test_an_unreachable_rig_reports_only_what_it_knows(
 ) -> None:
     """Every entity is unavailable, so the field list would be a row of the
     same word — and a park state nothing can read must not be reported at
-    all."""
+    all.
+    """
     clock = await watching()
     await start_sequence(hass, clock)
     clock.move_to(T0 + timedelta(minutes=10))
@@ -333,7 +337,8 @@ async def test_a_missing_sun_does_not_mute_the_alarm(
     hass: HomeAssistant, watching
 ) -> None:
     """With `sun.sun` gone, "is below the horizon" would be false forever and
-    `night_only` would silence the quiet arm without a word."""
+    `night_only` would silence the quiet arm without a word.
+    """
     clock = await watching()
     hass.states.async_remove("sun.sun")
     await start_sequence(hass, clock)
@@ -348,7 +353,8 @@ async def test_an_alert_with_no_notify_target_still_clears(
     hass: HomeAssistant, watching
 ) -> None:
     """With no target and no notify integration, calling `notify.send_message`
-    raises ServiceNotFound, which ends the run and strands the notification."""
+    raises ServiceNotFound, which ends the run and strands the notification.
+    """
     clock = await watching(notify=False)
     await start_sequence(hass, clock)
     clock.move_to(T0 + STALLED)

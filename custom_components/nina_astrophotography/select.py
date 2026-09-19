@@ -14,8 +14,6 @@ wire is what the options carry.
 Neither select confirms itself from the command response (§3.5): a filter change
 takes seconds, and the state is the next poll's reading.
 """
-from __future__ import annotations
-
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 

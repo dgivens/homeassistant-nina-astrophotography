@@ -1,18 +1,15 @@
 """The socket is a data source, not a hint — and it lives inside the seam."""
-from __future__ import annotations
-
 import asyncio
-import json
 from datetime import UTC, datetime, timedelta, timezone
+import json
 
-import pytest
 from helpers import FakeSession, load_envelope, load_fixture
-
 from nina_astrophotography.api.models import NinaEvent
-from nina_astrophotography.api.v2.mapper import map_event
 from nina_astrophotography.api.v2 import events as events_module
 from nina_astrophotography.api.v2.client import NinaClientV2
 from nina_astrophotography.api.v2.events import NinaEventStream
+from nina_astrophotography.api.v2.mapper import map_event
+import pytest
 
 HISTORY: list[dict] = load_fixture("dawn_event_history.json")
 
@@ -79,7 +76,8 @@ def test_an_eventless_payload_does_not_crash_the_stream(payload) -> None:
 
 def test_image_save_from_the_socket_carries_statistics() -> None:
     """The live socket carries ImageStatistics and no Time; /event-history the
-    reverse — all its stored copies are exactly {Event, Time}."""
+    reverse — all its stored copies are exactly {Event, Time}.
+    """
     socket, seen = subscribed()
     socket._dispatch(load_fixture("live_image_save_push.json"), "g1")
     assert seen[0].frame is not None
@@ -90,7 +88,8 @@ def test_image_save_from_the_socket_carries_statistics() -> None:
 def test_a_timeless_frameless_payload_is_stamped_on_arrival() -> None:
     """The socket carries no clock of its own, and every NinaEvent.time must be
     offset-aware for the fold to sort. Only /event-history entries were
-    captured, and all of them carry a Time."""
+    captured, and all of them carry a Time.
+    """
     socket, seen = subscribed()
     socket._dispatch({"Event": "GUIDER-DITHER"}, "g1")
     assert seen[0].time.tzinfo is not None
@@ -105,7 +104,8 @@ def test_a_timeless_frameless_payload_is_stamped_on_arrival() -> None:
 )
 def test_a_socket_frame_is_unwrapped_like_any_other_envelope(success, expected) -> None:
     """The socket sends the same `{Response, Success, …}` envelope the HTTP
-    paths do. Every captured push succeeded, so the flag is flipped here."""
+    paths do. Every captured push succeeded, so the flag is flipped here.
+    """
     envelope = load_envelope("live_image_save_push.json") | {"Success": success}
     socket, seen = subscribed()
     socket._receive(json.dumps(envelope))
@@ -133,7 +133,8 @@ async def test_replay_folds_the_whole_stored_history() -> None:
 
 async def test_replay_caps_the_fold_at_the_newest_events(monkeypatch) -> None:
     """`WebSocketV2.Events` is an unbounded static list, so replay caps it —
-    and a cap that dropped the newest events would replay a stale night."""
+    and a cap that dropped the newest events would replay a stale night.
+    """
     monkeypatch.setattr(events_module, "REPLAY_CAP", 10)
     replayed = await stream().replay(_client(), "g1")
     assert [event.name for event in replayed] == [
@@ -152,7 +153,8 @@ async def test_stopping_a_stream_that_never_started_is_harmless() -> None:
 async def test_stopping_a_stream_cancels_its_receive_loop() -> None:
     """`entry.async_on_unload(events.stop)` is what keeps the reconnect loop
     from outliving the entry, and the loop only ends when the task is
-    cancelled: it reconnects for as long as it is running."""
+    cancelled: it reconnects for as long as it is running.
+    """
     socket = stream()
     task = asyncio.create_task(asyncio.Event().wait())
     socket._task = task
@@ -164,7 +166,8 @@ async def test_stopping_a_stream_cancels_its_receive_loop() -> None:
 def test_a_scheduler_wait_carries_its_end_as_rig_local_time() -> None:
     """One TS payload mixes conventions: `Time` is naive UTC while
     `WaitEndTime` carries the rig's own offset. Read by the `Time` rule the
-    wait would end five hours late."""
+    wait would end five hours late.
+    """
     wire = next(e for e in load_fixture("scheduler_waiting_event_history.json")
                 if e["Event"] == "TS-WAITSTART")
     event = map_event(wire, generation="g1")
@@ -189,6 +192,7 @@ def test_a_naive_wait_end_needs_the_rigs_clock(
 ) -> None:
     """Every captured `WaitEndTime` is offset-aware; the naive case is
     fabricated. Guessing UTC would put the wait five hours out on this rig, so
-    an unresolvable one is no reading."""
+    an unresolvable one is no reading.
+    """
     wire = {"Event": "TS-WAITSTART", "Time": "2026-09-16T01:33:37", **payload}
     assert map_event(wire, generation="g1", rig_offset=offset).wait_end == expected

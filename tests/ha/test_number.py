@@ -5,7 +5,6 @@ clamps an out-of-range value silently and answers `Success: true`, so proving
 the request was never made is the whole point — an exception raised after the
 command left would be no protection at all.
 """
-import pytest
 from homeassistant.components.number import (
     ATTR_VALUE,
     DOMAIN as NUMBER_DOMAIN,
@@ -14,6 +13,7 @@ from homeassistant.components.number import (
 from homeassistant.const import ATTR_ENTITY_ID, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
@@ -43,7 +43,8 @@ def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
 @pytest.fixture
 async def usb_limit_enabled(hass, entity_registry, loaded_entry):
     """The USB limit ships DIAGNOSTIC and disabled, so a test that reads or
-    sets it has to enable the registry row and reload first."""
+    sets it has to enable the registry row and reload first.
+    """
     entity_registry.async_update_entity(USB_LIMIT, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
@@ -67,7 +68,8 @@ async def test_the_usb_limit_range_is_this_cameras_own(
     hass: HomeAssistant, usb_limit_enabled, attribute: str, expected: float
 ) -> None:
     """USBLimitMin/USBLimitMax are narrower than the 0-100 a bare USBLimit
-    reading suggests, and 20 is a value this camera would clamp."""
+    reading suggests, and 20 is a value this camera would clamp.
+    """
     assert hass.states.get(USB_LIMIT).attributes[attribute] == expected
 
 
@@ -92,7 +94,8 @@ async def test_a_panel_reporting_no_range_is_refused_rather_than_sent_to(
     hass: HomeAssistant, set_up_with_flat_device, sent
 ) -> None:
     """A cover-only panel reports Min 0 / Max 0, and every value is in range of
-    an empty range."""
+    an empty range.
+    """
     await set_up_with_flat_device(max_brightness=0.0)
     with pytest.raises(ServiceValidationError):
         await _set(hass, BRIGHTNESS, 0)
@@ -103,7 +106,8 @@ async def test_a_set_sends_the_drivers_own_units_and_does_not_touch_the_light(
     hass: HomeAssistant, flat_panel_entry, sent
 ) -> None:
     """The number is raw driver units, where the `light` is HA's 0-255; and
-    brightness 0 is not off, so neither direction toggles the light (§5.3.4)."""
+    brightness 0 is not off, so neither direction toggles the light (§5.3.4).
+    """
     await _set(hass, BRIGHTNESS, 1024)
     assert sent.calls == [("set_flat_brightness", 1024)]
 
@@ -112,7 +116,8 @@ async def test_a_set_does_not_read_the_new_value_back_from_the_response(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """No command on this API confirms anything (§3.5): the state is the next
-    poll's reading, not the value that was asked for."""
+    poll's reading, not the value that was asked for.
+    """
     await _set(hass, FOCUSER_POSITION, 2400)
     assert rig.sent == [("/equipment/focuser/move", {"position": 2400})]
     assert hass.states.get(FOCUSER_POSITION).state == "2332"
@@ -158,7 +163,8 @@ async def test_the_focuser_position_number_exists(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """The sensor half of §5.2.3's reinstatement — disabled by default, with
-    `state_class: measurement` for long-term statistics — is C6's."""
+    `state_class: measurement` for long-term statistics — is C6's.
+    """
     assert hass.states.get(FOCUSER_POSITION) is not None
 
 
@@ -167,7 +173,8 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry, key: str
 ) -> None:
     """The dome's is absent from this table: no capture observes a dome, so
-    §5.2.2 gates `dome_azimuth` out entirely."""
+    §5.2.2 gates `dome_azimuth` out entirely.
+    """
     entry = entity_registry.async_get(_registered(entity_registry, loaded_entry, key))
     assert (entry.entity_category, entry.disabled_by is not None) == (
         EntityCategory.DIAGNOSTIC, True
@@ -178,7 +185,8 @@ async def test_a_value_outside_this_cameras_usb_range_is_refused(
     hass: HomeAssistant, usb_limit_enabled, rig
 ) -> None:
     """20 is inside the 0-100 a hardcoded range would offer and outside the
-    40-100 this camera reports."""
+    40-100 this camera reports.
+    """
     with pytest.raises(ServiceValidationError):
         await _set(hass, USB_LIMIT, 20)
     assert rig.sent == []

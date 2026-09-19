@@ -1,11 +1,11 @@
 """The flat panel light — §5.3.4's three fixes, on real hardware numbers."""
 from dataclasses import replace
 
-import pytest
 from homeassistant.components.light import ATTR_BRIGHTNESS, DOMAIN as LIGHT_DOMAIN
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, SERVICE_TURN_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+import pytest
 
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.models import DeviceMeta
@@ -85,7 +85,8 @@ async def test_the_idle_panel_reads_off(
     hass: HomeAssistant, idle_flat_panel_entry
 ) -> None:
     """Brightness 0 / LightOn false is the panel's ordinary idle state, and it
-    is off — not unknown, and not on at zero."""
+    is off — not unknown, and not on at zero.
+    """
     assert hass.states.get(ENTITY).state == "off"
 
 
@@ -108,7 +109,8 @@ async def test_turn_on_of_a_lit_panel_only_adjusts_the_brightness(
     hass: HomeAssistant, flat_panel_entry, sent
 ) -> None:
     """set-light on an already-lit panel is a no-op at best; FLAT-LIGHT-TOGGLED
-    would fire for nothing."""
+    would fire for nothing.
+    """
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 64})
     assert sent.calls == [("set_flat_brightness", 1028)]
 
@@ -118,7 +120,8 @@ async def test_a_panel_that_disconnects_after_being_observed_stays_as_unavailabl
 ) -> None:
     """Observation is latched across polls (§5.2.2): a disconnected panel drops
     its DeviceId and reports Min 0 / Max 0, and the entity must go unavailable,
-    not vanish."""
+    not vanish.
+    """
     from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 
     snapshot = idle_flat_panel_entry.runtime_data.coordinator.data.snapshot
@@ -139,7 +142,8 @@ async def test_the_light_is_registered_under_the_flat_panel_device(
     hass: HomeAssistant, idle_flat_panel_entry, entity_registry, device_registry
 ) -> None:
     """has-entity-name: the entity is "Light" on a device named for the panel,
-    whose sw_version is the driver's own DriverVersion."""
+    whose sw_version is the driver's own DriverVersion.
+    """
     entry = entity_registry.async_get(ENTITY)
     device = device_registry.async_get(entry.device_id)
     assert entry.unique_id == f"{idle_flat_panel_entry.entry_id}_flat_panel_light"
@@ -150,7 +154,8 @@ async def test_a_panel_that_cannot_switch_its_light_is_unavailable_not_absent(
     hass: HomeAssistant, cover_only_flat_panel_entry
 ) -> None:
     """A cover-only panel keeps the entity and reports unavailable, so it does
-    not appear and disappear across restarts."""
+    not appear and disappear across restarts.
+    """
     assert hass.states.get(ENTITY).state == "unavailable"
 
 
@@ -158,7 +163,8 @@ async def test_a_panel_never_observed_has_no_entity(
     hass: HomeAssistant, set_up_with_flat_device
 ) -> None:
     """/equipment/info always emits a FlatDevice block; only a DeviceId proves
-    the rig has one (§5.2.2)."""
+    the rig has one (§5.2.2).
+    """
     await set_up_with_flat_device(
         meta=DeviceMeta(None, None, None, None, None), connected=False,
     )
@@ -169,7 +175,8 @@ async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
     hass: HomeAssistant, set_up_with_flat_device, nina_responses, monkeypatch
 ) -> None:
     """A sequence routinely connects the panel long after Home Assistant
-    started; the light must arrive with it, as the panel's other entities do."""
+    started; the light must arrive with it, as the panel's other entities do.
+    """
     from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
     from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 

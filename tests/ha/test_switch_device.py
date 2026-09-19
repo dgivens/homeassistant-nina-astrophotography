@@ -14,8 +14,8 @@ same device through two integrations is ordinary. The normal case is a real
 ASCOM switch, a Pegasus Powerbox and its outlets, dew heaters and gauges, which
 the enabled-by-default rule (§5.3.5) is written for.
 """
-import pytest
 from homeassistant.core import HomeAssistant
+import pytest
 
 OUTLET = "switch.n_i_n_a_switch_flat_panel"
 DEW_HEATER = "number.n_i_n_a_switch_dew_heater_a"
@@ -47,7 +47,8 @@ async def test_a_number_channel_offers_the_channels_own_range(
     hass: HomeAssistant, loaded_entry, advance
 ) -> None:
     """Out-of-range input is silently clamped and answers `Success: true`, so
-    the declared range is the only thing that refuses a typo."""
+    the declared range is the only thing that refuses a typo.
+    """
     await advance("switch_hub_with_a_dimmable_channel")
     attributes = hass.states.get(DEW_HEATER).attributes
     assert (attributes["min"], attributes["max"], attributes["step"]) == (0, 100, 1)
@@ -58,7 +59,8 @@ async def test_channels_ship_enabled(
 ) -> None:
     """A Pegasus Powerbox's outlets are the reason to install this at all
     (§5.3.5); shipping them disabled would hide the useful case to spare this
-    rig two duplicates."""
+    rig two duplicates.
+    """
     assert entity_registry.async_get(OUTLET).disabled_by is None
 
 
@@ -68,7 +70,8 @@ async def test_a_writable_channel_with_no_range_is_reported_not_dropped(
 ) -> None:
     """The three shape filters have a hole. Falling through it silently leaves
     the operator a switch device with fewer channels than the driver reports
-    and nothing to diagnose it with."""
+    and nothing to diagnose it with.
+    """
     await advance("switch_hub_with_a_rangeless_channel")
     assert hass.states.get("switch.n_i_n_a_switch_aux_port") is None
     assert hass.states.get("number.n_i_n_a_switch_aux_port") is None
@@ -81,7 +84,8 @@ async def test_a_zero_step_range_is_not_a_binary_channel(
 ) -> None:
     """`Min 0 / Max 0 / Step 0` satisfies `Max - Min == Step` and is what a
     DISCONNECTED device reports. Without the guard it mints a switch whose on
-    and off values are both 0 — permanently, since the ends are read once."""
+    and off values are both 0 — permanently, since the ends are read once.
+    """
     await advance("switch_hub_with_a_degenerate_channel")
     assert hass.states.get("switch.n_i_n_a_switch_stuck_outlet") is None
 
@@ -92,7 +96,8 @@ async def test_a_channel_the_driver_stops_reporting_goes_unavailable(
 ) -> None:
     """The switch DEVICE is still connected, so the entity would otherwise read
     `unknown` and stay clickable — and this API answers `Success: true` to a
-    `set` for an index it no longer has."""
+    `set` for an index it no longer has.
+    """
     assert hass.states.get(OUTLET).state == "on"
     await advance("switch_channel_no_longer_reported")
     assert hass.states.get(OUTLET).state == "unavailable"

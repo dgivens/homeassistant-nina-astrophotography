@@ -8,14 +8,12 @@ timers and `TierSchedule` both read `time.monotonic`, and freezing after setup
 moves that clock by decades in one step — every tier reads as overdue, and the
 first tick fires twice.
 """
-from __future__ import annotations
-
 import logging
 
-import pytest
 from freezegun.api import FrozenDateTimeFactory
-from homeassistant.core import HomeAssistant
 from helpers import load_fixture
+from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 from scenarios.fake_rig import FakeRig
 
@@ -81,7 +79,8 @@ async def test_the_sequence_tier_waits_out_its_cadence_on_an_idle_rig(
 ) -> None:
     """Three nodes read RUNNING on an idle rig with nothing happening, so the
     cadence follows activity and never node status — gating on the tree would
-    hold /sequence/json at 30 s indefinitely, ~24 MB/day."""
+    hold /sequence/json at 30 s indefinitely, ~24 MB/day.
+    """
     rig = await tiers()
     await tick(hass, freezer, TierSchedule.SEQUENCE_IMAGING)
     assert rig.reads("/sequence/json") == 0
@@ -91,7 +90,8 @@ async def test_the_sequence_tier_waits_out_its_cadence_on_an_idle_rig(
 
 async def test_the_floor_backstops_the_flat_wizard(hass, tiers, freezer) -> None:
     """/flats/status has no event at all — the FLAT-* events are panel
-    hardware, not the wizard — so only the floor ever reads it."""
+    hardware, not the wizard — so only the floor ever reads it.
+    """
     rig = await tiers()
     await tick(hass, freezer, TierSchedule.FAST)
     assert rig.reads("/flats/status") == 0
@@ -106,7 +106,8 @@ async def test_an_endpoint_this_build_does_not_serve_is_asked_once(
     times an hour for the life of the entry.
 
     The setup traffic is counted here — that is the one request each is
-    allowed."""
+    allowed.
+    """
     rig = await tiers(clear=False)
     for _ in range(3):
         await tick(hass, freezer, TierSchedule.FLOOR)
@@ -128,7 +129,8 @@ async def test_ts_targetstart_never_refetches_the_sequence(
 ) -> None:
     """It fires once per exposure — 27 in 3.8 h — and its payload already
     carries TargetName, ProjectName, Rotation and TargetEndTime. Four ticks
-    outlast the debounce, so a queued refetch would have been served."""
+    outlast the debounce, so a queued refetch would have been served.
+    """
     rig = await tiers()
     for _ in range(10):
         push({"Event": "TS-TARGETSTART", "Time": "2026-09-05T06:41:53.9"})
@@ -158,7 +160,8 @@ async def test_an_event_cannot_re_arm_an_endpoint_the_build_does_not_serve(
     hass, tiers, push, freezer
 ) -> None:
     """The latch outranks the event queue. Without that, every STACK-STATUS on
-    a build with no livestack plugin buys another 404."""
+    a build with no livestack plugin buys another 404.
+    """
     rig = await tiers(clear=False)
     assert rig.reads("/livestack/status") == 1          # the setup attempt
     push(captured("STACK-STATUS"))
@@ -174,7 +177,8 @@ async def test_sequence_finished_drops_the_cadence_to_idle(
     must not have to wait those five minutes out.
 
     The event buys its own final read of the tree; the tick after it is the one
-    that would come round again at 30 s and must not."""
+    that would come round again at 30 s and must not.
+    """
     rig = await tiers()
     push({"Event": "IMAGE-SAVE", "Time": AT})
     await tick(hass, freezer, TierSchedule.SEQUENCE_IMAGING)
@@ -189,7 +193,8 @@ async def test_an_event_driven_read_that_fails_transiently_is_asked_again(
     hass, tiers, push, config_entry, monkeypatch
 ) -> None:
     """A queued endpoint dropped on a timeout would wait out the five-minute
-    floor — the event's whole point was not to."""
+    floor — the event's whole point was not to.
+    """
     from custom_components.nina_astrophotography.api.errors import NinaConnectionError
     from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 
@@ -245,7 +250,8 @@ async def test_a_rig_that_serves_every_endpoint_publishes_all_four_models(
 ) -> None:
     """The floor tier's three reads and the sequence tier's one, mapped and
     published together — the livestack status included, which arrives as a
-    bare string rather than the object the spec documents."""
+    bare string rather than the object the spec documents.
+    """
     await tiers("imaging_guiding")
     data = config_entry.runtime_data.coordinator.data
     assert data.livestack.running is True
@@ -262,7 +268,8 @@ async def test_a_restart_re_asks_an_endpoint_the_old_process_did_not_serve(
     restart is exactly when a plugin gets enabled or the API updated.
 
     The dawn states serve no `/livestack/status`; `imaging_guiding` is both a
-    new `/application-start` and a build that serves it."""
+    new `/application-start` and a build that serves it.
+    """
     rig = await tiers(clear=False)
     assert rig.reads("/livestack/status") == 1          # the setup 404
     rig.goto("imaging_guiding")
@@ -294,7 +301,8 @@ async def test_a_sequence_boundary_refetches_the_sequence(
     """Both boundaries move every node's status at once, and only the document
     reports it. The tier is at its 5-minute idle cadence here, so the read can
     only have come from the event — after the 30 s debounce every
-    /sequence/json read passes."""
+    /sequence/json read passes.
+    """
     rig = await tiers()
     push({"Event": event, "Time": AT})
     await tick(hass, freezer, TierSchedule.SEQUENCE_DEBOUNCE)
@@ -304,7 +312,8 @@ async def test_a_sequence_boundary_refetches_the_sequence(
 async def test_a_flat_panel_event_re_reads_the_panel(hass, tiers, push) -> None:
     """FLAT-LIGHT-TOGGLED carries an empty payload and FLAT-BRIGHTNESS-CHANGED
     fires through a ramp with inconsistent `Previous` values (§5.3.4), so the
-    panel's state is re-read rather than taken from the event."""
+    panel's state is re-read rather than taken from the event.
+    """
     rig = await tiers()
     push({"Event": "FLAT-LIGHT-TOGGLED", "Time": AT})
     await hass.async_block_till_done()

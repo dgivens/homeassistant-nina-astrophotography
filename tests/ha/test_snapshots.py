@@ -17,10 +17,10 @@ rig's two-outlet bridge.
 """
 from pathlib import Path
 
-import pytest
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from syrupy.assertion import SnapshotAssertion
 
@@ -80,7 +80,8 @@ async def test_a_small_state_snapshot_pins_the_value_contracts(
     hass: HomeAssistant, registered, snapshot: SnapshotAssertion
 ) -> None:
     """Separate and deliberately small — the registry snapshot covers naming,
-    and a wide state snapshot would churn on every fixture change."""
+    and a wide state snapshot would churn on every fixture change.
+    """
     watched = [
         "sensor.n_i_n_a_session_avg_hfr",
         "sensor.n_i_n_a_session_integration_time",

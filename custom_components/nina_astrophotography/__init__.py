@@ -1,15 +1,12 @@
 """N.I.N.A. Astrophotography integration for Home Assistant."""
-from __future__ import annotations
-
-import functools
-import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict
 from datetime import timedelta
+import functools
+import logging
 from typing import Any
 
-import voluptuous as vol
-
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
     ATTR_AREA_ID,
     ATTR_DEVICE_ID,
@@ -18,7 +15,6 @@ from homeassistant.const import (
     ATTR_LABEL_ID,
     Platform,
 )
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import (
     ConfigEntryError,
@@ -31,6 +27,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.service import async_extract_config_entry_ids
 from homeassistant.helpers.typing import ConfigType
+import voluptuous as vol
 
 from .api.errors import (
     NinaCommandError,
@@ -98,7 +95,8 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the actions, the image proxy and the Lovelace cards, once,
-    before any entry is set up."""
+    before any entry is set up.
+    """
     _register_services(hass)
     async_register_views(hass)
     await async_register_frontend_resources(hass)
@@ -326,7 +324,7 @@ async def _client_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaClie
     return (await _entry_for_target(hass, call)).runtime_data.client
 
 
-def _bounded(field: str, kind: type[int] | type[float], minimum: float,
+def _bounded(field: str, kind: type[int | float], minimum: float,
              maximum: float | None = None) -> vol.All:
     """Coerce, then refuse out-of-range input as a validation error rather than
     a `vol.Invalid`.

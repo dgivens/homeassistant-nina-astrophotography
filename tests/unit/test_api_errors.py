@@ -1,6 +1,4 @@
 """The error taxonomy is semantic, not HTTP."""
-import pytest
-
 from nina_astrophotography.api.errors import (
     NinaCommandError,
     NinaConnectionError,
@@ -9,6 +7,7 @@ from nina_astrophotography.api.errors import (
     NinaRequestError,
     NinaUnavailableError,
 )
+import pytest
 
 
 @pytest.mark.parametrize(

@@ -9,11 +9,9 @@ in `nina-image-panel-card.js` for a release after it was fixed everywhere else.
 Source checks: there is no JavaScript test harness here, and adding one to pin
 a handful of string literals would cost more than it returns.
 """
-from __future__ import annotations
-
-import re
 from functools import cache
 from pathlib import Path
+import re
 
 import pytest
 import yaml
@@ -78,7 +76,8 @@ def test_no_card_reads_an_entity_that_2_0_does_not_create(card: Path) -> None:
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
 def test_no_card_hardcodes_an_entity_id(card: Path) -> None:
     """2.0 ids carry the instance name, so an id without one is wrong on every
-    install — and silently, since a missing entity just reads as no data."""
+    install — and silently, since a missing entity just reads as no data.
+    """
     hardcoded = set(LITERAL.findall(card.read_text(encoding="utf-8")))
 
     assert not hardcoded, f"{card.name} hardcodes: {sorted(hardcoded)}"
@@ -100,7 +99,8 @@ def test_no_card_puts_the_image_index_in_the_query_string(card: Path) -> None:
 def test_the_documented_action_fields_are_the_translated_ones() -> None:
     """`services.yaml` is what the UI reads, `strings.json` is what it labels
     them with, and a field in one and not the other is invisible or unlabelled.
-    Phase D renamed three user-facing fields across both."""
+    Phase D renamed three user-facing fields across both.
+    """
     import json
 
     component = ROOT / "custom_components" / "nina_astrophotography"

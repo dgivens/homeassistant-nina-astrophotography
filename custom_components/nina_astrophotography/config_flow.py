@@ -1,14 +1,11 @@
 """Config flow for the N.I.N.A. Astrophotography integration."""
-from __future__ import annotations
-
 import logging
 from typing import Any
-
-import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import voluptuous as vol
 
 from .api.errors import (
     NinaCommandError,
@@ -89,7 +86,7 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # Something answers, but not the Advanced API this expects —
                     # a plugin too old, or another service on the port.
                     errors["base"] = "unsupported_api"
-                except Exception:  # noqa: BLE001
+                except Exception:
                     _LOGGER.exception(
                         "Unexpected error validating the N.I.N.A. connection"
                     )
