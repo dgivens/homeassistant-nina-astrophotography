@@ -223,6 +223,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   session sensors beside it, the series restarts at the local-noon rollover
   and when N.I.N.A. restarts. A dashed line marks each change of target or
   exposure length, which moves star count and ADU by whole factors.
+  The card's HFR trend and rolling average compare the newest frame's filter
+  only, so a filter rotation no longer reads as improving or degrading.
 
 ### Changed
 
