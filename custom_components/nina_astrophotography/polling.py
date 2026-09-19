@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .api.models import EquipmentSnapshot, NinaEvent
 
@@ -48,6 +48,58 @@ class EventLedger:
 
     def mark(self, event: NinaEvent) -> None:
         self._taken.add(self._key(event))
+
+
+# What N.I.N.A. reports only from a PHD2 event a start produces — never one a
+# stop does — so any of them after a GUIDER-STOP is a guider running again.
+_GUIDER_RUNNING = frozenset({"Looping", "Calibrating", "Guiding"})
+
+# Two copies of one stop — pushed, stamped on arrival, and replayed with the
+# rig's own `Time` — differ by the clocks' skew. Two real stops are a whole
+# restart apart.
+_SAME_STOP = timedelta(minutes=1)
+
+
+class GuiderStopLatch:
+    """Which `GUIDER-STOP` a poll has since seen the guider running past.
+
+    `GUIDER-START` is raised only once a start has settled, which with retries
+    can take minutes, so a star lost during that settle is a `LostLock` whose
+    newest guider event is still the stop. A poll that saw the guider Looping,
+    Calibrating or Guiding after the stop is what tells that from the
+    `LostLock` the stop itself left behind.
+
+    Only a poll that is at least the SECOND to find the stop pending can pass
+    it. The caller reads the stop before it fetches, so a stop pushed while a
+    poll is in flight is never judged by that poll's older snapshot — and
+    N.I.N.A. raises `GUIDER-STOP` up to half a second before its cached state
+    leaves `Guiding`, so the first poll to find the stop may still have read
+    `Guiding` from before it. A poll interval later, the cache has caught up.
+
+    A stop within `_SAME_STOP` of the passed one is the same stop, since a
+    reconnect's replay adds a second copy of it. A `GUIDER-START` clears the
+    latch, so that tolerance never merges two real stops.
+    """
+
+    def __init__(self) -> None:
+        self._pending: datetime | None = None
+        self._passed: datetime | None = None
+
+    def observe(self, state: str | None, stop: datetime | None) -> None:
+        """One poll: `stop` as read before its fetch, `state` as fetched."""
+        if stop is None:
+            self._passed = None
+        elif state in _GUIDER_RUNNING and _same_stop(stop, self._pending):
+            self._passed = stop
+        self._pending = stop
+
+    def stopped(self, stop: datetime | None) -> bool:
+        """Whether `stop` is still in force: logged, and not run past since."""
+        return stop is not None and not _same_stop(stop, self._passed)
+
+
+def _same_stop(stop: datetime, other: datetime | None) -> bool:
+    return other is not None and abs(stop - other) <= _SAME_STOP
 
 
 @dataclass

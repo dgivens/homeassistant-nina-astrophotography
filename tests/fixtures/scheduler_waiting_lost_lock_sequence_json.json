@@ -1,0 +1,658 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": [
+        {
+          "Status": "CREATED",
+          "Name": "Failures to Discord_Trigger"
+        },
+        {
+          "Status": "CREATED",
+          "Name": "Dew Heater Control_Trigger"
+        },
+        {
+          "Status": "CREATED",
+          "Name": "Failures to MQTT broker_Trigger"
+        }
+      ]
+    },
+    {
+      "Status": "FINISHED",
+      "Items": [
+        {
+          "Status": "FINISHED",
+          "Items": [
+            {
+              "Status": "FINISHED",
+              "Name": "Global Variable"
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Global Variable"
+            }
+          ],
+          "Name": "Constant/Variable Container_Container",
+          "Triggers": [],
+          "Conditions": []
+        },
+        {
+          "Status": "FINISHED",
+          "Items": [
+            {
+              "Status": "FINISHED",
+              "Name": "Connect Equipment"
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Connect Equipment"
+            },
+            {
+              "Status": "FINISHED",
+              "TargetTime": "2026-09-18T22:23:28.6452112-05:00",
+              "Name": "Wait for Time",
+              "CalculatedWaitDuration": "00:00:00"
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Send to Discord"
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Check PSF Guard connection"
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Pull PSF Guard planning"
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Pull PSF Guard grades"
+            },
+            {
+              "Status": "FINISHED",
+              "Items": [
+                {
+                  "Status": "CREATED",
+                  "Name": "Send to Discord"
+                },
+                {
+                  "Status": "CREATED",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Delay": 60,
+                      "Name": "Wait for Time Span"
+                    }
+                  ],
+                  "Name": "Wait for safety_Container",
+                  "Triggers": [],
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while unsafe_Condition"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "TargetTime": "2026-09-19T06:31:16.9999963-05:00",
+                      "Name": "Loop Until Time_Condition",
+                      "RemainingTime": "08:07:48.3547280"
+                    }
+                  ]
+                },
+                {
+                  "Status": "CREATED",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Send to Discord"
+                    }
+                  ],
+                  "Name": "If/Then/Else_Container"
+                }
+              ],
+              "Name": "If_Container"
+            },
+            {
+              "Status": "FINISHED",
+              "Items": [
+                {
+                  "Status": "FINISHED",
+                  "Items": [
+                    {
+                      "Status": "FINISHED",
+                      "Items": [
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Connect Equipment"
+                        }
+                      ],
+                      "Name": "Connect Equipment_Container",
+                      "Triggers": [],
+                      "Conditions": []
+                    },
+                    {
+                      "Status": "FINISHED",
+                      "Items": [
+                        {
+                          "Status": "FINISHED",
+                          "Items": [
+                            {
+                              "Status": "FINISHED",
+                              "Name": "Send to Discord"
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "Name": "Set Switch Value",
+                              "Index": 0,
+                              "Value": 1
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "Delay": 5,
+                              "Name": "Wait for Time Span"
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "Name": "Connect Equipment"
+                            }
+                          ],
+                          "Name": "Turn on Flat Panel_Container",
+                          "Triggers": [],
+                          "Conditions": []
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Open Flat Panel Cover"
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Items": [
+                            {
+                              "Status": "FINISHED",
+                              "Name": "Send to Discord"
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "Name": "Disconnect Equipment"
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "Name": "Set Switch Value",
+                              "Index": 0,
+                              "Value": 0
+                            }
+                          ],
+                          "Name": "Turn off Flat Panel_Container",
+                          "Triggers": [],
+                          "Conditions": []
+                        }
+                      ],
+                      "Name": "Open Flat Panel_Container",
+                      "Triggers": [],
+                      "Conditions": []
+                    }
+                  ],
+                  "Name": "Initial Startup_Container",
+                  "Triggers": [],
+                  "Conditions": []
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Find home"
+                },
+                {
+                  "Status": "FINISHED",
+                  "TargetTime": "2026-09-18T22:23:28.645309-05:00",
+                  "Name": "Wait for Time",
+                  "CalculatedWaitDuration": "00:00:00"
+                },
+                {
+                  "Status": "FINISHED",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Annotation",
+                      "Text": "Ensure the flat panel is really off as required by REDACTED policy"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Send to Discord"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Disconnect Equipment"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Set Switch Value",
+                      "Index": 0,
+                      "Value": 0
+                    }
+                  ],
+                  "Name": "If_Container"
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Start live stacking"
+                }
+              ],
+              "Name": "If_Container"
+            }
+          ],
+          "Name": "MY START_Container",
+          "Triggers": [],
+          "Conditions": []
+        }
+      ],
+      "Name": "Start_Container",
+      "Triggers": [],
+      "Conditions": []
+    },
+    {
+      "Status": "RUNNING",
+      "Items": [
+        {
+          "Status": "RUNNING",
+          "Items": [
+            {
+              "Status": "FINISHED",
+              "Name": "Night Summary Start"
+            },
+            {
+              "Status": "FINISHED",
+              "Items": [
+                {
+                  "Status": "FINISHED",
+                  "Name": "Run Autofocus"
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Dynamic Cool Camera"
+                }
+              ],
+              "Name": "Camera Prep_Container",
+              "Triggers": [],
+              "Conditions": []
+            },
+            {
+              "Status": "RUNNING",
+              "Items": [
+                {
+                  "Status": "RUNNING",
+                  "Items": [
+                    {
+                      "Status": "RUNNING",
+                      "Items": [],
+                      "Name": "Target Scheduler Container_Container",
+                      "Triggers": [],
+                      "Conditions": []
+                    }
+                  ],
+                  "Name": "Target Acquisition_Container",
+                  "Triggers": [
+                    {
+                      "Status": "FINISHED",
+                      "Name": "PSF Guard target sync_Trigger"
+                    },
+                    {
+                      "Status": "FINISHED",
+                      "Name": "PSF Guard exposure sync_Trigger"
+                    }
+                  ],
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while safe_Condition"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Target Scheduler Condition_Condition"
+                    }
+                  ]
+                },
+                {
+                  "Status": "CREATED",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Name": "Send to Discord"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Set Variable"
+                        }
+                      ],
+                      "Name": "If_Container"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Stop Guiding"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Set Tracking",
+                      "TrackingMode": "Stopped"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Find home"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Warm Camera",
+                      "MinWarmingTime": 5
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Delay": 60,
+                      "Name": "Wait for Time Span"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Name": "Send to Discord"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Set Variable"
+                        }
+                      ],
+                      "Name": "If_Container"
+                    }
+                  ],
+                  "Name": "Unsafe Wait_Container",
+                  "Triggers": [],
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Target Scheduler Condition_Condition"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while unsafe_Condition"
+                    }
+                  ]
+                }
+              ],
+              "Name": "Target Scheduler Imaging_Container",
+              "Triggers": [
+                {
+                  "Status": "CREATED",
+                  "Drift": 0.2570187230026438,
+                  "Name": "Center After Drift_Trigger",
+                  "TargetDrift": 10,
+                  "Coordinates": {
+                    "Coordinates": {
+                      "RA": 22.516300319444444,
+                      "RAString": "22:30:59",
+                      "RADegrees": 337.74450479166666,
+                      "Dec": 75.24191398055555,
+                      "DecString": "75\u00b0 14' 31\"",
+                      "Epoch": "J2000",
+                      "DateTime": {
+                        "Now": "2026-09-18T22:23:28.6455414-05:00",
+                        "UtcNow": "2026-09-19T03:23:28.645543Z"
+                      }
+                    },
+                    "RAHours": 22,
+                    "RAMinutes": 30,
+                    "RASeconds": 58.68115,
+                    "NegativeDec": false,
+                    "DecDegrees": 75,
+                    "DecMinutes": 14,
+                    "DecSeconds": 30.89033
+                  }
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Restore Guiding_Trigger"
+                },
+                {
+                  "SampleSize": 10,
+                  "DeltaHFR": 5,
+                  "HFRTrendPercentage": 0,
+                  "Status": "FINISHED",
+                  "Name": "AF After HFR Increase_Trigger",
+                  "OriginalHFR": 1.4287036908604374
+                },
+                {
+                  "Status": "CREATED",
+                  "DeltaTemperature": 0.2,
+                  "Name": "AF After Temperature Change_Trigger",
+                  "TargetTemperature": 2
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "AF After Time_Trigger",
+                  "DeltaTime": 60,
+                  "ElapsedTime": 11.03
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Meridian Flip_Trigger",
+                  "TimeToFlip": 24
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Interrupt when RMS above_Trigger"
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Restart When Saturated_Trigger"
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Settle before Exposure_Trigger"
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Reconnect Camera On Download Failure_Trigger"
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Dew Heater Control_Trigger"
+                }
+              ],
+              "Conditions": [
+                {
+                  "Status": "CREATED",
+                  "Name": "Target Scheduler Condition_Condition"
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Target Scheduler Background Condition_Condition"
+                }
+              ]
+            }
+          ],
+          "Name": "If_Container"
+        }
+      ],
+      "Name": "Targets_Container",
+      "Triggers": [],
+      "Conditions": []
+    },
+    {
+      "Status": "CREATED",
+      "Items": [
+        {
+          "Status": "CREATED",
+          "Items": [
+            {
+              "Status": "CREATED",
+              "Items": [
+                {
+                  "Status": "CREATED",
+                  "Name": "Send to Discord"
+                },
+                {
+                  "Status": "CREATED",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Stop live stacking"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Name": "Stop Guiding"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Shutdown PHD2"
+                        }
+                      ],
+                      "Name": "Shutdown PHD2_Container",
+                      "Triggers": [],
+                      "Conditions": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Find home"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Set Tracking",
+                      "TrackingMode": "Stopped"
+                    }
+                  ],
+                  "Name": "Initial Shutdown Steps_Container",
+                  "Triggers": [],
+                  "Conditions": []
+                },
+                {
+                  "Status": "CREATED",
+                  "TargetTime": "2026-09-19T06:31:16.9999974-05:00",
+                  "Name": "Wait for Time",
+                  "CalculatedWaitDuration": "08:07:48.3546019"
+                },
+                {
+                  "Status": "CREATED",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Send to Discord"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Name": "Send to Discord"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Set Switch Value",
+                          "Index": 0,
+                          "Value": 1
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Delay": 5,
+                          "Name": "Wait for Time Span"
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Connect Equipment"
+                        }
+                      ],
+                      "Name": "Turn on Flat Panel_Container",
+                      "Triggers": [],
+                      "Conditions": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Target Scheduler Flats"
+                    }
+                  ],
+                  "Name": "Flats_Container",
+                  "Triggers": [],
+                  "Conditions": []
+                },
+                {
+                  "Status": "CREATED",
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Warm Camera",
+                      "MinWarmingTime": 10
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Dew Heater",
+                      "DewHeaterOn": false
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Reconcile PSF Guard catalog"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Night Summary End"
+                    }
+                  ],
+                  "Name": "Final Shutdown Steps_Container",
+                  "Triggers": [],
+                  "Conditions": []
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Send to Discord"
+                }
+              ],
+              "Name": "If/Then/Else_Container"
+            }
+          ],
+          "Name": "MY END_Container",
+          "Triggers": [],
+          "Conditions": []
+        }
+      ],
+      "Name": "End_Container",
+      "Triggers": [],
+      "Conditions": []
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-19T03:23:43+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/sequence/json",
+    "params": {}
+  }
+}

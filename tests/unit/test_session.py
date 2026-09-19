@@ -15,6 +15,7 @@ from nina_astrophotography.session import (
     latest_stack,
     latest_target,
     newest_frame,
+    pending_guider_stop,
 )
 
 # Noon the day after the dawn corpus: every one of its frames is by then in
@@ -385,6 +386,46 @@ def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> Non
     """A plain N.I.N.A. sequence emits no TS-* event; its target is in the tree."""
     assert latest_target([e for e in night_events
                           if not e.name.startswith("TS-")], "g1") is None
+
+
+@pytest.mark.parametrize(
+    ("capture", "expected"),
+    [
+        ("scheduler_waiting_lost_lock", True),
+        ("imaging_guiding", False),
+        ("scheduler_waiting", False),
+    ],
+    ids=["stopped for a scheduler wait", "guiding",
+         "only a GUIDER-CONNECTED logged"],
+)
+def test_a_stop_is_pending_when_it_is_the_newest_start_or_stop(
+    capture: str, expected: bool
+) -> None:
+    """The newest start or stop decides; a history with neither is not a stop."""
+    events = [map_event(e, "g1") for e in load_fixture(f"{capture}_event_history.json")]
+    assert (pending_guider_stop(events, "g1") is not None) is expected
+
+
+@pytest.mark.parametrize(
+    ("logged", "expected"),
+    [
+        ([("GUIDER-STOP", "g1"), ("GUIDER-DITHER", "g1")], True),
+        ([("GUIDER-START", "g1"), ("GUIDER-STOP", "g0")], False),
+    ],
+    ids=["a dither after the stop", "the stop was the previous process's"],
+)
+@pytest.mark.synthetic
+def test_neither_a_dither_nor_a_previous_process_moves_the_verdict(
+    logged: list[tuple[str, str]], expected: bool
+) -> None:
+    """N.I.N.A. raises GUIDER-DITHER even for a dither it skipped, so it is
+    not a start; a stop from before a N.I.N.A. restart says nothing."""
+    events = [
+        NinaEvent(name=name, time=datetime(2026, 9, 18, 21, minute, tzinfo=RIG),
+                  data={}, generation=generation)
+        for minute, (name, generation) in enumerate(logged)
+    ]
+    assert (pending_guider_stop(events, "g1") is not None) is expected
 
 
 # The rig's own offset; every N.I.N.A. timestamp is local to its clock.

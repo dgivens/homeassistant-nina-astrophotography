@@ -81,6 +81,68 @@ async def test_the_guider_switch_is_on_whenever_the_guider_is_running(
     assert hass.states.get(GUIDER).state == expected
 
 
+async def test_a_lost_lock_left_over_from_a_stop_reads_off(
+    hass: HomeAssistant, config_entry, rig
+) -> None:
+    """N.I.N.A. keeps `LostLock` after `GUIDER-STOP`, and a switch reading on
+    would never let a "restart guiding when it stops" automation fire. Set up
+    in the state because `/event-history` is replayed once."""
+    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    assert hass.states.get(GUIDER).state == "off"
+
+
+@pytest.mark.synthetic
+async def test_a_lock_lost_while_guiding_restarts_reads_on(
+    hass: HomeAssistant, config_entry, rig
+) -> None:
+    """GUIDER-START waits for the settle, so a star lost during it is a
+    `LostLock` with the stop still newest. The guider polled running since the
+    stop is what keeps the switch on — off would invite a tap that interrupts
+    the start in progress."""
+    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    coordinator = config_entry.runtime_data.coordinator
+    for state in ("scheduler_waiting_lost_lock", "guider_restarting_after_stop",
+                  "scheduler_waiting_lost_lock"):
+        rig.goto(state)
+        await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(GUIDER).state == "on"
+
+
+@pytest.mark.synthetic
+async def test_a_stop_pushed_while_a_poll_is_in_flight_is_not_passed_by_it(
+    hass: HomeAssistant, advance, push, monkeypatch
+) -> None:
+    """The poll's snapshot was taken while the guider was still guiding, so it
+    says nothing about the stop pushed after it — the next `LostLock` is the
+    stop's leftover. Fabricates the bare `GUIDER-STOP` push."""
+    await advance("imaging_guiding")
+    fetch = NinaClientV2.get_equipment
+
+    async def stop_during_the_fetch(client):
+        snapshot = await fetch(client)
+        push({"Event": "GUIDER-STOP"})
+        return snapshot
+
+    monkeypatch.setattr(NinaClientV2, "get_equipment", stop_during_the_fetch)
+    await advance("imaging_guiding")
+    monkeypatch.setattr(NinaClientV2, "get_equipment", fetch)
+    await advance("guider_lost_lock")
+    assert hass.states.get(GUIDER).state == "off"
+
+
+@pytest.mark.synthetic
+async def test_a_guider_start_after_the_stop_reads_the_lost_lock_as_running(
+    hass: HomeAssistant, config_entry, rig, push
+) -> None:
+    """The wait ending restarts guiding, and a lock lost from then on is a
+    guider hunting for its star. Fabricates the bare `GUIDER-START` push."""
+    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    push({"Event": "GUIDER-START"})
+    await hass.async_block_till_done()
+    assert hass.states.get(GUIDER).state == "on"
+
+
 @pytest.mark.parametrize(
     ("service", "expected"),
     [

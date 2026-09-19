@@ -49,6 +49,12 @@ _TARGET_STARTED = frozenset({"TS-TARGETSTART", "TS-NEWTARGETSTART"})
 # sequence stopping — `SEQUENCE-FINISHED` fires on a manual stop too.
 _WAIT_ENDED_BY = _TARGET_STARTED | {"SEQUENCE-FINISHED"}
 
+# Not GUIDER-DITHER: N.I.N.A. raises it even for a dither it skipped because
+# the guider was not guiding, so it says nothing about the guider running.
+_GUIDER_STARTED = "GUIDER-START"
+_GUIDER_STOPPED = "GUIDER-STOP"
+_GUIDER_STARTED_OR_STOPPED = frozenset({_GUIDER_STARTED, _GUIDER_STOPPED})
+
 # Only a fallback: the rig's own `FocuserSettings.AutoFocusTimeoutSeconds` is
 # polled from /profile/show and is 600 on the captured rig, so folding against
 # this would call a seven-minute run failed.
@@ -299,3 +305,22 @@ def latest_target(events: Iterable[NinaEvent],
         return None
     name = start.data.get("TargetName")
     return name if isinstance(name, str) and name else None
+
+
+def pending_guider_stop(events: Iterable[NinaEvent],
+                        generation: str | None) -> datetime | None:
+    """When the newest `GUIDER-STOP` was, if no `GUIDER-START` has followed it.
+
+    `GuiderInfo.State` alone cannot say. It is N.I.N.A.'s cache of PHD2's
+    events, and a stop that interrupts a guide exposure ends with PHD2 clearing
+    its lock position AFTER reporting looping stopped — which N.I.N.A. maps to
+    `LostLock` and keeps until the next start. A guider that has been stopped
+    then reads exactly like one hunting for a lost star.
+
+    None when neither event is in the history, which is the side that never
+    offers to restart a guider mid-exposure. The time is the stop's identity:
+    `polling.GuiderStopLatch` keys on it to tell a stop the guider has since
+    been seen running past.
+    """
+    newest = _newest(events, _GUIDER_STARTED_OR_STOPPED, generation)
+    return newest.time if newest is not None and newest.name == _GUIDER_STOPPED else None

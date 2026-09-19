@@ -382,7 +382,7 @@
     'Sequence.Items.Triggers.Coordinates.Dec': 'float|int',
     'Sequence.Items.Triggers.Coordinates.DecDegrees': 'int',
     'Sequence.Items.Triggers.Coordinates.DecMinutes': 'int',
-    'Sequence.Items.Triggers.Coordinates.DecSeconds': 'int',
+    'Sequence.Items.Triggers.Coordinates.DecSeconds': 'float|int',
     'Sequence.Items.Triggers.Coordinates.DecString': 'str',
     'Sequence.Items.Triggers.Coordinates.Epoch': 'str',
     'Sequence.Items.Triggers.Coordinates.NegativeDec': 'bool',
@@ -758,6 +758,6 @@
     'WeatherData.Temperature': 'float|nan',
     'WeatherData.WindDirection': 'int|nan',
     'WeatherData.WindGust': 'float|nan',
-    'WeatherData.WindSpeed': 'float|nan',
+    'WeatherData.WindSpeed': 'float|int|nan',
   })
 # ---

@@ -1,0 +1,2045 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": [
+        {
+          "Status": "CREATED",
+          "Name": "Failures to Discord_Trigger",
+          "Issues": []
+        },
+        {
+          "Status": "CREATED",
+          "Name": "Dew Heater Control_Trigger"
+        },
+        {
+          "Issues": [],
+          "Retain": true,
+          "Topic": "astro/nina",
+          "Status": "CREATED",
+          "Name": "Failures to MQTT broker_Trigger",
+          "QoS": 1
+        }
+      ]
+    },
+    {
+      "Conditions": [],
+      "Status": "FINISHED",
+      "Name": "Start_Container",
+      "Triggers": [],
+      "Iterations": 1,
+      "Items": [
+        {
+          "ShowAddTemplate": false,
+          "Conditions": [],
+          "Status": "FINISHED",
+          "Name": "Constant/Variable Container_Container",
+          "Triggers": [],
+          "Iterations": 1,
+          "Items": [
+            {
+              "Name": "Global Variable",
+              "Executed": true,
+              "CValueExpr": null,
+              "IsReference": false,
+              "isDataSymbol": false,
+              "IsGlobalVariable": true,
+              "Variable": null,
+              "Definition": "0",
+              "OriginalDefinition": "0",
+              "Identifier": "AbortNight",
+              "OValueExpr": null,
+              "Issues": [],
+              "CValue": null,
+              "OriginalExpr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Expr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Status": "FINISHED"
+            },
+            {
+              "Name": "Global Variable",
+              "Executed": true,
+              "CValueExpr": null,
+              "IsReference": false,
+              "isDataSymbol": false,
+              "IsGlobalVariable": true,
+              "Variable": null,
+              "Definition": "0",
+              "OriginalDefinition": "0",
+              "Identifier": "DiscordUnsafeNotified",
+              "OValueExpr": null,
+              "Issues": [],
+              "CValue": null,
+              "OriginalExpr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Expr": {
+                "Expression": "0",
+                "Type": "Any"
+              },
+              "Status": "FINISHED"
+            }
+          ]
+        },
+        {
+          "Conditions": [],
+          "Status": "FINISHED",
+          "Name": "MY START_Container",
+          "Triggers": [],
+          "Iterations": 1,
+          "Items": [
+            {
+              "Status": "FINISHED",
+              "SelectedDevice": "Safety Monitor",
+              "Name": "Connect Equipment",
+              "Issues": []
+            },
+            {
+              "Status": "FINISHED",
+              "SelectedDevice": "Switch",
+              "Name": "Connect Equipment",
+              "Issues": []
+            },
+            {
+              "Issues": [],
+              "RolloverTime": "07:24:09.3953006",
+              "SelectedProvider": {},
+              "Minutes": 3,
+              "Hours": 20,
+              "Status": "FINISHED",
+              "Name": "Wait for Time",
+              "Seconds": 27,
+              "MinutesOffset": 0
+            },
+            {
+              "Message": "\ud83d\udce1 FRA500 -  Beginning startup sequence",
+              "EmbedTitle": "",
+              "Status": "FINISHED",
+              "EmbedEdgeColor": "#FF206694",
+              "Name": "Send to Discord",
+              "EmbedText": "",
+              "Issues": [],
+              "WindowService": {},
+              "ShowEmbed": false
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Check PSF Guard connection",
+              "Issues": []
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Pull PSF Guard planning",
+              "Issues": []
+            },
+            {
+              "Status": "FINISHED",
+              "Name": "Pull PSF Guard grades",
+              "Issues": []
+            },
+            {
+              "Issues": [],
+              "Switches": [
+                "TargetRA: 22.52",
+                "TargetDec: 75.24",
+                "TargetValid: 1",
+                "TargetName: 'Rotten Fish'",
+                "TargetRotation: 0",
+                "TS_WaitStart: 22:41",
+                "TS_TargetName: 'Rotten Fish'",
+                "TS_ProjectName: 'Broadband Priority'",
+                "TS_Target_Rotation: 0",
+                "TS_Target_RA: 22.52",
+                "TS_Target_Dec: 75.24",
+                "MoonAltitude: 18.29",
+                "MoonIllumination: 0.52",
+                "SunAltitude: -34.55",
+                "SunAzimuth: 297.38",
+                "LocalSiderealTime: 20.63",
+                "TIME: 6037",
+                "EXITCODE: 0",
+                "Altitude: 31.55",
+                "Azimuth: 360",
+                "AtPark: 'False'",
+                "RightAscension: 23.91",
+                "Declination: 89.85",
+                "SideOfPier: PierEast",
+                "IsSafe: 'True'",
+                "RoofStatus: RoofOpen",
+                "FocuserPosition: 2501",
+                "FocuserTemperature: 27.5",
+                "SensorTemp: 5",
+                "RotatorPosition: '78.92'",
+                "CurrentFilter: Filter_R",
+                "S: FlatPanel: 0",
+                "S: OTA: 1",
+                "W: DewPoint: 19.7",
+                "W: Humidity: 35.4",
+                "W: Pressure: 966.4",
+                "W: RainRate: 0",
+                "W: SkyBrightness: 80123",
+                "W: SkyTemperature: 13.1",
+                "W: Temperature: 37.6",
+                "W: WindDirection: 125",
+                "W: WindGust: 2.4",
+                "W: WindSpeed: 3",
+                "Image_HFR: 1.43",
+                "Image_StarCount: 4934",
+                "Image_Id: 80",
+                "Image_ExposureTime: 300",
+                "Image_MeanADU: 854.79",
+                "Image_RMS: 0.21",
+                "Image_Type: LIGHT",
+                "Image_Gain: 100",
+                "Image_Offset: 50",
+                "Image_Eccentricity: 0.36",
+                "Image_FWHM: 3.87"
+              ],
+              "IfExpr": {
+                "Expression": "!IsSafe",
+                "Type": "Any"
+              },
+              "Predicate": null,
+              "Status": "FINISHED",
+              "Name": "If_Container",
+              "Iterations": 0,
+              "Items": [
+                {
+                  "Message": "\ud83d\udce1 FRA500 - Initial startup paused due to unsafe conditions",
+                  "EmbedTitle": "",
+                  "Status": "CREATED",
+                  "EmbedEdgeColor": "#FFFFA500",
+                  "Name": "Send to Discord",
+                  "EmbedText": "",
+                  "Issues": [],
+                  "WindowService": {},
+                  "ShowEmbed": false
+                },
+                {
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while unsafe_Condition",
+                      "Issues": []
+                    },
+                    {
+                      "Issues": [],
+                      "RolloverTime": "19:39:15.6513316",
+                      "SelectedProvider": {},
+                      "Minutes": 31,
+                      "Hours": 6,
+                      "Status": "CREATED",
+                      "Name": "Loop Until Time_Condition",
+                      "Seconds": 17,
+                      "MinutesOffset": 0
+                    }
+                  ],
+                  "Status": "CREATED",
+                  "Name": "Wait for safety_Container",
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Wait for Time Span",
+                      "Time": 60.0
+                    }
+                  ]
+                },
+                {
+                  "Issues": [],
+                  "Switches": null,
+                  "IfExpr": {
+                    "Expression": "IsSafe",
+                    "Type": "Any"
+                  },
+                  "Predicate": null,
+                  "ElseInstructions": {
+                    "Strategy": {},
+                    "Name": "If/Then/Else",
+                    "Conditions": [],
+                    "IsExpanded": true,
+                    "Items": [
+                      {
+                        "Message": "\ud83d\udce1 FRA500 - Safety conditions never cleared overnight.",
+                        "EmbedTitle": "",
+                        "EmbedText": "",
+                        "EmbedEdgeColor": "#FFFF0000",
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      {
+                        "Expr": {
+                          "Expression": "1",
+                          "Type": "Any"
+                        },
+                        "Variable": "AbortNight",
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      }
+                    ],
+                    "Triggers": [],
+                    "ErrorBehavior": 0,
+                    "Attempts": 1
+                  },
+                  "Status": "CREATED",
+                  "Name": "If/Then/Else_Container",
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Message": "\ud83d\udce1 FRA500 - Conditions are now safe. Proceeding with startup.",
+                      "EmbedTitle": "",
+                      "Status": "CREATED",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Name": "Send to Discord",
+                      "EmbedText": "",
+                      "Issues": [],
+                      "WindowService": {},
+                      "ShowEmbed": false
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Issues": [],
+              "Switches": [
+                "TargetRA: 22.52",
+                "TargetDec: 75.24",
+                "TargetValid: 1",
+                "TargetName: 'Rotten Fish'",
+                "TargetRotation: 0",
+                "TS_WaitStart: 22:41",
+                "TS_TargetName: 'Rotten Fish'",
+                "TS_ProjectName: 'Broadband Priority'",
+                "TS_Target_Rotation: 0",
+                "TS_Target_RA: 22.52",
+                "TS_Target_Dec: 75.24",
+                "MoonAltitude: 18.29",
+                "MoonIllumination: 0.52",
+                "SunAltitude: -34.55",
+                "SunAzimuth: 297.38",
+                "LocalSiderealTime: 20.63",
+                "TIME: 6037",
+                "EXITCODE: 0",
+                "Altitude: 31.55",
+                "Azimuth: 360",
+                "AtPark: 'False'",
+                "RightAscension: 23.91",
+                "Declination: 89.85",
+                "SideOfPier: PierEast",
+                "IsSafe: 'True'",
+                "RoofStatus: RoofOpen",
+                "FocuserPosition: 2501",
+                "FocuserTemperature: 27.5",
+                "SensorTemp: 5",
+                "RotatorPosition: '78.92'",
+                "CurrentFilter: Filter_R",
+                "S: FlatPanel: 0",
+                "S: OTA: 1",
+                "W: DewPoint: 19.7",
+                "W: Humidity: 35.4",
+                "W: Pressure: 966.4",
+                "W: RainRate: 0",
+                "W: SkyBrightness: 80123",
+                "W: SkyTemperature: 13.1",
+                "W: Temperature: 37.6",
+                "W: WindDirection: 125",
+                "W: WindGust: 2.4",
+                "W: WindSpeed: 3",
+                "Image_HFR: 1.43",
+                "Image_StarCount: 4934",
+                "Image_Id: 80",
+                "Image_ExposureTime: 300",
+                "Image_MeanADU: 854.79",
+                "Image_RMS: 0.21",
+                "Image_Type: LIGHT",
+                "Image_Gain: 100",
+                "Image_Offset: 50",
+                "Image_Eccentricity: 0.36",
+                "Image_FWHM: 3.87"
+              ],
+              "IfExpr": {
+                "Expression": "!AbortNight",
+                "Type": "Any"
+              },
+              "Predicate": null,
+              "Status": "FINISHED",
+              "Name": "If_Container",
+              "Iterations": 1,
+              "Items": [
+                {
+                  "Conditions": [],
+                  "Status": "FINISHED",
+                  "Name": "Initial Startup_Container",
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Conditions": [],
+                      "Status": "FINISHED",
+                      "Name": "Connect Equipment_Container",
+                      "Triggers": [],
+                      "Iterations": 1,
+                      "Items": [
+                        {
+                          "Status": "FINISHED",
+                          "SelectedDevice": "Camera",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "SelectedDevice": "Filter Wheel",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "SelectedDevice": "Focuser",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "SelectedDevice": "Rotator",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "SelectedDevice": "Weather",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "SelectedDevice": "Guider",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "SelectedDevice": "Mount",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        }
+                      ]
+                    },
+                    {
+                      "Conditions": [],
+                      "Status": "FINISHED",
+                      "Name": "Open Flat Panel_Container",
+                      "Triggers": [],
+                      "Iterations": 1,
+                      "Items": [
+                        {
+                          "Conditions": [],
+                          "Status": "FINISHED",
+                          "Name": "Turn on Flat Panel_Container",
+                          "Triggers": [],
+                          "Iterations": 1,
+                          "Items": [
+                            {
+                              "Message": "\ud83d\udce1 FRA500 - Turning on flat panel",
+                              "EmbedTitle": "",
+                              "Status": "FINISHED",
+                              "EmbedEdgeColor": "#FF206694",
+                              "Name": "Send to Discord",
+                              "EmbedText": "",
+                              "Issues": [],
+                              "WindowService": {},
+                              "ShowEmbed": false
+                            },
+                            {
+                              "Issues": [],
+                              "Name": "Set Switch Value",
+                              "SelectedSwitch": {
+                                "Minimum": 0.0,
+                                "Maximum": 1.0,
+                                "StepSize": 1.0,
+                                "TargetValue": 0.0,
+                                "Id": 0,
+                                "EntityId": "device-057dc28f",
+                                "Name": "Flat Panel",
+                                "Description": "REDACTED",
+                                "Value": 0.0
+                              },
+                              "Status": "FINISHED",
+                              "WritableSwitches": [
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 0.0,
+                                  "Id": 0,
+                                  "EntityId": "device-057dc28f",
+                                  "Name": "Flat Panel",
+                                  "Description": "REDACTED",
+                                  "Value": 0.0
+                                },
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 1,
+                                  "EntityId": "device-fb078731",
+                                  "Name": "OTA",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                }
+                              ],
+                              "Value": 1.0,
+                              "SwitchIndex": 0
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "Name": "Wait for Time Span",
+                              "Time": 5.0
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "SelectedDevice": "Flat Panel",
+                              "Name": "Connect Equipment",
+                              "Issues": []
+                            }
+                          ]
+                        },
+                        {
+                          "Status": "FINISHED",
+                          "Name": "Open Flat Panel Cover",
+                          "Issues": [
+                            "Flat device not connected"
+                          ]
+                        },
+                        {
+                          "Conditions": [],
+                          "Status": "FINISHED",
+                          "Name": "Turn off Flat Panel_Container",
+                          "Triggers": [],
+                          "Iterations": 1,
+                          "Items": [
+                            {
+                              "Message": "\ud83d\udce1 FRA500 - Powering off flat panel",
+                              "EmbedTitle": "",
+                              "Status": "FINISHED",
+                              "EmbedEdgeColor": "#FF206694",
+                              "Name": "Send to Discord",
+                              "EmbedText": "",
+                              "Issues": [],
+                              "WindowService": {},
+                              "ShowEmbed": false
+                            },
+                            {
+                              "Status": "FINISHED",
+                              "SelectedDevice": "Flat Panel",
+                              "Name": "Disconnect Equipment",
+                              "Issues": []
+                            },
+                            {
+                              "Issues": [],
+                              "Name": "Set Switch Value",
+                              "SelectedSwitch": {
+                                "Minimum": 0.0,
+                                "Maximum": 1.0,
+                                "StepSize": 1.0,
+                                "TargetValue": 0.0,
+                                "Id": 0,
+                                "EntityId": "device-057dc28f",
+                                "Name": "Flat Panel",
+                                "Description": "REDACTED",
+                                "Value": 0.0
+                              },
+                              "Status": "FINISHED",
+                              "WritableSwitches": [
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 0.0,
+                                  "Id": 0,
+                                  "EntityId": "device-057dc28f",
+                                  "Name": "Flat Panel",
+                                  "Description": "REDACTED",
+                                  "Value": 0.0
+                                },
+                                {
+                                  "Minimum": 0.0,
+                                  "Maximum": 1.0,
+                                  "StepSize": 1.0,
+                                  "TargetValue": 1.0,
+                                  "Id": 1,
+                                  "EntityId": "device-fb078731",
+                                  "Name": "OTA",
+                                  "Description": "REDACTED",
+                                  "Value": 1.0
+                                }
+                              ],
+                              "Value": 0.0,
+                              "SwitchIndex": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Find home",
+                  "Issues": []
+                },
+                {
+                  "Issues": [],
+                  "RolloverTime": "07:24:09.3953006",
+                  "SelectedProvider": {},
+                  "Minutes": 21,
+                  "Hours": 20,
+                  "Status": "FINISHED",
+                  "Name": "Wait for Time",
+                  "Seconds": 45,
+                  "MinutesOffset": -10
+                },
+                {
+                  "Issues": [],
+                  "Switches": [
+                    "TargetRA: 22.52",
+                    "TargetDec: 75.24",
+                    "TargetValid: 1",
+                    "TargetName: 'Rotten Fish'",
+                    "TargetRotation: 0",
+                    "TS_WaitStart: 22:41",
+                    "TS_TargetName: 'Rotten Fish'",
+                    "TS_ProjectName: 'Broadband Priority'",
+                    "TS_Target_Rotation: 0",
+                    "TS_Target_RA: 22.52",
+                    "TS_Target_Dec: 75.24",
+                    "MoonAltitude: 18.29",
+                    "MoonIllumination: 0.52",
+                    "SunAltitude: -34.55",
+                    "SunAzimuth: 297.38",
+                    "LocalSiderealTime: 20.63",
+                    "TIME: 6037",
+                    "EXITCODE: 0",
+                    "Altitude: 31.55",
+                    "Azimuth: 360",
+                    "AtPark: 'False'",
+                    "RightAscension: 23.91",
+                    "Declination: 89.85",
+                    "SideOfPier: PierEast",
+                    "IsSafe: 'True'",
+                    "RoofStatus: RoofOpen",
+                    "FocuserPosition: 2501",
+                    "FocuserTemperature: 27.5",
+                    "SensorTemp: 5",
+                    "RotatorPosition: '78.92'",
+                    "CurrentFilter: Filter_R",
+                    "S: FlatPanel: 0",
+                    "S: OTA: 1",
+                    "W: DewPoint: 19.7",
+                    "W: Humidity: 35.4",
+                    "W: Pressure: 966.4",
+                    "W: RainRate: 0",
+                    "W: SkyBrightness: 80123",
+                    "W: SkyTemperature: 13.1",
+                    "W: Temperature: 37.6",
+                    "W: WindDirection: 125",
+                    "W: WindGust: 2.4",
+                    "W: WindSpeed: 3",
+                    "Image_HFR: 1.43",
+                    "Image_StarCount: 4934",
+                    "Image_Id: 80",
+                    "Image_ExposureTime: 300",
+                    "Image_MeanADU: 854.79",
+                    "Image_RMS: 0.21",
+                    "Image_Type: LIGHT",
+                    "Image_Gain: 100",
+                    "Image_Offset: 50",
+                    "Image_Eccentricity: 0.36",
+                    "Image_FWHM: 3.87"
+                  ],
+                  "IfExpr": {
+                    "Expression": "FlatPanel == 1",
+                    "Type": "Any"
+                  },
+                  "Predicate": null,
+                  "Status": "FINISHED",
+                  "Name": "If_Container",
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Annotation",
+                      "Text": "Ensure the flat panel is really off as required by REDACTED policy"
+                    },
+                    {
+                      "Message": "\ud83d\udce1 FRA500 - Power to flat panel was still on. Powering off now",
+                      "EmbedTitle": "",
+                      "Status": "CREATED",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Name": "Send to Discord",
+                      "EmbedText": "",
+                      "Issues": [],
+                      "WindowService": {},
+                      "ShowEmbed": false
+                    },
+                    {
+                      "Status": "CREATED",
+                      "SelectedDevice": "Flat Panel",
+                      "Name": "Disconnect Equipment",
+                      "Issues": []
+                    },
+                    {
+                      "Issues": [],
+                      "Name": "Set Switch Value",
+                      "SelectedSwitch": {
+                        "Minimum": 0.0,
+                        "Maximum": 1.0,
+                        "StepSize": 1.0,
+                        "TargetValue": 0.0,
+                        "Id": 0,
+                        "EntityId": "device-057dc28f",
+                        "Name": "Flat Panel",
+                        "Description": "REDACTED",
+                        "Value": 0.0
+                      },
+                      "Status": "CREATED",
+                      "WritableSwitches": [
+                        {
+                          "Minimum": 0.0,
+                          "Maximum": 1.0,
+                          "StepSize": 1.0,
+                          "TargetValue": 0.0,
+                          "Id": 0,
+                          "EntityId": "device-057dc28f",
+                          "Name": "Flat Panel",
+                          "Description": "REDACTED",
+                          "Value": 0.0
+                        },
+                        {
+                          "Minimum": 0.0,
+                          "Maximum": 1.0,
+                          "StepSize": 1.0,
+                          "TargetValue": 1.0,
+                          "Id": 1,
+                          "EntityId": "device-fb078731",
+                          "Name": "OTA",
+                          "Description": "REDACTED",
+                          "Value": 1.0
+                        }
+                      ],
+                      "Value": 0.0,
+                      "SwitchIndex": 0
+                    }
+                  ]
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Start live stacking"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Conditions": [],
+      "Status": "RUNNING",
+      "Name": "Targets_Container",
+      "Triggers": [],
+      "Iterations": 0,
+      "Items": [
+        {
+          "Issues": [],
+          "Switches": [
+            "TargetRA: 22.52",
+            "TargetDec: 75.24",
+            "TargetValid: 1",
+            "TargetName: 'Rotten Fish'",
+            "TargetRotation: 0",
+            "TS_WaitStart: 22:41",
+            "TS_TargetName: 'Rotten Fish'",
+            "TS_ProjectName: 'Broadband Priority'",
+            "TS_Target_Rotation: 0",
+            "TS_Target_RA: 22.52",
+            "TS_Target_Dec: 75.24",
+            "MoonAltitude: 18.29",
+            "MoonIllumination: 0.52",
+            "SunAltitude: -34.55",
+            "SunAzimuth: 297.38",
+            "LocalSiderealTime: 20.63",
+            "TIME: 6037",
+            "EXITCODE: 0",
+            "Altitude: 31.55",
+            "Azimuth: 360",
+            "AtPark: 'False'",
+            "RightAscension: 23.91",
+            "Declination: 89.85",
+            "SideOfPier: PierEast",
+            "IsSafe: 'True'",
+            "RoofStatus: RoofOpen",
+            "FocuserPosition: 2501",
+            "FocuserTemperature: 27.5",
+            "SensorTemp: 5",
+            "RotatorPosition: '78.92'",
+            "CurrentFilter: Filter_R",
+            "S: FlatPanel: 0",
+            "S: OTA: 1",
+            "W: DewPoint: 19.7",
+            "W: Humidity: 35.4",
+            "W: Pressure: 966.4",
+            "W: RainRate: 0",
+            "W: SkyBrightness: 80123",
+            "W: SkyTemperature: 13.1",
+            "W: Temperature: 37.6",
+            "W: WindDirection: 125",
+            "W: WindGust: 2.4",
+            "W: WindSpeed: 3",
+            "Image_HFR: 1.43",
+            "Image_StarCount: 4934",
+            "Image_Id: 80",
+            "Image_ExposureTime: 300",
+            "Image_MeanADU: 854.79",
+            "Image_RMS: 0.21",
+            "Image_Type: LIGHT",
+            "Image_Gain: 100",
+            "Image_Offset: 50",
+            "Image_Eccentricity: 0.36",
+            "Image_FWHM: 3.87"
+          ],
+          "IfExpr": {
+            "Expression": "!AbortNight",
+            "Type": "Any"
+          },
+          "Predicate": null,
+          "Status": "RUNNING",
+          "Name": "If_Container",
+          "Iterations": 0,
+          "Items": [
+            {
+              "Status": "FINISHED",
+              "Name": "Night Summary Start"
+            },
+            {
+              "Conditions": [],
+              "Status": "FINISHED",
+              "Name": "Camera Prep_Container",
+              "Triggers": [],
+              "Iterations": 0,
+              "Items": [
+                {
+                  "Status": "FINISHED",
+                  "Name": "Run Autofocus",
+                  "Issues": [],
+                  "WindowServiceFactory": {}
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Dynamic Cool Camera"
+                }
+              ]
+            },
+            {
+              "Conditions": [
+                {
+                  "Status": "CREATED",
+                  "ConditionWasCompleted": false,
+                  "Name": "Target Scheduler Condition_Condition",
+                  "CheckIsActive": false,
+                  "SelectedMode": "While Targets Remain Tonight"
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Target Scheduler Background Condition_Condition"
+                }
+              ],
+              "Status": "RUNNING",
+              "Name": "Target Scheduler Imaging_Container",
+              "Triggers": [
+                {
+                  "Issues": [],
+                  "Inherited": true,
+                  "AfterExposures": 1,
+                  "DistanceArcMinutes": 10.0,
+                  "Status": "CREATED",
+                  "Coordinates": {
+                    "RAHours": 22,
+                    "RAMinutes": 30,
+                    "RASeconds": 58.68115,
+                    "NegativeDec": false,
+                    "DecDegrees": 75,
+                    "DecMinutes": 14,
+                    "DecSeconds": 30.89033
+                  },
+                  "Name": "Center After Drift_Trigger"
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Restore Guiding_Trigger",
+                  "Issues": []
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "AF After HFR Increase_Trigger",
+                  "Amount": 5.0,
+                  "Issues": [],
+                  "SampleSize": 10
+                },
+                {
+                  "Status": "CREATED",
+                  "DeltaT": 0.2,
+                  "Name": "AF After Temperature Change_Trigger",
+                  "Amount": 2.0,
+                  "Issues": []
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "AF After Time_Trigger",
+                  "Amount": 60.0,
+                  "Issues": []
+                },
+                {
+                  "MinutesAfterMeridian": 5.0,
+                  "Issues": [],
+                  "MaxMinutesAfterMeridian": 15.0,
+                  "Status": "CREATED",
+                  "Name": "Meridian Flip_Trigger",
+                  "PauseTimeBeforeMeridian": 0.0,
+                  "UseSideOfPier": true,
+                  "TimeToMeridianFlip": 24.0
+                },
+                {
+                  "Mode": 1,
+                  "Status": "CREATED",
+                  "RmsInstance": null,
+                  "Name": "Interrupt when RMS above_Trigger",
+                  "RmsThreshold": 2.5,
+                  "MinimumPoints": 5
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Restart When Saturated_Trigger",
+                  "Saturated": false
+                },
+                {
+                  "Status": "FINISHED",
+                  "Name": "Settle before Exposure_Trigger",
+                  "Issues": []
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Reconnect Camera On Download Failure_Trigger"
+                },
+                {
+                  "Status": "CREATED",
+                  "Name": "Dew Heater Control_Trigger"
+                }
+              ],
+              "Iterations": 0,
+              "Items": [
+                {
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while safe_Condition",
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "ConditionWasCompleted": false,
+                      "Name": "Target Scheduler Condition_Condition",
+                      "CheckIsActive": false,
+                      "SelectedMode": "While Targets Remain Tonight"
+                    }
+                  ],
+                  "Status": "RUNNING",
+                  "Name": "Target Acquisition_Container",
+                  "Triggers": [
+                    {
+                      "Status": "FINISHED",
+                      "Name": "PSF Guard target sync_Trigger",
+                      "Issues": [],
+                      "AfterExposures": 1
+                    },
+                    {
+                      "Status": "FINISHED",
+                      "Name": "PSF Guard exposure sync_Trigger",
+                      "Issues": [],
+                      "UploadImage": false
+                    }
+                  ],
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Triggers": [],
+                      "AfterWaitContainer": {
+                        "EventContainerType": 1,
+                        "Strategy": {},
+                        "Name": "AfterWait",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "AfterAllTargetsContainer": {
+                        "EventContainerType": 5,
+                        "Strategy": {},
+                        "Name": "AfterEachTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "BeforeTargetContainer": {
+                        "EventContainerType": 2,
+                        "Strategy": {},
+                        "Name": "BeforeTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "AfterTargetContainer": {
+                        "EventContainerType": 4,
+                        "Strategy": {},
+                        "Name": "AfterTarget",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "UnpauseEnabled": false,
+                      "ContainerPaused": false,
+                      "BeforeWaitContainer": {
+                        "EventContainerType": 0,
+                        "Strategy": {},
+                        "Name": "BeforeWait",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "TrackingMode": 5,
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          },
+                          {
+                            "Condition": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [
+                                {
+                                  "Message": "\ud83d\udce1 FRA500 - Target Scheduler",
+                                  "EmbedTitle": "Beginning wait",
+                                  "EmbedText": "Target Scheduler has paused until {TS_NextTargetStart} for the next target {TS_NextTargetName}",
+                                  "EmbedEdgeColor": "#FF206694",
+                                  "ErrorBehavior": 0,
+                                  "Attempts": 1
+                                }
+                              ],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "Instructions": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Iterations": 0,
+                      "AfterEachExposureContainer": {
+                        "EventContainerType": 3,
+                        "Strategy": {},
+                        "Name": "AfterEachExposure",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "Conditions": [],
+                      "UnpauseRequested": false,
+                      "PauseRequested": false,
+                      "SchedulerProgress": {
+                        "CurrentRow": {
+                          "Group": "Waiting : 2026-09-18 21:50:17 -> 2026-09-18 22:41:25",
+                          "ItemName": "Wait",
+                          "FilterName": "",
+                          "StartTime": "2026-09-18T21:50:38.1937066-05:00",
+                          "EndTime": "0001-01-01T00:00:00",
+                          "IsComplete": false,
+                          "Complete": "System.Windows.Media.GeometryGroup"
+                        },
+                        "CurrentGroup": "Waiting : 2026-09-18 21:50:17 -> 2026-09-18 22:41:25",
+                        "ProgressItemList": [
+                          {
+                            "Group": "Waiting : 2026-09-18 20:51:15 -> 2026-09-18 21:01:25",
+                            "ItemName": "BeforeWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T20:51:15.1891412-05:00",
+                            "EndTime": "2026-09-18T20:51:15.7895209-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 20:51:15 -> 2026-09-18 21:01:25",
+                            "ItemName": "Wait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T20:51:15.7895459-05:00",
+                            "EndTime": "2026-09-18T21:01:26.0410767-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 20:51:15 -> 2026-09-18 21:01:25",
+                            "ItemName": "AfterWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:01:26.0410793-05:00",
+                            "EndTime": "2026-09-18T21:01:26.0437905-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Slew",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:01:26.0801425-05:00",
+                            "EndTime": "2026-09-18T21:02:07.2424544-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "BeforeTarget",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:02:07.2424569-05:00",
+                            "EndTime": "2026-09-18T21:02:07.2440358-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:02:07.2440369-05:00",
+                            "EndTime": "2026-09-18T21:02:12.3236775-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:02:12.3236789-05:00",
+                            "EndTime": "2026-09-18T21:07:42.0656604-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:07:42.0656624-05:00",
+                            "EndTime": "2026-09-18T21:12:57.6388324-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:12:57.6388344-05:00",
+                            "EndTime": "2026-09-18T21:13:19.9392837-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:13:19.939285-05:00",
+                            "EndTime": "2026-09-18T21:18:37.3309031-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:18:37.3309047-05:00",
+                            "EndTime": "2026-09-18T21:23:53.5118596-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:23:53.5118611-05:00",
+                            "EndTime": "2026-09-18T21:24:12.5383182-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:24:12.53832-05:00",
+                            "EndTime": "2026-09-18T21:29:27.1834387-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:29:27.1834403-05:00",
+                            "EndTime": "2026-09-18T21:39:34.8827947-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:39:34.8827967-05:00",
+                            "EndTime": "2026-09-18T21:39:44.3949335-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:39:44.394935-05:00",
+                            "EndTime": "2026-09-18T21:45:01.4789653-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:45:01.4789674-05:00",
+                            "EndTime": "2026-09-18T21:50:17.6936692-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 21:50:17 -> 2026-09-18 22:41:25",
+                            "ItemName": "BeforeWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:50:17.6936708-05:00",
+                            "EndTime": "2026-09-18T21:50:38.1937041-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 21:50:17 -> 2026-09-18 22:41:25",
+                            "ItemName": "Wait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:50:38.1937066-05:00",
+                            "EndTime": "0001-01-01T00:00:00",
+                            "IsComplete": false,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          }
+                        ],
+                        "ItemsView": [
+                          {
+                            "Group": "Waiting : 2026-09-18 20:51:15 -> 2026-09-18 21:01:25",
+                            "ItemName": "BeforeWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T20:51:15.1891412-05:00",
+                            "EndTime": "2026-09-18T20:51:15.7895209-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 20:51:15 -> 2026-09-18 21:01:25",
+                            "ItemName": "Wait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T20:51:15.7895459-05:00",
+                            "EndTime": "2026-09-18T21:01:26.0410767-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 20:51:15 -> 2026-09-18 21:01:25",
+                            "ItemName": "AfterWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:01:26.0410793-05:00",
+                            "EndTime": "2026-09-18T21:01:26.0437905-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Slew",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:01:26.0801425-05:00",
+                            "EndTime": "2026-09-18T21:02:07.2424544-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "BeforeTarget",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:02:07.2424569-05:00",
+                            "EndTime": "2026-09-18T21:02:07.2440358-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "SwitchFilter",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:02:07.2440369-05:00",
+                            "EndTime": "2026-09-18T21:02:12.3236775-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:02:12.3236789-05:00",
+                            "EndTime": "2026-09-18T21:07:42.0656604-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:07:42.0656624-05:00",
+                            "EndTime": "2026-09-18T21:12:57.6388324-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:12:57.6388344-05:00",
+                            "EndTime": "2026-09-18T21:13:19.9392837-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:13:19.939285-05:00",
+                            "EndTime": "2026-09-18T21:18:37.3309031-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:18:37.3309047-05:00",
+                            "EndTime": "2026-09-18T21:23:53.5118596-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:23:53.5118611-05:00",
+                            "EndTime": "2026-09-18T21:24:12.5383182-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:24:12.53832-05:00",
+                            "EndTime": "2026-09-18T21:29:27.1834387-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:29:27.1834403-05:00",
+                            "EndTime": "2026-09-18T21:39:34.8827947-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "Dither",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:39:34.8827967-05:00",
+                            "EndTime": "2026-09-18T21:39:44.3949335-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:39:44.394935-05:00",
+                            "EndTime": "2026-09-18T21:45:01.4789653-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Broadband Priority / Rotten Fish : 2026-09-18 21:01:26",
+                            "ItemName": "TakeExposure",
+                            "FilterName": "R",
+                            "StartTime": "2026-09-18T21:45:01.4789674-05:00",
+                            "EndTime": "2026-09-18T21:50:17.6936692-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 21:50:17 -> 2026-09-18 22:41:25",
+                            "ItemName": "BeforeWait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:50:17.6936708-05:00",
+                            "EndTime": "2026-09-18T21:50:38.1937041-05:00",
+                            "IsComplete": true,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          },
+                          {
+                            "Group": "Waiting : 2026-09-18 21:50:17 -> 2026-09-18 22:41:25",
+                            "ItemName": "Wait",
+                            "FilterName": "",
+                            "StartTime": "2026-09-18T21:50:38.1937066-05:00",
+                            "EndTime": "0001-01-01T00:00:00",
+                            "IsComplete": false,
+                            "Complete": "System.Windows.Media.GeometryGroup"
+                          }
+                        ]
+                      },
+                      "Items": [],
+                      "Name": "Target Scheduler Container_Container",
+                      "Target": {
+                        "TargetName": "",
+                        "PositionAngle": 0.0,
+                        "InputCoordinates": {
+                          "RAHours": 0,
+                          "RAMinutes": 0,
+                          "RASeconds": 0.0,
+                          "NegativeDec": false,
+                          "DecDegrees": 0,
+                          "DecMinutes": 0,
+                          "DecSeconds": 0.0
+                        }
+                      },
+                      "PauseEnabled": true,
+                      "AfterTargetCompleteContainer": {
+                        "EventContainerType": 6,
+                        "Strategy": {},
+                        "Name": "AfterTargetComplete",
+                        "Conditions": [],
+                        "IsExpanded": true,
+                        "Items": [
+                          {
+                            "Condition": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [
+                                {
+                                  "Message": "\ud83d\udce1 Ground Station - FRA500",
+                                  "EmbedTitle": "Completion",
+                                  "EmbedText": "Target Scheduler has completed imaging of the current target",
+                                  "EmbedEdgeColor": "#FF206694",
+                                  "ErrorBehavior": 0,
+                                  "Attempts": 1
+                                }
+                              ],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "Instructions": {
+                              "Strategy": {},
+                              "Conditions": [],
+                              "IsExpanded": true,
+                              "Items": [],
+                              "Triggers": [],
+                              "ErrorBehavior": 0,
+                              "Attempts": 1
+                            },
+                            "ErrorBehavior": 0,
+                            "Attempts": 1
+                          }
+                        ],
+                        "Triggers": [],
+                        "ErrorBehavior": 0,
+                        "Attempts": 1
+                      },
+                      "TotalExposureCount": 7,
+                      "Status": "RUNNING"
+                    }
+                  ]
+                },
+                {
+                  "Conditions": [
+                    {
+                      "Status": "CREATED",
+                      "ConditionWasCompleted": false,
+                      "Name": "Target Scheduler Condition_Condition",
+                      "CheckIsActive": true,
+                      "SelectedMode": "While Targets Remain Tonight"
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Loop while unsafe_Condition",
+                      "Issues": []
+                    }
+                  ],
+                  "Status": "CREATED",
+                  "Name": "Unsafe Wait_Container",
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Issues": [],
+                      "Switches": [
+                        "TargetRA: 22.52",
+                        "TargetDec: 75.24",
+                        "TargetValid: 1",
+                        "TargetName: 'Rotten Fish'",
+                        "TargetRotation: 0",
+                        "TS_WaitStart: 22:41",
+                        "TS_TargetName: 'Rotten Fish'",
+                        "TS_ProjectName: 'Broadband Priority'",
+                        "TS_Target_Rotation: 0",
+                        "TS_Target_RA: 22.52",
+                        "TS_Target_Dec: 75.24",
+                        "MoonAltitude: 18.29",
+                        "MoonIllumination: 0.52",
+                        "SunAltitude: -34.55",
+                        "SunAzimuth: 297.38",
+                        "LocalSiderealTime: 20.63",
+                        "TIME: 6037",
+                        "EXITCODE: 0",
+                        "Altitude: 31.55",
+                        "Azimuth: 360",
+                        "AtPark: 'False'",
+                        "RightAscension: 23.91",
+                        "Declination: 89.85",
+                        "SideOfPier: PierEast",
+                        "IsSafe: 'True'",
+                        "RoofStatus: RoofOpen",
+                        "FocuserPosition: 2501",
+                        "FocuserTemperature: 27.5",
+                        "SensorTemp: 5",
+                        "RotatorPosition: '78.92'",
+                        "CurrentFilter: Filter_R",
+                        "S: FlatPanel: 0",
+                        "S: OTA: 1",
+                        "W: DewPoint: 19.7",
+                        "W: Humidity: 35.4",
+                        "W: Pressure: 966.4",
+                        "W: RainRate: 0",
+                        "W: SkyBrightness: 80123",
+                        "W: SkyTemperature: 13.1",
+                        "W: Temperature: 37.6",
+                        "W: WindDirection: 125",
+                        "W: WindGust: 2.4",
+                        "W: WindSpeed: 3",
+                        "Image_HFR: 1.43",
+                        "Image_StarCount: 4934",
+                        "Image_Id: 80",
+                        "Image_ExposureTime: 300",
+                        "Image_MeanADU: 854.79",
+                        "Image_RMS: 0.21",
+                        "Image_Type: LIGHT",
+                        "Image_Gain: 100",
+                        "Image_Offset: 50",
+                        "Image_Eccentricity: 0.36",
+                        "Image_FWHM: 3.87"
+                      ],
+                      "IfExpr": {
+                        "Expression": "DiscordUnsafeNotified == 0",
+                        "Type": "Any"
+                      },
+                      "Predicate": null,
+                      "Status": "CREATED",
+                      "Name": "If_Container",
+                      "Iterations": 0,
+                      "Items": [
+                        {
+                          "Message": "\ud83d\udce1 FRA500 -  Imaging interrupted due to unsafe conditions",
+                          "EmbedTitle": "",
+                          "Status": "CREATED",
+                          "EmbedEdgeColor": "#FFFFA500",
+                          "Name": "Send to Discord",
+                          "EmbedText": "",
+                          "Issues": [],
+                          "WindowService": {},
+                          "ShowEmbed": false
+                        },
+                        {
+                          "Issues": [],
+                          "CValueExpr": null,
+                          "Status": "CREATED",
+                          "Variable": "DiscordUnsafeNotified",
+                          "Name": "Set Variable",
+                          "Expr": {
+                            "Expression": "1",
+                            "Type": "Any"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Stop Guiding",
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Set Tracking",
+                      "Issues": [],
+                      "TrackingMode": 5
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Find home",
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Warm Camera",
+                      "Issues": [],
+                      "Duration": 5.0
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Wait for Time Span",
+                      "Time": 60.0
+                    },
+                    {
+                      "Issues": [],
+                      "Switches": [
+                        "TargetRA: 22.52",
+                        "TargetDec: 75.24",
+                        "TargetValid: 1",
+                        "TargetName: 'Rotten Fish'",
+                        "TargetRotation: 0",
+                        "TS_WaitStart: 22:41",
+                        "TS_TargetName: 'Rotten Fish'",
+                        "TS_ProjectName: 'Broadband Priority'",
+                        "TS_Target_Rotation: 0",
+                        "TS_Target_RA: 22.52",
+                        "TS_Target_Dec: 75.24",
+                        "MoonAltitude: 18.29",
+                        "MoonIllumination: 0.52",
+                        "SunAltitude: -34.55",
+                        "SunAzimuth: 297.38",
+                        "LocalSiderealTime: 20.63",
+                        "TIME: 6037",
+                        "EXITCODE: 0",
+                        "Altitude: 31.55",
+                        "Azimuth: 360",
+                        "AtPark: 'False'",
+                        "RightAscension: 23.91",
+                        "Declination: 89.85",
+                        "SideOfPier: PierEast",
+                        "IsSafe: 'True'",
+                        "RoofStatus: RoofOpen",
+                        "FocuserPosition: 2501",
+                        "FocuserTemperature: 27.5",
+                        "SensorTemp: 5",
+                        "RotatorPosition: '78.92'",
+                        "CurrentFilter: Filter_R",
+                        "S: FlatPanel: 0",
+                        "S: OTA: 1",
+                        "W: DewPoint: 19.7",
+                        "W: Humidity: 35.4",
+                        "W: Pressure: 966.4",
+                        "W: RainRate: 0",
+                        "W: SkyBrightness: 80123",
+                        "W: SkyTemperature: 13.1",
+                        "W: Temperature: 37.6",
+                        "W: WindDirection: 125",
+                        "W: WindGust: 2.4",
+                        "W: WindSpeed: 3",
+                        "Image_HFR: 1.43",
+                        "Image_StarCount: 4934",
+                        "Image_Id: 80",
+                        "Image_ExposureTime: 300",
+                        "Image_MeanADU: 854.79",
+                        "Image_RMS: 0.21",
+                        "Image_Type: LIGHT",
+                        "Image_Gain: 100",
+                        "Image_Offset: 50",
+                        "Image_Eccentricity: 0.36",
+                        "Image_FWHM: 3.87"
+                      ],
+                      "IfExpr": {
+                        "Expression": "IsSafe",
+                        "Type": "Any"
+                      },
+                      "Predicate": null,
+                      "Status": "CREATED",
+                      "Name": "If_Container",
+                      "Iterations": 0,
+                      "Items": [
+                        {
+                          "Message": "\ud83d\udce1 FRA500 - Safe conditions returned. Resuming imaging...",
+                          "EmbedTitle": "",
+                          "Status": "CREATED",
+                          "EmbedEdgeColor": "#FF008000",
+                          "Name": "Send to Discord",
+                          "EmbedText": "",
+                          "Issues": [],
+                          "WindowService": {},
+                          "ShowEmbed": false
+                        },
+                        {
+                          "Issues": [],
+                          "CValueExpr": null,
+                          "Status": "CREATED",
+                          "Variable": "DiscordUnsafeNotified",
+                          "Name": "Set Variable",
+                          "Expr": {
+                            "Expression": "0",
+                            "Type": "Any"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "Conditions": [],
+      "Status": "CREATED",
+      "Name": "End_Container",
+      "Triggers": [],
+      "Iterations": 0,
+      "Items": [
+        {
+          "Conditions": [],
+          "Status": "CREATED",
+          "Name": "MY END_Container",
+          "Triggers": [],
+          "Iterations": 0,
+          "Items": [
+            {
+              "Issues": [],
+              "Switches": null,
+              "IfExpr": {
+                "Expression": "!AbortNight",
+                "Type": "Any"
+              },
+              "Predicate": null,
+              "ElseInstructions": {
+                "Strategy": {},
+                "Name": "If/Then/Else",
+                "Conditions": [],
+                "IsExpanded": true,
+                "Items": [
+                  {
+                    "Message": "\ud83d\udce1 FRA500 - Night aborted. Sequence ending now.",
+                    "EmbedTitle": "",
+                    "EmbedText": "",
+                    "EmbedEdgeColor": "#FFDC143C",
+                    "ErrorBehavior": 0,
+                    "Attempts": 1
+                  }
+                ],
+                "Triggers": [],
+                "ErrorBehavior": 0,
+                "Attempts": 1
+              },
+              "Status": "CREATED",
+              "Name": "If/Then/Else_Container",
+              "Iterations": 0,
+              "Items": [
+                {
+                  "Message": "\ud83d\udce1 FRA500 - Planned imaging done for the evening",
+                  "EmbedTitle": "",
+                  "Status": "CREATED",
+                  "EmbedEdgeColor": "#FF206694",
+                  "Name": "Send to Discord",
+                  "EmbedText": "",
+                  "Issues": [],
+                  "WindowService": {},
+                  "ShowEmbed": false
+                },
+                {
+                  "Conditions": [],
+                  "Status": "CREATED",
+                  "Name": "Initial Shutdown Steps_Container",
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Stop live stacking"
+                    },
+                    {
+                      "Conditions": [],
+                      "Status": "CREATED",
+                      "Name": "Shutdown PHD2_Container",
+                      "Triggers": [],
+                      "Iterations": 0,
+                      "Items": [
+                        {
+                          "Status": "CREATED",
+                          "Name": "Stop Guiding",
+                          "Issues": []
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Shutdown PHD2",
+                          "Issues": []
+                        }
+                      ]
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Find home",
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Set Tracking",
+                      "Issues": [],
+                      "TrackingMode": 5
+                    }
+                  ]
+                },
+                {
+                  "Issues": [],
+                  "RolloverTime": "19:39:15.6513316",
+                  "SelectedProvider": {},
+                  "Minutes": 31,
+                  "Hours": 6,
+                  "Status": "CREATED",
+                  "Name": "Wait for Time",
+                  "Seconds": 17,
+                  "MinutesOffset": 0
+                },
+                {
+                  "Conditions": [],
+                  "Status": "CREATED",
+                  "Name": "Flats_Container",
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Message": "\ud83d\udce1 FRA500 - Capturing flats",
+                      "EmbedTitle": "",
+                      "Status": "CREATED",
+                      "EmbedEdgeColor": "#FF206694",
+                      "Name": "Send to Discord",
+                      "EmbedText": "",
+                      "Issues": [],
+                      "WindowService": {},
+                      "ShowEmbed": false
+                    },
+                    {
+                      "Conditions": [],
+                      "Status": "CREATED",
+                      "Name": "Turn on Flat Panel_Container",
+                      "Triggers": [],
+                      "Iterations": 0,
+                      "Items": [
+                        {
+                          "Message": "\ud83d\udce1 FRA500 - Turning on flat panel",
+                          "EmbedTitle": "",
+                          "Status": "CREATED",
+                          "EmbedEdgeColor": "#FF206694",
+                          "Name": "Send to Discord",
+                          "EmbedText": "",
+                          "Issues": [],
+                          "WindowService": {},
+                          "ShowEmbed": false
+                        },
+                        {
+                          "Issues": [],
+                          "Name": "Set Switch Value",
+                          "SelectedSwitch": {
+                            "Minimum": 0.0,
+                            "Maximum": 1.0,
+                            "StepSize": 1.0,
+                            "TargetValue": 0.0,
+                            "Id": 0,
+                            "EntityId": "device-057dc28f",
+                            "Name": "Flat Panel",
+                            "Description": "REDACTED",
+                            "Value": 0.0
+                          },
+                          "Status": "CREATED",
+                          "WritableSwitches": [
+                            {
+                              "Minimum": 0.0,
+                              "Maximum": 1.0,
+                              "StepSize": 1.0,
+                              "TargetValue": 0.0,
+                              "Id": 0,
+                              "EntityId": "device-057dc28f",
+                              "Name": "Flat Panel",
+                              "Description": "REDACTED",
+                              "Value": 0.0
+                            },
+                            {
+                              "Minimum": 0.0,
+                              "Maximum": 1.0,
+                              "StepSize": 1.0,
+                              "TargetValue": 1.0,
+                              "Id": 1,
+                              "EntityId": "device-fb078731",
+                              "Name": "OTA",
+                              "Description": "REDACTED",
+                              "Value": 1.0
+                            }
+                          ],
+                          "Value": 1.0,
+                          "SwitchIndex": 0
+                        },
+                        {
+                          "Status": "CREATED",
+                          "Name": "Wait for Time Span",
+                          "Time": 5.0
+                        },
+                        {
+                          "Status": "CREATED",
+                          "SelectedDevice": "Flat Panel",
+                          "Name": "Connect Equipment",
+                          "Issues": []
+                        }
+                      ]
+                    },
+                    {
+                      "AlwaysRepeatFlatSet": false,
+                      "Issues": [
+                        "Flat device not connected"
+                      ],
+                      "CompletedIterations": 0,
+                      "TargetName": null,
+                      "Status": "CREATED",
+                      "FlatCount": 15,
+                      "DisplayText": "",
+                      "Name": "Target Scheduler Flats",
+                      "TotalFlatSets": 0,
+                      "Iterations": 0,
+                      "CompletedFlatSets": 0
+                    }
+                  ]
+                },
+                {
+                  "Conditions": [],
+                  "Status": "CREATED",
+                  "Name": "Final Shutdown Steps_Container",
+                  "Triggers": [],
+                  "Iterations": 0,
+                  "Items": [
+                    {
+                      "Status": "CREATED",
+                      "Name": "Warm Camera",
+                      "Issues": [],
+                      "Duration": 10.0
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Dew Heater",
+                      "OnOff": false,
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Reconcile PSF Guard catalog",
+                      "Issues": []
+                    },
+                    {
+                      "Status": "CREATED",
+                      "Name": "Night Summary End"
+                    }
+                  ]
+                },
+                {
+                  "Message": "\ud83d\udce1 FRA500 - Sequence complete",
+                  "EmbedTitle": "",
+                  "Status": "CREATED",
+                  "EmbedEdgeColor": "#FF206694",
+                  "Name": "Send to Discord",
+                  "EmbedText": "",
+                  "Issues": [],
+                  "WindowService": {},
+                  "ShowEmbed": false
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-19T03:23:43+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/sequence/state",
+    "params": {}
+  }
+}

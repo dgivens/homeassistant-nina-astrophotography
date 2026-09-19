@@ -6,7 +6,7 @@ tested as functions of their arguments rather than through a config entry.
 from __future__ import annotations
 
 from dataclasses import fields, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from helpers import load_fixture as load
@@ -15,6 +15,7 @@ from nina_astrophotography.api.models import EquipmentSnapshot, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_equipment_info
 from nina_astrophotography.polling import (
     EventLedger,
+    GuiderStopLatch,
     ReseedGuard,
     RestartDetector,
     TierSchedule,
@@ -243,3 +244,40 @@ def test_the_event_ledger_identifies_an_event_by_generation_name_and_time(
 def _event(name: str, time: str, generation: str) -> NinaEvent:
     return NinaEvent(name=name, time=datetime.fromisoformat(time), data={},
                      generation=generation)
+
+
+# A stop tonight and the one before it; only identity matters, never order.
+STOP = datetime.fromisoformat("2026-09-18T21:50:19-05:00")
+EARLIER_STOP = datetime.fromisoformat("2026-09-18T19:02:00-05:00")
+
+
+@pytest.mark.parametrize(
+    ("polled", "stop", "stopped"),
+    [
+        ([], STOP, True),
+        ([("LostLock", STOP), ("Stopped", STOP)], STOP, True),
+        ([("LostLock", STOP), ("Looping", STOP)], STOP, False),
+        ([("Guiding", STOP)], STOP, True),
+        ([("LostLock", STOP), ("Calibrating", STOP), ("LostLock", STOP)], STOP, False),
+        ([("LostLock", EARLIER_STOP), ("Guiding", EARLIER_STOP)], STOP, True),
+        ([("LostLock", STOP), ("Looping", STOP)], STOP + timedelta(seconds=2), False),
+        ([("LostLock", STOP), ("Looping", STOP), ("Guiding", None)],
+         STOP + timedelta(seconds=40), True),
+        ([], None, False),
+    ],
+    ids=["never polled", "only stopped states polled",
+         "polled looping after the stop", "running on the stop's first poll",
+         "a lock lost after running again", "ran past an earlier stop",
+         "the replayed copy of the passed stop",
+         "a new stop after a start, inside the tolerance", "no stop pending"],
+)
+def test_a_stop_holds_until_a_later_poll_sees_the_guider_running_past_it(
+    polled: list[tuple[str, datetime | None]], stop: datetime | None, stopped: bool
+) -> None:
+    """A restart's GUIDER-START waits for the settle; a poll seeing the guider
+    running is what releases the stop before it — but not the first poll to
+    find it, whose snapshot may predate N.I.N.A.'s cache catching up."""
+    latch = GuiderStopLatch()
+    for state, pending in polled:
+        latch.observe(state, pending)
+    assert latch.stopped(stop) is stopped
