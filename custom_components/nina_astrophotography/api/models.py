@@ -146,10 +146,13 @@ class GuiderModel:
     connected: bool
     meta: DeviceMeta
     state: str | None
-    """Looping | LostLock | Guiding | Stopped | Calibrating. `switch.guider` is
+    """Looping | Paused | LostLock | Guiding | Stopped | Calibrating. `switch.guider` is
     on while the guider is running — every state but `Stopped` and a `LostLock`
     left over after `GUIDER-STOP` — which is why `sensor.guider_status` is
     retained (§5.2.3): the switch cannot tell a lost lock from a settled one.
+    `Paused` arrives from PHD2's `Paused` event and leaves on the next `GuideStep`
+    (`Guiding`) or `LoopingExposuresStopped` (`Stopped`); the switch reads it as
+    running, which is deliberate — exposures are still looping.
     """
     rms_total: float | None
     rms_ra: float | None
