@@ -3,13 +3,8 @@
 Home-Assistant-free by design — the coordinator composes these, so they can be
 tested as functions of their arguments rather than through a config entry.
 """
-from __future__ import annotations
-
 from dataclasses import fields, replace
 from datetime import datetime, timedelta
-
-import pytest
-from helpers import load_fixture as load
 
 from nina_astrophotography.api.models import EquipmentSnapshot, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_equipment_info
@@ -21,6 +16,9 @@ from nina_astrophotography.polling import (
     TierSchedule,
     imaging,
 )
+import pytest
+
+from helpers import load_fixture as load
 
 # A next-evening restart emits 21:00 events against an 05:30 mark.
 T1 = "2026-09-03T21:00:00-05:00"
@@ -49,7 +47,8 @@ def test_the_restart_signals(before, after, restarted) -> None:
 
 def test_a_generation_that_reads_null_is_corroborated_by_the_counter() -> None:
     """A tick whose /application-start is unreadable still reports the restart,
-    because the counter is on the same tier."""
+    because the counter is on the same tier.
+    """
     detector = RestartDetector()
     detector.update("2026-09-04T10:58:59", 122)
     assert detector.observe(None, 0) is True
@@ -57,7 +56,8 @@ def test_a_generation_that_reads_null_is_corroborated_by_the_counter() -> None:
 
 def test_an_unreadable_application_start_does_not_erase_the_baseline() -> None:
     """Missing information, not a new process. Erasing it would leave the next
-    tick with no baseline, and so blind to the restart that tick reports."""
+    tick with no baseline, and so blind to the restart that tick reports.
+    """
     detector = RestartDetector()
     detector.update("2026-09-04T10:58:59", 122)
     detector.update(None, 122)
@@ -77,7 +77,8 @@ def test_an_unreadable_application_start_does_not_erase_the_baseline() -> None:
 def test_the_reseed_guard_needs_the_mismatch_twice(observations, fires) -> None:
     """A frame saved between the ?count=true read and the history read fails
     the invariant transiently, and an immediate reseed answers that with a
-    62 KB refetch every time it happens."""
+    62 KB refetch every time it happens.
+    """
     guard = ReseedGuard()
     assert [guard.check(*observation) for observation in observations] == fires
 
@@ -89,7 +90,8 @@ def test_a_reseed_guard_that_fired_starts_over() -> None:
 
 def test_a_mismatch_that_survives_a_reseed_latches_until_the_count_moves() -> None:
     """A structural difference — an item the mapper skips, two the fold merges
-    — no refetch can close, so it must stop asking for one."""
+    — no refetch can close, so it must stop asking for one.
+    """
     guard = ReseedGuard()
     assert [guard.check(122, 123), guard.check(122, 123)] == [False, True]
     assert guard.settle(122, 123) is True
@@ -118,7 +120,8 @@ def test_an_unknown_tier_is_an_error_rather_than_a_default_cadence() -> None:
 
 def test_a_sequence_refetch_is_debounced() -> None:
     """TS-TARGETSTART fires once per exposure — 27 in 3.8 h — and its payload
-    already carries everything a refetch would fetch."""
+    already carries everything a refetch would fetch.
+    """
     schedule = TierSchedule()
     assert schedule.request_sequence_refetch(1000.0) is True
     assert schedule.request_sequence_refetch(1000.0 + TierSchedule.SEQUENCE_DEBOUNCE - 1) is False
@@ -127,7 +130,8 @@ def test_a_sequence_refetch_is_debounced() -> None:
 
 def test_a_refused_refetch_an_event_asked_for_stays_queued() -> None:
     """The debounce is a rate limit, not a veto. Dropping the request loses the
-    event's ask until the five-minute floor comes round."""
+    event's ask until the five-minute floor comes round.
+    """
     schedule = TierSchedule()
     assert schedule.request_sequence_refetch(1000.0, requeue="/sequence/json") is True
     assert schedule.request_sequence_refetch(1001.0, requeue="/sequence/json") is False
@@ -136,7 +140,8 @@ def test_a_refused_refetch_an_event_asked_for_stays_queued() -> None:
 
 def test_events_queue_endpoints_once_and_taking_them_drains_the_queue() -> None:
     """Two events naming the same endpoint are one refetch, and the tick that
-    performs it must clear the queue or it re-reads on every tick after."""
+    performs it must clear the queue or it re-reads on every tick after.
+    """
     schedule = TierSchedule()
     schedule.add_pending("/profile/show")
     schedule.add_pending("/profile/show")
@@ -163,7 +168,8 @@ def test_the_sequence_cadence_follows_the_imaging_flag(imaging, elapsed, due) ->
 
 def test_sequence_finished_drops_the_cadence_without_waiting_for_the_heuristic() -> None:
     """SEQUENCE-FINISHED fires once at session end; the activity heuristic
-    would keep the tier at 30 s for another five minutes after the last frame."""
+    would keep the tier at 30 s for another five minutes after the last frame.
+    """
     schedule = TierSchedule()
     schedule.set_imaging(True)
     schedule.mark("sequence", 1000.0)
@@ -174,7 +180,8 @@ def test_sequence_finished_drops_the_cadence_without_waiting_for_the_heuristic()
 
 def test_set_imaging_cannot_undo_sequence_finished_until_activity_returns() -> None:
     """The heuristic is still the authority: a rising count after the event
-    puts the tier back at 30 s, so the drop is a cadence change and not a latch."""
+    puts the tier back at 30 s, so the drop is a cadence change and not a latch.
+    """
     schedule = TierSchedule()
     schedule.sequence_finished()
     schedule.set_imaging(True)
@@ -198,14 +205,16 @@ def test_imaging_is_inferred_from_activity(
     count, last_count, exposing, since_save, expected
 ) -> None:
     """Never from /sequence/json node status: three nodes read RUNNING on the
-    idle rig with zero frames captured, which would pin the tier at 30 s."""
+    idle rig with zero frames captured, which would pin the tier at 30 s.
+    """
     snapshot = _snapshot_with_camera(is_exposing=exposing)
     assert imaging(snapshot, count, last_count, since_save) is expected
 
 
 def test_imaging_survives_a_camera_that_has_never_been_observed() -> None:
     """Every device slot is None until it has carried a DeviceId, and the
-    heuristic runs on the first tick."""
+    heuristic runs on the first tick.
+    """
     snapshot = EquipmentSnapshot(*[None] * len(fields(EquipmentSnapshot)))
     assert imaging(snapshot, 28, 27, 9999.0) is True
     assert imaging(snapshot, 27, 27, 9999.0) is False
@@ -213,7 +222,8 @@ def test_imaging_survives_a_camera_that_has_never_been_observed() -> None:
 
 def _snapshot_with_camera(*, is_exposing: bool | None) -> EquipmentSnapshot:
     """The captured snapshot with one field varied — the corpus holds the
-    camera exposing, and no capture can hold both branches."""
+    camera exposing, and no capture can hold both branches.
+    """
     camera = map_equipment_info(load("imaging_guiding_equipment_info.json")).camera
     blanks = {f.name: None for f in fields(EquipmentSnapshot)}
     return EquipmentSnapshot(**{**blanks,
@@ -276,7 +286,8 @@ def test_a_stop_holds_until_a_later_poll_sees_the_guider_running_past_it(
 ) -> None:
     """A restart's GUIDER-START waits for the settle; a poll seeing the guider
     running is what releases the stop before it — but not the first poll to
-    find it, whose snapshot may predate N.I.N.A.'s cache catching up."""
+    find it, whose snapshot may predate N.I.N.A.'s cache catching up.
+    """
     latch = GuiderStopLatch()
     for state, pending in polled:
         latch.observe(state, pending)

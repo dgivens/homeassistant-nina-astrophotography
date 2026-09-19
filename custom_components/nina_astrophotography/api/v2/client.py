@@ -14,11 +14,9 @@ Classification is on the pair (StatusCode, Error), never the code alone:
 /sequence/{edit,load}. The OpenAPI document calls it "Sequencer not
 initialized"; the wire says "Sequence is not initialized". Match the wire.
 """
-from __future__ import annotations
-
+from datetime import timedelta
 import json
 import logging
-from datetime import timedelta
 from typing import Any
 from urllib.parse import quote
 
@@ -71,7 +69,8 @@ _NO_DATA_MESSAGES = ("index out of range", "sequence is not initialized")
 
 def _boolean(value: bool) -> str:
     """Query booleans go on the wire as lowercase strings: aiohttp refuses a
-    bare bool as a parameter value, and `str(True)` binds to nothing."""
+    bare bool as a parameter value, and `str(True)` binds to nothing.
+    """
     return "true" if value else "false"
 
 
@@ -167,7 +166,8 @@ class NinaClientV2:
 
     async def get_versions(self) -> VersionInfo:
         """`/version/nina` is diagnostic: a build that does not serve it is
-        still usable, so only that route's absence is tolerated."""
+        still usable, so only that route's absence is tolerated.
+        """
         api = await self._get("/version")
         try:
             nina = await self._get("/version/nina")
@@ -237,7 +237,8 @@ class NinaClientV2:
 
     async def _raw_event_history(self) -> list[dict]:
         """The stored events as sent. Package-private: the event socket replays
-        from it with its own generation bookkeeping."""
+        from it with its own generation bookkeeping.
+        """
         return await self._get("/event-history") or []
 
     async def get_sequence(self) -> SequenceNode | None:
@@ -338,7 +339,8 @@ class NinaClientV2:
 
     async def cool_camera(self, temperature: float, *, minutes: float = -1) -> None:
         """`minutes` is the cooling ramp, not a timeout; -1 asks for the
-        profile's own duration."""
+        profile's own duration.
+        """
         await self._get("/equipment/camera/cool",
                         {"temperature": temperature, "minutes": minutes})
 
@@ -348,7 +350,8 @@ class NinaClientV2:
     async def set_target_temperature(self, temperature: float, *,
                                      minutes: float | None = None) -> None:
         """There is no setpoint endpoint: changing the target is a cool-down to
-        the new value. Omitting `minutes` leaves the ramp to the API."""
+        the new value. Omitting `minutes` leaves the ramp to the API.
+        """
         params: dict[str, Any] = {"temperature": temperature}
         if minutes is not None:
             params["minutes"] = minutes
@@ -373,7 +376,8 @@ class NinaClientV2:
 
     async def set_usb_limit(self, limit: int) -> None:
         """An integer bounded by USBLimitMin/USBLimitMax, per camera. The spec
-        types it as a string with the example `2x2`, which is set-binning's."""
+        types it as a string with the example `2x2`, which is set-binning's.
+        """
         await self._get("/equipment/camera/usb-limit", {"limit": limit})
 
     async def capture_image(self, duration: float, *, gain: int | None = None,
@@ -422,7 +426,8 @@ class NinaClientV2:
     async def set_tracking_mode(self, mode: int) -> None:
         """`mode` is the API's enum value — 0 Sidereal, 1 Lunar, 2 Solar,
         3 King, 4 Stopped — and **not** the position in `TrackingModes`, which
-        omits modes a mount does not offer."""
+        omits modes a mount does not offer.
+        """
         await self._get("/equipment/mount/tracking", {"mode": mode})
 
     # focuser
@@ -455,7 +460,8 @@ class NinaClientV2:
 
     async def move_rotator(self, position: float) -> None:
         """`position` is the SKY angle in degrees; the mechanical angle is a
-        different endpoint, /equipment/rotator/move-mechanical."""
+        different endpoint, /equipment/rotator/move-mechanical.
+        """
         await self._get("/equipment/rotator/move", {"position": position})
 
     async def move_rotator_mechanical(self, position: float) -> None:
@@ -528,7 +534,8 @@ class NinaClientV2:
 
     async def load_sequence(self, sequence_name: str) -> None:
         """The parameter is `sequenceName`, and it is a NAME, not a path.
-        1.4.5 sent `path`, so the sequence never loaded."""
+        1.4.5 sent `path`, so the sequence never loaded.
+        """
         await self._get("/sequence/load", {"sequenceName": sequence_name})
 
     # livestack

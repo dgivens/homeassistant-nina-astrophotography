@@ -4,14 +4,12 @@
 CI is the backstop, not the guard: it fires after the push, by which time a
 leaked credential is permanent.
 """
-from __future__ import annotations
-
 import json
-import sys
 from pathlib import Path
+import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
-from redaction import scan  # noqa: E402
+from redaction import scan
 
 
 def main(paths: list[str]) -> int:

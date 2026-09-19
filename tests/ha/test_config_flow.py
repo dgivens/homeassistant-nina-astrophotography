@@ -2,12 +2,12 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-import pytest
-import voluptuous as vol
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import voluptuous as vol
 
 from custom_components.nina_astrophotography.api.errors import (
     NinaCommandError,
@@ -93,7 +93,8 @@ async def test_the_same_host_and_port_cannot_be_added_twice(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, host: str
 ) -> None:
     """Hostnames are case-insensitive, so all three name the configured rig.
-    The probe never runs: a duplicate costs no HTTP call."""
+    The probe never runs: a duplicate costs no HTTP call.
+    """
     result = await _submit(
         hass, ROOFTOP | {CONF_HOST: host}, side_effect=AssertionError("probed")
     )
@@ -106,7 +107,8 @@ async def test_a_second_rig_may_not_reuse_an_instance_name(
 ) -> None:
     """Two rigs called the same thing name their devices identically, and the
     second set collides into `_2` entity ids. The configured entry is a 1.4.x
-    one, whose title is its instance name."""
+    one, whose title is its instance name.
+    """
     result = await _submit(
         hass,
         {CONF_HOST: "other.local", CONF_PORT: 1888, CONF_INSTANCE_NAME: "N.I.N.A."},
@@ -130,7 +132,8 @@ async def test_a_second_rig_on_a_different_host_is_allowed(
 @pytest.mark.parametrize("name", ["", "   "], ids=["empty", "blank"])
 async def test_a_blank_instance_name_is_refused(hass: HomeAssistant, name: str) -> None:
     """It would title the entry "" and name every device " Camera" — and a
-    length check alone accepts a string of spaces."""
+    length check alone accepts a string of spaces.
+    """
     with pytest.raises(vol.Invalid):
         await _submit(hass, ROOFTOP | {CONF_INSTANCE_NAME: name},
                       return_value=VERSIONS)

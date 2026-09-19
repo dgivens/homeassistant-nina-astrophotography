@@ -29,8 +29,6 @@ applies only where absence is a permanent driver property. `CoolerPower` and
 `TimeToMeridianFlip` are transiently `NaN`, and a rig whose camera is warm at
 setup must not lose its cooler-power entity.
 """
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -214,7 +212,8 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
 
 def _weather_source(data: NinaData) -> str | None:
     """Which source the readings are coming from. Some drivers report an empty
-    name, and the opaque `DeviceId` is still better than nothing."""
+    name, and the opaque `DeviceId` is still better than nothing.
+    """
     weather = data.snapshot.weather
     if weather is None:
         return None
@@ -1020,7 +1019,8 @@ class NinaWeatherSensor(NinaSensor):
         established_by: str | None,
     ) -> None:
         """`established_by` is what the registry already holds, or `None` for a
-        channel seen for the first time — which records itself once added."""
+        channel seen for the first time — which records itself once added.
+        """
         super().__init__(coordinator, entry, description)
         self._established_by = established_by
         self._recorded = established_by
@@ -1171,7 +1171,8 @@ async def async_setup_entry(
     @callback
     def _add_newly_seen() -> None:
         """First sight at the channel granularity: a channel appears the first
-        time it reads non-`NaN`, and is never removed."""
+        time it reads non-`NaN`, and is never removed.
+        """
         weather = coordinator.data.snapshot.weather
         if weather is None:
             return

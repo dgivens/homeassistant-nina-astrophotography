@@ -7,8 +7,6 @@ meridian 24 into None.
 The /sequence/json walk is deliberately absent — the tree shape is partly a
 Target Scheduler fact, so the mapper normalizes it into a SequenceNode first.
 """
-from __future__ import annotations
-
 from datetime import datetime, timedelta
 
 _ARCSEC_PER_RADIAN_MICRON_MM = 206.265

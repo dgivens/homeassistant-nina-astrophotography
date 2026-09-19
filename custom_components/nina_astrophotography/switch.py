@@ -26,11 +26,9 @@ binary** — `Max - Min == StepSize` (§5.3.5) — and its on/off values are tha
 channel's own range ends, not 1 and 0. It reads `Value`, the channel's state,
 never `TargetValue`, which is only what the channel was last asked for.
 """
-from __future__ import annotations
-
-import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
@@ -44,13 +42,7 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import (
-    channel_key,
-    channels_of,
-    observed,
-    read_field,
-    unplaced_channels,
-)
+from .device import channel_key, channels_of, observed, read_field, unplaced_channels
 from .entity import NinaChannelEntity, NinaEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -149,7 +141,8 @@ def _either(
 
 async def _set_guiding(client: NinaClientV2, data: NinaData, on: bool) -> None:
     """Never forces a calibration: an existing one is worth keeping, and
-    recalibrating costs the settle as well as the frames it spans."""
+    recalibrating costs the settle as well as the frames it spans.
+    """
     if on:
         await client.start_guiding(force_calibration=False)
     else:
@@ -159,7 +152,8 @@ async def _set_guiding(client: NinaClientV2, data: NinaData, on: bool) -> None:
 async def _set_cooler(client: NinaClientV2, data: NinaData, on: bool) -> None:
     """On resumes at the driver's current setpoint, which a warm-up leaves at
     its own final value rather than the imaging temperature. To cool to a
-    chosen temperature, set the target temperature number instead."""
+    chosen temperature, set the target temperature number instead.
+    """
     camera = data.snapshot.camera
     setpoint = camera.target_temperature if camera is not None else None
     if on and setpoint is None:

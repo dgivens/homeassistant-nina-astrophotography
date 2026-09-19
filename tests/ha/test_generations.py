@@ -4,10 +4,8 @@ A restart is applied by FILTERING on the generation tag: the pre-restart frames
 stay in the coordinator's set and stop counting. Clearing would race a
 concurrent poll and lose events arriving during the refetch.
 """
-from __future__ import annotations
-
-import pytest
 from homeassistant.config_entries import ConfigEntryState
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from scenarios.fake_rig import FakeRig
@@ -27,7 +25,8 @@ async def test_setup_seeds_the_session_from_the_full_history(
     loaded_entry: MockConfigEntry,
 ) -> None:
     """`?all=true` is the only reseed source: the bare path answers the newest
-    frame alone, which would leave the session count reading 1 all night."""
+    frame alone, which would leave the session count reading 1 all night.
+    """
     assert loaded_entry.runtime_data.coordinator.data.session.image_count == 122
 
 
@@ -60,7 +59,8 @@ async def test_the_event_stream_follows_the_new_generation(
     loaded_entry: MockConfigEntry, advance
 ) -> None:
     """An event tagged with the stale generation would be filtered out of the
-    fold the moment it arrived."""
+    fold the moment it arrived.
+    """
     await advance("nina_restarted")
     assert loaded_entry.runtime_data.events.generation == RESTART_GENERATION
 
@@ -77,7 +77,8 @@ async def test_a_count_mismatch_reseeds_once_it_persists_and_never_again(
     every two ticks would go on for the life of the process.
 
     No capture can hold a snapshot of a race: the state varies the captured
-    count envelope's one number."""
+    count envelope's one number.
+    """
     seeded = _reseeds(rig)
     for _ in range(ticks):
         await advance("imaging_count_ahead")
@@ -90,7 +91,8 @@ async def test_a_count_going_backwards_under_an_unchanged_start_reseeds(
 ) -> None:
     """`/application-start` is not the only restart signal, and when the tag
     does not move it is the only one that fires — so the reseed cannot rest on
-    the generation having changed."""
+    the generation having changed.
+    """
     await advance("imaging_count_behind")
     assert _reseeds(rig) == 2                  # setup, then the shrunk history
 
@@ -100,7 +102,8 @@ async def test_an_unreadable_application_start_does_not_blank_the_session(
     loaded_entry: MockConfigEntry, advance
 ) -> None:
     """Adopting the null would filter every frame of the generation away for a
-    tick, and the session sensors would read zero and recover."""
+    tick, and the session sensors would read zero and recover.
+    """
     before = loaded_entry.runtime_data.coordinator.data.generation
     await advance("imaging_start_unreadable")
     data = loaded_entry.runtime_data.coordinator.data
@@ -118,7 +121,8 @@ async def test_a_generation_adopted_late_reseeds_the_frames_under_it(
     them back.
 
     A transiently empty endpoint has no capture: the state varies the captured
-    envelope's one scalar."""
+    envelope's one scalar.
+    """
     rig.goto("imaging_start_unreadable")
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
@@ -133,6 +137,7 @@ async def test_an_empty_history_is_not_a_failure(
     loaded_entry: MockConfigEntry, advance
 ) -> None:
     """Of the three ways an empty history answers, only bare `/image-history`'s
-    `Index out of range` looks like one."""
+    `Index out of range` looks like one.
+    """
     await advance("nina_restarted")
     assert loaded_entry.state is ConfigEntryState.LOADED

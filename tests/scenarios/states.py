@@ -25,12 +25,11 @@ not retry.
 Adding a state: build it from captured envelopes, never from a hand-written
 document. A state the corpus cannot show belongs in `AWAITING_CAPTURE`.
 """
-from __future__ import annotations
-
 import json
 from typing import Any
 
 import aiohttp
+
 from helpers import FIXTURES, FakeResponse, load_envelope, ok
 
 State = dict[str, Any]

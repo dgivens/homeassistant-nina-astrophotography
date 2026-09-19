@@ -7,12 +7,10 @@ transient invariant failure as a sequence of arguments rather than a rig.
 Nothing here clears anything. A N.I.N.A. restart is a *generation* change, and
 the process boundary is applied downstream by filtering on that tag (§3.6).
 """
-from __future__ import annotations
-
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import time
 
 from .api.models import EquipmentSnapshot, NinaEvent
 
@@ -209,7 +207,8 @@ class TierSchedule:
 
     def _interval(self, tier: str) -> float:
         """`KeyError` on an unknown tier: a silent default would hand a
-        misspelled caller a cadence it never asked for."""
+        misspelled caller a cadence it never asked for.
+        """
         if tier == "sequence":
             return self.sequence_interval
         return {"fast": self.FAST, "floor": self.FLOOR}[tier]
@@ -235,7 +234,8 @@ class TierSchedule:
         """Fall back to the idle interval — `SEQUENCE-FINISHED` fires once at
         session end, so the cadence need not wait the five minutes the activity
         heuristic (§6.2) takes to go quiet. Not a latch: a rising frame count
-        afterwards puts the tier back at 30 s through `set_imaging`."""
+        afterwards puts the tier back at 30 s through `set_imaging`.
+        """
         self.sequence_interval = self.SEQUENCE_IDLE
 
     def request_sequence_refetch(self, now: float | None = None, *,
@@ -265,7 +265,8 @@ class TierSchedule:
 
     def take_pending(self) -> set[str]:
         """The queued endpoints, cleared. Draining is the caller's obligation:
-        a queue that is read without clearing re-reads on every tick."""
+        a queue that is read without clearing re-reads on every tick.
+        """
         pending, self._pending = self._pending, set()
         return pending
 

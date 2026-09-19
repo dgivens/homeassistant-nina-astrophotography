@@ -11,10 +11,10 @@ window.
 """
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DOMAIN
@@ -41,7 +41,8 @@ async def test_the_last_image_sensors_ignore_calibration_frames(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
     """The newest frame of the night is a flat: HFR 0, Mean ADU 33,139.77. The
-    newest LIGHT is HFR 1.454, Mean ADU 548.6, and that is what these report."""
+    newest LIGHT is HFR 1.454, Mean ADU 548.6, and that is what these report.
+    """
     await advance("dawn_flats")
     assert (float(hass.states.get(LAST_IMAGE_HFR).state),
             float(hass.states.get(LAST_IMAGE_MEAN_ADU).state)) == (
@@ -72,7 +73,8 @@ async def test_the_breakdowns_are_attributes_not_entities(
 ) -> None:
     """Per-target HFR means ranged 1.429-1.667 against a session-wide 1.513, so
     the breakdown is worth carrying — but as attributes of the summary sensor,
-    not as entities that come and go with the night's target list."""
+    not as entities that come and go with the night's target list.
+    """
     await advance("dawn_flats")
     assert set(hass.states.get(SESSION_AVG_HFR).attributes[attribute]) == expected
 
@@ -83,7 +85,8 @@ async def test_recent_frames_is_every_type_newest_first_and_bounded(
     """Unlike the sensor's own LIGHT-only state, `recent_frames` is every type
     this process saved, which a dashboard's strip must label correctly
     whatever it lands on. The newest frame of the night is a flat, not a
-    light (see the ignores-calibration test above)."""
+    light (see the ignores-calibration test above).
+    """
     await advance("dawn_flats")
     recent = hass.states.get(LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
     assert len(recent) == 20
@@ -94,7 +97,8 @@ async def test_recent_lights_survive_a_dawn_flat_run(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
     """What the frame-stats card draws its sparklines from, so a page reload
-    keeps them: lights only, oldest first, ending on the sensor's own frame."""
+    keeps them: lights only, oldest first, ending on the sensor's own frame.
+    """
     await advance("dawn_flats")
     state = hass.states.get(LAST_IMAGE_HFR)
     recent = state.attributes["recent_lights"]
@@ -106,7 +110,8 @@ async def test_recent_lights_name_their_target(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
     """A Target Scheduler night changes field mid-series, and star count moves
-    by whole factors with it; the card marks the change from this field."""
+    by whole factors with it; the card marks the change from this field.
+    """
     await advance("dawn_flats")
     recent = hass.states.get(LAST_IMAGE_HFR).attributes["recent_lights"]
     assert {light["target"] for light in recent} == {
@@ -117,7 +122,8 @@ async def test_the_session_start_sensor_is_the_most_recent_local_noon(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, entity_registry
 ) -> None:
     """Frames at 2026-09-03T21:39 and 2026-09-04T02:35 are one session; a
-    midnight rollover would have split the night in two."""
+    midnight rollover would have split the night in two.
+    """
     entity_registry.async_update_entity(SESSION_START, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()

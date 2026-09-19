@@ -8,19 +8,18 @@ at the call site can tell.
 """
 from pathlib import Path
 
-import pytest
-import yaml
-from helpers import failure
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.selector import selector
 from homeassistant.setup import async_setup_component
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import yaml
 
 import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.const import DOMAIN
+from helpers import failure
 
 SERVICES_YAML = yaml.safe_load(
     (Path(integration.__file__).parent / "services.yaml").read_text(encoding="utf-8")
@@ -46,7 +45,8 @@ async def test_a_service_reaches_the_rig_its_device_belongs_to(
     hass: HomeAssistant, two_rigs
 ) -> None:
     """1.4.5 returned the first loaded entry, so a second rig was unreachable
-    from the services however it was targeted."""
+    from the services however it was targeted.
+    """
     first, second = two_rigs.rigs
     await _call(hass, "mount_park", device_id=_hub(hass, two_rigs.entries[1]))
 
@@ -65,7 +65,8 @@ async def test_a_target_that_names_no_nina_instance_is_refused(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """Never widened back to "the only rig": a device of some other
-    integration must not park this mount, and neither must a typo."""
+    integration must not park this mount, and neither must a typo.
+    """
     other = MockConfigEntry(domain="other")
     other.add_to_hass(hass)
     foreign = dr.async_get(hass).async_get_or_create(
@@ -83,7 +84,8 @@ async def test_an_untargeted_call_is_refused_while_a_second_rig_is_merely_down(
 ) -> None:
     """Ambiguity is judged on CONFIGURED entries. Judged on loaded ones, an
     untargeted call would silently retarget to the surviving rig whenever the
-    other rig's N.I.N.A. was down — which is when nobody is watching."""
+    other rig's N.I.N.A. was down — which is when nobody is watching.
+    """
     assert await hass.config_entries.async_unload(two_rigs.entries[0].entry_id)
 
     with pytest.raises(ServiceValidationError):
@@ -95,7 +97,8 @@ async def test_an_entity_of_a_rig_targets_that_rig(
     hass: HomeAssistant, two_rigs
 ) -> None:
     """`services.yaml` declares a `target:`, so the action must accept every
-    form the target picker yields, not only a bare device."""
+    form the target picker yields, not only a bare device.
+    """
     first, second = two_rigs.rigs
     entity = er.async_entries_for_config_entry(
         er.async_get(hass), two_rigs.entries[1].entry_id)[0]
@@ -138,7 +141,8 @@ async def test_a_service_sends_what_the_api_reads(
 
 def test_capture_offers_only_the_parameters_the_api_binds() -> None:
     """`/equipment/camera/capture` binds no binning and no filter index, and a
-    parameter that looks like it works is worse than no parameter."""
+    parameter that looks like it works is worse than no parameter.
+    """
     assert {"binning", "filter_index"}.isdisjoint(
         SERVICES_YAML["camera_capture"]["fields"])
 
@@ -148,8 +152,9 @@ def test_every_documented_selector_is_one_home_assistant_accepts(
     service: str,
 ) -> None:
     """`services.yaml` is validated by hassfest, in CI, after the push. This
-    is the same check in the suite, where it costs seconds instead."""
-    for field, spec in SERVICES_YAML[service]["fields"].items():
+    is the same check in the suite, where it costs seconds instead.
+    """
+    for spec in SERVICES_YAML[service]["fields"].values():
         if "selector" in spec:
             selector(spec["selector"])
 
@@ -158,7 +163,8 @@ def test_every_documented_selector_is_one_home_assistant_accepts(
 def test_every_action_offers_a_rig_picker(service: str) -> None:
     """A `device:` SELECTOR on a field, not a `target:` block: Home Assistant
     rejects a device filter on `target`, and without the filter the picker
-    offers every device in the house."""
+    offers every device in the house.
+    """
     picker = SERVICES_YAML[service]["fields"]["device_id"]["selector"]
 
     assert picker == {"device": {"integration": DOMAIN}}
@@ -190,7 +196,8 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
     """`NinaError` subclasses `Exception` alone, deliberately — the API layer
     stays free of Home Assistant. One escaping a handler is treated as a defect
     in this integration: the step fails with a traceback and the frontend
-    offers to file a bug. A disconnected mount is not that."""
+    offers to file a bug. A disconnected mount is not that.
+    """
     rig.respond("/equipment/mount/park", failure("Mount not connected"))
     with pytest.raises(HomeAssistantError) as raised:
         await _call(hass, "mount_park")
@@ -214,7 +221,8 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
 ) -> None:
     """Out-of-range input is silently clamped and answered `Success: true`, so
     nothing downstream would report it — and `services.yaml`'s selectors are a
-    UI hint that binds nothing from a script or the REST API."""
+    UI hint that binds nothing from a script or the REST API.
+    """
     with pytest.raises(ServiceValidationError):
         await _call(hass, service, **data)
     assert rig.sent == []
@@ -244,7 +252,8 @@ async def test_every_remaining_service_reaches_its_own_endpoint(
 ) -> None:
     """The handlers that differ only in the endpoint they send. `dome_close` is
     the roof: the abort blueprint calls it, and a handler pointed at the wrong
-    path is answered `Success: true`."""
+    path is answered `Success: true`.
+    """
     data = {"temperature": -10} if service == "camera_cool" else {}
     await _call(hass, service, **data)
     assert rig.sent[-1][0] == path
@@ -255,6 +264,7 @@ async def test_the_actions_exist_before_any_entry_is_loaded(
 ) -> None:
     """Bronze `action-setup`. Registered from `async_setup_entry`, the actions
     vanish with the last entry, and an automation referencing one fails
-    validation rather than failing legibly at call time."""
+    validation rather than failing legibly at call time.
+    """
     assert await async_setup_component(hass, DOMAIN, {})
     assert hass.services.has_service(DOMAIN, "mount_park")

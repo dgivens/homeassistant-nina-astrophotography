@@ -5,7 +5,6 @@ options list, and getting it wrong parks a mount on the wrong rate.
 """
 from dataclasses import replace
 
-import pytest
 from homeassistant.components.select import (
     ATTR_OPTION,
     ATTR_OPTIONS,
@@ -15,6 +14,7 @@ from homeassistant.components.select import (
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
@@ -62,7 +62,8 @@ async def test_the_tracking_options_come_from_the_mount(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """`TrackingModes` differs by mount — this one does not offer King — and a
-    hardcoded list offers rates the mount does not have."""
+    hardcoded list offers rates the mount does not have.
+    """
     assert hass.states.get(TRACKING).attributes[ATTR_OPTIONS] == [
         "Sidereal", "Lunar", "Solar", "Stopped"
     ]
@@ -92,7 +93,8 @@ async def test_a_tracking_mode_the_api_cannot_encode_is_refused(
     hass: HomeAssistant, set_up_with_mount, rig
 ) -> None:
     """The options are the mount's, so a mount can offer a name this API has no
-    index for; sending a guess would set some other rate."""
+    index for; sending a guess would set some other rate.
+    """
     await set_up_with_mount(tracking_modes=("Sidereal", "Ludicrous"))
     with pytest.raises(ServiceValidationError):
         await _select(hass, TRACKING, "Ludicrous")
@@ -111,7 +113,8 @@ async def test_selecting_a_filter_sends_its_slot_and_does_not_read_it_back(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """No command on this API confirms anything (§3.5): the wheel still reads
-    the polled R until it has actually moved."""
+    the polled R until it has actually moved.
+    """
     await _select(hass, FILTER, "H")
     assert rig.sent == [("/equipment/filterwheel/change-filter", {"filterId": 4})]
     assert hass.states.get(FILTER).state == "R"
@@ -145,7 +148,8 @@ async def test_the_kept_selects_keep_their_1_4_5_unique_id(
 def test_every_dome_descriptor_is_marked_unverified() -> None:
     """Dome ships untested; the marker is enforced, not documented (§5.3.1).
     No dome descriptor exists on this platform yet — the guard is for the one
-    that is added next."""
+    that is added next.
+    """
     assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []
 
 
@@ -156,7 +160,8 @@ async def test_the_filter_change_sends_the_wheels_slot_not_the_list_position(
     """Every captured wheel numbers its slots from zero in list order, so a
     position and an `Id` are indistinguishable there. A wheel that numbers
     otherwise is what separates them — and a wrong slot changes to the wrong
-    filter, answers `Success: true`, and costs the sub."""
+    filter, answers `Success: true`, and costs the sub.
+    """
     await advance("filter_wheel_numbered_from_four")
     await hass.services.async_call(
         SELECT_DOMAIN, SERVICE_SELECT_OPTION,

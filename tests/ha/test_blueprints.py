@@ -11,10 +11,10 @@ blueprint that means a roof that never closes.
 """
 from pathlib import Path
 
-import pytest
 from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
+import pytest
 
 BLUEPRINTS = sorted(
     (Path(__file__).resolve().parents[2] / "blueprints").rglob("*.yaml")

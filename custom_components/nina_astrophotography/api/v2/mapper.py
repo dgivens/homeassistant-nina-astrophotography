@@ -45,21 +45,20 @@ module is stateless.
 If a sentinel reaches derive.py, models.py carries sentinel values and the seam
 is broken.
 """
-from __future__ import annotations
-
-import re
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta, timezone
+import math
+import re
 from types import MappingProxyType
 from typing import Any
 
 from ..models import (
     AutoFocusReport,
     CameraModel,
+    CurveFit,
     DeviceMeta,
     DomeModel,
     EquipmentSnapshot,
-    CurveFit,
     FilterWheelModel,
     FitMinimum,
     FlatDeviceModel,
@@ -138,7 +137,7 @@ def nan_to_none(value: Any) -> Any:
     """The blanket rule."""
     if isinstance(value, str) and value.strip().lower() == "nan":
         return None
-    if isinstance(value, float) and value != value:
+    if isinstance(value, float) and math.isnan(value):
         return None
     return value
 
@@ -508,7 +507,8 @@ def rig_utc_offset(wire: dict) -> timedelta | None:
 
 def _total_rms_arcsec(raw: Any) -> float | None:
     """The bracketed arcsecond total of 'Tot: 0.18 (0.29")'; the leading figure
-    is guide-camera pixels, which mean something different on every rig."""
+    is guide-camera pixels, which mean something different on every rig.
+    """
     match = _TOTAL_RMS_ARCSEC.search(raw) if isinstance(raw, str) else None
     return float(match.group(1)) if match else None
 
@@ -690,7 +690,8 @@ def _numeric(value: Any) -> float | None:
 
 def _positive(value: float | None) -> float | None:
     """A star has a size: 0 is "never measured", and a fit can extrapolate
-    past zero. N.I.N.A. guards its own `initialHFR` the same way."""
+    past zero. N.I.N.A. guards its own `initialHFR` the same way.
+    """
     return value if value is not None and value > 0 else None
 
 

@@ -6,9 +6,9 @@ itself. What's ours beyond that: which files are exposed, that registering
 them is idempotent, that it degrades gracefully without lovelace, and that a
 failure in it can't take the rest of the integration down with it.
 """
-import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.setup import async_setup_component
+import pytest
 
 from custom_components.nina_astrophotography.frontend import (
     CARD_FILENAMES,
@@ -53,7 +53,8 @@ async def test_setup_does_not_crash_when_lovelace_is_not_set_up(
 ) -> None:
     """The default, HA-free-of-lovelace test instance is the case this
     guards: `async_setup` must not raise just because nothing configured
-    dashboards."""
+    dashboards.
+    """
     assert "lovelace" not in hass.data
     assert loaded_entry.state is ConfigEntryState.LOADED
 
@@ -63,7 +64,8 @@ async def test_a_registration_failure_does_not_sink_the_integration(
 ) -> None:
     """Registering a Lovelace resource is cosmetic; the entry, its devices
     and its entities are not. A storage read that raises — a corrupt
-    `.storage/lovelace_resources`, say — must not fail `async_setup`."""
+    `.storage/lovelace_resources`, say — must not fail `async_setup`.
+    """
     assert await async_setup_component(hass, "lovelace", {})
 
     async def _boom(self):
@@ -96,7 +98,8 @@ async def test_registering_twice_does_not_duplicate_resources(
     """Guards a second call in the same run, e.g. two config entries each
     triggering `async_setup` — not the restart case, which needs the
     collection to start unloaded (`test_a_restart_does_not_duplicate...`
-    below); by this point `lovelace_entry` has already loaded it."""
+    below); by this point `lovelace_entry` has already loaded it.
+    """
     await async_register_frontend_resources(hass)
 
     assert sorted(_resource_urls(hass)) == sorted(CARD_URLS)
@@ -110,7 +113,8 @@ async def test_a_restart_does_not_duplicate_persisted_resources(
     `ResourceStorageCollection`, same as a real Home Assistant start. Without
     the `resources.loaded` check in `async_register_frontend_resources`,
     `async_items()` would read empty before the store loads and duplicate
-    all six."""
+    all six.
+    """
     hass_storage["lovelace_resources"] = {
         "version": 1,
         "minor_version": 1,
@@ -134,7 +138,8 @@ async def test_yaml_managed_resources_are_left_to_the_operator(
     hass, config_entry, nina_responses, caplog
 ) -> None:
     """A YAML-mode collection has no create: the resources live in the
-    operator's file, so the cards are named in one warning instead."""
+    operator's file, so the cards are named in one warning instead.
+    """
     assert await async_setup_component(
         hass, "lovelace", {"lovelace": {"resource_mode": "yaml", "resources": []}}
     )
@@ -154,5 +159,6 @@ async def test_yaml_managed_resources_are_left_to_the_operator(
 
 def test_every_shipped_card_file_is_in_card_filenames() -> None:
     """`CARD_FILENAMES` is a fixed allowlist, not a directory listing — this
-    is what keeps it from silently drifting out of sync with `www/`."""
+    is what keeps it from silently drifting out of sync with `www/`.
+    """
     assert {path.name for path in WWW_DIR.glob("*.js")} == set(CARD_FILENAMES)

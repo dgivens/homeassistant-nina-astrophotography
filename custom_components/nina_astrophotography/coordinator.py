@@ -23,12 +23,10 @@ per-tier due-time checks live inside `_async_update_data`.
                                   61,356 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
     before                        82,606 B x 6/min ~ 297 MB / night
 """
-from __future__ import annotations
-
-import logging
-import time
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
+import logging
+import time
 from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
@@ -39,6 +37,7 @@ from homeassistant.util import dt as dt_util
 
 from .api.errors import NinaEndpointError, NinaError, NinaRequestError
 from .api.models import (
+    AutoFocusReport,
     EquipmentSnapshot,
     FlatsStatus,
     Frame,
@@ -46,7 +45,6 @@ from .api.models import (
     NinaEvent,
     ProfileSettings,
     SequenceNode,
-    AutoFocusReport,
     SessionStats,
     StackState,
     VersionInfo,
@@ -309,9 +307,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         # guard is consulted only when nothing else has already asked for a
         # reseed — a tick that reseeds anyway must not spend one of its two
         # strikes.
-        if restarted or not self._seeded:
-            await self._reseed(count)
-        elif self._reseed_guard.check(self._generation_frames(), count):
+        if restarted or not self._seeded or self._reseed_guard.check(self._generation_frames(), count):
             await self._reseed(count)
         self._restart.update(application_start, count)
 
@@ -530,7 +526,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             if queued:
                 self._schedule.add_pending(endpoint)
             return
-        except Exception:                                          # noqa: BLE001
+        except Exception:
             # A wire shape no mapper anticipated. Broad on purpose: this runs
             # outside the fast tier's own guard, so anything escaping here
             # fails the poll and takes eleven devices unavailable over one

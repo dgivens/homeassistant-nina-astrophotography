@@ -2,10 +2,10 @@
 from datetime import timedelta
 from unittest.mock import patch
 
-import pytest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import ATTR_RESTORED, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import (
@@ -41,7 +41,8 @@ async def test_a_rig_that_is_not_ready_retries_rather_than_failing_the_entry(
     hass: HomeAssistant, config_entry: MockConfigEntry, error
 ) -> None:
     """All three are transient at startup: N.I.N.A. may still be booting, or
-    answering unhappily while its equipment connects."""
+    answering unhappily while its equipment connects.
+    """
     config_entry.add_to_hass(hass)
     with patch(f"{CLIENT}.get_versions", side_effect=error):
         await hass.config_entries.async_setup(config_entry.entry_id)
@@ -74,7 +75,8 @@ async def test_unload_leaves_no_state_behind(
     hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
     """After unload the registry leaves only its restored placeholder for the
-    light — unavailable, `restored: true` — not an entity of ours."""
+    light — unavailable, `restored: true` — not an entity of ours.
+    """
     assert await hass.config_entries.async_unload(loaded_entry.entry_id)
     await hass.async_block_till_done()
     assert loaded_entry.state is ConfigEntryState.NOT_LOADED

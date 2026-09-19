@@ -26,8 +26,6 @@ This module is closed to fields no entity, service, session.py or derive.py
 consumes. A guideline, not a test — the enforcement needs an exemption list on
 its first service-only field.
 """
-from __future__ import annotations
-
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime

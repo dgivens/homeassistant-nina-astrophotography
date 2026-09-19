@@ -13,9 +13,9 @@ rather than `unknown` by a rule of their own (§5.2.2).
 import json
 from pathlib import Path
 
-import pytest
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DOMAIN
@@ -38,7 +38,8 @@ async def test_the_meridian_sentinel_is_unknown_but_a_real_reading_is_minutes(
 ) -> None:
     """24 is what an untracked mount returns; 12 h is legitimate — a mount
     inside a pier-side window adds 12 — so a "≥12 → unknown" rule is wrong.
-    The unit is minutes, which is what a flip warning is written in."""
+    The unit is minutes, which is what a flip warning is written in.
+    """
     await advance("imaging_guiding")
     assert float(hass.states.get(FLIP).state) > 0
     await advance("sequence_complete_tracking_off")
@@ -49,7 +50,8 @@ async def test_the_focuser_position_sensor_carries_a_state_class(
     hass: HomeAssistant, loaded_entry, entity_registry
 ) -> None:
     """Long-term statistics: `NumberEntity` has none, and focuser position
-    against temperature is the standard temp-comp-slope diagnostic."""
+    against temperature is the standard temp-comp-slope diagnostic.
+    """
     entity_registry.async_update_entity(FOCUSER_POSITION, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
@@ -77,7 +79,8 @@ async def test_the_cut_sensors_are_not_registered(
 ) -> None:
     """§5.2.3's read-only mirrors, the driver names §5.1 moved onto the device
     registry, and `sequence_status` — node status persists from prior runs, so
-    it reported RUNNING on an idle rig (§6.2)."""
+    it reported RUNNING on an idle rig (§6.2).
+    """
     await advance("imaging_guiding")
     assert _registered(entity_registry, loaded_entry, suffix) is None
 
@@ -113,7 +116,8 @@ async def test_the_kept_sensors_keep_their_1_4_5_unique_id(
 ) -> None:
     """An upgrade must not strand a registry row: Home Assistant keys on
     `unique_id`, so a changed one mints a fresh entity and leaves the
-    automation pointing at the old id permanently unavailable."""
+    automation pointing at the old id permanently unavailable.
+    """
     await advance("imaging_guiding")
     assert _registered(entity_registry, loaded_entry, suffix) is not None
 
@@ -123,7 +127,8 @@ async def test_the_sequence_target_is_the_one_the_scheduler_announced(
 ) -> None:
     """A Target Scheduler rig publishes no target in `/sequence/json` — its
     imaging container holds the list internally — so `TS-TARGETSTART` is where
-    the name comes from."""
+    the name comes from.
+    """
     assert hass.states.get("sensor.n_i_n_a_sequence_target").state == "NGC 281"
 
 
@@ -131,7 +136,8 @@ async def test_sequence_progress_is_unknown_where_no_node_counts_iterations(
     hass: HomeAssistant, loaded_entry, entity_registry
 ) -> None:
     """The truth about what this API exposes on a Target Scheduler rig.
-    Inventing a percentage from node statuses would be worse (§6.2)."""
+    Inventing a percentage from node statuses would be worse (§6.2).
+    """
     entity_registry.async_update_entity(SEQUENCE_PROGRESS, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
@@ -143,7 +149,8 @@ async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
 ) -> None:
     """`meridian_flip_warning.yaml` reads this attribute by name to place its
     early warning. Rename or drop it and the blueprint silently falls back to
-    warning AT the flip — which is the bug the attribute exists to fix."""
+    warning AT the flip — which is the bug the attribute exists to fix.
+    """
     flip = hass.states.get(FLIP)
 
     assert "flip_fires_at_minutes" in flip.attributes
@@ -162,7 +169,8 @@ async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
 ) -> None:
     """21:05:40 on a UTC−5 rig. A TIMESTAMP sensor stores UTC, so the local
     time the wire sent is only visible here as its instant — which is what a
-    `time` trigger with an offset needs."""
+    `time` trigger with an offset needs.
+    """
     await set_up_at(hass, config_entry, rig, "scheduler_waiting")
     assert hass.states.get(WAIT_ENDS_AT).state == "2026-09-16T02:05:40+00:00"
 
@@ -172,7 +180,8 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(
 ) -> None:
     """`now() - last_frame_at` is what a stall looks like, and a dawn flat run
     is the rig working — so this is the 06:26 FLAT, not the 04:25 LIGHT that
-    `sensor.last_image_*` reports."""
+    `sensor.last_image_*` reports.
+    """
     await advance("dawn_flats")
     assert hass.states.get(LAST_FRAME_AT).state == "2026-09-04T11:26:34+00:00"
 
@@ -193,7 +202,8 @@ async def test_the_last_autofocus_run_is_published_reading_by_reading(
     hass: HomeAssistant, config_entry, rig, set_up_at, entity_id: str, expected: float
 ) -> None:
     """Separate sensors, not attributes on one: only a state is recorded, and
-    focus drift against temperature is a chart over months."""
+    focus drift against temperature is a chart over months.
+    """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
     assert float(hass.states.get(entity_id).state) == pytest.approx(expected)
 
@@ -202,7 +212,8 @@ async def test_the_last_autofocus_time_is_published_in_utc(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """01:10 on a UTC−5 rig. The age of the run is what says a report belongs
-    to a previous night, which every other autofocus reading depends on."""
+    to a previous night, which every other autofocus reading depends on.
+    """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
     assert hass.states.get(
         "sensor.n_i_n_a_focuser_last_autofocus"
@@ -213,7 +224,8 @@ async def test_the_last_autofocus_carries_what_measured_it(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """HFR is on a different scale per star detector, so a reading is only
-    comparable with another taken the same way."""
+    comparable with another taken the same way.
+    """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
     attributes = hass.states.get("sensor.n_i_n_a_focuser_last_autofocus").attributes
 
@@ -225,7 +237,8 @@ async def test_the_last_autofocus_publishes_the_curve_a_card_plots(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """A curve is not a statistic, so it rides as an attribute — and it has to
-    reach a Lovelace card as plain JSON rows rather than as models."""
+    reach a Lovelace card as plain JSON rows rather than as models.
+    """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
     curve = hass.states.get(
         "sensor.n_i_n_a_focuser_last_autofocus").attributes["curve"]
@@ -237,7 +250,8 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """A card cannot re-derive the fitted curves, so they ship parsed — and
-    coefficients have to survive as a JSON array, not a Python tuple."""
+    coefficients have to survive as a JSON array, not a Python tuple.
+    """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
     fits = hass.states.get(
         "sensor.n_i_n_a_focuser_last_autofocus").attributes["fits"]
@@ -250,6 +264,7 @@ async def test_the_autofocus_readings_exist_before_a_run_reports(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """The dawn snapshot serves no report. The entities still belong to the
-    focuser, and an automation may point at one from the first restart."""
+    focuser, and an automation may point at one from the first restart.
+    """
     assert hass.states.get(
         "sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"

@@ -5,11 +5,9 @@ coverage.py has no per-file threshold and this project has no global gate:
 coverage is deliberately uneven. Reads coverage.json, written by
 `coverage json` after `coverage combine`.
 """
-from __future__ import annotations
-
 import json
-import sys
 from pathlib import Path
+import sys
 
 FLOORS: dict[str, int] = {
     "coordinator.py": 95,

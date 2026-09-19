@@ -8,14 +8,11 @@ drift guard cannot see dome fields at all.
 Reachability only, never values: what the fixture proves is that the connected
 branch runs, not what a real dome would report through it.
 """
-from __future__ import annotations
-
 import json
 from pathlib import Path
 
-import pytest
-
 from nina_astrophotography.api.v2.mapper import map_equipment_info
+import pytest
 
 _FIXTURE = Path(__file__).resolve().parents[1] / "synthetic" / "dome_connected.json"
 
@@ -35,7 +32,8 @@ def test_a_connected_dome_reaches_the_mapped_model(snapshot) -> None:
 @pytest.mark.synthetic
 def test_the_other_ten_blocks_are_the_captures_own(snapshot) -> None:
     """Only `Dome` is fabricated: a synthetic file that quietly changed a
-    second block would put the rest of the suite on invented wire data."""
+    second block would put the rest of the suite on invented wire data.
+    """
     captured = json.loads(
         (_FIXTURE.parents[1] / "fixtures" / "restart_equipment_partial_connect.json")
         .read_text(encoding="utf-8")

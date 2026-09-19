@@ -4,8 +4,6 @@ Static, not runtime. Once pytest-homeassistant-custom-component is installed its
 pytest11 entry point imports Home Assistant before collection, so a sys.modules
 check can never pass.
 """
-from __future__ import annotations
-
 import ast
 from pathlib import Path
 

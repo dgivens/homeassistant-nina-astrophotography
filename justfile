@@ -29,6 +29,14 @@ test-all: test test-ha
 typecheck *paths:
     uv run --group dev --group test-ha pyright {{ paths }}
 
+# Ruff, as CI runs it.
+lint:
+    uv run --group dev ruff check .
+
+# Apply ruff's fixes.
+fmt:
+    uv run --group dev ruff check --fix .
+
 # The coverage floors, exactly as CI computes them.
 coverage:
     uv run coverage run -m pytest tests/unit -p no:homeassistant -q
@@ -42,7 +50,7 @@ fixtures-check:
     uv run python scripts/check_fixtures.py tests/fixtures/*.json
 
 # Everything CI checks, run locally.
-ci: test-all coverage typecheck fixtures-check
+ci: lint typecheck test-all coverage fixtures-check
 
 # Remove caches and coverage output.
 clean:

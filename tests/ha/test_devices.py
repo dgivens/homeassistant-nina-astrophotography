@@ -1,10 +1,9 @@
 """The device model: a hub, one child per equipment type, metadata in the registry."""
 from dataclasses import fields
 
-import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import area_registry as ar
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import area_registry as ar, device_registry as dr
+import pytest
 
 from custom_components.nina_astrophotography import async_remove_config_entry_device
 from custom_components.nina_astrophotography.api.models import EquipmentSnapshot
@@ -22,7 +21,8 @@ def _device(hass: HomeAssistant, entry, kind: str | None = None):
 
 def test_every_kind_is_an_equipment_snapshot_field() -> None:
     """One list, not two: `getattr(snapshot, kind)` is how the coordinator's
-    first-sight latch and an entity's availability both read a device."""
+    first-sight latch and an entity's availability both read a device.
+    """
     assert set(KINDS) == {field.name for field in fields(EquipmentSnapshot)}
 
 
@@ -151,7 +151,8 @@ async def test_syncing_does_not_move_an_already_placed_child(
     hass: HomeAssistant, loaded_entry, advance
 ) -> None:
     """`async_sync_devices` runs on every publish; a re-run must not undo an
-    operator's deliberate move away from the hub's area."""
+    operator's deliberate move away from the hub's area.
+    """
     registry = dr.async_get(hass)
     areas = ar.async_get(hass)
     hub_area = areas.async_get_or_create("Starfront")

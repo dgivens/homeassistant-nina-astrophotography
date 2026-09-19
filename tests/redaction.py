@@ -24,8 +24,6 @@ Credentials, account names, absolute paths, hostnames, IPv4 and IPv6 addresses,
 UUIDs and Home Assistant entity ids are a different matter and are still
 redacted.
 """
-from __future__ import annotations
-
 import hashlib
 import re
 from typing import Any
@@ -70,9 +68,9 @@ _VALUE_PATTERNS = (
     # and RmsText carry one or two colons and must not match.
     re.compile(r"(?<![\w:])(?:(?:[0-9a-f]{1,4}:){7}[0-9a-f]{1,4}"
                r"|(?:[0-9a-f]{1,4}:){1,6}(?::[0-9a-f]{1,4}){1,6}"
-               r"|(?:[0-9a-f]{1,4}:){1,7}:|:(?::[0-9a-f]{1,4}){1,7})(?![\w:])", re.I),
-    re.compile(r"\.ts\.net\b", re.I),                            # Tailscale hostname
-    re.compile(r"\b[0-9a-f]{8}(?:-?[0-9a-f]{4}){3}-?[0-9a-f]{12}\b", re.I),  # UUID
+               r"|(?:[0-9a-f]{1,4}:){1,7}:|:(?::[0-9a-f]{1,4}){1,7})(?![\w:])", re.IGNORECASE),
+    re.compile(r"\.ts\.net\b", re.IGNORECASE),                            # Tailscale hostname
+    re.compile(r"\b[0-9a-f]{8}(?:-?[0-9a-f]{4}){3}-?[0-9a-f]{12}\b", re.IGNORECASE),  # UUID
     re.compile(r"\b(?:sensor|binary_sensor|switch|light|number|select|button|"
                r"image|event|camera|climate|cover)\.[a-z0-9_]+\b"),  # HA entity id
 )
@@ -89,7 +87,7 @@ _VALUE_PATTERNS = (
 # matches the sequence node named "Set Tracking", and unbounded "colo" matches
 # "Color"/"Colour" (an OSC camera's Name). "coloc" (colocation), not "colo".
 _FACILITY = re.compile(
-    r"observator|data ?cent|\b(?:building|suite|rack|coloc|sfro)\b", re.I
+    r"observator|data ?cent|\b(?:building|suite|rack|coloc|sfro)\b", re.IGNORECASE
 )
 # `ProjectName` is a Target Scheduler project, which is routinely named after
 # the site hosting the rig; `TargetName` stays, being an astronomical object.

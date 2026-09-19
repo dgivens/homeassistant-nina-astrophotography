@@ -6,7 +6,7 @@ COMPONENT = Path(__file__).resolve().parents[2] / "custom_components" / "nina_as
 
 
 def test_the_english_translation_is_the_strings_file() -> None:
-    """hassfest generates translations/ from strings.json for core integrations
+    """Hassfest generates translations/ from strings.json for core integrations
     only; Home Assistant reads a custom integration's entity names from
     translations/<lang>.json alone, so the two must be kept identical by hand.
     """

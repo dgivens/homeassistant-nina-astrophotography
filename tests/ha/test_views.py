@@ -12,6 +12,7 @@ bytes at its own newest index only, so a case that reads the body stubs
 `/image/0` for itself.
 """
 import pytest
+
 from helpers import FakeResponse, failure, ok
 
 ENTITY = "image.n_i_n_a_last_frame"
@@ -48,7 +49,8 @@ async def test_index_0_is_translated_to_ninas_newest_index(
 ) -> None:
     """N.I.N.A. counts the other way — 0 is its OLDEST frame, confirmed
     against a live rig — so asking this proxy for index 0 (newest, matching
-    `recent_frames`) must reach N.I.N.A.'s `count - 1`, never its own 0."""
+    `recent_frames`) must reach N.I.N.A.'s `count - 1`, never its own 0.
+    """
     rig.respond("/image-history?count=true", ok(5))
     rig.respond("/image/4", ok({"Image": "irrelevant"}))  # proves 4 was asked
     client = await hass_client()
@@ -62,7 +64,8 @@ async def test_an_index_at_or_past_the_current_count_answers_404(
 ) -> None:
     """The count is fetched fresh per request rather than trusted from a
     cached history, so a card asking for a frame N.I.N.A. no longer reports
-    gets a clean 404 instead of a negative real index."""
+    gets a clean 404 instead of a negative real index.
+    """
     rig.respond("/image-history?count=true", ok(1))
     client = await hass_client()
     resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/1")
@@ -90,7 +93,8 @@ async def test_the_rig_being_unreachable_for_the_count_answers_502(
     """The count fetch can fail independently of the image fetch it gates —
     covered separately, since it is a distinct request the view makes. A
     handler exception (5xx) is the one failure shape that is never a
-    disguised "no data yet" refusal."""
+    disguised "no data yet" refusal.
+    """
     rig.respond(
         "/image-history?count=true",
         FakeResponse("<html>500</html>", status=500, content_type="text/html"),
@@ -142,7 +146,8 @@ async def test_autoprepare_is_only_sent_when_the_query_asks_for_it(
 ) -> None:
     """The card omits `autoPrepare` entirely to ask for the linear frame — an
     absent query param must not default to stretched, or a `stretch: false`
-    card would get N.I.N.A.'s auto-stretch anyway."""
+    card would get N.I.N.A.'s auto-stretch anyway.
+    """
     rig.respond("/image-history?count=true", ok(1))
     rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
     client = await hass_client()

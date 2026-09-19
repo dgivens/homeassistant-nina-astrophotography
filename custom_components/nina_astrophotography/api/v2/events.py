@@ -11,13 +11,12 @@ timestamp; it can never reconstruct a frame's measurements.
 cap, eviction or pagination; it grows for the life of the process. Replay caps
 what it folds.
 """
-from __future__ import annotations
-
 import asyncio
+from collections.abc import Callable
+import contextlib
+from datetime import UTC, datetime, timedelta
 import json
 import logging
-from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -99,7 +98,7 @@ class NinaEventStream:
         for callback in list(self._subscribers):
             try:
                 callback(event)
-            except Exception:                       # noqa: BLE001
+            except Exception:
                 _LOGGER.exception("A N.I.N.A. event subscriber raised")
 
     # ── replay ───────────────────────────────────────────────────────────────
@@ -123,17 +122,16 @@ class NinaEventStream:
 
     async def stop(self) -> None:
         """Stop the receive loop. Safe on a stream that never started: unload
-        runs its callbacks even when setup failed before `start`."""
+        runs its callbacks even when setup failed before `start`.
+        """
         self._running = False
         self._set_connected(False)
         if self._ws is not None and not self._ws.closed:
             await self._ws.close()
         if self._task is not None:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
 
     def _set_connected(self, connected: bool) -> None:
@@ -145,7 +143,7 @@ class NinaEventStream:
             return
         try:
             self._on_connection(connected)
-        except Exception:                           # noqa: BLE001
+        except Exception:
             _LOGGER.exception("A N.I.N.A. connection listener raised")
 
     async def _run(self) -> None:
@@ -169,7 +167,7 @@ class NinaEventStream:
                 _LOGGER.warning(
                     "N.I.N.A. event socket: connection refused – retrying in %ds", delay
                 )
-            except Exception as exc:                # noqa: BLE001
+            except Exception as exc:
                 # With the traceback: this catch is what keeps the socket
                 # reconnecting, so without it an unanticipated failure loops
                 # silently every 5 s with nothing to diagnose it by.

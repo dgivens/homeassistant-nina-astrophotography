@@ -3,10 +3,10 @@
 Every assertion goes through `hass.states` or the entity registry — the
 registry for the long tail, which ships disabled and so has no state.
 """
-import pytest
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.binary_sensor import DESCRIPTIONS
@@ -83,7 +83,8 @@ async def test_the_kept_binary_sensors_are_registered(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
     """The dome's three are absent from this table on purpose: no capture has a
-    dome carrying a DeviceId, so the slot is None and §5.2.2 gates them out."""
+    dome carrying a DeviceId, so the slot is None and §5.2.2 gates them out.
+    """
     assert _registered(entity_registry, loaded_entry, suffix) is not None
 
 
@@ -97,7 +98,8 @@ async def test_the_safety_sensor_reads_on_when_conditions_are_unsafe(
 ) -> None:
     """HA's SAFETY device class is on = problem, and the shipped blueprint
     triggers on `to: "on"`. Backwards, it ships an abort that fires when the
-    sky clears and stays silent under cloud."""
+    sky clears and stays silent under cloud.
+    """
     await advance(state)
     assert hass.states.get(UNSAFE).state == expected
 
@@ -125,7 +127,8 @@ async def test_an_unreachable_rig_still_makes_the_connectivity_sensor_unavailabl
     hass: HomeAssistant, advance
 ) -> None:
     """Level 1 is not exempted: nothing is known about the monitor when nothing
-    is known about the rig."""
+    is known about the rig.
+    """
     await advance("nina_unreachable")
     assert hass.states.get(MONITOR_CONNECTED).state == "unavailable"
 
@@ -134,7 +137,8 @@ async def test_an_unanswered_autofocus_start_raises_the_problem_sensor(
     hass: HomeAssistant, config_entry: MockConfigEntry, rig, inside_the_dawn_session
 ) -> None:
     """There is no autofocus-failed event: the dawn night's eighth
-    AUTOFOCUS-STARTING going unanswered past the timeout is the whole signal."""
+    AUTOFOCUS-STARTING going unanswered past the timeout is the whole signal.
+    """
     await _set_up_at(hass, config_entry, rig, "autofocus_timed_out")
     assert hass.states.get(AUTOFOCUS_FAILED).state == "on"
 
@@ -150,7 +154,8 @@ async def test_imaging_follows_activity_and_not_node_status(
     hass: HomeAssistant, advance, state: str, expected: str
 ) -> None:
     """Frames arriving, never the tree: a sequence executing a wait reads
-    RUNNING throughout and takes nothing."""
+    RUNNING throughout and takes nothing.
+    """
     await advance(state)
     assert hass.states.get(IMAGING).state == expected
 
@@ -166,7 +171,8 @@ async def test_the_waiting_sensor_clears_when_the_sequence_stops(
 ) -> None:
     """There is no TS-WAITSTOP: `sequence_stopped` still holds two TS-WAITSTART
     naming 21:05, so a sensor keyed on the newest wait alone would report a
-    stopped rig as waiting."""
+    stopped rig as waiting.
+    """
     await _set_up_at(hass, config_entry, rig, state)
     assert hass.states.get(SCHEDULER_WAITING).state == expected
 
@@ -176,7 +182,8 @@ async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
 ) -> None:
     """The two entities read the two fields, and a wait is where they diverge —
     which is what the shutdown blueprint waits on, and what the meridian
-    blueprint gates on."""
+    blueprint gates on.
+    """
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting")
     assert hass.states.get(SEQUENCER_RUNNING).state == "on"
     assert hass.states.get(IMAGING).state == "off"
@@ -191,7 +198,8 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
     """Gold entity-category / entity-disabled-by-default. The dome's three are
-    not here: no capture observes a dome, so they are never registered."""
+    not here: no capture observes a dome, so they are never registered.
+    """
     row = entity_registry.async_get(
         _registered(entity_registry, loaded_entry, suffix)
     )
@@ -231,7 +239,8 @@ async def test_a_hub_entity_is_not_on_an_equipment_device(
     loaded_entry: MockConfigEntry, entity_registry, device_registry
 ) -> None:
     """`kind=None` puts a rig-scoped entity on the hub (§5.1), which is what
-    keeps `binary_sensor.<instance>_sequencer_running` free of a device word."""
+    keeps `binary_sensor.<instance>_sequencer_running` free of a device word.
+    """
     entry = entity_registry.async_get(SEQUENCER_RUNNING)
     assert device_registry.async_get(entry.device_id).name == "N.I.N.A."
 
@@ -267,7 +276,8 @@ async def test_a_rejected_run_publishes_what_it_was_judged_against(
     hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
 ) -> None:
     """`on` alone cannot be acted on. The R² and the threshold it lost to are
-    what turn the verdict into a number the operator can check."""
+    what turn the verdict into a number the operator can check.
+    """
     await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
     attributes = hass.states.get(AUTOFOCUS_FAILED).attributes
     assert attributes["reason"] == "rejected"
@@ -279,7 +289,8 @@ async def test_a_hung_run_says_so_because_the_report_is_another_runs(
 ) -> None:
     """A run that hangs never writes a report, so `last-af` still holds the
     previous one. Without the reason, anything read off that report reads as
-    belonging to the run that just failed."""
+    belonging to the run that just failed.
+    """
     await _set_up_at(hass, config_entry, rig, "autofocus_timed_out")
     assert hass.states.get(AUTOFOCUS_FAILED).attributes["reason"] == "hung"
 
@@ -288,7 +299,8 @@ async def test_a_run_that_fitted_well_has_no_reason(
     hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
 ) -> None:
     """The threshold is published whether or not anything failed: it is what
-    says how much headroom a passing run had."""
+    says how much headroom a passing run had.
+    """
     await _set_up_at(hass, config_entry, rig, "imaging_guiding")
     attributes = hass.states.get(AUTOFOCUS_FAILED).attributes
     assert attributes["reason"] is None
@@ -301,6 +313,7 @@ async def test_a_report_older_than_the_session_is_not_tonights_problem(
     """The report file outlives a restart, and without the real clock this test
     runs a day or more after the capture — so the same rejected report reads
     `off`. Believing an old one would raise a problem every time Home Assistant
-    started."""
+    started.
+    """
     await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
     assert hass.states.get(AUTOFOCUS_FAILED).state == "off"

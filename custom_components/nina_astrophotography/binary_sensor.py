@@ -16,8 +16,6 @@ Assistant's `SAFETY` device class — `on` means problem — and it is what the
 shipped abort blueprint triggers on. An entity named for safety that reads `on`
 for safe is a trap every user hits exactly once, at the worst possible moment.
 """
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any

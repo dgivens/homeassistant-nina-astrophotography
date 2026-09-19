@@ -1,12 +1,7 @@
 """The envelope, not the HTTP status, carries the outcome."""
-from __future__ import annotations
-
 from datetime import timedelta
 
 import aiohttp
-import pytest
-from helpers import FakeResponse, FakeSession, failure, load_envelope, ok
-
 from nina_astrophotography.api.errors import (
     NinaCommandError,
     NinaConnectionError,
@@ -16,6 +11,9 @@ from nina_astrophotography.api.errors import (
 )
 from nina_astrophotography.api.models import Frame, SequenceNode, VersionInfo
 from nina_astrophotography.api.v2.client import NinaClientV2
+import pytest
+
+from helpers import FakeResponse, FakeSession, failure, load_envelope, ok
 
 
 def _client(session: FakeSession) -> NinaClientV2:
@@ -35,7 +33,8 @@ async def test_empty_history_is_no_data_not_an_error() -> None:
 async def test_uninitialised_sequencer_is_no_data_not_an_error(status) -> None:
     """A ~7.5 s window at N.I.N.A. startup, on the ordinary startup path. Ten
     guards raise it, with 409 on some paths and 400 on others — match on the
-    message, not the code (§7.1)."""
+    message, not the code (§7.1).
+    """
     client = _client(FakeSession({"sequence/json": failure("Sequence is not initialized", status)}))
     assert await client.get_sequence() is None
 
@@ -49,7 +48,8 @@ async def test_a_5xx_carrying_the_no_data_text_is_still_unavailable() -> None:
 
 async def test_a_device_refusal_worded_not_initialized_is_a_command_error() -> None:
     """Only the sequencer's message means "no data"; a refusal on a command path
-    keeps raising."""
+    keeps raising.
+    """
     client = _client(FakeSession({"set-light": failure("Flat device is not initialized", 409)}))
     with pytest.raises(NinaCommandError):
         await client.set_flat_light(True)
@@ -103,7 +103,8 @@ async def test_json_without_an_envelope_is_unavailable() -> None:
 async def test_a_pre_handler_html_status_is_classified_by_its_code(status, error) -> None:
     """EmbedIO answers routing and binding failures itself, with HTML and a
     real status. A pre-handler 400 is permanent where an envelope 400 may be
-    transient (§7.1); a 404 says the path is not served by this build."""
+    transient (§7.1); a 404 says the path is not served by this build.
+    """
     session = FakeSession({"flats/status": FakeResponse(f"<html>{status}</html>",
                                                         status=status, content_type="text/html")})
     with pytest.raises(error):
@@ -197,7 +198,8 @@ async def test_frames_are_mapped_from_the_history_list() -> None:
 async def test_a_history_item_without_an_identity_is_skipped_not_fatal(missing) -> None:
     """Frame identity is (Date, Filename); an item lacking either cannot enter
     the fold, so it is dropped the way an unmappable event is. Every captured
-    frame carries both, so one is stripped."""
+    frame carries both, so one is stripped.
+    """
     wire = load_envelope("dawn_image_history_with_flats.json")
     items = wire["Response"]
     items[0] = {k: v for k, v in items[0].items() if k != missing}
@@ -208,7 +210,8 @@ async def test_a_history_item_without_an_identity_is_skipped_not_fatal(missing) 
 @pytest.mark.synthetic
 async def test_a_bare_history_dict_is_one_frame() -> None:
     """The rig answers bare /image-history with a one-element list; a single
-    object is the shape the spec documents, and the client takes either."""
+    object is the shape the spec documents, and the client takes either.
+    """
     latest = load_envelope("dawn_image_history_with_flats.json")["Response"][-1]
     frames = await _client(FakeSession({"image-history": ok(latest)})).get_frames()
     assert [frame.filename for frame in frames] == [latest["Filename"]]
@@ -221,7 +224,8 @@ async def test_the_sequence_tree_is_mapped() -> None:
 
 async def test_events_use_the_offset_cached_from_equipment() -> None:
     """The mount's clock is the only place the API states the rig's UTC offset,
-    and the log-scraped ERROR-* times are naive in it (dawn fixture: -5 h)."""
+    and the log-scraped ERROR-* times are naive in it (dawn fixture: -5 h).
+    """
     session = FakeSession({"equipment/info": load_envelope("dawn_equipment_info.json"),
                            "event-history": load_envelope("dawn_event_history.json")})
     client = _client(session)
@@ -241,7 +245,8 @@ async def test_the_cached_rig_offset_is_readable() -> None:
 
 async def test_a_zero_offset_replaces_a_stale_one() -> None:
     """UTC+0 is a real offset, not an absent one — a rig leaving summer time
-    must not keep +1 h for the life of the process."""
+    must not keep +1 h for the life of the process.
+    """
     def clock(now: str) -> dict:
         return ok({"Mount": {"Coordinates": {"DateTime": {"Now": now}}}})
 
@@ -271,7 +276,8 @@ async def test_an_unmappable_event_is_skipped_not_fatal() -> None:
 async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) -> None:
     """The setup replay runs inside `async_config_entry_first_refresh`, so a
     shape this never anticipated would fail the whole entry rather than lose
-    one event. Every capture is a list of objects; these are not."""
+    one event. Every capture is a list of objects; these are not.
+    """
     session = FakeSession({"event-history": ok(response)})
     assert await _client(session).get_events() == []
 
@@ -378,7 +384,8 @@ async def test_command_parameter_names_are_pinned(call, path, params) -> None:
 
 async def test_a_refused_command_raises_rather_than_reporting_success() -> None:
     """Every command shares the envelope path, so none of them can be checked
-    by a caller reading a return value: they all return None."""
+    by a caller reading a return value: they all return None.
+    """
     session = FakeSession({"mount/park": failure("Telescope not connected", 409)})
     with pytest.raises(NinaCommandError):
         await _client(session).park_mount()
@@ -394,7 +401,8 @@ async def test_image_history_all_sends_all_true() -> None:
 
 async def test_the_image_endpoint_sends_autoPrepare_not_useAutoStretch() -> None:
     """An unknown parameter binds nothing and is not rejected, so the request
-    succeeds and quietly returns the linear frame."""
+    succeeds and quietly returns the linear frame.
+    """
     session = FakeSession({"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")})
     await _client(session).get_image_bytes(0)
     _, params = session.requests[-1]
@@ -408,7 +416,8 @@ async def test_an_image_arrives_as_bytes() -> None:
 
 async def test_the_livestack_route_quotes_its_two_path_segments() -> None:
     """Target and filter are PATH segments, and a target name carries spaces
-    and ampersands — unquoted they truncate the path rather than 404."""
+    and ampersands — unquoted they truncate the path rather than 404.
+    """
     session = FakeSession({"/livestack/image/":
                            FakeResponse(b"\xff\xd8", content_type="image/jpeg")})
     await _client(session).get_livestack_image_bytes("Lobster & Bubble", "S II")

@@ -3,13 +3,14 @@
 Asserted through `coordinator.data` and the light: phase B has no session
 sensors yet, and `data` is the published snapshot every phase-C entity reads.
 """
-from __future__ import annotations
-
 from datetime import datetime
 
-import pytest
 from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.nina_astrophotography.api.errors import NinaEndpointError
+from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from scenarios.fake_rig import FakeRig
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -31,7 +32,8 @@ async def test_a_pushed_frame_is_published_without_waiting_for_the_poll(
     hass: HomeAssistant, loaded_entry, push, nina_responses
 ) -> None:
     """`async_set_updated_data`, not `async_request_refresh` — that single line
-    is what makes the design push-first rather than socket-as-a-hint."""
+    is what makes the design push-first rather than socket-as-a-hint.
+    """
     before = _count(loaded_entry)
     push(nina_responses("live_image_save_push.json"))
     await hass.async_block_till_done()
@@ -42,7 +44,8 @@ async def test_the_same_frame_pushed_twice_is_folded_once(
     hass: HomeAssistant, loaded_entry, push, nina_responses
 ) -> None:
     """Frame identity is `(Date, Filename)`, identical on the push and poll
-    paths, so a redelivery must not move the count."""
+    paths, so a redelivery must not move the count.
+    """
     before = _count(loaded_entry)
     for _ in range(2):
         push(nina_responses("live_image_save_push.json"))
@@ -57,7 +60,8 @@ async def test_a_disconnect_event_refetches_the_snapshot_before_the_next_tick(
     """§6.4: a device dropping out must not sit until the next 10 s poll.
 
     No capture holds the flat panel down, so its disconnected block is derived
-    by the rule the corpus does show."""
+    by the rule the corpus does show.
+    """
     rig.requests.clear()
     rig.goto("equipment_disconnected")
     push({"Event": "FLAT-DISCONNECTED", "Time": AT})
@@ -71,7 +75,8 @@ async def test_a_push_cannot_resurrect_a_failed_poll(
 ) -> None:
     """`async_set_updated_data` sets `last_update_success`, so an ungated push
     would report eleven devices available on a rig that is still unreachable.
-    The fold still takes the frame — it appears once the rig answers again."""
+    The fold still takes the frame — it appears once the rig answers again.
+    """
     before = _count(loaded_entry)
     await advance("nina_unreachable")
     push(nina_responses("live_image_save_push.json"))
@@ -133,7 +138,7 @@ async def test_only_a_socket_reconnect_reseeds_and_replays(
     connection and `start` is stubbed, so driving the transition by hand is the
     minimal seam. Everything it reaches is public.
     """
-    connect = loaded_entry.runtime_data.events._set_connected
+    connect = loaded_entry.runtime_data.events._set_connected  # noqa: SLF001
     rig.requests.clear()
 
     connect(True)
@@ -150,7 +155,8 @@ async def test_a_restart_replays_the_new_processs_event_history(
     loaded_entry, advance, rig: FakeRig
 ) -> None:
     """A restart resets `/event-history`, so the once-per-entry replay latch is
-    scoped to the process it replayed."""
+    scoped to the process it replayed.
+    """
     rig.requests.clear()
     await advance("nina_restarted")
     assert rig.reads("/event-history") == 1
@@ -166,9 +172,6 @@ async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
     `/event-history`, and dropping the route from one would rewrite a catalogue
     entry other tests read.
     """
-    from custom_components.nina_astrophotography.api.errors import NinaEndpointError
-    from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-
     asked = 0
 
     async def not_served(self, generation=None):

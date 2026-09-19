@@ -3,8 +3,6 @@
 Deliberately NOT under `api/`: same reasoning as `views.py` — this imports
 `homeassistant`, and `api/` is the HA-free seam.
 """
-from __future__ import annotations
-
 import logging
 from pathlib import Path
 
@@ -42,7 +40,7 @@ async def async_register_frontend_resources(hass: HomeAssistant) -> None:
     """
     try:
         await _async_register_frontend_resources(hass)
-    except Exception:  # noqa: BLE001 — see docstring
+    except Exception:  # Broad on purpose: see the docstring.
         _LOGGER.exception("Could not register the bundled Lovelace cards")
 
 

@@ -1,8 +1,6 @@
 """Pure, version-independent maths. No wire vocabulary reaches this module."""
 from datetime import UTC, datetime, timedelta, timezone
 
-import pytest
-
 from nina_astrophotography.derive import (
     flip_offset_minutes,
     hfr_arcsec,
@@ -11,6 +9,7 @@ from nina_astrophotography.derive import (
     session_start,
     time_to_meridian_flip,
 )
+import pytest
 
 
 @pytest.mark.parametrize(
@@ -30,7 +29,8 @@ def test_the_session_boundary_is_the_most_recent_local_noon(moment, expected) ->
 
 def test_the_boundary_is_noon_in_the_moments_own_offset() -> None:
     """12:30 UTC is 07:30 on a UTC-5 rig, mid-way through its dawn flats: the
-    session is still last night's, and the boundary is expressed at -05:00."""
+    session is still last night's, and the boundary is expressed at -05:00.
+    """
     moment = datetime(2026, 9, 4, 12, 30, tzinfo=UTC).astimezone(timezone(timedelta(hours=-5)))
     assert session_start(moment) == datetime.fromisoformat("2026-09-03T12:00:00-05:00")
 
@@ -54,13 +54,15 @@ def test_image_scale_is_the_standard_206_265_formula() -> None:
 )
 def test_image_scale_is_none_when_either_input_is_missing(pixel_size, focal_length) -> None:
     """Absent, not zero: a disconnected camera reports PixelSize 0, and a scale
-    of 0 arcsec/px would make every HFR read as perfect."""
+    of 0 arcsec/px would make every HFR read as perfect.
+    """
     assert image_scale_arcsec_per_px(pixel_size, focal_length) is None
 
 
 def test_binning_multiplies_the_scale() -> None:
     """At bin 2 the true scale is 2x, so an unbinned formula halves every
-    derived arcsecond figure."""
+    derived arcsecond figure.
+    """
     assert image_scale_arcsec_per_px(3.76, 500.0, binning=2) == pytest.approx(
         3.1022, abs=1e-4)
 
@@ -104,7 +106,8 @@ def test_time_to_meridian_flip_adds_the_profile_offset_and_wraps(
 ) -> None:
     """`(HoursToMeridian + Max/60) mod 12`, the base N.I.N.A. computes. The
     +12 h it can add needs the expected pier side, which the API never
-    reports."""
+    reports.
+    """
     assert time_to_meridian_flip(
         hours_to_meridian_value, max_minutes_after_meridian=15.0
     ) == pytest.approx(expected, abs=1e-4)
@@ -112,5 +115,6 @@ def test_time_to_meridian_flip_adds_the_profile_offset_and_wraps(
 
 def test_the_flip_fires_before_the_reading_reaches_zero() -> None:
     """It fires at (Max − Min), so a warning written as `below: 10` fires AT
-    the flip rather than ten minutes ahead of it."""
+    the flip rather than ten minutes ahead of it.
+    """
     assert flip_offset_minutes(min_minutes_after=5, max_minutes_after=15) == 10

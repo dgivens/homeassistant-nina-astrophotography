@@ -10,8 +10,8 @@ value concern of the sensor platforms and is pinned in phase C.
 """
 import logging
 
-import pytest
 from homeassistant.core import HomeAssistant
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -51,7 +51,8 @@ async def test_a_device_disconnection_is_logged_once_and_the_reconnection_once(
     """Per device, under the label the device registry shows.
 
     No capture holds the flat panel down, so its disconnected block is derived
-    by the rule the corpus does show."""
+    by the rule the corpus does show.
+    """
     caplog.set_level(logging.INFO)
     await advance("equipment_disconnected")
     await advance("equipment_disconnected")
@@ -66,7 +67,8 @@ async def test_first_sight_of_a_device_is_not_a_reconnection(
 ) -> None:
     """Equipment routinely connects long after Home Assistant starts. Only a
     slot that has been seen connected and gone down has anything to recover
-    from, so a first connection is not a transition."""
+    from, so a first connection is not a transition.
+    """
     caplog.set_level(logging.INFO)
     rig.goto("partial_equipment_connection")
     config_entry.add_to_hass(hass)

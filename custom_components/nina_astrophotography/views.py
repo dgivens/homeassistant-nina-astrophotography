@@ -12,8 +12,6 @@ Deliberately NOT under `api/`: `api/` is the version-independent, HA-free
 seam (nothing there imports `homeassistant`), and a `HomeAssistantView`
 inherently does. Keep it here even if that seems worth tidying later.
 """
-from __future__ import annotations
-
 from aiohttp import web
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -45,6 +43,11 @@ def _client_for_entity(hass: HomeAssistant, entity_id: str) -> NinaClientV2 | No
     return entry.runtime_data.client
 
 
+def _bad_image_request() -> web.Response:
+    return web.Response(
+        status=400, text="index must be >= 0, quality between 1 and 100"
+    )
+
 class NinaImageProxyView(HomeAssistantView):
     """`GET /api/nina_astrophotography/image/{entity_id}/{index}`.
 
@@ -67,12 +70,10 @@ class NinaImageProxyView(HomeAssistantView):
         try:
             frame_index = int(index)
             quality = int(request.query.get("quality", 85))
-            if frame_index < 0 or not 1 <= quality <= 100:
-                raise ValueError
         except ValueError:
-            return web.Response(
-                status=400, text="index must be >= 0, quality between 1 and 100"
-            )
+            return _bad_image_request()
+        if frame_index < 0 or not 1 <= quality <= 100:
+            return _bad_image_request()
 
         hass: HomeAssistant = request.app[KEY_HASS]
         client = _client_for_entity(hass, entity_id)

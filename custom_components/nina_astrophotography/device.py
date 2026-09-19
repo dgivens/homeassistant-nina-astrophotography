@@ -21,14 +21,11 @@ that a platform MUST gate entity creation on its slot being non-`None`, as
 `light.py` does: an identifiers-only `DeviceInfo` naming a kind this module has
 not created leaves the entity platform to create a nameless device.
 """
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import area_registry as ar
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 from .api.models import DeviceMeta, SwitchChannelModel, VersionInfo
@@ -81,7 +78,8 @@ def read_field(kind: str, field: str) -> Callable[[NinaData], Any]:
 
 def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
     """Every channel the N.I.N.A. switch device reports, empty while it is
-    absent — the device is one of eleven slots, not one of the channels."""
+    absent — the device is one of eleven slots, not one of the channels.
+    """
     device = data.snapshot.switch_device
     return device.channels if device is not None else ()
 
@@ -129,7 +127,8 @@ def channel_name(channel: SwitchChannelModel) -> str:
 
 def channel_of(data: NinaData, index: int) -> SwitchChannelModel | None:
     """The channel with this `Id` in the published snapshot, if it is still
-    there — a driver may stop reporting one, and the entity outlives it."""
+    there — a driver may stop reporting one, and the entity outlives it.
+    """
     return next((c for c in channels_of(data) if c.index == index), None)
 
 

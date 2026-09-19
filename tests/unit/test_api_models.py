@@ -1,7 +1,6 @@
 """The model contract's own logic — the switch channel's binary rule."""
-import pytest
-
 from nina_astrophotography.api.models import SwitchChannelModel
+import pytest
 
 
 def test_a_switch_channel_is_binary_when_its_range_is_one_step() -> None:

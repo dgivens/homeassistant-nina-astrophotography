@@ -11,7 +11,8 @@ async def test_flats_entities_are_disabled_by_default(
     """This rig runs Target Scheduler Flats, so `/flats/status` reads
     `{State: "Finished", TotalIterations: -1, CompletedIterations: -1}` straight
     through a completed dawn run — an entity that reports a stale "Finished"
-    all night is worse than no entity."""
+    all night is worse than no entity.
+    """
     entry = entity_registry.async_get(STATE)
     assert entry.disabled_by is not None
     assert entry.entity_category == "diagnostic"

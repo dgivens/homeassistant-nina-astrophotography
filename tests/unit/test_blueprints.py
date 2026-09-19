@@ -4,10 +4,8 @@
 inside a template string. An input referenced from `{{ }}` must first be
 bound in a `variables:` block, or it renders empty and fails silently.
 """
-from __future__ import annotations
-
-import re
 from pathlib import Path
+import re
 
 import pytest
 import yaml
@@ -27,7 +25,8 @@ def load(path: Path) -> tuple[dict, list[tuple[str, int]]]:
 
     def construct(loader: yaml.SafeLoader, node: yaml.Node) -> str:
         """Record the reference, and stand the input's own name in for it, so a
-        `variables:` block reads as the mapping it is."""
+        `variables:` block reads as the mapping it is.
+        """
         name = loader.construct_scalar(node)
         referenced.append((name, node.start_mark.line))
         return name
@@ -83,7 +82,7 @@ def binding_lines(raw: str) -> set[int]:
 
 def templates(raw: str) -> str:
     """Everything inside {{ }} and {% %}, concatenated."""
-    return " ".join(re.findall(r"\{\{.*?\}\}|\{%.*?%\}", raw, re.S))
+    return " ".join(re.findall(r"\{\{.*?\}\}|\{%.*?%\}", raw, re.DOTALL))
 
 
 @pytest.mark.parametrize("path", BLUEPRINTS, ids=lambda p: p.name)
@@ -136,7 +135,8 @@ ENTITY_ID = re.compile(
 def test_no_blueprint_names_an_entity_id(path: Path) -> None:
     """Every 2.0 entity id carries the instance name, so a hardcoded one is
     wrong on every install but the author's — and the five shipped blueprints
-    hardcoded ids that phases B and C renamed or deleted outright."""
+    hardcoded ids that phases B and C renamed or deleted outright.
+    """
     named = set(ENTITY_ID.findall(path.read_text()))
 
     assert not named, f"{path.name} hardcodes entity ids: {sorted(named)}"
@@ -170,7 +170,8 @@ def test_the_abort_triggers_on_the_safety_signals_and_nothing_else() -> None:
 def test_the_meridian_warning_triggers_on_the_flip_event() -> None:
     """The flip fires somewhere between the reading reaching (Max - Min) and
     reaching zero, and both bounds are per-profile — so N.I.N.A.'s own event is
-    the only reliable signal that it is happening."""
+    the only reliable signal that it is happening.
+    """
     ids = [t["id"] for t in _blueprint("meridian_flip_warning.yaml")["triggers"]]
     events = [t.get("event_type")
               for t in _blueprint("meridian_flip_warning.yaml")["triggers"]]
