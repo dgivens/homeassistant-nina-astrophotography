@@ -101,7 +101,8 @@ async def test_a_lock_lost_while_guiding_restarts_reads_on(
     the start in progress."""
     await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     coordinator = config_entry.runtime_data.coordinator
-    for state in ("guider_restarting_after_stop", "scheduler_waiting_lost_lock"):
+    for state in ("scheduler_waiting_lost_lock", "guider_restarting_after_stop",
+                  "scheduler_waiting_lost_lock"):
         rig.goto(state)
         await coordinator.async_refresh()
     await hass.async_block_till_done()

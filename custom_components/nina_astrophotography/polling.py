@@ -69,24 +69,37 @@ class GuiderStopLatch:
     Calibrating or Guiding after the stop is what tells that from the
     `LostLock` the stop itself left behind.
 
-    The caller reads the stop BEFORE it fetches the snapshot: a stop pushed
-    while a poll is in flight must not be marked passed by a snapshot taken
-    before it happened. A stop within `_SAME_STOP` of the passed one is the
-    same stop, since a reconnect's replay adds a second copy of it.
+    Only a poll that is at least the SECOND to find the stop pending can pass
+    it. The caller reads the stop before it fetches, so a stop pushed while a
+    poll is in flight is never judged by that poll's older snapshot — and
+    N.I.N.A. raises `GUIDER-STOP` up to half a second before its cached state
+    leaves `Guiding`, so the first poll to find the stop may still have read
+    `Guiding` from before it. A poll interval later, the cache has caught up.
+
+    A stop within `_SAME_STOP` of the passed one is the same stop, since a
+    reconnect's replay adds a second copy of it. A `GUIDER-START` clears the
+    latch, so that tolerance never merges two real stops.
     """
 
     def __init__(self) -> None:
+        self._pending: datetime | None = None
         self._passed: datetime | None = None
 
     def observe(self, state: str | None, stop: datetime | None) -> None:
-        if stop is not None and state in _GUIDER_RUNNING:
+        """One poll: `stop` as read before its fetch, `state` as fetched."""
+        if stop is None:
+            self._passed = None
+        elif state in _GUIDER_RUNNING and _same_stop(stop, self._pending):
             self._passed = stop
+        self._pending = stop
 
     def stopped(self, stop: datetime | None) -> bool:
         """Whether `stop` is still in force: logged, and not run past since."""
-        if stop is None:
-            return False
-        return self._passed is None or abs(stop - self._passed) > _SAME_STOP
+        return stop is not None and not _same_stop(stop, self._passed)
+
+
+def _same_stop(stop: datetime, other: datetime | None) -> bool:
+    return other is not None and abs(stop - other) <= _SAME_STOP
 
 
 @dataclass

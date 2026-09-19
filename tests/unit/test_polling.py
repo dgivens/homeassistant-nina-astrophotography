@@ -256,24 +256,27 @@ EARLIER_STOP = datetime.fromisoformat("2026-09-18T19:02:00-05:00")
     [
         ([], STOP, True),
         ([("LostLock", STOP), ("Stopped", STOP)], STOP, True),
-        ([("Looping", STOP)], STOP, False),
-        ([("Calibrating", STOP), ("LostLock", STOP)], STOP, False),
-        ([("Guiding", EARLIER_STOP)], STOP, True),
-        ([("Guiding", None)], STOP, True),
-        ([("Looping", STOP)], STOP + timedelta(seconds=2), False),
+        ([("LostLock", STOP), ("Looping", STOP)], STOP, False),
+        ([("Guiding", STOP)], STOP, True),
+        ([("LostLock", STOP), ("Calibrating", STOP), ("LostLock", STOP)], STOP, False),
+        ([("LostLock", EARLIER_STOP), ("Guiding", EARLIER_STOP)], STOP, True),
+        ([("LostLock", STOP), ("Looping", STOP)], STOP + timedelta(seconds=2), False),
+        ([("LostLock", STOP), ("Looping", STOP), ("Guiding", None)],
+         STOP + timedelta(seconds=40), True),
         ([], None, False),
     ],
     ids=["never polled", "only stopped states polled",
-         "polled looping after the stop", "a lock lost after running again",
-         "ran past an earlier stop", "ran with no stop pending",
+         "polled looping after the stop", "running on the stop's first poll",
+         "a lock lost after running again", "ran past an earlier stop",
          "the replayed copy of the passed stop",
-         "no stop pending"],
+         "a new stop after a start, inside the tolerance", "no stop pending"],
 )
-def test_a_stop_holds_until_a_poll_sees_the_guider_running_past_it(
+def test_a_stop_holds_until_a_later_poll_sees_the_guider_running_past_it(
     polled: list[tuple[str, datetime | None]], stop: datetime | None, stopped: bool
 ) -> None:
     """A restart's GUIDER-START waits for the settle; a poll seeing the guider
-    running is what releases the stop before it."""
+    running is what releases the stop before it — but not the first poll to
+    find it, whose snapshot may predate N.I.N.A.'s cache catching up."""
     latch = GuiderStopLatch()
     for state, pending in polled:
         latch.observe(state, pending)
