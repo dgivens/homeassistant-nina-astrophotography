@@ -60,11 +60,11 @@ Add this repository as a custom repository in HACS and download it from there.
 ### Removing it
 
 **Settings → Devices & Services → N.I.N.A. Astrophotography → ⋮ → Delete.**
-That removes the entry, its devices and its entities. It does not remove the
-Lovelace resources the integration registered (see [Lovelace
-cards](#lovelace-cards)) — Home Assistant has no way to unregister those on
-uninstall, so remove them yourself under **Settings → Dashboards → ⋮ →
-Resources** if you're not reinstalling.
+That removes the entry, its devices, its entities, and — once the last
+instance is gone — the Lovelace resources it registered (see [Lovelace
+cards](#lovelace-cards)). A YAML-managed dashboard (`lovelace: mode: yaml`) is
+the exception: those resources are your file to edit, so remove the six
+entries yourself if you're not reinstalling.
 
 ---
 

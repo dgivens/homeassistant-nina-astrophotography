@@ -94,9 +94,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   the older `mode: yaml`) can't be written to automatically — the six
   entries are logged for you to add by hand, or switch to
   `resource_mode: storage` to keep YAML dashboards with automatic resources.
-  Removing the integration does not remove the resources it registered; Home
-  Assistant has no way to unregister those, so delete them yourself if you're
-  not reinstalling.
+  Removing the last configured instance also removes the resources it
+  registered; a YAML-managed dashboard is the exception, since those entries
+  are yours to edit, and a multi-rig install keeps its cards until the last
+  instance goes.
 - **`binary_sensor.<instance>_sequence_running` is removed**, replaced by
   `_sequencer_running` and `_imaging`. It reported frames arriving under a name
   that promised the sequencer, so it read `off` through every Target Scheduler
