@@ -10,7 +10,9 @@ failure in it can't take the rest of the integration down with it.
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.setup import async_setup_component
 import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
 from custom_components.nina_astrophotography.frontend import (
     CARD_FILENAMES,
     URL_PREFIX,
@@ -163,3 +165,102 @@ def test_every_shipped_card_file_is_in_card_filenames() -> None:
     is what keeps it from silently drifting out of sync with `www/`.
     """
     assert {path.name for path in WWW_DIR.glob("*.js")} == set(CARD_FILENAMES)
+
+
+# ─── Removal (#70) ───────────────────────────────────────────────────────────
+
+
+async def test_removing_the_last_entry_deletes_its_resources(
+    hass, config_entry, lovelace_entry
+) -> None:
+    assert set(_resource_urls(hass)) == CARD_URLS
+
+    await hass.config_entries.async_remove(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert _resource_urls(hass) == []
+
+
+async def test_removing_the_entry_does_not_crash_when_lovelace_was_never_set_up(
+    hass, loaded_entry
+) -> None:
+    assert "lovelace" not in hass.data
+
+    await hass.config_entries.async_remove(loaded_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.config_entries.async_entries(DOMAIN) == []
+
+
+async def test_removing_one_of_two_entries_keeps_the_resources(
+    hass, config_entry, rig, nina_responses
+) -> None:
+    """A multi-rig install shouldn't lose its cards just because one rig was
+    uninstalled — only the last entry going should take the resources with it.
+    """
+    assert await async_setup_component(hass, "lovelace", {})
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+
+    second_entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Second Rig",
+        data={CONF_HOST: "other.local", CONF_PORT: 1888},
+        unique_id="other.local:1888",
+        entry_id="01JTESTENTRY0000000000001",
+    )
+    second_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(second_entry.entry_id)
+    await hass.async_block_till_done()
+    assert set(_resource_urls(hass)) == CARD_URLS
+
+    await hass.config_entries.async_remove(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert set(_resource_urls(hass)) == CARD_URLS
+
+    await hass.config_entries.async_remove(second_entry.entry_id)
+    await hass.async_block_till_done()
+    assert _resource_urls(hass) == []
+
+
+async def test_removing_the_entry_leaves_yaml_managed_resources_alone(
+    hass, config_entry, nina_responses
+) -> None:
+    """A YAML collection has no delete, mirroring the registration side."""
+    assert await async_setup_component(
+        hass, "lovelace", {"lovelace": {"resource_mode": "yaml", "resources": []}}
+    )
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    await hass.config_entries.async_remove(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.config_entries.async_entries(DOMAIN) == []
+
+
+async def test_a_removal_failure_does_not_block_entry_removal(
+    hass, config_entry, lovelace_entry, monkeypatch, caplog
+) -> None:
+    """Deleting a Lovelace resource is cosmetic, same as registering one — a
+    corrupt store here must not leave the config entry stuck.
+    """
+
+    async def _boom(self, item_id):
+        raise OSError("corrupt store")
+
+    monkeypatch.setattr(
+        "homeassistant.components.lovelace.resources.ResourceStorageCollection"
+        ".async_delete_item",
+        _boom,
+    )
+
+    await hass.config_entries.async_remove(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.config_entries.async_entries(DOMAIN) == []
+    assert any(
+        record.levelname == "ERROR" and record.name == FRONTEND_LOGGER
+        for record in caplog.records
+    )

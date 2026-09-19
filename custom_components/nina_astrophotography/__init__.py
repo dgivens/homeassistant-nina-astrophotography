@@ -73,7 +73,10 @@ from .const import (
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 from .device import async_sync_devices, kind_of
-from .frontend import async_register_frontend_resources
+from .frontend import (
+    async_register_frontend_resources,
+    async_unregister_frontend_resources,
+)
 from .views import async_register_views
 
 _LOGGER = logging.getLogger(__name__)
@@ -238,6 +241,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 async def async_unload_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
     """Unload a config entry. The socket stops via `async_on_unload`."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> None:
+    """Remove the bundled Lovelace resources once no rig needs them.
+
+    Home Assistant has already dropped this entry from
+    `hass.config_entries.async_entries` by the time this runs, so any entry
+    still there belongs to another rig — a multi-rig install shouldn't tear
+    down dashboard cards the surviving entry still uses.
+    """
+    if hass.config_entries.async_entries(DOMAIN):
+        return
+    await async_unregister_frontend_resources(hass)
 
 
 async def async_remove_config_entry_device(

@@ -10,7 +10,7 @@ from pathlib import Path
 from homeassistant.components.http.server import StaticPathConfig
 from homeassistant.components.lovelace.const import CONF_RESOURCE_TYPE_WS, LOVELACE_DATA
 from homeassistant.components.lovelace.resources import ResourceYAMLCollection
-from homeassistant.const import CONF_URL
+from homeassistant.const import CONF_ID, CONF_URL
 from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
@@ -105,3 +105,41 @@ async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
             {CONF_RESOURCE_TYPE_WS: "module", CONF_URL: url}
         )
         _LOGGER.debug("Registered %s as a Lovelace resource", url)
+
+
+async def async_unregister_frontend_resources(hass: HomeAssistant) -> None:
+    """Delete the bundled Lovelace resources, once the last config entry for
+    this integration is removed.
+
+    Cosmetic, like registration: nothing here is allowed to fail the entry
+    removal, so a corrupt store or a future HA schema change costs stale
+    resource rows, not the removal itself.
+    """
+    try:
+        await _async_unregister_frontend_resources(hass)
+    except Exception:  # Broad on purpose: see the docstring.
+        _LOGGER.exception("Could not remove the bundled Lovelace cards")
+
+
+async def _async_unregister_frontend_resources(hass: HomeAssistant) -> None:
+    """Delete each card's Lovelace resource, storage collections only.
+
+    A YAML collection has no delete — those resources are the operator's
+    file to edit, same reasoning as the warning in registration — so this
+    returns before touching anything storage-only.
+    """
+    lovelace_data = hass.data.get(LOVELACE_DATA)
+    if lovelace_data is None:
+        return
+    resources = lovelace_data.resources
+    if isinstance(resources, ResourceYAMLCollection):
+        return
+
+    if not resources.loaded:
+        await resources.async_load()
+        resources.loaded = True
+
+    card_urls = {f"{URL_PREFIX}/{filename}" for filename in CARD_FILENAMES}
+    for item in resources.async_items():
+        if item[CONF_URL] in card_urls:
+            await resources.async_delete_item(item[CONF_ID])
