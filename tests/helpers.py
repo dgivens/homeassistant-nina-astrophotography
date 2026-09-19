@@ -4,12 +4,16 @@
 to raise; the first fragment found in the URL wins, so register the more
 specific fragment first. `default` covers everything else.
 
-Imports neither Home Assistant nor the integration, so both suites can use it.
+Imports neither Home Assistant nor the integration at runtime, so both suites
+can use it.
 """
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant, State
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
@@ -124,3 +128,10 @@ def load_fixture(name: str) -> Any:
         return document
     document.pop("_meta", None)
     return document.get("Response", document)
+
+
+def state_of(hass: HomeAssistant, entity_id: str) -> State:
+    """The entity's current state, failing the test if it has none."""
+    state = hass.states.get(entity_id)
+    assert state is not None, f"{entity_id} has no state"
+    return state

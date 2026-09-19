@@ -1,8 +1,10 @@
 """The envelope, not the HTTP status, carries the outcome."""
 
 from datetime import timedelta
+from typing import cast
 
 import aiohttp
+from aiohttp import ClientSession
 from nina_astrophotography.api.errors import (
     NinaCommandError,
     NinaConnectionError,
@@ -18,7 +20,9 @@ from helpers import FakeResponse, FakeSession, failure, load_envelope, ok
 
 
 def _client(session: FakeSession) -> NinaClientV2:
-    return NinaClientV2(host="nina.local", port=1888, session=session)
+    return NinaClientV2(
+        host="nina.local", port=1888, session=cast(ClientSession, session)
+    )
 
 
 # ── envelope classification (§3.5, §7.1) ─────────────────────────────────────
@@ -88,7 +92,9 @@ async def test_success_false_with_no_error_and_200_is_success() -> None:
         "Type": "API",
     }
     client = _client(FakeSession({"equipment/info": body}))
-    assert (await client.get_equipment()).camera.connected is True
+    camera = (await client.get_equipment()).camera
+    assert camera is not None
+    assert camera.connected is True
 
 
 async def test_a_zero_length_200_is_unavailable_not_a_crash() -> None:

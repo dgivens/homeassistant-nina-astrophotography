@@ -275,11 +275,11 @@ convention = "google"
 property-decorators = ["propcache.api.cached_property"]
 
 [tool.pyright]
-# tests/ is not gated yet: most of its errors are `hass.states.get(...)` read
-# without a None check.
-include = ["custom_components", "scripts"]
-# The scripts import tests/redaction.py through a sys.path insert.
-extraPaths = ["tests"]
+include = ["custom_components", "scripts", "tests"]
+# pytest's `pythonpath` puts tests/ first; the unit suite imports the
+# integration as the top-level `nina_astrophotography`, and the scripts and
+# their tests reach each other through sys.path inserts.
+extraPaths = ["tests", "custom_components", "scripts"]
 pythonVersion = "3.14"
 # Home Assistant declares `entity_description`, `available`, `is_on` and the
 # rest as cached properties on its base classes; every ordinary override of one

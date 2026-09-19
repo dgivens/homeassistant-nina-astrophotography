@@ -2,7 +2,8 @@
 
 from dataclasses import replace
 
-from homeassistant.components.light import ATTR_BRIGHTNESS, DOMAIN as LIGHT_DOMAIN
+from homeassistant.components.light import ATTR_BRIGHTNESS
+from homeassistant.components.light.const import DOMAIN as LIGHT_DOMAIN
 from homeassistant.const import ATTR_ENTITY_ID, SERVICE_TURN_OFF, SERVICE_TURN_ON
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -12,6 +13,7 @@ from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.models import DeviceMeta
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
+from helpers import state_of
 
 ENTITY = "light.n_i_n_a_flat_panel_light"
 
@@ -49,7 +51,7 @@ async def test_the_reported_brightness_is_scaled_back_into_ha_units(
 
     The fixture panel sits at driver 2048 of 4096, so HA should read 128.
     """
-    assert hass.states.get(ENTITY).attributes[ATTR_BRIGHTNESS] == 128
+    assert state_of(hass, ENTITY).attributes[ATTR_BRIGHTNESS] == 128
 
 
 async def test_a_bare_turn_on_does_not_go_to_full_output(
@@ -96,14 +98,14 @@ async def test_the_idle_panel_reads_off(
     """Brightness 0 / LightOn false is the panel's ordinary idle state, and it
     is off — not unknown, and not on at zero.
     """
-    assert hass.states.get(ENTITY).state == "off"
+    assert state_of(hass, ENTITY).state == "off"
 
 
 async def test_a_disconnected_panel_reporting_a_zero_range_is_unavailable(
     hass: HomeAssistant, disconnected_flat_panel_entry
 ) -> None:
     """Min 0, Max 0 is the ordinary startup state, not a division by zero."""
-    assert hass.states.get(ENTITY).state == "unavailable"
+    assert state_of(hass, ENTITY).state == "unavailable"
 
 
 async def test_turn_off_uses_set_light_not_brightness_zero(
@@ -148,7 +150,7 @@ async def test_a_panel_that_disconnects_after_being_observed_stays_as_unavailabl
 
     monkeypatch.setattr(NinaClientV2, "get_equipment", get_equipment)
     await idle_flat_panel_entry.runtime_data.coordinator.async_refresh()
-    assert hass.states.get(ENTITY).state == "unavailable"
+    assert state_of(hass, ENTITY).state == "unavailable"
 
 
 async def test_the_light_is_registered_under_the_flat_panel_device(
@@ -169,7 +171,7 @@ async def test_a_panel_that_cannot_switch_its_light_is_unavailable_not_absent(
     """A cover-only panel keeps the entity and reports unavailable, so it does
     not appear and disappear across restarts.
     """
-    assert hass.states.get(ENTITY).state == "unavailable"
+    assert state_of(hass, ENTITY).state == "unavailable"
 
 
 async def test_a_panel_never_observed_has_no_entity(

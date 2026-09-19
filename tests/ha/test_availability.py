@@ -15,6 +15,8 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from helpers import state_of
+
 LIGHT = "light.n_i_n_a_flat_panel_light"
 
 
@@ -30,7 +32,7 @@ async def test_a_disconnected_device_makes_its_entities_unavailable(
     `unavailable`.
     """
     await set_up_with_flat_device(connected=False)
-    assert hass.states.get(LIGHT).state == "unavailable"
+    assert state_of(hass, LIGHT).state == "unavailable"
 
 
 async def test_an_outage_is_logged_once_and_the_recovery_once(

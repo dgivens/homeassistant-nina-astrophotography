@@ -6,7 +6,7 @@ import shutil
 import sys
 from typing import NamedTuple
 
-from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
+from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -283,6 +283,7 @@ def set_up_with_flat_device(hass, config_entry, nina_responses, monkeypatch):
 
     async def _set_up(**changes):
         snapshot = map_equipment_info(nina_responses("dawn_equipment_info.json"))
+        assert snapshot.flat_device is not None
         snapshot = replace(
             snapshot, flat_device=replace(snapshot.flat_device, **changes)
         )

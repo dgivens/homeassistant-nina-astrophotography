@@ -6,8 +6,8 @@ the request was never made is the whole point — an exception raised after the
 command left would be no protection at all.
 """
 
-from homeassistant.components.number import (
-    ATTR_VALUE,
+from homeassistant.components.number import ATTR_VALUE
+from homeassistant.components.number.const import (
     DOMAIN as NUMBER_DOMAIN,
     SERVICE_SET_VALUE,
 )
@@ -21,6 +21,7 @@ from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.number import DESCRIPTIONS
+from helpers import state_of
 
 BRIGHTNESS = "number.n_i_n_a_flat_panel_brightness"
 FOCUSER_POSITION = "number.n_i_n_a_focuser_position"
@@ -63,7 +64,7 @@ async def usb_limit_enabled(hass, entity_registry, loaded_entry):
 async def test_ranges_come_from_the_driver_not_a_constant(
     hass: HomeAssistant, loaded_entry, attribute: str, expected: float
 ) -> None:
-    assert hass.states.get(BRIGHTNESS).attributes[attribute] == expected
+    assert state_of(hass, BRIGHTNESS).attributes[attribute] == expected
 
 
 @pytest.mark.parametrize(("attribute", "expected"), [("min", 40), ("max", 100)])
@@ -73,7 +74,7 @@ async def test_the_usb_limit_range_is_this_cameras_own(
     """USBLimitMin/USBLimitMax are narrower than the 0-100 a bare USBLimit
     reading suggests, and 20 is a value this camera would clamp.
     """
-    assert hass.states.get(USB_LIMIT).attributes[attribute] == expected
+    assert state_of(hass, USB_LIMIT).attributes[attribute] == expected
 
 
 @pytest.mark.parametrize(
@@ -123,7 +124,7 @@ async def test_a_set_does_not_read_the_new_value_back_from_the_response(
     """
     await _set(hass, FOCUSER_POSITION, 2400)
     assert rig.sent == [("/equipment/focuser/move", {"position": 2400})]
-    assert hass.states.get(FOCUSER_POSITION).state == "2332"
+    assert state_of(hass, FOCUSER_POSITION).state == "2332"
 
 
 async def test_a_refused_command_surfaces_as_a_home_assistant_error(

@@ -162,7 +162,11 @@ async def test_autoprepare_is_only_sent_when_the_query_asks_for_it(
     rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
     client = await hass_client()
     await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
-    assert "autoPrepare" not in _params(rig, "/image/0")
+    params = _params(rig, "/image/0")
+    assert params is not None
+    assert "autoPrepare" not in params
 
     await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?autoPrepare=true")
-    assert _params(rig, "/image/0")["autoPrepare"] == "true"
+    params = _params(rig, "/image/0")
+    assert params is not None
+    assert params["autoPrepare"] == "true"

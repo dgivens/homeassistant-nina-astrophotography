@@ -12,12 +12,21 @@ from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.device import KINDS
 
 
-def _device(hass: HomeAssistant, entry, kind: str | None = None):
+def _lookup(
+    hass: HomeAssistant, entry, kind: str | None = None
+) -> dr.DeviceEntry | None:
     """The registry entry for one equipment kind, or the hub when `kind` is None."""
     suffix = f"_{kind}" if kind else ""
     return dr.async_get(hass).async_get_device_by_identifier(
         (DOMAIN, f"{entry.entry_id}{suffix}"), entry.entry_id
     )
+
+
+def _device(hass: HomeAssistant, entry, kind: str | None = None) -> dr.DeviceEntry:
+    """As `_lookup`, failing the test when the device is not registered."""
+    device = _lookup(hass, entry, kind)
+    assert device is not None, f"no {kind or 'hub'} device"
+    return device
 
 
 def test_every_kind_is_an_equipment_snapshot_field() -> None:
@@ -82,14 +91,14 @@ async def test_a_device_never_observed_is_not_created(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """First sight, not first poll: this rig has never had a dome."""
-    assert _device(hass, loaded_entry, "dome") is None
+    assert _lookup(hass, loaded_entry, "dome") is None
 
 
 async def test_equipment_seen_for_the_first_time_gets_its_device(
     hass: HomeAssistant, loaded_entry, advance
 ) -> None:
     """The guider is down at setup, so its device arrives on a later poll."""
-    assert _device(hass, loaded_entry, "guider") is None
+    assert _lookup(hass, loaded_entry, "guider") is None
     await advance("imaging_guiding")
     assert _device(hass, loaded_entry, "guider").model == "PHD2"
 
@@ -144,7 +153,7 @@ async def test_a_newly_created_child_inherits_the_hubs_area(
     hub = _device(hass, loaded_entry)
     registry.async_update_device(hub.id, area_id=area.id)
 
-    assert _device(hass, loaded_entry, "guider") is None
+    assert _lookup(hass, loaded_entry, "guider") is None
     await advance("imaging_guiding")
 
     assert _device(hass, loaded_entry, "guider").area_id == area.id

@@ -19,7 +19,7 @@ from pytest_homeassistant_custom_component.common import async_fire_time_changed
 from custom_components.nina_astrophotography.api.errors import NinaConnectionError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.polling import TierSchedule
-from helpers import load_fixture
+from helpers import load_fixture, state_of
 from scenarios.fake_rig import FakeRig
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -248,7 +248,7 @@ async def test_a_tier_read_that_raises_anything_does_not_fail_the_poll(
         if r.levelno == logging.WARNING
         and r.name == "custom_components.nina_astrophotography.coordinator"
     ]
-    assert hass.states.get(LIGHT).state != "unavailable"
+    assert state_of(hass, LIGHT).state != "unavailable"
     assert len(warnings) == 1
 
 

@@ -8,6 +8,8 @@ is listening.
 
 from homeassistant.core import HomeAssistant
 
+from helpers import state_of
+
 ERROR = "event.n_i_n_a_error"
 
 
@@ -21,7 +23,7 @@ async def test_a_platesolve_error_fires_the_event_entity(
 ) -> None:
     push(_wire("ERROR-PLATESOLVE"))
     await hass.async_block_till_done()
-    assert hass.states.get(ERROR).attributes["event_type"] == "platesolve_failed"
+    assert state_of(hass, ERROR).attributes["event_type"] == "platesolve_failed"
 
 
 async def test_a_camera_download_timeout_fires_it_too(
@@ -33,7 +35,7 @@ async def test_a_camera_download_timeout_fires_it_too(
     """
     push(_wire("CAMERA-DOWNLOAD-TIMEOUT"))
     await hass.async_block_till_done()
-    assert hass.states.get(ERROR).attributes["event_type"] == "camera_download_timeout"
+    assert state_of(hass, ERROR).attributes["event_type"] == "camera_download_timeout"
 
 
 async def test_an_event_the_entity_has_no_type_for_fires_nothing(
@@ -42,7 +44,7 @@ async def test_an_event_the_entity_has_no_type_for_fires_nothing(
     """A night pushes hundreds of events through the same subscription."""
     push(_wire("GUIDER-DITHER"))
     await hass.async_block_till_done()
-    assert hass.states.get(ERROR).state == "unknown"
+    assert state_of(hass, ERROR).state == "unknown"
 
 
 async def test_the_nights_replayed_failures_do_not_fire_at_startup(
@@ -52,7 +54,7 @@ async def test_the_nights_replayed_failures_do_not_fire_at_startup(
     the coordinator without reaching subscribers, so a Home Assistant restart
     does not re-announce hours-old failures.
     """
-    assert hass.states.get(ERROR).state == "unknown"
+    assert state_of(hass, ERROR).state == "unknown"
 
 
 async def test_the_error_entity_ships_diagnostic(
@@ -72,7 +74,7 @@ async def test_a_hung_autofocus_fires_when_the_fold_first_calls_it_failed(
     """
     push({"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-04T11:00:00+00:00"})
     await hass.async_block_till_done()
-    assert hass.states.get(ERROR).attributes["event_type"] == "autofocus_timeout"
+    assert state_of(hass, ERROR).attributes["event_type"] == "autofocus_timeout"
 
 
 async def test_a_failure_that_predates_home_assistant_is_history_not_an_alarm(
@@ -85,7 +87,7 @@ async def test_a_failure_that_predates_home_assistant_is_history_not_an_alarm(
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get(ERROR).state == "unknown"
+    assert state_of(hass, ERROR).state == "unknown"
 
 
 async def test_a_hung_autofocus_fires_once_and_not_on_every_publish(
@@ -97,8 +99,8 @@ async def test_a_hung_autofocus_fires_once_and_not_on_every_publish(
     """
     push({"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-04T11:00:00+00:00"})
     await hass.async_block_till_done()
-    fired_at = hass.states.get(ERROR).state
+    fired_at = state_of(hass, ERROR).state
 
     push(nina_responses("live_image_save_push.json"))
     await hass.async_block_till_done()
-    assert hass.states.get(ERROR).state == fired_at
+    assert state_of(hass, ERROR).state == fired_at

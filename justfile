@@ -24,8 +24,7 @@ test-ha:
 test-all: test test-ha
 
 # Pyright, as CI runs it: the paths and rules are [tool.pyright] in
-# pyproject.toml. Pass paths to check others, e.g. `just typecheck tests/ha`
-# (tests/ is not gated yet).
+# pyproject.toml. Pass paths to check a subset, e.g. `just typecheck tests/ha`.
 typecheck *paths:
     uv run --group dev --group test-ha pyright {{ paths }}
 

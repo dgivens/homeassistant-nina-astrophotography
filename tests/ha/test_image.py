@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 import pytest
 
-from helpers import FakeResponse, failure, ok
+from helpers import FakeResponse, failure, ok, state_of
 
 LAST_FRAME = "image.n_i_n_a_last_frame"
 LIVESTACK = "image.n_i_n_a_livestack"
@@ -42,7 +42,9 @@ async def test_the_last_frame_serves_the_stretched_frame(
     is not rejected, so the request succeeds and returns the linear frame.
     """
     assert (await async_get_image(hass, LAST_FRAME)).content_type == "image/jpeg"
-    assert _params(rig, NEWEST_ROUTE)["autoPrepare"] == "true"
+    params = _params(rig, NEWEST_ROUTE)
+    assert params is not None
+    assert params["autoPrepare"] == "true"
 
 
 async def test_the_newest_index_is_read_fresh_not_cached_from_the_fold(
@@ -116,17 +118,17 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_the_rig_holds(
     frames = nina_responses("dawn_image_history_with_flats.json")
     newest = max(frame["Date"] for frame in frames)
     assert (
-        hass.states.get(LAST_FRAME).state == datetime.fromisoformat(newest).isoformat()
+        state_of(hass, LAST_FRAME).state == datetime.fromisoformat(newest).isoformat()
     )
 
 
 async def test_the_last_frame_timestamp_advances_when_a_frame_is_saved(
     hass: HomeAssistant, loaded_entry, push, nina_responses
 ) -> None:
-    before = hass.states.get(LAST_FRAME).state
+    before = state_of(hass, LAST_FRAME).state
     push(nina_responses("live_image_save_push.json"))
     await hass.async_block_till_done()
-    assert hass.states.get(LAST_FRAME).state > before
+    assert state_of(hass, LAST_FRAME).state > before
 
 
 async def test_a_rig_that_has_captured_nothing_reports_unknown(
@@ -135,7 +137,7 @@ async def test_a_rig_that_has_captured_nothing_reports_unknown(
     """The second instance starts restarted: an empty history answers `Index
     out of range`, which is what an idle rig sends. No frame is not an error.
     """
-    assert hass.states.get("image.dome_last_frame").state == "unknown"
+    assert state_of(hass, "image.dome_last_frame").state == "unknown"
 
 
 async def test_the_livestack_image_follows_the_pair_the_stack_last_reported(
@@ -180,7 +182,7 @@ async def test_the_livestack_image_says_which_stack_it_is_showing(
     tile jumps between channels — a caption needs somewhere to read the pair
     from.
     """
-    attributes = hass.states.get(LIVESTACK).attributes
+    attributes = state_of(hass, LIVESTACK).attributes
     assert (attributes["target"], attributes["filter"]) == ("NGC 281", "S")
 
 

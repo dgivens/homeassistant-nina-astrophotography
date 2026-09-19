@@ -3,7 +3,9 @@
 import asyncio
 from datetime import UTC, datetime, timedelta, timezone
 import json
+from typing import cast
 
+from aiohttp import ClientSession
 from nina_astrophotography.api.models import NinaEvent
 from nina_astrophotography.api.v2 import events as events_module
 from nina_astrophotography.api.v2.client import NinaClientV2
@@ -22,7 +24,9 @@ def captured(name: str) -> dict:
 
 
 def stream(**kwargs) -> NinaEventStream:
-    return NinaEventStream(host="nina.local", port=1888, session=None, **kwargs)
+    return NinaEventStream(
+        host="nina.local", port=1888, session=cast(ClientSession, None), **kwargs
+    )
 
 
 def subscribed(**kwargs) -> tuple[NinaEventStream, list[NinaEvent]]:
@@ -125,7 +129,9 @@ def test_the_rig_offset_provider_resolves_a_naive_local_time() -> None:
 
 def _client() -> NinaClientV2:
     session = FakeSession({"event-history": load_envelope("dawn_event_history.json")})
-    return NinaClientV2(host="nina.local", port=1888, session=session)
+    return NinaClientV2(
+        host="nina.local", port=1888, session=cast(ClientSession, session)
+    )
 
 
 async def test_replay_folds_the_whole_stored_history() -> None:

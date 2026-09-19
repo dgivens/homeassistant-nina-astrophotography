@@ -23,6 +23,7 @@ from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.select import DESCRIPTIONS
+from helpers import state_of
 
 FILTER = "select.n_i_n_a_filter_wheel_filter"
 TRACKING = "select.n_i_n_a_mount_tracking_rate"
@@ -48,6 +49,7 @@ def set_up_with_mount(hass, config_entry, nina_responses, monkeypatch):
 
     async def _set_up(**changes) -> MockConfigEntry:
         snapshot = map_equipment_info(nina_responses("dawn_equipment_info.json"))
+        assert snapshot.mount is not None
         snapshot = replace(snapshot, mount=replace(snapshot.mount, **changes))
 
         async def get_equipment(self):
@@ -68,7 +70,7 @@ async def test_the_tracking_options_come_from_the_mount(
     """`TrackingModes` differs by mount — this one does not offer King — and a
     hardcoded list offers rates the mount does not have.
     """
-    assert hass.states.get(TRACKING).attributes[ATTR_OPTIONS] == [
+    assert state_of(hass, TRACKING).attributes[ATTR_OPTIONS] == [
         "Sidereal",
         "Lunar",
         "Solar",
@@ -81,7 +83,7 @@ async def test_the_tracking_select_uses_the_wire_spelling(
 ) -> None:
     """The spec's enum says 'Siderial'; the wire says 'Sidereal'."""
     await advance("imaging_guiding")
-    assert hass.states.get(TRACKING).state == "Sidereal"
+    assert state_of(hass, TRACKING).state == "Sidereal"
 
 
 async def test_the_tracking_index_is_the_apis_enum_not_the_position_in_the_list(
@@ -124,7 +126,7 @@ async def test_selecting_a_filter_sends_its_slot_and_does_not_read_it_back(
     """
     await _select(hass, FILTER, "H")
     assert rig.sent == [("/equipment/filterwheel/change-filter", {"filterId": 4})]
-    assert hass.states.get(FILTER).state == "R"
+    assert state_of(hass, FILTER).state == "R"
 
 
 async def test_a_refused_command_surfaces_as_a_home_assistant_error(

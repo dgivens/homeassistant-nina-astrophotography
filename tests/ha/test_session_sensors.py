@@ -19,6 +19,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DOMAIN
+from helpers import state_of
 
 pytestmark = pytest.mark.usefixtures("inside_the_dawn_session")
 
@@ -46,8 +47,8 @@ async def test_the_last_image_sensors_ignore_calibration_frames(
     """
     await advance("dawn_flats")
     assert (
-        float(hass.states.get(LAST_IMAGE_HFR).state),
-        float(hass.states.get(LAST_IMAGE_MEAN_ADU).state),
+        float(state_of(hass, LAST_IMAGE_HFR).state),
+        float(state_of(hass, LAST_IMAGE_MEAN_ADU).state),
     ) == (pytest.approx(1.454, abs=0.001), pytest.approx(548.6, abs=0.1))
 
 
@@ -56,7 +57,7 @@ async def test_integration_time_sums_actual_exposures(
 ) -> None:
     """Count x shortest exposure gives 2.75 h on this night — a 2.25x error."""
     await advance("dawn_flats")
-    assert float(hass.states.get(SESSION_INTEGRATION_TIME).state) == pytest.approx(
+    assert float(state_of(hass, SESSION_INTEGRATION_TIME).state) == pytest.approx(
         6.20, abs=0.02
     )
 
@@ -83,7 +84,7 @@ async def test_the_breakdowns_are_attributes_not_entities(
     not as entities that come and go with the night's target list.
     """
     await advance("dawn_flats")
-    assert set(hass.states.get(SESSION_AVG_HFR).attributes[attribute]) == expected
+    assert set(state_of(hass, SESSION_AVG_HFR).attributes[attribute]) == expected
 
 
 async def test_recent_frames_is_every_type_newest_first_and_bounded(
@@ -95,7 +96,7 @@ async def test_recent_frames_is_every_type_newest_first_and_bounded(
     light (see the ignores-calibration test above).
     """
     await advance("dawn_flats")
-    recent = hass.states.get(LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
+    recent = state_of(hass, LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
     assert len(recent) == 20
     assert recent[0]["mean"] == pytest.approx(33139.77, abs=0.01)
 
@@ -107,7 +108,7 @@ async def test_recent_lights_survive_a_dawn_flat_run(
     keeps them: lights only, oldest first, ending on the sensor's own frame.
     """
     await advance("dawn_flats")
-    state = hass.states.get(LAST_IMAGE_HFR)
+    state = state_of(hass, LAST_IMAGE_HFR)
     recent = state.attributes["recent_lights"]
     assert len(recent) == 55
     assert recent[-1]["hfr"] == pytest.approx(float(state.state))
@@ -120,7 +121,7 @@ async def test_recent_lights_name_their_target(
     by whole factors with it; the card marks the change from this field.
     """
     await advance("dawn_flats")
-    recent = hass.states.get(LAST_IMAGE_HFR).attributes["recent_lights"]
+    recent = state_of(hass, LAST_IMAGE_HFR).attributes["recent_lights"]
     assert {light["target"] for light in recent} == {
         "Dark Shark Nebula",
         "Lobster & Bubble",
@@ -139,7 +140,7 @@ async def test_the_session_start_sensor_is_the_most_recent_local_noon(
     await hass.config_entries.async_reload(loaded_entry.entry_id)
     await hass.async_block_till_done()
     await advance("dawn_flats")
-    assert dt_util.parse_datetime(hass.states.get(SESSION_START).state) == datetime(
+    assert dt_util.parse_datetime(state_of(hass, SESSION_START).state) == datetime(
         2026, 9, 3, 12, 0, tzinfo=RIG
     )
 

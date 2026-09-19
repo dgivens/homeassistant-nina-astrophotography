@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaEndpointError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+from helpers import state_of
 from scenarios.fake_rig import FakeRig
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -68,7 +69,7 @@ async def test_a_disconnect_event_refetches_the_snapshot_before_the_next_tick(
     push({"Event": "FLAT-DISCONNECTED", "Time": AT})
     await hass.async_block_till_done()
     assert rig.reads("/equipment/info") == 1
-    assert hass.states.get(LIGHT).state == "unavailable"
+    assert state_of(hass, LIGHT).state == "unavailable"
 
 
 async def test_a_push_cannot_resurrect_a_failed_poll(
@@ -82,7 +83,7 @@ async def test_a_push_cannot_resurrect_a_failed_poll(
     await advance("nina_unreachable")
     push(nina_responses("live_image_save_push.json"))
     await hass.async_block_till_done()
-    assert hass.states.get(LIGHT).state == "unavailable"
+    assert state_of(hass, LIGHT).state == "unavailable"
 
     await advance("imaging")
     assert _count(loaded_entry) == before + 1

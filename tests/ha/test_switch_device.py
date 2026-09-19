@@ -18,6 +18,8 @@ the enabled-by-default rule (§5.3.5) is written for.
 from homeassistant.core import HomeAssistant
 import pytest
 
+from helpers import state_of
+
 OUTLET = "switch.n_i_n_a_switch_flat_panel"
 DEW_HEATER = "number.n_i_n_a_switch_dew_heater_a"
 GAUGE = "sensor.n_i_n_a_switch_input_voltage"
@@ -39,7 +41,7 @@ async def test_a_read_only_channel_becomes_a_sensor(
 ) -> None:
     """`ReadonlySwitches` is empty in every capture, so the gauge is derived."""
     await advance("switch_hub_with_a_readonly_channel")
-    assert float(hass.states.get(GAUGE).state) == 12.1
+    assert float(state_of(hass, GAUGE).state) == 12.1
     assert hass.states.get("number.n_i_n_a_switch_input_voltage") is None
 
 
@@ -51,7 +53,7 @@ async def test_a_number_channel_offers_the_channels_own_range(
     the declared range is the only thing that refuses a typo.
     """
     await advance("switch_hub_with_a_dimmable_channel")
-    attributes = hass.states.get(DEW_HEATER).attributes
+    attributes = state_of(hass, DEW_HEATER).attributes
     assert (attributes["min"], attributes["max"], attributes["step"]) == (0, 100, 1)
 
 
@@ -99,6 +101,6 @@ async def test_a_channel_the_driver_stops_reporting_goes_unavailable(
     `unknown` and stay clickable — and this API answers `Success: true` to a
     `set` for an index it no longer has.
     """
-    assert hass.states.get(OUTLET).state == "on"
+    assert state_of(hass, OUTLET).state == "on"
     await advance("switch_channel_no_longer_reported")
-    assert hass.states.get(OUTLET).state == "unavailable"
+    assert state_of(hass, OUTLET).state == "unavailable"

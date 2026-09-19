@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from nina_astrophotography.api.models import AutoFocusReport
 from nina_astrophotography.api.v2.mapper import (
     map_equipment_info,
     map_event,
@@ -52,6 +53,7 @@ def test_a_disconnected_device_drops_its_registry_metadata() -> None:
     coordinator latches "ever observed" from this, so the mapper must not invent.
     """
     snapshot = map_equipment_info(load("restart_equipment_partial_connect.json"))
+    assert snapshot.mount is not None
     assert snapshot.mount.meta.device_id is None
 
 
@@ -74,6 +76,7 @@ def test_tracking_mode_is_mapped_verbatim() -> None:
     # FlatDevice, Focuser, Guider, Mount, Rotator, SafetyMonitor, Switch and
     # WeatherData. The per-device /equipment/<x>/info captures are a BARE device
     # object — do not feed them to map_equipment_info.
+    assert snapshot.mount is not None
     assert snapshot.mount.tracking_mode == "Stopped"
 
 
@@ -109,6 +112,7 @@ def test_only_the_literal_24_sentinel_or_tracking_off_nulls_the_flip_time(
 def test_flat_panel_range_comes_from_the_driver() -> None:
     """MaxBrightness 4096 on this panel; 255 on an Alnitak. Never hardcode."""
     snapshot = map_equipment_info(load("dawn_equipment_info.json"))
+    assert snapshot.flat_device is not None
     assert snapshot.flat_device.max_brightness == 4096
 
 
@@ -164,9 +168,9 @@ def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
 
 
 def test_switch_channels_carry_their_writability_and_range() -> None:
-    channel = map_equipment_info(
-        load("dawn_equipment_info.json")
-    ).switch_device.channels[0]
+    switch = map_equipment_info(load("dawn_equipment_info.json")).switch_device
+    assert switch is not None
+    channel = switch.channels[0]
     assert (channel.name, channel.writable, channel.binary) == (
         "Flat Panel",
         True,
@@ -188,6 +192,7 @@ def test_a_disconnected_switch_keeps_its_channels_and_loses_only_their_values() 
 def test_the_channel_map_is_the_thirteen_channels_not_average_period() -> None:
     """AveragePeriod is a driver setting, not a reading (§5.2.2)."""
     weather = map_equipment_info(load("weather_source_openmeteo.json")).weather
+    assert weather is not None
     assert sorted(weather.channels) == [
         "cloud_cover",
         "dew_point",
@@ -207,6 +212,7 @@ def test_the_channel_map_is_the_thirteen_channels_not_average_period() -> None:
 
 def test_a_channel_this_source_reports_keeps_its_reading() -> None:
     weather = map_equipment_info(load("weather_source_openmeteo.json")).weather
+    assert weather is not None
     assert weather.channels["cloud_cover"] == 14
 
 
@@ -382,6 +388,12 @@ def test_a_frame_taken_with_no_filter_names_none() -> None:
     assert map_frame(push, generation="g1").filter_name is None
 
 
+def _autofocus(wire: dict) -> AutoFocusReport:
+    report = map_last_autofocus(wire)
+    assert report is not None
+    return report
+
+
 def _first_event(name: str) -> dict:
     """The first `/event-history` entry of that name from the dawn night: an
     offset-aware mediator IMAGE-SAVE (21:26:56-05:00), a naive-UTC
@@ -472,12 +484,14 @@ def test_the_sequence_root_is_synthetic_and_holds_the_global_triggers() -> None:
     bare {"GlobalTriggers": [...]} with no Name or Status of its own.
     """
     root = map_sequence(load("dawn_sequence_complete.json"))
+    assert root is not None
     assert root.name == "Sequence"
     assert root.children[0].name == "GlobalTriggers"
 
 
 def test_sequence_leaves_carry_their_status() -> None:
     root = map_sequence(load("dawn_sequence_complete.json"))
+    assert root is not None
     start = next(c for c in root.children if c.name == "Start_Container")
     assert start.status == "FINISHED"
 
@@ -564,13 +578,13 @@ def test_the_autofocus_reports_worst_fit_is_what_a_threshold_judges() -> None:
     Hyperbolic — so the minimum of what survives the `"NaN"` rule is the worst
     fit computed, and no fitting-to-R² table has to be guessed at.
     """
-    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    report = _autofocus(load("imaging_guiding_last_af.json"))
     assert report.r_squared == pytest.approx(0.9710548595560263)
 
 
 def test_an_autofocus_report_carries_where_it_left_the_focuser() -> None:
     """`CalculatedFocusPoint` is the fitted minimum, not the run's start."""
-    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    report = _autofocus(load("imaging_guiding_last_af.json"))
     assert (report.position, report.filter_name) == (2340, "L")
 
 
@@ -580,7 +594,7 @@ def test_the_autofocus_hfr_is_the_sweeps_lowest_measured_point() -> None:
     quadratic minimum, which here reads 1.09 against a best measured 1.55. The
     measured point is what compares run to run and across fittings.
     """
-    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    report = _autofocus(load("imaging_guiding_last_af.json"))
     assert report.hfr == pytest.approx(1.55229727412562)
     assert report.fitted_hfr == pytest.approx(1.0932570683996303)
 
@@ -589,7 +603,7 @@ def test_an_autofocus_report_carries_where_the_run_started() -> None:
     """`InitialFocusPoint` is where the focuser was before the run — the other
     end of the move, without which the run's size is unknowable.
     """
-    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    report = _autofocus(load("imaging_guiding_last_af.json"))
     assert report.initial_position == 2352
     assert report.initial_hfr == pytest.approx(1.5191799853991006)
 
@@ -598,7 +612,7 @@ def test_an_autofocus_runs_duration_is_seconds() -> None:
     """`Duration` is a .NET TimeSpan string, not a number: the overhead a run
     costs a session is only comparable once it is seconds.
     """
-    report = map_last_autofocus(load("imaging_guiding_last_af.json"))
+    report = _autofocus(load("imaging_guiding_last_af.json"))
     assert report.duration_seconds == pytest.approx(242.0079444)
 
 
@@ -617,7 +631,7 @@ def test_the_timespan_forms_a_duration_can_arrive_in(duration, expected) -> None
     """Fabricates `Duration` alone; every observed capture carries the
     `hh:mm:ss.fffffff` form, and the day-prefixed form is .NET's own.
     """
-    report = map_last_autofocus({"Duration": duration})
+    report = _autofocus({"Duration": duration})
     assert report.duration_seconds == (
         None if expected is None else pytest.approx(expected)
     )
@@ -635,7 +649,7 @@ def test_only_a_star_hfr_run_reports_pixels(method: str) -> None:
     benefit of the doubt. The positions survive: a step is a step.
     """
     wire = dict(load("imaging_guiding_last_af.json"), Method=method)
-    report = map_last_autofocus(wire)
+    report = _autofocus(wire)
     assert (report.hfr, report.fitted_hfr, report.initial_hfr) == (None, None, None)
     assert (report.position, report.initial_position) == (2340, 2352)
 
@@ -651,12 +665,12 @@ def test_a_focus_point_of_zero_is_no_measurement() -> None:
         load("imaging_guiding_last_af.json"),
         InitialFocusPoint={"Position": 2352, "Value": 0, "Error": 0},
     )
-    assert map_last_autofocus(wire).initial_hfr is None
+    assert _autofocus(wire).initial_hfr is None
 
 
 def test_the_autofocus_curve_ascends_in_focuser_position() -> None:
     """A plot needs monotonic x, and the report does not state its own order."""
-    curve = map_last_autofocus(load("imaging_guiding_last_af.json")).curve
+    curve = _autofocus(load("imaging_guiding_last_af.json")).curve
     assert [point.position for point in curve] == [
         2212,
         2247,
@@ -674,7 +688,7 @@ def test_an_autofocus_curve_point_carries_its_spread() -> None:
     """`Error` is how widely star sizes varied across that frame, which
     N.I.N.A. draws as the point's error bar.
     """
-    curve = map_last_autofocus(load("imaging_guiding_last_af.json")).curve
+    curve = _autofocus(load("imaging_guiding_last_af.json")).curve
     assert curve[4].error == pytest.approx(0.10801730574556397)
 
 
@@ -683,7 +697,7 @@ def failed_sweep_point():
     """A two-point sweep whose first frame measured nothing. Fabricated —
     every captured sweep is complete — and marked `synthetic` at each use.
     """
-    return map_last_autofocus(
+    return _autofocus(
         dict(
             load("imaging_guiding_last_af.json"),
             MeasurePoints=[
@@ -738,7 +752,7 @@ def test_a_sweep_point_without_a_position_cannot_be_plotted() -> None:
             {"Position": 2352, "Value": 1.5, "Error": 0.1},
         ],
     )
-    assert [p.position for p in map_last_autofocus(wire).curve] == [2352]
+    assert [p.position for p in _autofocus(wire).curve] == [2352]
 
 
 @pytest.mark.synthetic
@@ -749,7 +763,7 @@ def test_a_report_without_a_sweep_has_an_empty_curve() -> None:
     """
     wire = load("imaging_guiding_last_af.json")
     del wire["MeasurePoints"]
-    report = map_last_autofocus(wire)
+    report = _autofocus(wire)
     assert report.curve == ()
     assert (report.hfr, report.measured_points) == (None, None)
 
@@ -761,7 +775,7 @@ def test_a_fitted_curve_is_published_as_coefficients() -> None:
     """
     quadratic = next(
         f
-        for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits
+        for f in _autofocus(load("imaging_guiding_last_af.json")).fits
         if f.name == "Quadratic"
     )
     assert quadratic.coefficients == pytest.approx(
@@ -775,7 +789,7 @@ def test_each_fit_keeps_its_own_r_squared() -> None:
     """
     fits = {
         f.name: f.r_squared
-        for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits
+        for f in _autofocus(load("imaging_guiding_last_af.json")).fits
     }
     assert fits == pytest.approx(
         {
@@ -790,9 +804,7 @@ def test_a_fitting_this_run_did_not_use_is_not_published() -> None:
     """N.I.N.A. carries one entry per fitting it knows and an empty equation
     for the ones it did not run, which is no curve to draw.
     """
-    names = [
-        f.name for f in map_last_autofocus(load("imaging_guiding_last_af.json")).fits
-    ]
+    names = [f.name for f in _autofocus(load("imaging_guiding_last_af.json")).fits]
     assert "Hyperbolic" not in names and "Gaussian" not in names
 
 
@@ -801,7 +813,7 @@ def test_the_fit_minima_are_read_by_the_names_the_rig_uses() -> None:
     calls it `HyperbolicMinimum`, this TRENDPARABOLIC run calls it
     `QuadraticMinimum` — so keying on a literal name would find nothing.
     """
-    minima = map_last_autofocus(load("imaging_guiding_last_af.json")).minima
+    minima = _autofocus(load("imaging_guiding_last_af.json")).minima
     assert [(m.name, m.position) for m in minima] == [
         ("TrendLineIntersection", 2344),
         ("QuadraticMinimum", 2336),
@@ -827,7 +839,7 @@ def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
     guess.
     """
     wire = dict(load("imaging_guiding_last_af.json"), Fittings={"Quadratic": equation})
-    fits = map_last_autofocus(wire).fits
+    fits = _autofocus(wire).fits
     if expected is None:
         assert [f.coefficients for f in fits] in ([], [None])
     else:

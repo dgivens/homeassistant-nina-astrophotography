@@ -16,6 +16,7 @@ from homeassistant.helpers.selector import selector
 from homeassistant.setup import async_setup_component
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import voluptuous as vol
 import yaml
 
 import custom_components.nina_astrophotography as integration
@@ -37,11 +38,11 @@ async def _call(hass: HomeAssistant, service: str, **data) -> None:
 
 def _hub(hass: HomeAssistant, entry) -> str:
     """The device id of an entry's hub, as a target picker would yield it."""
-    return (
-        dr.async_get(hass)
-        .async_get_device_by_identifier((DOMAIN, entry.entry_id), entry.entry_id)
-        .id
+    hub = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
     )
+    assert hub is not None
+    return hub.id
 
 
 async def test_a_service_reaches_the_rig_its_device_belongs_to(
@@ -217,6 +218,7 @@ async def test_the_documented_fields_are_the_fields_the_schema_binds(
     """
     assert await async_setup_component(hass, DOMAIN, {})
     schema = hass.services.async_services()[DOMAIN][service].schema
+    assert isinstance(schema, vol.Schema)
     # `device_id` is documented as a field but bound by the target fields the
     # schema accepts wholesale, so it is excluded from both sides.
     documented = set(SERVICES_YAML[service]["fields"]) - {"device_id"}
