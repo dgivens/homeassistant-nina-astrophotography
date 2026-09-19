@@ -9,6 +9,7 @@ from dataclasses import fields
 from nina_astrophotography.api.errors import NinaConnectionError, NinaEndpointError
 from nina_astrophotography.api.v2.client import NinaClientV2
 import pytest
+
 from scenarios.fake_rig import FakeRig
 from scenarios.states import AWAITING_CAPTURE, SEQUENCES, STATES, disconnect
 

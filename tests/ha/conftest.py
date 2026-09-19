@@ -5,14 +5,11 @@ import shutil
 import sys
 from typing import NamedTuple
 
-from helpers import load_fixture
 from homeassistant.components.automation import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
-from scenarios.fake_rig import FakeRig
-from scenarios.states import AWAITING_CAPTURE, STATES
 from syrupy.assertion import SnapshotAssertion
 
 import custom_components.nina_astrophotography as integration
@@ -20,6 +17,9 @@ from custom_components.nina_astrophotography.api.v2 import NinaEventStream
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
+from helpers import load_fixture
+from scenarios.fake_rig import FakeRig
+from scenarios.states import AWAITING_CAPTURE, STATES
 
 
 @pytest.fixture

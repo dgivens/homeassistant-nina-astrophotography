@@ -8,10 +8,10 @@ from datetime import datetime
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
-from scenarios.fake_rig import FakeRig
 
 from custom_components.nina_astrophotography.api.errors import NinaEndpointError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+from scenarios.fake_rig import FakeRig
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
 AT = "2026-09-05T01:41:53.9-05:00"
@@ -172,7 +172,6 @@ async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
     `/event-history`, and dropping the route from one would rewrite a catalogue
     entry other tests read.
     """
-
     asked = 0
 
     async def not_served(self, generation=None):

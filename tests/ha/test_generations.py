@@ -7,6 +7,7 @@ concurrent poll and lose events arriving during the refetch.
 from homeassistant.config_entries import ConfigEntryState
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
 from scenarios.fake_rig import FakeRig
 
 # The /application-start the restart capture carries.

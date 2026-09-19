@@ -48,7 +48,6 @@ async def test_the_session_boundary_is_the_rigs_local_noon(
 async def test_an_unreachable_rig_makes_the_entities_unavailable(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, monkeypatch
 ) -> None:
-
     monkeypatch.setattr(NinaClientV2, "get_equipment", _raising(NinaConnectionError("down")))
     await loaded_entry.runtime_data.coordinator.async_refresh()
     assert hass.states.get(LIGHT).state == "unavailable"
@@ -60,7 +59,6 @@ async def test_a_rejected_request_keeps_the_previous_state_and_logs_once(
     """A rejection does not become right by retrying: every entity going
     unavailable and an error per poll would be noise about one condition.
     """
-
     before = hass.states.get(LIGHT).state
     monkeypatch.setattr(NinaClientV2, "get_equipment", _raising(NinaRequestError("400")))
     with caplog.at_level(logging.ERROR):
@@ -79,7 +77,6 @@ async def test_a_rejected_first_refresh_fails_the_entry_rather_than_retrying(
     """With nothing to fall back on, a permanent rejection is ConfigEntryError:
     ConfigEntryNotReady would retry a condition that never clears.
     """
-
     monkeypatch.setattr(NinaClientV2, "get_equipment", _raising(NinaRequestError("400")))
     config_entry.add_to_hass(hass)
     await hass.config_entries.async_setup(config_entry.entry_id)

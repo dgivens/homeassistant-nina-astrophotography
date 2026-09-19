@@ -8,7 +8,6 @@ The path-per-button table therefore drives the descriptors' `press` callables
 through a real client, which is the only way to cover all twelve; the entity
 wiring above them is proved separately through `button.press`.
 """
-from helpers import failure
 from homeassistant.components.button import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
 from homeassistant.const import ATTR_ENTITY_ID, EntityCategory
 from homeassistant.core import HomeAssistant
@@ -19,6 +18,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.button import DESCRIPTIONS
 from custom_components.nina_astrophotography.const import DOMAIN
+from helpers import failure
 
 AUTO_FOCUS = "button.n_i_n_a_focuser_auto_focus"
 CLEAR_CALIBRATION = "button.n_i_n_a_guider_clear_calibration"

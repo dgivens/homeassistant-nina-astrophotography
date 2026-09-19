@@ -3,10 +3,11 @@
 Every generated input is real wire data — hypothesis samples the corpus rather
 than inventing frames, so a passing property says something about N.I.N.A.
 """
-from helpers import load_fixture
 from hypothesis import HealthCheck, given, settings, strategies as st
 from nina_astrophotography.api.v2.mapper import map_frame
 from nina_astrophotography.session import fold
+
+from helpers import load_fixture
 
 FRAMES = [map_frame(f, generation="g1")
           for f in load_fixture("dawn_image_history_with_flats.json")]

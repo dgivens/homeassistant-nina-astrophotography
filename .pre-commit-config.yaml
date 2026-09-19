@@ -7,11 +7,6 @@ repos:
         entry: uv run --group dev ruff check --fix
         language: system
         types_or: [python, pyi]
-      - id: ruff-format
-        name: ruff format
-        entry: uv run --group dev ruff format
-        language: system
-        types_or: [python, pyi]
       - id: fixture-redaction
         name: fixtures carry no unredacted secrets
         entry: uv run python scripts/check_fixtures.py

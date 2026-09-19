@@ -11,15 +11,15 @@ first tick fires twice.
 import logging
 
 from freezegun.api import FrozenDateTimeFactory
-from helpers import load_fixture
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
-from scenarios.fake_rig import FakeRig
 
 from custom_components.nina_astrophotography.api.errors import NinaConnectionError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.polling import TierSchedule
+from helpers import load_fixture
+from scenarios.fake_rig import FakeRig
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
 
@@ -197,7 +197,6 @@ async def test_an_event_driven_read_that_fails_transiently_is_asked_again(
     """A queued endpoint dropped on a timeout would wait out the five-minute
     floor — the event's whole point was not to.
     """
-
     rig = await tiers("imaging_guiding")
     coordinator = config_entry.runtime_data.coordinator
 
@@ -228,7 +227,6 @@ async def test_a_tier_read_that_raises_anything_does_not_fail_the_poll(
     scalar-defensive, so no captured or malformed `/sequence/json` document can
     produce the raise this guards against.
     """
-
     async def get_sequence(self):
         raise TypeError("a shape no mapper anticipated")
 

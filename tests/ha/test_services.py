@@ -8,7 +8,6 @@ at the call site can tell.
 """
 from pathlib import Path
 
-from helpers import failure
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -20,6 +19,7 @@ import yaml
 
 import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.const import DOMAIN
+from helpers import failure
 
 SERVICES_YAML = yaml.safe_load(
     (Path(integration.__file__).parent / "services.yaml").read_text(encoding="utf-8")

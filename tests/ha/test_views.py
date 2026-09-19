@@ -11,8 +11,9 @@ translation arithmetic itself to
 bytes at its own newest index only, so a case that reads the body stubs
 `/image/0` for itself.
 """
-from helpers import FakeResponse, failure, ok
 import pytest
+
+from helpers import FakeResponse, failure, ok
 
 ENTITY = "image.n_i_n_a_last_frame"
 FRAME = b"\xff\xd8\xff\xe0 not a frame"

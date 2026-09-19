@@ -6,7 +6,6 @@ tested as functions of their arguments rather than through a config entry.
 from dataclasses import fields, replace
 from datetime import datetime, timedelta
 
-from helpers import load_fixture as load
 from nina_astrophotography.api.models import EquipmentSnapshot, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_equipment_info
 from nina_astrophotography.polling import (
@@ -18,6 +17,8 @@ from nina_astrophotography.polling import (
     imaging,
 )
 import pytest
+
+from helpers import load_fixture as load
 
 # A next-evening restart emits 21:00 events against an 05:30 mark.
 T1 = "2026-09-03T21:00:00-05:00"

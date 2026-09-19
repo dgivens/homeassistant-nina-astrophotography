@@ -2,7 +2,6 @@
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
-from helpers import load_fixture
 from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import (
@@ -14,6 +13,8 @@ from nina_astrophotography.session import (
     scheduler_wait,
 )
 import pytest
+
+from helpers import load_fixture
 
 # Noon the day after the dawn corpus: every one of its frames is by then in
 # the previous session.

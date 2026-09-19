@@ -102,7 +102,6 @@ def test_the_documented_action_fields_are_the_translated_ones() -> None:
     them with, and a field in one and not the other is invisible or unlabelled.
     Phase D renamed three user-facing fields across both.
     """
-
     component = ROOT / "custom_components" / "nina_astrophotography"
     services = yaml.safe_load((component / "services.yaml").read_text(encoding="utf-8"))
     strings = json.loads((component / "strings.json").read_text(encoding="utf-8"))

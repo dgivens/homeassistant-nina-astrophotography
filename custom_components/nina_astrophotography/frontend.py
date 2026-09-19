@@ -40,7 +40,7 @@ async def async_register_frontend_resources(hass: HomeAssistant) -> None:
     """
     try:
         await _async_register_frontend_resources(hass)
-    except Exception:
+    except Exception:  # Broad on purpose: see the docstring.
         _LOGGER.exception("Could not register the bundled Lovelace cards")
 
 

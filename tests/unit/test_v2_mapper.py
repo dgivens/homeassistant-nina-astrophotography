@@ -1,7 +1,6 @@
 """wire → models. Every sentinel, timezone and quirk dies in this module."""
 from datetime import timedelta
 
-from helpers import load_fixture as load
 from nina_astrophotography.api.v2.mapper import (
     map_equipment_info,
     map_event,
@@ -19,6 +18,8 @@ from nina_astrophotography.api.v2.mapper import (
     rig_utc_offset,
 )
 import pytest
+
+from helpers import load_fixture as load
 
 
 @pytest.mark.parametrize(

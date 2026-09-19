@@ -170,7 +170,6 @@ def test_every_weather_channel_keeps_a_1_4_5_unique_id() -> None:
     source reports, and no capture reports StarFWHM or SkyQuality — so a
     renamed suffix on those two would ship unnoticed and orphan the row.
     """
-
     shipped = {d.unique_id_suffix or d.key for d in WEATHER_CHANNELS}
     # `weather_name` is the fourteenth 1.4.5 key and ships as `weather_source`
     # on the session table, so the channels are the other thirteen exactly.

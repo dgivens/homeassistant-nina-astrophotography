@@ -1,5 +1,6 @@
 """Redaction rules — one module, shared by the capture script and the guard."""
 import pytest
+
 from redaction import PROFILE_ALLOWLIST, project, redact, scan
 
 

@@ -7,11 +7,12 @@ a JPEG magic number, because the pixels are not this platform's business.
 """
 from datetime import datetime
 
-from helpers import FakeResponse, failure, ok
 from homeassistant.components.image import async_get_image
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 import pytest
+
+from helpers import FakeResponse, failure, ok
 
 LAST_FRAME = "image.n_i_n_a_last_frame"
 LIVESTACK = "image.n_i_n_a_livestack"

@@ -3,11 +3,12 @@
 Only the ROOT containers' `Status` is read, by `running`; nothing here asserts
 on the status of a node below them (§6.2).
 """
-from helpers import load_fixture
 from nina_astrophotography.api.models import SequenceNode
 from nina_astrophotography.api.v2.mapper import map_event, map_sequence
 from nina_astrophotography.sequence import progress_percent, running, target_name
 import pytest
+
+from helpers import load_fixture
 
 
 def _node(name: str, *children: SequenceNode, **own) -> SequenceNode:

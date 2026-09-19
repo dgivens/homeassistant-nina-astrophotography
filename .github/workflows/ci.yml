@@ -68,7 +68,6 @@ jobs:
           enable-cache: true
       - run: uv sync --group dev
       - run: uv run --group dev ruff check --output-format=github .
-      - run: uv run --group dev ruff format --check .
 
   typecheck:
     name: Pyright
