@@ -104,8 +104,10 @@ def _guider_running(data: NinaData) -> bool | None:
 
     `Looping`, `Calibrating` and `LostLock` are all a guider that has been
     started and has not been stopped; only `Stopped` is off. The exception is
-    a `LostLock` N.I.N.A. is still reporting after `GUIDER-STOP` — see
-    `session.guider_stopped` for why the state outlives the stop.
+    a `LostLock` N.I.N.A. is still reporting after a `GUIDER-STOP` the guider
+    has not been seen running past — see `session.pending_guider_stop` for why
+    the state outlives the stop, and `polling.GuiderStopLatch` for a restart
+    that loses its star before `GUIDER-START`.
     """
     guider = data.snapshot.guider
     state = guider.state if guider is not None else None

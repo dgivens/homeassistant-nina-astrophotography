@@ -56,6 +56,7 @@ from .const import CONF_HOST, DEFAULT_ROLLOVER_HOUR
 from .device import KINDS
 from .polling import (
     EventLedger,
+    GuiderStopLatch,
     ReseedGuard,
     RestartDetector,
     TierSchedule,
@@ -65,9 +66,9 @@ from .sequence import running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
     fold,
-    guider_stopped,
     latest_stack,
     latest_target,
+    pending_guider_stop,
     recent_frames,
     scheduler_wait,
 )
@@ -156,8 +157,9 @@ class NinaData:
     """When the wait Target Scheduler is in ends, or None if it is not waiting.
     The event names no reason, so neither can this."""
     guider_stopped: bool
-    """Whether the newest `GUIDER-START`/`-STOP` is a stop — what
-    tells a stale `LostLock` from a guider hunting for its star."""
+    """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` since, and
+    no poll since that saw the guider running. What tells a stale `LostLock`
+    from a guider hunting for its star."""
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
@@ -207,6 +209,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._restart = RestartDetector()
         self._reseed_guard = ReseedGuard()
         self._ledger = EventLedger()
+        self._guider_stop = GuiderStopLatch()
         self._seeded = False
         self._replayed = False
         self._mismatch_logged = False
@@ -228,6 +231,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._last_snapshot: EquipmentSnapshot | None = None
 
     async def _async_update_data(self) -> NinaData:
+        # Before the fetch — see `GuiderStopLatch`.
+        guider_stop = pending_guider_stop(self.events, self.generation)
         try:
             snapshot = await self.client.get_equipment()
             application_start = await self.client.get_application_start()
@@ -260,6 +265,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._rejection_logged = False
         self._note_reachable()
         snapshot = self._latch_observed(snapshot)
+        self._guider_stop.observe(
+            snapshot.guider.state if snapshot.guider is not None else None,
+            guider_stop,
+        )
         self._log_connection_changes(snapshot)
         await self._run_tiers(snapshot, count)
         self._last_snapshot = snapshot
@@ -686,7 +695,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             imaging=self._imaging,
             running=running(self._sequence, self.events, self.generation),
             wait_ends_at=scheduler_wait(self.events, self.generation, now=moment),
-            guider_stopped=guider_stopped(self.events, self.generation),
+            guider_stopped=self._guider_stop.stopped(
+                pending_guider_stop(self.events, self.generation)
+            ),
         )
 
 

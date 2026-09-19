@@ -92,6 +92,23 @@ async def test_a_lost_lock_left_over_from_a_stop_reads_off(
 
 
 @pytest.mark.synthetic
+async def test_a_lock_lost_while_guiding_restarts_reads_on(
+    hass: HomeAssistant, config_entry, rig
+) -> None:
+    """GUIDER-START waits for the settle, so a star lost during it is a
+    `LostLock` with the stop still newest. The guider polled running since the
+    stop is what keeps the switch on — off would invite a tap that interrupts
+    the start in progress."""
+    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    coordinator = config_entry.runtime_data.coordinator
+    for state in ("guider_restarting_after_stop", "scheduler_waiting_lost_lock"):
+        rig.goto(state)
+        await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(GUIDER).state == "on"
+
+
+@pytest.mark.synthetic
 async def test_a_guider_start_after_the_stop_reads_the_lost_lock_as_running(
     hass: HomeAssistant, config_entry, rig, push
 ) -> None:

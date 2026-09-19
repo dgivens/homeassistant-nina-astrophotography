@@ -50,6 +50,37 @@ class EventLedger:
         self._taken.add(self._key(event))
 
 
+# What N.I.N.A. reports only from a PHD2 event a start produces — never one a
+# stop does — so any of them after a GUIDER-STOP is a guider running again.
+_GUIDER_RUNNING = frozenset({"Looping", "Calibrating", "Guiding"})
+
+
+class GuiderStopLatch:
+    """Which `GUIDER-STOP` a poll has since seen the guider running past.
+
+    `GUIDER-START` is raised only once a start has settled, which with retries
+    can take minutes, so a star lost during that settle is a `LostLock` whose
+    newest guider event is still the stop. A poll that saw the guider Looping,
+    Calibrating or Guiding after the stop is what tells that from the
+    `LostLock` the stop itself left behind.
+
+    The caller reads the stop BEFORE it fetches the snapshot: a stop pushed
+    while a poll is in flight must not be marked passed by a snapshot taken
+    before it happened.
+    """
+
+    def __init__(self) -> None:
+        self._passed: datetime | None = None
+
+    def observe(self, state: str | None, stop: datetime | None) -> None:
+        if stop is not None and state in _GUIDER_RUNNING:
+            self._passed = stop
+
+    def stopped(self, stop: datetime | None) -> bool:
+        """Whether `stop` is still in force: logged, and not run past since."""
+        return stop is not None and stop != self._passed
+
+
 @dataclass
 class RestartDetector:
     """The restart signals, all observed across two restarts in one day.

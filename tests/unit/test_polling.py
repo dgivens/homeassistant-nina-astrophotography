@@ -15,6 +15,7 @@ from nina_astrophotography.api.models import EquipmentSnapshot, NinaEvent
 from nina_astrophotography.api.v2.mapper import map_equipment_info
 from nina_astrophotography.polling import (
     EventLedger,
+    GuiderStopLatch,
     ReseedGuard,
     RestartDetector,
     TierSchedule,
@@ -243,3 +244,35 @@ def test_the_event_ledger_identifies_an_event_by_generation_name_and_time(
 def _event(name: str, time: str, generation: str) -> NinaEvent:
     return NinaEvent(name=name, time=datetime.fromisoformat(time), data={},
                      generation=generation)
+
+
+# A stop tonight and the one before it; only identity matters, never order.
+STOP = datetime.fromisoformat("2026-09-18T21:50:19-05:00")
+EARLIER_STOP = datetime.fromisoformat("2026-09-18T19:02:00-05:00")
+
+
+@pytest.mark.parametrize(
+    ("polled", "stop", "stopped"),
+    [
+        ([], STOP, True),
+        ([("LostLock", STOP), ("Stopped", STOP)], STOP, True),
+        ([("Looping", STOP)], STOP, False),
+        ([("Calibrating", STOP), ("LostLock", STOP)], STOP, False),
+        ([("Guiding", EARLIER_STOP)], STOP, True),
+        ([("Guiding", None)], STOP, True),
+        ([], None, False),
+    ],
+    ids=["never polled", "only stopped states polled",
+         "polled looping after the stop", "a lock lost after running again",
+         "ran past an earlier stop", "ran with no stop pending",
+         "no stop pending"],
+)
+def test_a_stop_holds_until_a_poll_sees_the_guider_running_past_it(
+    polled: list[tuple[str, datetime | None]], stop: datetime | None, stopped: bool
+) -> None:
+    """A restart's GUIDER-START waits for the settle; a poll seeing the guider
+    running is what releases the stop before it."""
+    latch = GuiderStopLatch()
+    for state, pending in polled:
+        latch.observe(state, pending)
+    assert latch.stopped(stop) is stopped

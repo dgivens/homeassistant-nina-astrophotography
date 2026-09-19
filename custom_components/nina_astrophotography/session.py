@@ -307,8 +307,9 @@ def latest_target(events: Iterable[NinaEvent],
     return name if isinstance(name, str) and name else None
 
 
-def guider_stopped(events: Iterable[NinaEvent], generation: str | None) -> bool:
-    """Whether the newest guider start or stop this generation logged is a stop.
+def pending_guider_stop(events: Iterable[NinaEvent],
+                        generation: str | None) -> datetime | None:
+    """When the newest `GUIDER-STOP` was, if no `GUIDER-START` has followed it.
 
     `GuiderInfo.State` alone cannot say. It is N.I.N.A.'s cache of PHD2's
     events, and a stop that interrupts a guide exposure ends with PHD2 clearing
@@ -316,10 +317,10 @@ def guider_stopped(events: Iterable[NinaEvent], generation: str | None) -> bool:
     `LostLock` and keeps until the next start. A guider that has been stopped
     then reads exactly like one hunting for a lost star.
 
-    False when neither event is in the history, which is the side that never
-    offers to restart a guider mid-exposure. `GUIDER-START` is raised only once
-    a start has settled, and guiding started from PHD2 itself raises none, so a
-    star lost before either reads as stopped.
+    None when neither event is in the history, which is the side that never
+    offers to restart a guider mid-exposure. The time is the stop's identity:
+    `polling.GuiderStopLatch` keys on it to tell a stop the guider has since
+    been seen running past.
     """
     newest = _newest(events, _GUIDER_STARTED_OR_STOPPED, generation)
-    return newest is not None and newest.name == _GUIDER_STOPPED
+    return newest.time if newest is not None and newest.name == _GUIDER_STOPPED else None

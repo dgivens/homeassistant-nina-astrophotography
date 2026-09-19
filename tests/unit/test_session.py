@@ -12,10 +12,10 @@ from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import (
     scheduler_wait,
     fold,
-    guider_stopped,
     latest_stack,
     latest_target,
     newest_frame,
+    pending_guider_stop,
 )
 
 # Noon the day after the dawn corpus: every one of its frames is by then in
@@ -398,12 +398,12 @@ def test_a_rig_without_target_scheduler_announces_no_target(night_events) -> Non
     ids=["stopped for a scheduler wait", "guiding",
          "only a GUIDER-CONNECTED logged"],
 )
-def test_the_guider_is_stopped_when_a_stop_is_its_newest_event(
+def test_a_stop_is_pending_when_it_is_the_newest_start_or_stop(
     capture: str, expected: bool
 ) -> None:
     """The newest start or stop decides; a history with neither is not a stop."""
     events = [map_event(e, "g1") for e in load_fixture(f"{capture}_event_history.json")]
-    assert guider_stopped(events, "g1") is expected
+    assert (pending_guider_stop(events, "g1") is not None) is expected
 
 
 @pytest.mark.parametrize(
@@ -425,7 +425,7 @@ def test_neither_a_dither_nor_a_previous_process_moves_the_verdict(
                   data={}, generation=generation)
         for minute, (name, generation) in enumerate(logged)
     ]
-    assert guider_stopped(events, "g1") is expected
+    assert (pending_guider_stop(events, "g1") is not None) is expected
 
 
 # The rig's own offset; every N.I.N.A. timestamp is local to its clock.

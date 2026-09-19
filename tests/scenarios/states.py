@@ -325,6 +325,16 @@ def disconnect(state: State, *devices: str) -> State:
 
 # Each name gets its own dict even where two are content-equal, so an in-place
 # edit in one test cannot leak into a state of another name.
+# 22:23, a later night's wait: Target Scheduler sent GUIDER-STOP before it, and
+# N.I.N.A. still reports the guider `LostLock`, its cache of the lock position
+# PHD2 cleared as the stop interrupted an exposure. Frames and a running stack,
+# so both image routes answer bytes.
+_LOST_LOCK_AFTER_STOP: State = {
+    **_captured("scheduler_waiting_lost_lock"),
+    _newest_image("scheduler_waiting_lost_lock_image_history_count.json"): _JPEG,
+    "/livestack/image/Rotten%20Fish/R": _JPEG,
+}
+
 STATES: dict[str, State] = {
     # Mid-session: eleven devices, 122 frames, the sequence running.
     "imaging": dict(_IMAGING),
@@ -356,15 +366,12 @@ STATES: dict[str, State] = {
     # before the history window leaves the event ledger silent, so the ledger
     # cannot be the only running signal.
     "scheduler_waiting": _captured("scheduler_waiting"),
-    # 22:23, a later night's wait: Target Scheduler sent GUIDER-STOP before it,
-    # and N.I.N.A. still reports the guider `LostLock`, its cache of the lock
-    # position PHD2 cleared as the stop interrupted an exposure. Frames and a running
-    # stack, so both image routes answer bytes.
-    "scheduler_waiting_lost_lock": {
-        **_captured("scheduler_waiting_lost_lock"),
-        _newest_image("scheduler_waiting_lost_lock_image_history_count.json"): _JPEG,
-        "/livestack/image/Rotten%20Fish/R": _JPEG,
-    },
+    "scheduler_waiting_lost_lock": _LOST_LOCK_AFTER_STOP,
+    # The same rig restarting guiding once the wait ends: PHD2 looping before
+    # the settle that GUIDER-START waits for. Synthetic in `State` alone.
+    "guider_restarting_after_stop": _with_readings(
+        _LOST_LOCK_AFTER_STOP, "Guider", State="Looping"
+    ),
     # 20:49, ten seconds after SEQUENCE-STARTING: every container still CREATED
     # on a sequence that IS running. The tree lags the start, so it cannot be
     # the only running signal either.
