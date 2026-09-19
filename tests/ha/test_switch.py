@@ -109,6 +109,28 @@ async def test_a_lock_lost_while_guiding_restarts_reads_on(
 
 
 @pytest.mark.synthetic
+async def test_a_stop_pushed_while_a_poll_is_in_flight_is_not_passed_by_it(
+    hass: HomeAssistant, advance, push, monkeypatch
+) -> None:
+    """The poll's snapshot was taken while the guider was still guiding, so it
+    says nothing about the stop pushed after it — the next `LostLock` is the
+    stop's leftover. Fabricates the bare `GUIDER-STOP` push."""
+    await advance("imaging_guiding")
+    fetch = NinaClientV2.get_equipment
+
+    async def stop_during_the_fetch(client):
+        snapshot = await fetch(client)
+        push({"Event": "GUIDER-STOP"})
+        return snapshot
+
+    monkeypatch.setattr(NinaClientV2, "get_equipment", stop_during_the_fetch)
+    await advance("imaging_guiding")
+    monkeypatch.setattr(NinaClientV2, "get_equipment", fetch)
+    await advance("guider_lost_lock")
+    assert hass.states.get(GUIDER).state == "off"
+
+
+@pytest.mark.synthetic
 async def test_a_guider_start_after_the_stop_reads_the_lost_lock_as_running(
     hass: HomeAssistant, config_entry, rig, push
 ) -> None:

@@ -12,7 +12,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .api.models import EquipmentSnapshot, NinaEvent
 
@@ -54,6 +54,11 @@ class EventLedger:
 # stop does — so any of them after a GUIDER-STOP is a guider running again.
 _GUIDER_RUNNING = frozenset({"Looping", "Calibrating", "Guiding"})
 
+# Two copies of one stop — pushed, stamped on arrival, and replayed with the
+# rig's own `Time` — differ by the clocks' skew. Two real stops are a whole
+# restart apart.
+_SAME_STOP = timedelta(minutes=1)
+
 
 class GuiderStopLatch:
     """Which `GUIDER-STOP` a poll has since seen the guider running past.
@@ -66,7 +71,8 @@ class GuiderStopLatch:
 
     The caller reads the stop BEFORE it fetches the snapshot: a stop pushed
     while a poll is in flight must not be marked passed by a snapshot taken
-    before it happened.
+    before it happened. A stop within `_SAME_STOP` of the passed one is the
+    same stop, since a reconnect's replay adds a second copy of it.
     """
 
     def __init__(self) -> None:
@@ -78,7 +84,9 @@ class GuiderStopLatch:
 
     def stopped(self, stop: datetime | None) -> bool:
         """Whether `stop` is still in force: logged, and not run past since."""
-        return stop is not None and stop != self._passed
+        if stop is None:
+            return False
+        return self._passed is None or abs(stop - self._passed) > _SAME_STOP
 
 
 @dataclass

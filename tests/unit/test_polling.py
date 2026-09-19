@@ -6,7 +6,7 @@ tested as functions of their arguments rather than through a config entry.
 from __future__ import annotations
 
 from dataclasses import fields, replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from helpers import load_fixture as load
@@ -260,11 +260,13 @@ EARLIER_STOP = datetime.fromisoformat("2026-09-18T19:02:00-05:00")
         ([("Calibrating", STOP), ("LostLock", STOP)], STOP, False),
         ([("Guiding", EARLIER_STOP)], STOP, True),
         ([("Guiding", None)], STOP, True),
+        ([("Looping", STOP)], STOP + timedelta(seconds=2), False),
         ([], None, False),
     ],
     ids=["never polled", "only stopped states polled",
          "polled looping after the stop", "a lock lost after running again",
          "ran past an earlier stop", "ran with no stop pending",
+         "the replayed copy of the passed stop",
          "no stop pending"],
 )
 def test_a_stop_holds_until_a_poll_sees_the_guider_running_past_it(
