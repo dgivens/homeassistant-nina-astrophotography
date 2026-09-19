@@ -189,11 +189,16 @@ class NinaFrameStatsCard extends HTMLElement {
     // filter: {count, integration_hours, hfr_mean}.
     const byFilter = this._attr(`sensor.${prefix}_session_avg_hfr`, "by_filter", {}) || {};
 
-    // The last five frames against the five before them. A filter change
-    // inside those ten reads as a trend: filters differ by tenths of a pixel.
-    const rolling  = this._mean(this._hfr.slice(-10));
-    const recent   = this._mean(this._hfr.slice(-5));
-    const previous = this._mean(this._hfr.slice(-10, -5));
+    // The last five frames against the five before them, in the newest
+    // frame's filter only: filters differ by tenths of a pixel, so an LRGB or
+    // SHO rotation would otherwise read as a trend. No trend until ten.
+    const trendFilter = this._filters[this._filters.length - 1] ?? null;
+    const sameFilter = this._hfr.filter(
+      (hfr, i) => hfr !== null && this._filters[i] === trendFilter);
+    const rolling  = this._mean(sameFilter.slice(-10));
+    const recent   = this._mean(sameFilter.slice(-5));
+    const previous = sameFilter.length < 10
+      ? null : this._mean(sameFilter.slice(-10, -5));
     const trendDelta = recent !== null && previous !== null ? recent - previous : 0;
     const trend = hfrTrend(recent, previous, trendDelta);
     const rollingHfr = rolling === null ? "—" : rolling.toFixed(2);
@@ -261,7 +266,7 @@ class NinaFrameStatsCard extends HTMLElement {
               <div class="stat-box trend-${trend}">
                 <div class="label">HFR Trend</div>
                 <div class="value" style="font-size:0.85rem">${trendLabel}</div>
-                <div class="sub">Last 5 vs prev 5 frames</div>
+                <div class="sub">Last 5 vs prev 5 ${trendFilter ?? ""} frames</div>
               </div>
               <div class="stat-box">
                 <div class="label">Session avg / best</div>
