@@ -276,6 +276,7 @@ class NinaImagePanelCard extends HTMLElement {
     this._hasImage = false;
     this._loadToken = 0;
     this._rendered = false;
+    this._stripKey = null;
     this._unsubHassEvent = null;
   }
 
@@ -299,8 +300,17 @@ class NinaImagePanelCard extends HTMLElement {
       this._buildDOM();
       this._rendered = true;
       this._loadImage(0);
-      // Also when only the histogram is on: it reads what this fetches.
-      if (this._config.show_strip || this._config.show_histogram) this._loadStrip();
+    }
+
+    // Keyed on the attribute's contents, not on `nina_image_save`: the bus
+    // event reaches the card before the state update carrying the new frame,
+    // so a strip rebuilt from the event would render the previous list.
+    // Also when only the histogram is on: it reads what this loads.
+    const stripKey = JSON.stringify(this._recentFrames());
+    if (stripKey !== this._stripKey
+        && (this._config.show_strip || this._config.show_histogram)) {
+      this._stripKey = stripKey;
+      this._loadStrip();
     }
 
     this._updateOverlay();
@@ -317,7 +327,6 @@ class NinaImagePanelCard extends HTMLElement {
           if (instance && slug(instance) !== this._config.prefix) return;
           this._currentIndex = 0;
           this._loadImage(0, true);
-          this._loadStrip();
         },
         "nina_image_save"
       );
@@ -354,6 +363,10 @@ class NinaImagePanelCard extends HTMLElement {
     const e = this._hass?.states?.[id];
     return e?.attributes?.[attr] ?? fallback;
   }
+
+  // Already newest-first and bounded (session.py's `recent_frames`) — no
+  // fetch of our own, and no reversal needed.
+  _recentFrames() { return this._attr(this._entityId(), "recent_frames", []); }
 
   // ── Signed, same-origin image URLs ──────────────────────────────────────
 
@@ -524,10 +537,7 @@ class NinaImagePanelCard extends HTMLElement {
     if (!strip) return;
 
     const count = this._config.strip_count;
-    // Already newest-first and bounded (session.py's `recent_frames`) — no
-    // fetch of our own, and no reversal needed.
-    const recentFrames = this._attr(
-      `sensor.${this._config.prefix}_last_image_mean_adu`, "recent_frames", []);
+    const recentFrames = this._recentFrames();
     this._historyMeta = recentFrames.slice(0, count);
     if (this._config.show_histogram) this._drawHistogram();
 
