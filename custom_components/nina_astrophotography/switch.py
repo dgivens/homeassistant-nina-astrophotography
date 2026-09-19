@@ -102,8 +102,12 @@ def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
 def _guider_running(data: NinaData) -> bool | None:
     """Every guider state but `Stopped` is guiding in progress.
 
-    `Looping`, `Calibrating` and `LostLock` are all a guider that has been
-    started and has not been stopped; only `Stopped` is off. The exception is
+    `Looping`, `Calibrating`, `Paused` and `LostLock` are all a guider that has
+    been started and has not been stopped; only `Stopped` is off. `Paused`
+    (PHD2 `set_paused`) suspends guide output while exposures keep looping, so
+    it reads on, and a stop sent during it is accepted and then ignored by
+    N.I.N.A. — `StopGuiding` acts only on `Guiding`, `Calibrating` and
+    `LostLock`. The exception is
     a `LostLock` N.I.N.A. is still reporting after a `GUIDER-STOP` the guider
     has not been seen running past — see `session.pending_guider_stop` for why
     the state outlives the stop, and `polling.GuiderStopLatch` for a restart

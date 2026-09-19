@@ -6,7 +6,10 @@ blueprint:
 
     Guiding is a condition rather than a trigger source, and it keys on the
     guider's own status: RMS is reported through calibration, looping and a
-    lost lock too, where a spike means nothing.
+    lost lock too, where a spike means nothing. A paused guider is excluded by
+    the same gate — PHD2's pause suspends guide output while exposures keep
+    looping, and the condition keys on `Guiding`, so no RMS is reported while
+    paused.
   domain: automation
   author: dgivens
   source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/guiding_alert.yaml
