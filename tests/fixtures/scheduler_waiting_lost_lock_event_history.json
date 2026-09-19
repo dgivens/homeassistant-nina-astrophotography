@@ -1,0 +1,592 @@
+{
+  "Response": [
+    {
+      "Event": "SAFETY-DISCONNECTED",
+      "Time": "2026-09-18T20:43:10.1784817-05:00"
+    },
+    {
+      "Event": "SAFETY-CONNECTED",
+      "Time": "2026-09-18T20:43:11.6070158-05:00"
+    },
+    {
+      "Event": "SWITCH-DISCONNECTED",
+      "Time": "2026-09-18T20:43:13.6221249-05:00"
+    },
+    {
+      "Event": "SWITCH-CONNECTED",
+      "Time": "2026-09-18T20:43:13.7531019-05:00"
+    },
+    {
+      "Event": "CAMERA-DISCONNECTED",
+      "Time": "2026-09-18T20:43:19.0329857-05:00"
+    },
+    {
+      "Event": "CAMERA-CONNECTED",
+      "Time": "2026-09-18T20:43:19.714036-05:00"
+    },
+    {
+      "Event": "FILTERWHEEL-DISCONNECTED",
+      "Time": "2026-09-18T20:43:23.094222-05:00"
+    },
+    {
+      "Event": "FILTERWHEEL-CONNECTED",
+      "Time": "2026-09-18T20:43:23.8286097-05:00"
+    },
+    {
+      "Event": "FLAT-DISCONNECTED",
+      "Time": "2026-09-18T20:43:24.8475861-05:00"
+    },
+    {
+      "Event": "FOCUSER-DISCONNECTED",
+      "Time": "2026-09-18T20:43:25.8536807-05:00"
+    },
+    {
+      "Event": "FOCUSER-CONNECTED",
+      "Time": "2026-09-18T20:43:26.2824922-05:00"
+    },
+    {
+      "Event": "FLAT-CONNECTED",
+      "Time": "2026-09-18T20:43:27.0275532-05:00"
+    },
+    {
+      "Event": "ROTATOR-DISCONNECTED",
+      "Time": "2026-09-18T20:43:28.2902485-05:00"
+    },
+    {
+      "Event": "ROTATOR-CONNECTED",
+      "Time": "2026-09-18T20:43:29.9810715-05:00"
+    },
+    {
+      "Event": "WEATHER-DISCONNECTED",
+      "Time": "2026-09-18T20:43:32.0053774-05:00"
+    },
+    {
+      "Event": "WEATHER-CONNECTED",
+      "Time": "2026-09-18T20:43:32.2336196-05:00"
+    },
+    {
+      "Event": "GUIDER-CONNECTED",
+      "Time": "2026-09-18T20:43:32.2999816-05:00"
+    },
+    {
+      "Event": "MOUNT-DISCONNECTED",
+      "Time": "2026-09-18T20:43:34.3077656-05:00"
+    },
+    {
+      "Event": "MOUNT-CONNECTED",
+      "Time": "2026-09-18T20:43:35.040079-05:00"
+    },
+    {
+      "Event": "FLAT-COVER-OPENED",
+      "Time": "2026-09-18T20:43:41.1297784-05:00"
+    },
+    {
+      "Event": "FLAT-DISCONNECTED",
+      "Time": "2026-09-18T20:43:41.5695071-05:00"
+    },
+    {
+      "Event": "MOUNT-HOMED",
+      "Time": "2026-09-18T20:43:47.2446003-05:00"
+    },
+    {
+      "Time": "2026-09-18T20:43:47.2792973-05:00",
+      "Status": "Running",
+      "Event": "STACK-STATUS"
+    },
+    {
+      "Event": "AUTOFOCUS-STARTING",
+      "Time": "2026-09-18T20:43:47.4596881-05:00"
+    },
+    {
+      "Position": 2575,
+      "HFR": 3.6299861435921392,
+      "Time": "2026-09-18T20:44:26.1178478-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2540,
+      "HFR": 1.9860212732378753,
+      "Time": "2026-09-18T20:44:48.1594053-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2505,
+      "HFR": 1.4627229605754177,
+      "Time": "2026-09-18T20:45:10.2255268-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2470,
+      "HFR": 2.3359698358530774,
+      "Time": "2026-09-18T20:45:31.9180067-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2435,
+      "HFR": 4.025829378711182,
+      "Time": "2026-09-18T20:45:56.1755631-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2400,
+      "HFR": 5.949343757666685,
+      "Time": "2026-09-18T20:46:20.1400486-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2365,
+      "HFR": 8.035901341454782,
+      "Time": "2026-09-18T20:46:44.0552219-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2610,
+      "HFR": 5.7246538070136,
+      "Time": "2026-09-18T20:47:06.0862573-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2645,
+      "HFR": 7.722979350725858,
+      "Time": "2026-09-18T20:47:26.1491146-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Event": "AUTOFOCUS-FINISHED",
+      "Time": "2026-09-18T20:47:50.0828388-05:00"
+    },
+    {
+      "WaitEndTime": "2026-09-18T21:01:25.6513316-05:00",
+      "Time": "2026-09-19T01:51:15.1840483",
+      "Event": "TS-WAITSTART"
+    },
+    {
+      "Event": "MOUNT-HOMED",
+      "Time": "2026-09-18T20:51:15.2015625-05:00"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:01:26.0751809",
+      "Event": "TS-NEWTARGETSTART"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:01:26.0790049",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "ROTATOR-SYNCED",
+      "Time": "2026-09-18T21:01:43.9951346-05:00"
+    },
+    {
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-18T21:02:12.3207831-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:02:26.1706844-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:07:38.2091458-05:00"
+    },
+    {
+      "StackCount": 1,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:07:39.5199792-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:07:42.0588296",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:07:42.0674775-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:12:53.5921571-05:00"
+    },
+    {
+      "StackCount": 2,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:12:54.9207646-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:12:57.6381628",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "GUIDER-DITHER",
+      "Time": "2026-09-18T21:13:19.9351522-05:00"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:13:19.9413415-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:18:33.7280726-05:00"
+    },
+    {
+      "StackCount": 3,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:18:35.0532127-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:18:37.3265969",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:18:37.3326486-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:23:49.6971986-05:00"
+    },
+    {
+      "StackCount": 4,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:23:51.6070281-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:23:53.511169",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "GUIDER-DITHER",
+      "Time": "2026-09-18T21:24:12.533928-05:00"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:24:12.5405864-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:29:25.2107956-05:00"
+    },
+    {
+      "StackCount": 5,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:29:26.9878794-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:29:27.1805807",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:29:27.1851653-05:00"
+    },
+    {
+      "Event": "AUTOFOCUS-STARTING",
+      "Time": "2026-09-18T21:29:27.2848259-05:00"
+    },
+    {
+      "Event": "GUIDER-STOP",
+      "Time": "2026-09-18T21:29:28.2941888-05:00"
+    },
+    {
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-18T21:29:34.3100224-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED"
+    },
+    {
+      "Position": 2648,
+      "HFR": 9.017662359859356,
+      "Time": "2026-09-18T21:30:11.8906889-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2613,
+      "HFR": 7.051116221774514,
+      "Time": "2026-09-18T21:30:33.82504-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2578,
+      "HFR": 5.081457024858302,
+      "Time": "2026-09-18T21:30:55.8289601-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2543,
+      "HFR": 3.113399451496669,
+      "Time": "2026-09-18T21:31:17.8947721-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2508,
+      "HFR": 1.630678021791428,
+      "Time": "2026-09-18T21:31:41.8567201-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2473,
+      "HFR": 1.575171263544192,
+      "Time": "2026-09-18T21:32:05.8601663-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2438,
+      "HFR": 2.6703817073811416,
+      "Time": "2026-09-18T21:32:29.8727675-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2403,
+      "HFR": 4.56627484501572,
+      "Time": "2026-09-18T21:32:53.8917712-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2368,
+      "HFR": 6.4993288480244304,
+      "Time": "2026-09-18T21:33:15.8378487-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Position": 2333,
+      "HFR": 8.530875927579912,
+      "Time": "2026-09-18T21:33:37.8446323-05:00",
+      "Event": "AUTOFOCUS-POINT-ADDED"
+    },
+    {
+      "Event": "AUTOFOCUS-FINISHED",
+      "Time": "2026-09-18T21:33:59.9163719-05:00"
+    },
+    {
+      "Previous": {
+        "Name": [],
+        "Id": []
+      },
+      "Time": "2026-09-18T21:34:04.3197516-05:00",
+      "New": {
+        "Name": [],
+        "Id": []
+      },
+      "Event": "FILTERWHEEL-CHANGED"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:34:17.9461336-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:39:31.7315111-05:00"
+    },
+    {
+      "StackCount": 6,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:39:33.8019748-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:39:34.8821755",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "GUIDER-DITHER",
+      "Time": "2026-09-18T21:39:44.3911646-05:00"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:39:44.3968692-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:44:57.445019-05:00"
+    },
+    {
+      "StackCount": 7,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:44:58.5508928-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "Rotation": 0,
+      "Coordinates": {
+        "RA": [],
+        "Dec": [],
+        "RAString": [],
+        "DecString": [],
+        "Epoch": [],
+        "RADegrees": []
+      },
+      "TargetName": "Rotten Fish",
+      "TargetEndTime": "2026-09-19T06:02:37.2910713",
+      "ProjectName": "Broadband Priority",
+      "Time": "2026-09-19T02:45:01.4730113",
+      "Event": "TS-TARGETSTART"
+    },
+    {
+      "Event": "GUIDER-START",
+      "Time": "2026-09-18T21:45:01.4807636-05:00"
+    },
+    {
+      "Event": "IMAGE-SAVE",
+      "Time": "2026-09-18T21:50:13.3822955-05:00"
+    },
+    {
+      "StackCount": 8,
+      "Target": "Rotten Fish",
+      "Time": "2026-09-18T21:50:15.2182519-05:00",
+      "IsMonochrome": true,
+      "Filter": "R",
+      "Event": "STACK-UPDATED"
+    },
+    {
+      "WaitEndTime": "2026-09-18T22:41:25.6513316-05:00",
+      "Time": "2026-09-19T02:50:17.6933649",
+      "Event": "TS-WAITSTART"
+    },
+    {
+      "Event": "GUIDER-STOP",
+      "Time": "2026-09-18T21:50:19.7024646-05:00"
+    },
+    {
+      "Event": "MOUNT-HOMED",
+      "Time": "2026-09-18T21:50:37.1857097-05:00"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-19T03:23:43+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/event-history",
+    "params": {}
+  }
+}

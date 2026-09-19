@@ -1,0 +1,39 @@
+{
+  "Response": [
+    {
+      "ExposureTime": 300,
+      "ImageType": "LIGHT",
+      "Filter": "R",
+      "RmsText": "Tot: 0.21 (0.35\")",
+      "Temperature": 4.9,
+      "CameraName": "Camera",
+      "TargetName": "Rotten Fish",
+      "Gain": 100,
+      "Offset": 50,
+      "Date": "2026-09-18T21:50:13.3822816-05:00",
+      "TelescopeName": "Telescope",
+      "FocalLength": 500,
+      "StDev": 677.9476614526329,
+      "Mean": 854.7942961287843,
+      "Median": 835,
+      "Min": 630,
+      "Max": 65535,
+      "Stars": 4934,
+      "HFR": 1.4297318329845319,
+      "HFRStDev": 0.16848105339579877,
+      "IsBayered": false,
+      "Filename": "frame_567d9822.fits"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-09-19T03:23:43+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/image-history",
+    "params": {}
+  }
+}
