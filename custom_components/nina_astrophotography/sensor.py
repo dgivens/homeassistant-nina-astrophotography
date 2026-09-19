@@ -245,6 +245,22 @@ def _recent_frames(data: NinaData) -> tuple[Mapping[str, Any], ...]:
     )
 
 
+def _recent_lights(data: NinaData) -> tuple[Mapping[str, Any], ...]:
+    """Oldest-first per-light readings for a dashboard's sparklines. Published
+    rather than accumulated in the card, so a page reload keeps the series.
+    """
+    return tuple(
+        {
+            "date": frame.date.isoformat(),
+            "filter": frame.filter_name,
+            "hfr": frame.hfr,
+            "stars": frame.stars,
+            "mean": frame.mean,
+        }
+        for frame in data.session.recent_lights
+    )
+
+
 SESSION: tuple[NinaSensorDescription, ...] = (
     NinaSensorDescription(
         key="session_image_count",
@@ -334,6 +350,7 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         suggested_display_precision=2,
         kind=None,
         value=_frame("hfr"),
+        attributes=lambda data: {"recent_lights": _recent_lights(data)},
     ),
     NinaSensorDescription(
         key="last_image_star_count",
@@ -956,10 +973,10 @@ class NinaSensor(NinaEntity, SensorEntity):
     """One descriptor, read out of the published snapshot."""
 
     entity_description: NinaSensorDescription
-    # `recent_frames` is what a dashboard card reads live off current state;
-    # no history query ever wants it, and it would otherwise write ~3-5 KB
-    # to the recorder on every saved frame for nothing.
-    _unrecorded_attributes = frozenset({"recent_frames"})
+    # Both are what a dashboard card reads live off current state; no history
+    # query ever wants them, and each would otherwise write several KB to the
+    # recorder on every saved frame for nothing.
+    _unrecorded_attributes = frozenset({"recent_frames", "recent_lights"})
 
     def __init__(
         self,

@@ -216,6 +216,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   — the newest frames of any type, bounded, newest first, with the filter
   name and ADU statistics each carries. What the image panel card's strip and
   histogram read, without a fetch of their own.
+- `sensor.<instance>_last_image_hfr` carries a `recent_lights` attribute — the
+  session's newest 60 lights, oldest first, with HFR, star count, mean ADU and
+  filter. The frame statistics card draws its sparklines and HFR trend from
+  it, so they survive a page reload instead of starting empty.
 
 ### Changed
 

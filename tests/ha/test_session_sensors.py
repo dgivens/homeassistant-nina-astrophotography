@@ -90,6 +90,18 @@ async def test_recent_frames_is_every_type_newest_first_and_bounded(
     assert recent[0]["mean"] == pytest.approx(33139.77, abs=0.01)
 
 
+async def test_recent_lights_survive_a_dawn_flat_run(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
+) -> None:
+    """What the frame-stats card draws its sparklines from, so a page reload
+    keeps them: lights only, oldest first, ending on the sensor's own frame."""
+    await advance("dawn_flats")
+    state = hass.states.get(LAST_IMAGE_HFR)
+    recent = state.attributes["recent_lights"]
+    assert len(recent) == 55
+    assert recent[-1]["hfr"] == pytest.approx(float(state.state))
+
+
 async def test_the_session_start_sensor_is_the_most_recent_local_noon(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, entity_registry
 ) -> None:

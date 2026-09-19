@@ -82,6 +82,26 @@ def test_the_last_frame_is_the_last_light_not_the_last_flat(night) -> None:
     assert stats.last_frame.mean == pytest.approx(548.6, rel=0.2)
 
 
+def test_recent_lights_are_every_light_oldest_first(night) -> None:
+    """The night ends in 67 flats; the series a sparkline draws must still end
+    on the last light, not be flushed by them."""
+    stats = fold(night, [], generation="g1")
+    assert len(stats.recent_lights) == 55
+    assert stats.recent_lights[-1] == stats.last_frame
+    assert [f.date for f in stats.recent_lights] == sorted(
+        f.date for f in stats.recent_lights)
+
+
+@pytest.mark.synthetic
+def test_recent_lights_keep_only_the_newest_sixty() -> None:
+    """Fabricates 61 lights a minute apart; the oldest is the one dropped."""
+    start = datetime.fromisoformat("2026-09-03T21:00:00-05:00")
+    lights = [_light(date=start + timedelta(minutes=i), filename=f"f{i}.fits")
+              for i in range(61)]
+    recent = fold(lights, [], generation="g1").recent_lights
+    assert [f.filename for f in recent] == [f"f{i}.fits" for i in range(1, 61)]
+
+
 def test_frames_from_a_previous_generation_are_filtered_not_cleared(night) -> None:
     """A restart is a generation change; clearing races a concurrent poll."""
     stats = fold(night, [], generation="g2")
