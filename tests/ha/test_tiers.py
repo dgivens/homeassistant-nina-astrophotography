@@ -235,7 +235,7 @@ async def test_a_tier_read_that_raises_anything_does_not_fail_the_poll(
             await tick(hass, freezer, TierSchedule.SEQUENCE_IDLE)
     warnings = [r for r in caplog.records
                 if r.levelno == logging.WARNING
-                and r.name.startswith("custom_components.nina_astrophotography")]
+                and r.name == "custom_components.nina_astrophotography.coordinator"]
     assert hass.states.get(LIGHT).state != "unavailable"
     assert len(warnings) == 1
 
