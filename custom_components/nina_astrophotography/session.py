@@ -70,10 +70,13 @@ DEFAULT_AUTOFOCUS_TIMEOUT = 300.0
 # happened.
 _INTERRUPTIONS = frozenset({"SEQUENCE-FINISHED", "MOUNT-PARKED", "IMAGE-SAVE"})
 
+_RECENT_LIGHTS_LIMIT = 60
+"""A dashboard sparkline's width."""
+
 _NOTHING = SessionStats(
     session_start=None, image_count=0, light_count=0, integration_seconds=0.0,
     hfr_mean=None, hfr_best=None, hfr_worst=None, star_count_mean=None,
-    last_frame=None, by_target=(), by_filter=(),
+    last_frame=None, recent_lights=(), by_target=(), by_filter=(),
     autofocus=AutoFocusState(last_finished_at=None, running_since=None, failed=False),
 )
 
@@ -187,6 +190,7 @@ def fold(frames: Iterable[Frame], events: Iterable[NinaEvent],
         star_count_mean=_mean(f.stars for f in lights),
         # session_frames is sorted, so the newest light is the last one.
         last_frame=lights[-1] if lights else None,
+        recent_lights=tuple(lights[-_RECENT_LIGHTS_LIMIT:]),
         by_target=_breakdown(lights, lambda f: f.target_name),
         by_filter=_breakdown(lights, lambda f: f.filter_name),
         autofocus=_autofocus((e for e in kept_events if e.time >= start),

@@ -576,6 +576,9 @@ class SessionStats:
     star_count_mean: float | None
     last_frame: Frame | None
     """The newest LIGHT, never the newest frame."""
+    recent_lights: tuple[Frame, ...]
+    """The newest LIGHTs in the window, bounded, OLDEST first — chart order.
+    Lights only, so a dawn flat run cannot flush them out."""
     by_target: tuple[TargetBreakdown, ...]
     """Sorted by name."""
     by_filter: tuple[TargetBreakdown, ...]

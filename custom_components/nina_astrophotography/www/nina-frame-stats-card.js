@@ -1,8 +1,8 @@
 /**
  * N.I.N.A. Frame Statistics Card
- * Displays live per-frame HFR trend, star count, ADU sparklines and
- * per-filter frame counts, sampled from the last-frame sensors as N.I.N.A.
- * saves each image.
+ * Displays per-frame HFR trend, star count, ADU sparklines and per-filter
+ * frame counts for the session's recent lights, published by the integration
+ * so they survive a page reload.
  *
  * Ships with the integration and registers itself as a dashboard resource —
  * nothing to copy or add under Resources. Add card:
@@ -103,9 +103,6 @@ const STYLE = `
 // at a time, and a shared module would break a card whose neighbour was missed.
 const DEFAULT_PREFIX = "n_i_n_a";
 
-// How many frames the sparklines keep.
-const MAX_SAMPLES = 60;
-
 // Below 3% of the rolling mean the trend is noise. Relative, not absolute:
 // 0.05 px is coarse on a 1.3 px rig and meaningless on a 3.5 px one.
 const TREND_EPSILON = 0.03;
@@ -124,7 +121,6 @@ class NinaFrameStatsCard extends HTMLElement {
     this._stars = [];
     this._adu = [];
     this._filters = [];
-    this._count = null;
   }
 
   setConfig(config) {
@@ -148,33 +144,18 @@ class NinaFrameStatsCard extends HTMLElement {
     return e ? (e.attributes[attr] ?? fallback) : fallback;
   }
 
-  _number(id) {
-    const value = parseFloat(this._state(id));
-    return isNaN(value) ? null : value;
-  }
-
-  // 2.0 publishes the newest frame's statistics rather than a per-frame
-  // history, so the card keeps its own series. The ticker is the session's
-  // LIGHT count, not its frame count: the frame count includes calibration,
-  // while the last-image sensors hold the last LIGHT — so ticking on frames
-  // would push one duplicate of the same light per flat, and a dawn run of 67
-  // flats would flush every real sample out of the window. Ticking on a count
-  // rather than on the HFR itself is what handles two frames running that
-  // report the same HFR. The series lives in the page, so a reload restarts it.
+  // The series is the last-HFR sensor's `recent_lights` attribute (oldest
+  // first, bounded, lights only), re-read on every update so a page reload
+  // keeps it. An unavailable entity carries no attributes at all, so one
+  // failed poll keeps the last series rather than blanking the charts.
   _updateData() {
-    const prefix = this._prefix;
-    const count = parseInt(this._attr(
-      `sensor.${prefix}_session_image_count`, "light_count", ""), 10);
-    if (!Number.isFinite(count) || count === this._count) return;
-    this._count = count;
-
-    this._hfr.push(this._number(`sensor.${prefix}_last_image_hfr`));
-    this._stars.push(this._number(`sensor.${prefix}_last_image_star_count`));
-    this._adu.push(this._number(`sensor.${prefix}_last_image_mean_adu`));
-    this._filters.push(this._state(`sensor.${prefix}_last_image_filter`, null));
-    for (const series of [this._hfr, this._stars, this._adu, this._filters]) {
-      if (series.length > MAX_SAMPLES) series.shift();
-    }
+    const entity = this._hass?.states[`sensor.${this._prefix}_last_image_hfr`];
+    if (entity?.state === "unavailable") return;
+    const lights = entity?.attributes.recent_lights ?? [];
+    this._hfr = lights.map((light) => light.hfr ?? null);
+    this._stars = lights.map((light) => light.stars ?? null);
+    this._adu = lights.map((light) => light.mean ?? null);
+    this._filters = lights.map((light) => light.filter ?? null);
   }
 
   _mean(values) {
