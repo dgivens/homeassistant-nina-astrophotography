@@ -219,7 +219,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - `sensor.<instance>_last_image_hfr` carries a `recent_lights` attribute — the
   session's newest 60 lights, oldest first, with HFR, star count, mean ADU and
   filter. The frame statistics card draws its sparklines and HFR trend from
-  it, so they survive a page reload instead of starting empty.
+  it, so they survive a page reload instead of starting empty. Like the
+  session sensors beside it, the series restarts at the local-noon rollover
+  and when N.I.N.A. restarts.
 
 ### Changed
 

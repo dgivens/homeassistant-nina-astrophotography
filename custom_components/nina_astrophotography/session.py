@@ -71,8 +71,7 @@ DEFAULT_AUTOFOCUS_TIMEOUT = 300.0
 _INTERRUPTIONS = frozenset({"SEQUENCE-FINISHED", "MOUNT-PARKED", "IMAGE-SAVE"})
 
 _RECENT_LIGHTS_LIMIT = 60
-"""A dashboard sparkline's width; the fold already holds the window's lights
-sorted, so this is a slice, not a walk."""
+"""A dashboard sparkline's width."""
 
 _NOTHING = SessionStats(
     session_start=None, image_count=0, light_count=0, integration_seconds=0.0,

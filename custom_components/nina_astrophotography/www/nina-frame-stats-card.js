@@ -144,23 +144,17 @@ class NinaFrameStatsCard extends HTMLElement {
     return e ? (e.attributes[attr] ?? fallback) : fallback;
   }
 
-  _number(id) {
-    const value = parseFloat(this._state(id));
-    return isNaN(value) ? null : value;
-  }
-
-  // The series is the `recent_lights` attribute on the last-HFR sensor —
-  // the session's newest LIGHTs, oldest first and already bounded — read
-  // afresh on every update rather than accumulated here, so a page reload
-  // shows the same sparklines it had. Lights only: a dawn flat run would
-  // otherwise flush every real sample out of the window.
+  // The series is the last-HFR sensor's `recent_lights` attribute (oldest
+  // first, bounded, lights only), re-read on every update so a page reload
+  // keeps it. An unavailable entity carries no attributes at all, so one
+  // failed poll keeps the last series rather than blanking the charts.
   _updateData() {
-    const lights = this._attr(
-      `sensor.${this._prefix}_last_image_hfr`, "recent_lights", []) || [];
-    const reading = (value) => (typeof value === "number" ? value : null);
-    this._hfr = lights.map((light) => reading(light.hfr));
-    this._stars = lights.map((light) => reading(light.stars));
-    this._adu = lights.map((light) => reading(light.mean));
+    const entity = this._hass?.states[`sensor.${this._prefix}_last_image_hfr`];
+    if (entity?.state === "unavailable") return;
+    const lights = entity?.attributes.recent_lights ?? [];
+    this._hfr = lights.map((light) => light.hfr ?? null);
+    this._stars = lights.map((light) => light.stars ?? null);
+    this._adu = lights.map((light) => light.mean ?? null);
     this._filters = lights.map((light) => light.filter ?? null);
   }
 
