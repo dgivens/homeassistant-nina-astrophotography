@@ -8,7 +8,7 @@ a JPEG magic number, because the pixels are not this platform's business.
 from datetime import datetime
 
 import pytest
-from helpers import failure, ok
+from helpers import FakeResponse, failure, ok
 from homeassistant.components.image import async_get_image
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -16,11 +16,20 @@ from homeassistant.exceptions import HomeAssistantError
 LAST_FRAME = "image.n_i_n_a_last_frame"
 LIVESTACK = "image.n_i_n_a_livestack"
 
+# The route the entity asks for: N.I.N.A. counts `/image/{index}` oldest-first,
+# so the newest of the dawn rig's 122 frames is index 121, not 0.
+NEWEST_ROUTE = "/image/121"
+
 
 def _params(rig, fragment: str) -> dict | None:
-    """The parameters of the last request whose URL carries `fragment`."""
+    """The parameters of the last request whose URL ENDS WITH `fragment`.
+
+    Not `in`: `/image/1` is a substring of `/image/121`, and a fragment match
+    would silently pass against the wrong request.
+    """
     return next(
-        (params for url, params in reversed(rig.requests) if fragment in url), None
+        (params for url, params in reversed(rig.requests) if url.endswith(fragment)),
+        None,
     )
 
 
@@ -30,7 +39,19 @@ async def test_the_last_frame_serves_the_stretched_frame(
     """autoPrepare, not useAutoStretch: an unknown parameter binds nothing and
     is not rejected, so the request succeeds and returns the linear frame."""
     assert (await async_get_image(hass, LAST_FRAME)).content_type == "image/jpeg"
-    assert _params(rig, "/image/0")["autoPrepare"] == "true"
+    assert _params(rig, NEWEST_ROUTE)["autoPrepare"] == "true"
+
+
+async def test_the_newest_index_is_read_fresh_not_cached_from_the_fold(
+    hass: HomeAssistant, loaded_entry, rig
+) -> None:
+    """The fold still holds 122 frames; a count read from it rather than from
+    N.I.N.A. would ask for 121 and miss a frame saved since the last poll."""
+    rig.respond("/image-history?count=true", ok(5))
+    rig.respond("/image/4", FakeResponse(b"\xff\xd8\xff\xe0 not a frame", content_type="image/jpeg"))
+    await async_get_image(hass, LAST_FRAME)
+    assert _params(rig, "/image/4") is not None
+    assert _params(rig, NEWEST_ROUTE) is None
 
 
 @pytest.mark.parametrize(
@@ -44,7 +65,7 @@ async def test_an_envelope_arriving_at_200_is_never_served_as_an_image(
     """With stream=true a real image is image/jpeg or image/png; both of these
     arrive as 200 carrying the JSON envelope, and neither may reach a dashboard
     as image bytes."""
-    rig.respond("/image/0", envelope)
+    rig.respond(NEWEST_ROUTE, envelope)
     with pytest.raises(HomeAssistantError):
         await async_get_image(hass, LAST_FRAME)
 
@@ -57,8 +78,8 @@ async def test_a_real_failure_is_raised_naming_the_route_that_failed(
     nothing naming N.I.N.A., the route or the reason. `stream` no longer
     binding is exactly this shape: the route answers a success envelope, and
     the bytes never come."""
-    rig.respond("/image/0", ok({"Image": "<base64>"}))
-    with pytest.raises(HomeAssistantError, match="/image/0"):
+    rig.respond(NEWEST_ROUTE, ok({"Image": "<base64>"}))
+    with pytest.raises(HomeAssistantError, match=NEWEST_ROUTE):
         await async_get_image(hass, LAST_FRAME)
 
 
@@ -79,8 +100,8 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_the_rig_holds(
 ) -> None:
     """Never `utcnow()`, which reports the moment the integration loaded as the
     moment a frame was captured — and never the session window either: the
-    rig's history does not roll over at local noon, so what `/image/0` renders
-    after the rollover is still last night's frame."""
+    rig's history does not roll over at local noon, so what `image.last_frame`
+    renders after the rollover is still last night's frame."""
     frames = nina_responses("dawn_image_history_with_flats.json")
     newest = max(frame["Date"] for frame in frames)
     assert hass.states.get(LAST_FRAME).state == datetime.fromisoformat(newest).isoformat()
@@ -123,8 +144,9 @@ async def test_the_livestack_image_is_absent_until_a_stack_has_updated(
 async def test_both_images_hang_off_the_hub(
     hass: HomeAssistant, loaded_entry, entity_registry
 ) -> None:
-    """Neither is equipment: the stack is the plugin's and `/image/0` indexes
-    the rig's history, so a camera disconnecting must not take them down.
+    """Neither is equipment: the stack is the plugin's and `last_frame` indexes
+    the rig's history by its live count, so a camera disconnecting must not
+    take them down.
 
     Compared against a button already known to be on the hub, which is what the
     entity ids promise and what `docs/2.0-renames.md` records.

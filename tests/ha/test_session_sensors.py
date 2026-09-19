@@ -81,10 +81,9 @@ async def test_recent_frames_is_every_type_newest_first_and_bounded(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
     """Unlike the sensor's own LIGHT-only state, `recent_frames` is every type
-    this process saved — what `/image/{index}` actually serves at each index,
-    which a dashboard's strip must label correctly whatever it lands on. The
-    newest frame of the night is a flat, not a light (see the ignores-
-    calibration test above)."""
+    this process saved, which a dashboard's strip must label correctly
+    whatever it lands on. The newest frame of the night is a flat, not a
+    light (see the ignores-calibration test above)."""
     await advance("dawn_flats")
     recent = hass.states.get(LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
     assert len(recent) == 20

@@ -266,6 +266,10 @@ class NinaClientV2:
                               auto_prepare: bool = True) -> bytes:
         """Fetch a rendered frame.
 
+        `index` counts OLDEST-first, confirmed against a live rig: 0 is the
+        first frame the rig ever saved, not the newest. The newest is always
+        `get_image_history_count() - 1`; callers translate, this does not.
+
         autoPrepare, not useAutoStretch: an unknown parameter binds nothing and
         is not rejected, so the request succeeds and returns the linear frame.
         """
