@@ -4,13 +4,11 @@
  * V with its error bars, the fitted curves over it, the minima each fit found,
  * and where the focuser was actually left.
  *
- * Installation:
- *   1. Copy to /config/www/nina-autofocus-card.js
- *   2. Add resource: /local/nina-autofocus-card.js (JavaScript Module)
- *   3. Add card:
- *        type: custom:nina-autofocus-card
- *        prefix: n_i_n_a        # the slugified instance name your entities carry
- *        temperature_delta: 2   # °C of drift since the run worth flagging
+ * Ships with the integration and registers itself as a dashboard resource —
+ * nothing to copy or add under Resources. Add card:
+ *   type: custom:nina-autofocus-card
+ *   prefix: n_i_n_a        # the slugified instance name your entities carry
+ *   temperature_delta: 2   # °C of drift since the run worth flagging
  */
 
 const VERSION = "2.0.0";
@@ -809,7 +807,11 @@ class NinaAutofocusCard extends HTMLElement {
   static getStubConfig() { return {}; }
 }
 
-customElements.define("nina-autofocus-card", NinaAutofocusCard);
+// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
+// defining the same tag would otherwise throw and abort this whole module.
+if (!customElements.get("nina-autofocus-card")) {
+  customElements.define("nina-autofocus-card", NinaAutofocusCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -817,6 +819,7 @@ window.customCards.push({
   name: "N.I.N.A. Autofocus Card",
   description: "The last autofocus V-curve with its fits, minima and resulting focus position.",
   preview: true,
+  documentationURL: "https://github.com/dgivens/homeassistant-nina-astrophotography#lovelace-cards",
 });
 
 console.info(

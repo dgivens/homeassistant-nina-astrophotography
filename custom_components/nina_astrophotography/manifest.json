@@ -1,6 +1,7 @@
 {
   "domain": "nina_astrophotography",
   "name": "N.I.N.A. Astrophotography",
+  "after_dependencies": ["lovelace"],
   "codeowners": [
     "@dgivens"
   ],

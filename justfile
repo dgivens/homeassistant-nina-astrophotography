@@ -23,6 +23,16 @@ test-ha:
 
 test-all: test test-ha
 
+# Pyright against one file or directory, inside the synced test-ha venv (it's
+# what has `homeassistant` installed) — `--with pyright` adds it just for this
+# run rather than making it a project dependency. No whole-repo target: most
+# of the codebase is not pyright-clean (HA's own Entity base classes trip
+# reportIncompatibleVariableOverride on every cached_property override), and
+# CLAUDE.md already disclaims a configured linter. Point this at whatever
+# you're actively touching, e.g. `just typecheck custom_components/nina_astrophotography/frontend.py`.
+typecheck path:
+    uv run --group test-ha --with pyright pyright {{ path }}
+
 # The coverage floors, exactly as CI computes them.
 coverage:
     uv run coverage run -m pytest tests/unit -p no:homeassistant -q
@@ -44,7 +54,8 @@ clean:
     rm -rf .pytest_cache .hypothesis
     rm -f .coverage .coverage.* coverage.json
 
-# Rsync the integration to a running Home Assistant instance for manual testing.
+# Rsync the integration, including its Lovelace cards, to a running Home
+# Assistant instance for manual testing.
 deploy:
     # --delete is safe here: the target directory belongs entirely to this integration.
     rsync -rv --delete \
@@ -53,15 +64,10 @@ deploy:
         {{ ha_host }}:{{ ha_config }}/custom_components/nina_astrophotography/
     @echo "Deployed. Restart Home Assistant (or reload the integration) to pick it up."
 
-# Sync the Lovelace cards.
-deploy-www:
-    # No --delete: /config/www/ also holds files from other integrations.
-    rsync -v www/*.js {{ ha_host }}:{{ ha_config }}/www/
-
 # Sync the automation blueprints.
 deploy-blueprints:
     # HA filed these under the importing GitHub user's folder, not the repo name.
     rsync -v blueprints/automation/nina_astrophotography/*.yaml \
         {{ ha_host }}:{{ ha_config }}/blueprints/automation/dgivens/
 
-deploy-all: deploy deploy-www deploy-blueprints
+deploy-all: deploy deploy-blueprints

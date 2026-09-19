@@ -2,15 +2,11 @@
  * N.I.N.A. Observatory Card
  * A custom Lovelace card providing a full astrophotography session dashboard.
  *
- * Installation:
- *   1. Copy this file to /config/www/nina-observatory-card.js
- *   2. In Lovelace resources, add:
- *        URL:  /local/nina-observatory-card.js
- *        Type: JavaScript Module
- *   3. Add the card to a dashboard:
- *        type: custom:nina-observatory-card
- *        prefix: n_i_n_a     # the slugified instance name your entities carry
- *        device_id: abc123   # the rig the buttons act on; needed for two rigs
+ * Ships with the integration and registers itself as a dashboard resource —
+ * nothing to copy or add under Resources. Add the card to a dashboard:
+ *   type: custom:nina-observatory-card
+ *   prefix: n_i_n_a     # the slugified instance name your entities carry
+ *   device_id: abc123   # the rig the buttons act on; needed for two rigs
  */
 
 const VERSION = "2.0.0";
@@ -597,7 +593,11 @@ function imgStat(label, value) {
 
 // ─── Register ────────────────────────────────────────────────────────────────
 
-customElements.define("nina-observatory-card", NinaObservatoryCard);
+// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
+// defining the same tag would otherwise throw and abort this whole module.
+if (!customElements.get("nina-observatory-card")) {
+  customElements.define("nina-observatory-card", NinaObservatoryCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -605,7 +605,7 @@ window.customCards.push({
   name: "N.I.N.A. Observatory Card",
   description: "Full session dashboard for N.I.N.A. astrophotography software.",
   preview: true,
-  documentationURL: "https://github.com/christian-photo/ninaAPI",
+  documentationURL: "https://github.com/dgivens/homeassistant-nina-astrophotography#lovelace-cards",
 });
 
 console.info(

@@ -71,11 +71,13 @@ custom_components/nina_astrophotography/
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
+  www/                6 Lovelace cards; each builds its entity ids from a
+                      configured instance prefix. `frontend.py` serves them
+                      and self-registers each as a Lovelace resource —
+                      nothing for a user to copy into `/config/www/`
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
-www/                                           6 Lovelace cards; each builds its
-                      entity ids from a configured instance prefix
 tests/unit/                                    HA-free; tests/ha/ under PHACC
 tests/scenarios/                               FakeRig — see its README
 ```

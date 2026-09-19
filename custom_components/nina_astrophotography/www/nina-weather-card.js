@@ -5,10 +5,8 @@
  * Works with any ASCOM ObservingConditions driver or weather station
  * connected in N.I.N.A. (OpenWeatherMap, Pegasus UPB, AAG CloudWatcher, etc.)
  *
- * Installation:
- *   1. Copy to /config/www/nina-weather-card.js
- *   2. Add resource: /local/nina-weather-card.js (JavaScript Module)
- *   3. Add card:  type: custom:nina-weather-card
+ * Ships with the integration and registers itself as a dashboard resource —
+ * nothing to copy or add under Resources. Add card:  type: custom:nina-weather-card
  */
 
 const VERSION = "2.0.0";
@@ -447,7 +445,11 @@ class NinaWeatherCard extends HTMLElement {
   static getStubConfig() { return {}; }
 }
 
-customElements.define("nina-weather-card", NinaWeatherCard);
+// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
+// defining the same tag would otherwise throw and abort this whole module.
+if (!customElements.get("nina-weather-card")) {
+  customElements.define("nina-weather-card", NinaWeatherCard);
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
@@ -455,6 +457,7 @@ window.customCards.push({
   name: "N.I.N.A. Weather & Safety Card",
   description: "Live weather station readings and safety monitor status from N.I.N.A.",
   preview: true,
+  documentationURL: "https://github.com/dgivens/homeassistant-nina-astrophotography#lovelace-cards",
 });
 
 console.info(

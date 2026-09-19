@@ -60,8 +60,11 @@ Add this repository as a custom repository in HACS and download it from there.
 ### Removing it
 
 **Settings → Devices & Services → N.I.N.A. Astrophotography → ⋮ → Delete.**
-That removes the entry, its devices and its entities. If you copied the Lovelace
-cards into `www/`, delete those files and their dashboard resources too.
+That removes the entry, its devices and its entities. It does not remove the
+Lovelace resources the integration registered (see [Lovelace
+cards](#lovelace-cards)) — Home Assistant has no way to unregister those on
+uninstall, so remove them yourself under **Settings → Dashboards → ⋮ →
+Resources** if you're not reinstalling.
 
 ---
 
@@ -630,9 +633,33 @@ a two-rig install and need no editing.
 
 ## Lovelace cards
 
-Copy the files from `www/` into your `/config/www/` folder and register each as
-a dashboard resource (**Settings → Dashboards → ⋮ → Resources**, type
-*JavaScript Module*, URL `/local/<file>.js`).
+The integration ships all six cards and registers each as a dashboard resource
+itself the first time it loads — nothing to copy into `/config/www/` and
+nothing to add under Resources. Just add a card with the matching `type:`.
+
+**Unless your dashboards are YAML-managed** (`lovelace: resource_mode: yaml`,
+or the older `mode: yaml`, in `configuration.yaml`) — Home Assistant won't let
+anything but you write to that file, so the integration logs the six entries
+and you add them yourself under the `resources:` key:
+
+```yaml
+lovelace:
+  resources:
+    - url: "/nina_astrophotography_static/nina-observatory-card.js"
+      type: module
+    # …and the other five, same prefix, one per card file in www/
+```
+
+Set `resource_mode: storage` alongside `mode: yaml` instead to keep YAML
+dashboards while letting resources register automatically.
+
+**Upgrading from 1.4.5?** Delete the `/local/nina-*.js` resources you added by
+hand under Resources — the file, the entry, or both is fine, but leave the
+entry and its card competes with the integration's own copy to define the
+same custom element on every page load; whichever loses that race is the one
+that silently doesn't work. Each card logs `NINA-…-CARD vX.Y.Z` to the browser
+console on load — seeing `v1.4.5` there means a stale resource is still
+winning. Hard-reload the dashboard after removing it.
 
 ```yaml
 type: custom:nina-observatory-card
