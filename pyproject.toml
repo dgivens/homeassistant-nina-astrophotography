@@ -51,6 +51,10 @@ dev = [
     # Runs scripts/check_fixtures.py on every staged fixture: install the hook
     # once with `uv run --group dev pre-commit install`.
     "pre-commit>=4.0",
+    # Pinned for the same reason as the generator: a new pyright release adds
+    # checks, and an unpinned one fails CI on a day nothing here changed. The
+    # nodejs extra bundles Node rather than downloading it on first run.
+    "pyright[nodejs]==1.1.414",
 ]
 
 [tool.pytest.ini_options]
@@ -65,6 +69,18 @@ markers = [
     "slow: shells out to a generator; deselect with -m 'not slow'",
     "synthetic: wire data constructed for a branch the corpus cannot show",
 ]
+
+[tool.pyright]
+# tests/ is not gated yet: most of its errors are `hass.states.get(...)` read
+# without a None check.
+include = ["custom_components", "scripts"]
+# The scripts import tests/redaction.py through a sys.path insert.
+extraPaths = ["tests"]
+pythonVersion = "3.14"
+# Home Assistant declares `entity_description`, `available`, `is_on` and the
+# rest as cached properties on its base classes; every ordinary override of one
+# trips this rule.
+reportIncompatibleVariableOverride = false
 
 [tool.coverage.run]
 branch = true

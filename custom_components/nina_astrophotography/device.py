@@ -24,7 +24,7 @@ not created leaves the entity platform to create a nameless device.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import area_registry as ar
@@ -152,10 +152,9 @@ def hub_device_info(
         manufacturer=MANUFACTURER,
         model="Advanced API",
         entry_type=DeviceEntryType.SERVICE,
-        **_present(
-            sw_version=version.nina_version,
-            configuration_url=configuration_url,
-        ),
+    ) | _present(
+        sw_version=version.nina_version,
+        configuration_url=configuration_url,
     )
 
 
@@ -184,11 +183,10 @@ def child_device_info(
         name=f"{instance_name} {KINDS[kind]}",
         manufacturer=MANUFACTURER,
         via_device_id=via_device_id,
-        **_present(
-            model=meta.name if meta else None,
-            sw_version=meta.driver_version if meta else None,
-            suggested_area=suggested_area,
-        ),
+    ) | _present(
+        model=meta.name if meta else None,
+        sw_version=meta.driver_version if meta else None,
+        suggested_area=suggested_area,
     )
 
 
@@ -252,6 +250,12 @@ def kind_of(entry_id: str, device: dr.DeviceEntry) -> str | None:
     raise LookupError(device.identifiers)
 
 
-def _present(**fields: str | None) -> dict[str, str]:
-    """The fields that carry a value, so a missing one never blanks the registry."""
-    return {name: value for name, value in fields.items() if value is not None}
+def _present(**fields: str | None) -> DeviceInfo:
+    """The fields that carry a value, so a missing one never blanks the registry.
+
+    Only for `DeviceInfo`'s string-valued keys: the cast checks none of them.
+    """
+    return cast(
+        DeviceInfo,
+        {name: value for name, value in fields.items() if value is not None},
+    )

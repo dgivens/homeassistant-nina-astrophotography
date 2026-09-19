@@ -58,6 +58,19 @@ jobs:
       - run: uv run coverage json
       - run: uv run python scripts/coverage_floors.py
 
+  typecheck:
+    name: Pyright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      # test-ha is what installs `homeassistant`; the paths and rules checked
+      # are [tool.pyright] in pyproject.toml.
+      - run: uv sync --group dev --group test-ha
+      - run: uv run --group dev --group test-ha pyright
+
   fixtures:
     name: Fixture redaction
     runs-on: ubuntu-latest

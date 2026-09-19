@@ -156,7 +156,9 @@ class NinaEventStream:
                 async with self._session.ws_connect(
                     self._url,
                     heartbeat=30,
-                    timeout=aiohttp.ClientWSTimeout(ws_receive=60),
+                    # An attrs class declared with `attr.ib(type=...)`, which
+                    # pyright does not read as keyword parameters.
+                    timeout=aiohttp.ClientWSTimeout(ws_receive=60),  # pyright: ignore[reportCallIssue]
                 ) as ws:
                     self._ws = ws
                     delay = _RECONNECT_DELAY  # reset backoff on a live connection

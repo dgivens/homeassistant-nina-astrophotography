@@ -23,6 +23,7 @@ uv run coverage combine && uv run coverage json
 uv run python scripts/coverage_floors.py
 
 uv run python scripts/check_fixtures.py tests/fixtures/*.json   # the redaction guard
+uv run --group dev --group test-ha pyright                      # custom_components/ and scripts/
 ```
 
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
@@ -42,8 +43,12 @@ Dependencies and pytest config live in `pyproject.toml`; there is no
 fast, and the modules it covers have no `homeassistant` imports.
 
 `pythonpath = ["tests", "."]` means helpers import as `from helpers import ...`.
-CI is `.github/workflows/ci.yml` (both suites, coverage floors, fixture
-redaction, hassfest, HACS); no linter or formatter is configured.
+CI is `.github/workflows/ci.yml` (both suites, coverage floors, pyright,
+fixture redaction, hassfest, HACS); no linter or formatter is configured.
+Pyright's scope and rules are `[tool.pyright]` in `pyproject.toml`: it gates
+`custom_components/` and `scripts/`, not `tests/` yet, and turns off
+`reportIncompatibleVariableOverride`, which every override of a Home Assistant
+entity property trips.
 
 ## Layout (current)
 
