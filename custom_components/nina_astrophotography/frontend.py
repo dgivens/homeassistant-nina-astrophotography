@@ -9,7 +9,10 @@ from pathlib import Path
 
 from homeassistant.components.http.server import StaticPathConfig
 from homeassistant.components.lovelace.const import CONF_RESOURCE_TYPE_WS, LOVELACE_DATA
-from homeassistant.components.lovelace.resources import ResourceYAMLCollection
+from homeassistant.components.lovelace.resources import (
+    ResourceStorageCollection,
+    ResourceYAMLCollection,
+)
 from homeassistant.const import CONF_ID, CONF_URL
 from homeassistant.core import HomeAssistant
 
@@ -30,6 +33,25 @@ CARD_FILENAMES = (
     "nina-sky-map-card.js",
     "nina-weather-card.js",
 )
+CARD_URLS = tuple(f"{URL_PREFIX}/{filename}" for filename in CARD_FILENAMES)
+
+# `hass.data` key: set when a config entry's removal deletes the registered
+# resources, so the next entry to set up knows to redo it. `async_setup` only
+# runs once per Home Assistant process — a rig removed and then re-added
+# without a restart would otherwise never see its cards registered again,
+# since the domain is already marked set up and `async_setup` is not re-run.
+_RESOURCES_REMOVED = "nina_astrophotography_frontend_resources_removed"
+
+
+async def _async_ensure_loaded(resources: ResourceStorageCollection) -> None:
+    """A storage collection answers `async_items()` empty until it has read
+    its store, which would make every card look unregistered — duplicating
+    them on registration, or hiding them from removal — each restart. Home
+    Assistant's own ensure-loaded step is private.
+    """
+    if not resources.loaded:
+        await resources.async_load()
+        resources.loaded = True
 
 
 async def async_register_frontend_resources(hass: HomeAssistant) -> None:
@@ -72,13 +94,12 @@ async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
         )
         return
     resources = lovelace_data.resources
-    card_urls = [f"{URL_PREFIX}/{filename}" for filename in CARD_FILENAMES]
 
     # Checked, and returned, before anything storage-only: a YAML collection
     # has no `async_load` to narrow to below it.
     if isinstance(resources, ResourceYAMLCollection):
         registered = {item[CONF_URL] for item in resources.async_items()}
-        if missing := [url for url in card_urls if url not in registered]:
+        if missing := [url for url in CARD_URLS if url not in registered]:
             _LOGGER.warning(
                 "Lovelace resources are managed through YAML "
                 "(`lovelace: mode: yaml` in configuration.yaml), so the "
@@ -90,15 +111,10 @@ async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
             )
         return
 
-    # A storage collection answers `async_items()` empty until it has read its
-    # store, which would make every card look unregistered and duplicate the
-    # lot on each restart. Home Assistant's own ensure-loaded step is private.
-    if not resources.loaded:
-        await resources.async_load()
-        resources.loaded = True
+    await _async_ensure_loaded(resources)
 
     registered = {item[CONF_URL] for item in resources.async_items()}
-    for url in card_urls:
+    for url in CARD_URLS:
         if url in registered:
             continue
         await resources.async_create_item(
@@ -135,11 +151,18 @@ async def _async_unregister_frontend_resources(hass: HomeAssistant) -> None:
     if isinstance(resources, ResourceYAMLCollection):
         return
 
-    if not resources.loaded:
-        await resources.async_load()
-        resources.loaded = True
+    await _async_ensure_loaded(resources)
 
-    card_urls = {f"{URL_PREFIX}/{filename}" for filename in CARD_FILENAMES}
     for item in resources.async_items():
-        if item[CONF_URL] in card_urls:
+        if item[CONF_URL] in CARD_URLS:
             await resources.async_delete_item(item[CONF_ID])
+    hass.data[_RESOURCES_REMOVED] = True
+
+
+async def async_ensure_frontend_resources(hass: HomeAssistant) -> None:
+    """Re-register the bundled cards if a previous entry's removal deleted
+    them, so a rig removed and re-added without a restart still gets its
+    dashboard cards back. A no-op the rest of the time.
+    """
+    if hass.data.pop(_RESOURCES_REMOVED, False):
+        await async_register_frontend_resources(hass)

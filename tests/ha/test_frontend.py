@@ -15,12 +15,12 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
 from custom_components.nina_astrophotography.frontend import (
     CARD_FILENAMES,
+    CARD_URLS,
     URL_PREFIX,
     WWW_DIR,
     async_register_frontend_resources,
 )
 
-CARD_URLS = {f"{URL_PREFIX}/{filename}" for filename in CARD_FILENAMES}
 FRONTEND_LOGGER = "custom_components.nina_astrophotography.frontend"
 
 
@@ -32,6 +32,17 @@ async def lovelace_entry(hass, config_entry, nina_responses) -> None:
     ordering `after_dependencies` buys us on a real instance.
     """
     assert await async_setup_component(hass, "lovelace", {})
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+
+@pytest.fixture
+async def yaml_lovelace_entry(hass, config_entry, nina_responses) -> None:
+    """The entry set up on an instance whose dashboards are YAML-managed."""
+    assert await async_setup_component(
+        hass, "lovelace", {"lovelace": {"resource_mode": "yaml", "resources": []}}
+    )
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
@@ -92,7 +103,7 @@ async def test_a_registration_failure_does_not_sink_the_integration(
 async def test_each_card_is_registered_as_a_lovelace_resource(
     hass, lovelace_entry
 ) -> None:
-    assert set(_resource_urls(hass)) == CARD_URLS
+    assert set(_resource_urls(hass)) == set(CARD_URLS)
 
 
 async def test_registering_twice_does_not_duplicate_resources(
@@ -142,6 +153,10 @@ async def test_yaml_managed_resources_are_left_to_the_operator(
 ) -> None:
     """A YAML-mode collection has no create: the resources live in the
     operator's file, so the cards are named in one warning instead.
+
+    Set up inline rather than through `yaml_lovelace_entry`: `caplog` has to
+    be active before setup runs, and a fixture dependency executes before the
+    test body regardless of parameter order.
     """
     assert await async_setup_component(
         hass, "lovelace", {"lovelace": {"resource_mode": "yaml", "resources": []}}
@@ -173,7 +188,7 @@ def test_every_shipped_card_file_is_in_card_filenames() -> None:
 async def test_removing_the_last_entry_deletes_its_resources(
     hass, config_entry, lovelace_entry
 ) -> None:
-    assert set(_resource_urls(hass)) == CARD_URLS
+    assert set(_resource_urls(hass)) == set(CARD_URLS)
 
     await hass.config_entries.async_remove(config_entry.entry_id)
     await hass.async_block_till_done()
@@ -193,7 +208,7 @@ async def test_removing_the_entry_does_not_crash_when_lovelace_was_never_set_up(
 
 
 async def test_removing_one_of_two_entries_keeps_the_resources(
-    hass, config_entry, rig, nina_responses
+    hass, config_entry, nina_responses
 ) -> None:
     """A multi-rig install shouldn't lose its cards just because one rig was
     uninstalled — only the last entry going should take the resources with it.
@@ -212,11 +227,11 @@ async def test_removing_one_of_two_entries_keeps_the_resources(
     second_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(second_entry.entry_id)
     await hass.async_block_till_done()
-    assert set(_resource_urls(hass)) == CARD_URLS
+    assert set(_resource_urls(hass)) == set(CARD_URLS)
 
     await hass.config_entries.async_remove(config_entry.entry_id)
     await hass.async_block_till_done()
-    assert set(_resource_urls(hass)) == CARD_URLS
+    assert set(_resource_urls(hass)) == set(CARD_URLS)
 
     await hass.config_entries.async_remove(second_entry.entry_id)
     await hass.async_block_till_done()
@@ -224,20 +239,38 @@ async def test_removing_one_of_two_entries_keeps_the_resources(
 
 
 async def test_removing_the_entry_leaves_yaml_managed_resources_alone(
-    hass, config_entry, nina_responses
+    hass, config_entry, yaml_lovelace_entry
 ) -> None:
     """A YAML collection has no delete, mirroring the registration side."""
-    assert await async_setup_component(
-        hass, "lovelace", {"lovelace": {"resource_mode": "yaml", "resources": []}}
-    )
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
-
     await hass.config_entries.async_remove(config_entry.entry_id)
     await hass.async_block_till_done()
 
     assert hass.config_entries.async_entries(DOMAIN) == []
+
+
+async def test_re_adding_after_the_last_entry_was_removed_reregisters_resources(
+    hass, config_entry, lovelace_entry
+) -> None:
+    """`async_setup` only runs once per Home Assistant process — a rig
+    removed and then re-added without a restart must still get its cards
+    back, or every card silently 404s until the next restart.
+    """
+    await hass.config_entries.async_remove(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert _resource_urls(hass) == []
+
+    second_entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="Re-added Rig",
+        data={CONF_HOST: "nina.local", CONF_PORT: 1888},
+        unique_id="nina.local:1888",
+        entry_id="01JTESTENTRY0000000000002",
+    )
+    second_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(second_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert set(_resource_urls(hass)) == set(CARD_URLS)
 
 
 async def test_a_removal_failure_does_not_block_entry_removal(

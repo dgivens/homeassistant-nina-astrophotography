@@ -74,6 +74,7 @@ from .const import (
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 from .device import async_sync_devices, kind_of
 from .frontend import (
+    async_ensure_frontend_resources,
     async_register_frontend_resources,
     async_unregister_frontend_resources,
 )
@@ -109,6 +110,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
     """Set up N.I.N.A. from a config entry."""
+    # A no-op unless a previous entry's removal deleted the Lovelace cards:
+    # `async_setup` runs the normal registration once per process, which a
+    # rig removed and re-added without a restart would otherwise miss.
+    await async_ensure_frontend_resources(hass)
+
     host = entry.data[CONF_HOST]
     port = entry.data.get(CONF_PORT, DEFAULT_PORT)
     poll_interval = entry.options.get(
