@@ -81,6 +81,7 @@ sensor.n_i_n_a_session_image_count
 sensor.n_i_n_a_session_integration_time
 sensor.n_i_n_a_session_start
 sensor.n_i_n_a_session_worst_hfr
+sensor.n_i_n_a_site_latitude
 sensor.n_i_n_a_wait_ends_at
 sensor.n_i_n_a_weather_dew_point
 sensor.n_i_n_a_weather_humidity
