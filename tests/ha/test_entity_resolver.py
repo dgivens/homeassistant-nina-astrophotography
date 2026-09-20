@@ -112,6 +112,11 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
         ("sensor", "sequence_progress"): "ships disabled",
     },
     "nina-sky-map-card.js": {},
+    "nina-autofocus-card.js": {
+        # Diagnostic and disabled by default, and the card only reads it when a
+        # report carried no fits to take the worst R² from.
+        ("sensor", "autofocus_r_squared"): "ships disabled",
+    },
 }
 
 RESOLVING = resolving_cards()
