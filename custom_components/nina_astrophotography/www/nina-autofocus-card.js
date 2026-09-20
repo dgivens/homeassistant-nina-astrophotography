@@ -264,7 +264,7 @@ class NinaAutofocusCard extends HTMLElement {
   // `slug` is the entity-id suffix — the device name plus the entity name — so
   // it is not always the key, and on this card it usually is not: the focuser
   // device supplies the leading "focuser", which the autofocus keys do not
-  // carry. Ten of the twelve reads below therefore pass one.
+  // carry. Most reads below therefore pass one.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -347,8 +347,7 @@ class NinaAutofocusCard extends HTMLElement {
       threshold: Number.isFinite(threshold) ? threshold : null,
       position: this._number(
         this._eid("sensor", "autofocus_position", "focuser_autofocus_position")),
-      hfr: this._number(
-        this._eid("sensor", "autofocus_hfr", "focuser_autofocus_hfr")),
+      hfr: this._number(this._eid("sensor", "autofocus_hfr", "focuser_autofocus_hfr")),
       fittedHfr: whole && isHfr
         ? fitted.reduce((total, value) => total + value, 0) / fitted.length
         : null,
@@ -357,8 +356,9 @@ class NinaAutofocusCard extends HTMLElement {
       // sensor is only a fallback for a report that carried no fits at all —
       // R² comes off `RSquares` whether or not the equation string parsed —
       // and it ships disabled, so on a stock install `fits` is the only source.
-      // Disabled also means the registry payload omits it, so this is the one
-      // read here that can never resolve and always takes the prefix path.
+      // Disabled also means Home Assistant leaves it out of the registry a
+      // dashboard sees, so this read has nothing to resolve on and takes the
+      // prefix path.
       worstSquare: worst ? worst.r_squared : this._number(
         this._eid("sensor", "autofocus_r_squared", "focuser_autofocus_r2")),
       worstFit: worst ? pretty(worst.name) : null,
@@ -366,16 +366,14 @@ class NinaAutofocusCard extends HTMLElement {
         this._eid("sensor", "autofocus_starting_position", "focuser_autofocus_starting_position")),
       startHfr: this._number(
         this._eid("sensor", "autofocus_starting_hfr", "focuser_autofocus_starting_hfr")),
-      filter: this._state(
-        this._eid("sensor", "autofocus_filter", "focuser_autofocus_filter")),
+      filter: this._state(this._eid("sensor", "autofocus_filter", "focuser_autofocus_filter")),
       duration: this._number(
         this._eid("sensor", "autofocus_duration", "focuser_autofocus_duration")),
       temperature: at,
       nowTemperature: temperature,
       // The number domain and not the sensor one: the focuser position exists
       // as both, and the sensor is the diagnostic one, disabled by default.
-      // The observatory card reads the same number for the same reason — and
-      // it is why the resolved map is keyed on the domain as well as the key.
+      // The observatory card reads the same number for the same reason.
       nowPosition: this._number(this._eid("number", "focuser_position")),
       drift: Number.isFinite(at) && Number.isFinite(temperature)
         ? temperature - at : null,
