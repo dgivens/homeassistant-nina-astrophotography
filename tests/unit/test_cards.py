@@ -13,7 +13,6 @@ templating the configured prefix onto a suffix, or by asking the registry for a
 `translation_key` (`_eid`, `www/nina-entity-resolver.js`).
 """
 
-import ast
 from functools import cache
 import json
 from pathlib import Path
@@ -89,22 +88,25 @@ def test_no_card_reads_an_entity_that_2_0_does_not_create(card: Path) -> None:
 
 @cache
 def _translation_keys(domain: str) -> frozenset[str]:
-    """Every `translation_key` a platform's descriptor table sets literally.
+    """Every `translation_key` this domain has a name for.
 
-    Parsed rather than imported, to keep this suite free of Home Assistant. The
-    switch-device channels are absent by construction — they take their names
-    from the driver at runtime — so a card cannot resolve one of those.
+    Read from `translations/en.json` rather than parsed out of the descriptor
+    tables. Reading the tables looks more direct and is wrong: the weather
+    channels are built by a `_weather(key, ...)` factory that passes
+    `translation_key=key`, so the key is a parameter and not a literal — an AST
+    walk finds none of the thirteen, and would wave through a typo in every
+    weather lookup a card makes.
+
+    `has_entity_name` plus a translation key means the name comes from here, so
+    a key absent from this file has no name and no entity. The reverse — a name
+    no descriptor uses — is what the suffix half of the assertion catches. The
+    switch-device channels are legitimately missing: they take driver-supplied
+    names at runtime, so a card cannot resolve one.
     """
-    module = ast.parse((COMPONENT / f"{domain}.py").read_text(encoding="utf-8"))
-    return frozenset(
-        keyword.value.value
-        for node in ast.walk(module)
-        if isinstance(node, ast.Call)
-        for keyword in node.keywords
-        if keyword.arg == "translation_key"
-        and isinstance(keyword.value, ast.Constant)
-        and isinstance(keyword.value.value, str)
+    names = json.loads(
+        (COMPONENT / "translations" / "en.json").read_text(encoding="utf-8")
     )
+    return frozenset(names["entity"].get(domain, {}))
 
 
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
