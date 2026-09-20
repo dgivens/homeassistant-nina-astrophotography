@@ -21,10 +21,9 @@ from homeassistant.setup import async_setup_component
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from cards import INSTANCE, WWW_DIR, lookups
+from cards import INSTANCE, lookups, resolving_cards
 from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
 
-CARD = WWW_DIR / "nina-observatory-card.js"
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 
 pytestmark = pytest.mark.skipif(
@@ -97,21 +96,35 @@ async def _set_up_guiding(hass: HomeAssistant, entry, rig) -> None:
     await hass.async_block_till_done()
 
 
-# The card's lookups that cannot resolve, and why. Asserted as an exact set so
-# that nothing joins it unnoticed.
-CANNOT_RESOLVE = {
-    # Takes the guider device's own name (`name=None`), so it has no key.
-    ("switch", "guider"): "no translation key",
-    # No dome on any captured rig, so the device is never observed and its
-    # entities never created. A real dome's would ship disabled, and disabled
-    # entities are absent from the payload — unresolvable either way (#93).
-    ("binary_sensor", "dome_at_park"): "no dome device (#93)",
-    ("sensor", "dome_shutter_status"): "no dome device (#93)",
-    # Present and disabled, which is the case the test below pins.
-    ("sensor", "sequence_progress"): "ships disabled",
+# Per card, the lookups that cannot resolve and why. Asserted as an exact set so
+# that nothing joins one unnoticed; a card whose every lookup resolves has an
+# empty entry rather than none, so a newly converted card has to be listed.
+CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
+    "nina-observatory-card.js": {
+        # Takes the guider device's own name (`name=None`), so it has no key.
+        ("switch", "guider"): "no translation key",
+        # No dome on any captured rig, so the device is never observed and its
+        # entities never created. A real dome's would ship disabled, and disabled
+        # entities are absent from the payload — unresolvable either way (#93).
+        ("binary_sensor", "dome_at_park"): "no dome device (#93)",
+        ("sensor", "dome_shutter_status"): "no dome device (#93)",
+        # Present and disabled, which is the case the test below pins.
+        ("sensor", "sequence_progress"): "ships disabled",
+    },
+    "nina-sky-map-card.js": {},
 }
 
+RESOLVING = resolving_cards()
 
+
+def test_every_resolving_card_is_accounted_for() -> None:
+    """The two tests below are only as wide as this table. A card converted to
+    the registry without an entry here would be covered by neither.
+    """
+    assert {card.name for card in RESOLVING} == set(CANNOT_RESOLVE)
+
+
+@pytest.mark.parametrize("card", RESOLVING, ids=lambda p: p.name)
 async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     hass: HomeAssistant,
     config_entry,
@@ -119,6 +132,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     rig,
     hass_ws_client,
     tmp_path: Path,
+    card: Path,
 ) -> None:
     """On a rig carrying the ids the committed list records, every resolved
     lookup must equal its prefix-templated form. A mismatch means the card reads
@@ -133,7 +147,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
 
     wrong = {
         f"{domain}.{key}": (resolved[f"{domain}.{key}"], _templated(domain, suffix))
-        for domain, key, suffix in lookups(CARD)
+        for domain, key, suffix in lookups(card)
         if f"{domain}.{key}" in resolved
         and resolved[f"{domain}.{key}"] != _templated(domain, suffix)
     }
@@ -141,6 +155,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     assert not wrong, f"resolved to a different entity than it templated: {wrong}"
 
 
+@pytest.mark.parametrize("card", RESOLVING, ids=lambda p: p.name)
 async def test_only_the_entities_that_cannot_resolve_fall_back(
     hass: HomeAssistant,
     config_entry,
@@ -148,6 +163,7 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
     rig,
     hass_ws_client,
     tmp_path: Path,
+    card: Path,
 ) -> None:
     """The companion to the test above, which would pass just as well if
     nothing resolved at all.
@@ -161,11 +177,11 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
 
     fell_back = {
         (domain, key)
-        for domain, key, _ in lookups(CARD)
+        for domain, key, _ in lookups(card)
         if f"{domain}.{key}" not in resolved
     }
 
-    assert fell_back == set(CANNOT_RESOLVE)
+    assert fell_back == set(CANNOT_RESOLVE[card.name])
 
 
 async def test_a_disabled_entity_is_absent_from_what_the_frontend_sees(

@@ -6,17 +6,20 @@
  * a meridian line, and a trail of recent positions.
  *
  * Reads the mount's altitude, azimuth, RA, declination, sidereal time, time to
- * meridian flip and tracking rate, its park state, and the sequence target.
+ * meridian flip and tracking rate, its park state, the sequence target, and the
+ * site latitude the star field is projected from.
  *
  * Ships with the integration and registers itself as a dashboard resource —
- * nothing to copy or add under Resources. Add card:  type: custom:nina-sky-map-card
- *   Optional config:
- *     latitude: 38.5    # your observing latitude — REQUIRED in practice:
- *                       # it projects the whole star field, and defaults
- *                       # to 40, which is the wrong sky for most people
- *     trail_length: 60  # number of historical positions to keep (default 60)
- *     prefix: n_i_n_a   # the slugified instance name your entities carry
+ * nothing to copy or add under Resources. One rig needs no configuration at
+ * all: the card finds its own equipment in the registry.
+ *   type: custom:nina-sky-map-card
+ *   trail_length: 60    # how many historical positions to keep (default 60)
+ *   device_id: abc123   # which rig, for two or more; any one of its devices
+ *   latitude: 38.5      # deprecated: the rig reports its own site latitude
+ *   prefix: n_i_n_a     # fallback only, for the entities that cannot resolve
  */
+
+import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
 
@@ -189,10 +192,11 @@ const STYLE = `
 `;
 
 /* ── Card class ──────────────────────────────────────────────────────── */
-// 2.0 entity ids carry the instance name, so the card is told the prefix
-// rather than guessing it: it is the instance name from the config flow,
-// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
-// renamed instance, or for the second rig.
+// The fallback path, not the primary one: entity ids normally come from the
+// registry (`_eid`), and the prefix is what an id is built from when a
+// particular entity cannot be resolved. It is the instance name from the config
+// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
+// instance, or for the second rig.
 //
 // Repeated in each card rather than imported: it is one literal, and `www/` is
 // served whole from the integration (`frontend.py`), so a card that needs real
@@ -212,12 +216,14 @@ class NinaSkyMapCard extends HTMLElement {
 
   setConfig(config) {
     this._config = {
-      latitude: 40,
       trail_length: 60,
       map_size: 320,
       ...config,
     };
     this._prefix = this._config.prefix || DEFAULT_PREFIX;
+    // A new config may name a different rig: make the next `set hass` re-resolve.
+    this._resolved = {};
+    this._resolvedFrom = null;
   }
 
   connectedCallback() {
@@ -230,6 +236,14 @@ class NinaSkyMapCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // The frontend replaces `hass.entities` only when the registry itself
+    // changes, so this walks it on a rename, not on every state tick.
+    // `hass.devices` needs no second memo key: every device change that alters
+    // the map arrives with an entity-registry change too.
+    if (hass.entities !== this._resolvedFrom) {
+      this._resolvedFrom = hass.entities;
+      this._resolved = resolveEntities(hass, this._config.device_id);
+    }
     this._updateTrail();
     if (!this._rendered) {
       this._buildDOM();
@@ -237,6 +251,17 @@ class NinaSkyMapCard extends HTMLElement {
     }
     this._updateInfoRow();
     this._updateStatusBar();
+  }
+
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
+  //
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key. Every read this card makes happens to be a mount
+  // entity whose name matches its key; pass the suffix where it does not.
+  _eid(domain, key, slug = key) {
+    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
 
   _s(id, fallback = null) {
@@ -261,10 +286,26 @@ class NinaSkyMapCard extends HTMLElement {
     return this._available(id) && this._s(id) !== "Stopped";
   }
 
+  // The latitude the whole star field is projected from, in preference order:
+  // an explicit `latitude:`, the site N.I.N.A. is configured for, then Home
+  // Assistant's own location.
+  //
+  // The rig outranks Home Assistant because a hosted rig is nowhere near it,
+  // and N.I.N.A.'s configured site is readable with the mount disconnected —
+  // which is when a sky map is most useful.
+  _latitude() {
+    if (this._config.latitude !== undefined) return this._config.latitude;
+    // Not `_f`: it folds a genuine 0 into its fallback, and the equator is a
+    // latitude.
+    const site = parseFloat(this._s(this._eid("sensor", "site_latitude")));
+    if (Number.isFinite(site)) return site;
+    const home = this._hass?.config?.latitude;
+    return Number.isFinite(home) ? home : 0;
+  }
+
   _updateTrail() {
-    const prefix = this._prefix;
-    const alt = this._f(`sensor.${prefix}_mount_altitude`);
-    const az  = this._f(`sensor.${prefix}_mount_azimuth`);
+    const alt = this._f(this._eid("sensor", "mount_altitude"));
+    const az  = this._f(this._eid("sensor", "mount_azimuth"));
     if (alt === this._lastAlt && az === this._lastAz) return;
     this._lastAlt = alt;
     this._lastAz  = az;
@@ -312,13 +353,12 @@ class NinaSkyMapCard extends HTMLElement {
   }
 
   _updateInfoRow() {
-    const prefix = this._prefix;
-    const alt = this._f(`sensor.${prefix}_mount_altitude`);
-    const az  = this._f(`sensor.${prefix}_mount_azimuth`);
-    const ra  = this._f(`sensor.${prefix}_mount_right_ascension`);
-    const dec = this._f(`sensor.${prefix}_mount_declination`);
-    const target = this._s(`sensor.${prefix}_sequence_target`, "");
-    const ttf    = this._f(`sensor.${prefix}_mount_time_to_meridian_flip`, 999);
+    const alt = this._f(this._eid("sensor", "mount_altitude"));
+    const az  = this._f(this._eid("sensor", "mount_azimuth"));
+    const ra  = this._f(this._eid("sensor", "mount_right_ascension"));
+    const dec = this._f(this._eid("sensor", "mount_declination"));
+    const target = this._s(this._eid("sensor", "sequence_target"), "");
+    const ttf    = this._f(this._eid("sensor", "mount_time_to_meridian_flip"), 999);
 
     const set = (id, v) => {
       const el = this.shadowRoot?.getElementById(id);
@@ -340,10 +380,9 @@ class NinaSkyMapCard extends HTMLElement {
   _updateStatusBar() {
     const bar = this.shadowRoot?.getElementById("status-bar");
     if (!bar) return;
-    const prefix = this._prefix;
-    const connected = this._available(`sensor.${prefix}_mount_right_ascension`);
-    const tracking  = this._tracking(`select.${prefix}_mount_tracking_rate`);
-    const parked    = this._on(`binary_sensor.${prefix}_mount_at_park`);
+    const connected = this._available(this._eid("sensor", "mount_right_ascension"));
+    const tracking  = this._tracking(this._eid("select", "mount_tracking_rate"));
+    const parked    = this._on(this._eid("binary_sensor", "mount_at_park"));
 
     const chips = [];
     if (!connected) {
@@ -402,7 +441,6 @@ class NinaSkyMapCard extends HTMLElement {
   // ── Main draw ─────────────────────────────────────────────────────────
 
   _drawFrame() {
-    const prefix = this._prefix;
     const ctx  = this._ctx;
     const size = this._config.map_size;
     const dpr  = this._dpr;
@@ -471,10 +509,10 @@ class NinaSkyMapCard extends HTMLElement {
     // ── Meridian line (azimuth 0° N–S through zenith) ─────────────────
     // (Max - Min) from the profile, published by the sensor: the reading at
     // which N.I.N.A. actually flips is not zero, and not the same on two rigs.
-    const ttf = this._f(`sensor.${prefix}_mount_time_to_meridian_flip`, 999);
-    const firesAt = parseFloat(this._hass?.states?.[
-      `sensor.${prefix}_mount_time_to_meridian_flip`]
-      ?.attributes?.flip_fires_at_minutes) || 0;
+    const flipId = this._eid("sensor", "mount_time_to_meridian_flip");
+    const ttf = this._f(flipId, 999);
+    const firesAt = parseFloat(
+      this._hass?.states?.[flipId]?.attributes?.flip_fires_at_minutes) || 0;
     const meridianColor = ttf < 15 + firesAt && ttf > 0
       ? `rgba(244, 162, 97, ${0.5 + 0.4 * Math.sin(Date.now() / 400)})`
       : "rgba(123,141,232,0.25)";
@@ -491,9 +529,10 @@ class NinaSkyMapCard extends HTMLElement {
     this._drawMilkyWay(ctx, cx, cy, R);
 
     // ── Stars ──────────────────────────────────────────────────────────
-    const lat = this._config.latitude;
-    const lst = this._f(`sensor.${prefix}_mount_sidereal_time`, 12);  // fallback to noon
-    const connectedST = this._available(`sensor.${prefix}_mount_sidereal_time`);
+    const lat = this._latitude();
+    const siderealId = this._eid("sensor", "mount_sidereal_time");
+    const lst = this._f(siderealId, 12);  // fallback to noon
+    const connectedST = this._available(siderealId);
 
     if (connectedST) {
       for (const star of BRIGHT_STARS) {
@@ -543,11 +582,11 @@ class NinaSkyMapCard extends HTMLElement {
     }
 
     // ── Current pointing dot ───────────────────────────────────────────
-    const alt = this._f(`sensor.${prefix}_mount_altitude`);
-    const az  = this._f(`sensor.${prefix}_mount_azimuth`);
-    const isParked   = this._on(`binary_sensor.${prefix}_mount_at_park`);
-    const isTracking = this._tracking(`select.${prefix}_mount_tracking_rate`);
-    const isMounted  = this._available(`sensor.${prefix}_mount_right_ascension`);
+    const alt = this._f(this._eid("sensor", "mount_altitude"));
+    const az  = this._f(this._eid("sensor", "mount_azimuth"));
+    const isParked   = this._on(this._eid("binary_sensor", "mount_at_park"));
+    const isTracking = this._tracking(this._eid("select", "mount_tracking_rate"));
+    const isMounted  = this._available(this._eid("sensor", "mount_right_ascension"));
 
     if (isMounted && alt >= 0) {
       const p = proj(alt, az);
