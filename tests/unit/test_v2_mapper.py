@@ -555,6 +555,11 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
                 "MaxMinutesAfterMeridian": 15,
                 "UseSideOfPier": True,
             },
+            "AstrometrySettings": {
+                "Latitude": 31.5478,
+                "Longitude": -110.2977,
+                "Elevation": 1509,
+            },
         }
     )
     assert profile == type(profile)(
@@ -565,6 +570,9 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
         min_minutes_after_meridian=5.0,
         max_minutes_after_meridian=15.0,
         use_side_of_pier=True,
+        site_latitude=31.5478,
+        site_longitude=-110.2977,
+        site_elevation=1509.0,
     )
 
 

@@ -288,9 +288,12 @@ not a regression.
 
 `/profile/show` is captured as an **allowlist projection** — only
 `TelescopeSettings.FocalLength`, `FocuserSettings.{AutoFocusTimeoutSeconds,
-RSquaredThreshold}`, `MeridianFlipSettings.*` and `CameraSettings.PixelSize`.
-Never denylist it: its secret surface is too large to redact confidently, and it
-held a live `WeatherUndergroundAPIKey` on a trial capture.
+RSquaredThreshold}`, `MeridianFlipSettings.*`, `CameraSettings.PixelSize` and
+`AstrometrySettings.{Latitude,Longitude,Elevation}` (field by field: the section
+also holds `HorizonFilePath`). Never denylist it: its secret surface is too large
+to redact confidently, and it held a live `WeatherUndergroundAPIKey` on a trial
+capture. The committed corpus predates the astrometry fields, so no profile
+fixture carries a site until a re-capture.
 
 The corpus needs **states**, not one snapshot — imaging, dawn flats (calibration
 sentinels), before the first sub, equipment disconnected, sequence complete,
