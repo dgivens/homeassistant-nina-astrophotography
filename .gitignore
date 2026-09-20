@@ -9,3 +9,6 @@ dist/
 .coverage
 .coverage.*
 coverage.json
+
+# Playwright MCP writes screenshots and traces here (tools/card-harness).
+.playwright-mcp/
