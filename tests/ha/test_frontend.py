@@ -7,6 +7,8 @@ them is idempotent, that it degrades gracefully without lovelace, and that a
 failure in it can't take the rest of the integration down with it.
 """
 
+import re
+
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.setup import async_setup_component
 import pytest
@@ -60,6 +62,27 @@ async def test_a_card_is_served_byte_for_byte_at_its_url(
     assert resp.status == 200
     assert "javascript" in resp.content_type
     assert await resp.read() == (WWW_DIR / "nina-observatory-card.js").read_bytes()
+
+
+async def test_whatever_a_card_imports_is_served_at_that_path(
+    hass, loaded_entry, hass_client
+) -> None:
+    """A card's `import "./x.js"` is a plain browser fetch against this same
+    static route, and an ES module that fails to load takes every importer down
+    with it — so a 404 here is not a missing helper, it is a blank card.
+
+    The specifier is read out of the card rather than restated, since the point
+    is that the two agree.
+    """
+    card = (WWW_DIR / "nina-observatory-card.js").read_text(encoding="utf-8")
+    imported = re.findall(r'^import .*? from "\./([\w.-]+\.js)";$', card, re.MULTILINE)
+    assert imported, "the card no longer imports anything — drop this test"
+
+    client = await hass_client()
+    for filename in imported:
+        resp = await client.get(f"{URL_PREFIX}/{filename}")
+        assert resp.status == 200, filename
+        assert "javascript" in resp.content_type
 
 
 async def test_setup_does_not_crash_when_lovelace_is_not_set_up(
@@ -178,8 +201,16 @@ async def test_yaml_managed_resources_are_left_to_the_operator(
 def test_every_shipped_card_file_is_in_card_filenames() -> None:
     """`CARD_FILENAMES` is a fixed allowlist, not a directory listing — this
     is what keeps it from silently drifting out of sync with `www/`.
+
+    A module the cards import is not a card and must stay out of the allowlist:
+    it defines no custom element, so registering it would load it standalone on
+    every dashboard to no effect. Naming those here rather than widening
+    `CARD_FILENAMES` keeps both halves explicit — a new file in `www/` still has
+    to be declared one thing or the other.
     """
-    assert {path.name for path in WWW_DIR.glob("*.js")} == set(CARD_FILENAMES)
+    assert {path.name for path in WWW_DIR.glob("*.js")} == set(CARD_FILENAMES) | {
+        "nina-entity-resolver.js"
+    }
 
 
 # ─── Removal (#70) ───────────────────────────────────────────────────────────

@@ -261,8 +261,10 @@ const STYLE = `
 // slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
 // renamed instance, or for the second rig.
 //
-// Repeated in each card on purpose: the cards are copied into `www/` one file
-// at a time, and a shared module would break a card whose neighbour was missed.
+// Repeated in each card, but not because sharing is unsafe: 2.0 serves all of
+// `www/` from the integration as one unit (`frontend.py`), so there is no copy
+// step left that could miss a file — which is what lets a card import
+// `nina-entity-resolver.js`. One literal is simply not worth an import.
 const DEFAULT_PREFIX = "n_i_n_a";
 
 class NinaImagePanelCard extends HTMLElement {

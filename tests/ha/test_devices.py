@@ -62,6 +62,25 @@ async def test_children_hang_off_the_hub(hass: HomeAssistant, loaded_entry) -> N
     }
 
 
+async def test_the_hub_is_the_only_device_without_a_parent(
+    hass: HomeAssistant, loaded_entry
+) -> None:
+    """What lets a card find a rig with no configuration at all
+    (`www/nina-entity-resolver.js`): among our devices the hub is the one
+    carrying our identifier and no `via_device_id`, so it needs no naming.
+
+    The converse is `test_children_hang_off_the_hub`. Between them: a child
+    registered without its parent, or a hub given one, would leave the cards
+    resolving nothing and silently falling back to a templated prefix.
+    """
+    registry = dr.async_get(hass)
+    devices = dr.async_entries_for_config_entry(registry, loaded_entry.entry_id)
+
+    assert [device.id for device in devices if device.via_device_id is None] == [
+        _device(hass, loaded_entry).id
+    ]
+
+
 async def test_the_hub_carries_the_nina_version(
     hass: HomeAssistant, loaded_entry
 ) -> None:

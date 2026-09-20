@@ -663,13 +663,23 @@ winning. Hard-reload the dashboard after removing it.
 
 ```yaml
 type: custom:nina-observatory-card
-prefix: n_i_n_a          # the slugified instance name your entity ids carry
-device_id: 0123…         # nina-observatory-card only: which rig its buttons
-                         # act on. Needed once two rigs are configured.
+# One rig needs nothing else: the card finds its own equipment in the registry.
+device_id: 0123…         # which rig, once two are configured — its buttons and
+                         # its readings both. Name the hub or any one piece of
+                         # its equipment; either identifies the rig.
+prefix: n_i_n_a          # fallback only, for the entities that cannot resolve
 ```
 
-`N.I.N.A.` slugifies to `n_i_n_a`, which is also the default. Copy yours from
-any entity id.
+`nina-observatory-card` reads the device and entity registries, so it survives
+you renaming a device or Home Assistant generating ids under a different area —
+neither of which a `prefix:` can. It falls back to building an id from `prefix:`
+for the handful of entities that have nothing to resolve on: the guider on/off
+switch, which takes its device's own name, and anything shipped disabled, which
+Home Assistant leaves out of the registry a dashboard sees.
+
+**The other five cards are still prefix-only**, so they need `prefix:` whenever
+your entity ids don't start with `n_i_n_a` — which is what `N.I.N.A.` slugifies
+to, and the default. Copy yours from any entity id.
 
 | Card | |
 |---|---|
@@ -702,7 +712,9 @@ What does need your attention:
   `imaging_stall_alert.yaml` is new. Re-import them and rebuild the
   automations. The old ones referenced entities 2.0 does not create, so they
   were inert either way.
-- **The Lovelace cards need `prefix:`** — see [Lovelace cards](#lovelace-cards).
+- **Five of the six Lovelace cards need `prefix:`** — `nina-observatory-card`
+  resolves its entities from the registry instead. See
+  [Lovelace cards](#lovelace-cards).
 - **`switch.<instance>_flat_panel_light` is gone** — the `light` entity survives.
   Its old registry row lingers as unavailable until you delete it.
 - **The poll interval is capped at 60 s**; an entry storing more keeps its rate
@@ -727,5 +739,5 @@ What does need your attention:
 | An action failed | The message carries N.I.N.A.'s own refusal. The HTTP status is almost always 200, so the real reason is in the body — and in `Settings → System → Logs`. |
 | An action says several instances are configured | Add a device target to say which rig you mean. |
 | A card is blank | Set `prefix:` to your instance's slug — the default `n_i_n_a` only matches the default instance name. |
-| One device's entities carry a different prefix than the rest, and its card readings are blank | Home Assistant's default entity id includes the area, and area membership is read at the moment an entity is first created. If you place the hub in an area after some equipment has already connected, only equipment that connects *afterwards* picks it up — so an existing device stays unprefixed while a newly-arriving one is not. The cards assume one `prefix:` per rig, so the mismatched device reads blank until you reset its entity ids (**Settings → Devices → that device → each entity → ⋮ → Rename entity ID → reset**) now that its device area is correct. |
+| One device's entities carry a different prefix than the rest, and its card readings are blank | Home Assistant's default entity id includes the area, and area membership is read at the moment an entity is first created. If you place the hub in an area after some equipment has already connected, only equipment that connects *afterwards* picks it up — so an existing device stays unprefixed while a newly-arriving one is not. `nina-observatory-card` is immune — it resolves ids from the registry rather than assuming a prefix. The other five do assume one `prefix:` per rig, so on those the mismatched device reads blank until you reset its entity ids (**Settings → Devices → that device → each entity → ⋮ → Rename entity ID → reset**) now that its device area is correct. |
 | `Last Image HFR` does not change during a flat run | Correct. The last-image sensors report the last **light** frame, so a calibration run leaves them where they were rather than blanking your imaging readouts. They read `unknown` only when the session has no lights at all. |
