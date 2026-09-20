@@ -353,21 +353,31 @@ class NinaSkyMapCard extends HTMLElement {
   }
 
   _updateInfoRow() {
-    const alt = this._f(this._eid("sensor", "mount_altitude"));
-    const az  = this._f(this._eid("sensor", "mount_azimuth"));
-    const ra  = this._f(this._eid("sensor", "mount_right_ascension"));
-    const dec = this._f(this._eid("sensor", "mount_declination"));
-    const target = this._s(this._eid("sensor", "sequence_target"), "");
-    const ttf    = this._f(this._eid("sensor", "mount_time_to_meridian_flip"), 999);
-
     const set = (id, v) => {
       const el = this.shadowRoot?.getElementById(id);
       if (el) el.textContent = v;
     };
-    set("inf-alt",  alt.toFixed(1) + "°");
-    set("inf-az",   az.toFixed(1)  + "°");
-    set("inf-ra",   raToString(ra));
-    set("inf-dec",  decToString(dec));
+
+    // A down driver publishes `unavailable`, which parses to 0 — and 0° is a
+    // pointing at the horizon, not a blank. Keep the dash instead.
+    const raId = this._eid("sensor", "mount_right_ascension");
+    if (this._available(raId)) {
+      const alt = this._f(this._eid("sensor", "mount_altitude"));
+      const az  = this._f(this._eid("sensor", "mount_azimuth"));
+      const dec = this._f(this._eid("sensor", "mount_declination"));
+      set("inf-alt",  alt.toFixed(1) + "°");
+      set("inf-az",   az.toFixed(1)  + "°");
+      set("inf-ra",   raToString(this._f(raId)));
+      set("inf-dec",  decToString(dec));
+    } else {
+      for (const cell of ["inf-alt", "inf-az", "inf-ra", "inf-dec"]) set(cell, "—");
+    }
+
+    // Gated on its own availability, not the mount's: the target hangs off the
+    // hub, and a sequence outlives a driver dropping out.
+    const targetId = this._eid("sensor", "sequence_target");
+    const target = this._available(targetId) ? this._s(targetId, "") : "";
+    const ttf = this._f(this._eid("sensor", "mount_time_to_meridian_flip"), 999);
 
     const sub = this.shadowRoot?.getElementById("hdr-sub");
     if (sub) {
