@@ -68,11 +68,11 @@ async def test_whatever_a_card_imports_is_served_at_that_path(
     hass, loaded_entry, hass_client
 ) -> None:
     """A card's `import "./x.js"` is a plain browser fetch against this same
-    static route, and an ES module that fails to load takes every importer down
-    with it — so a 404 here is not a missing helper, it is a blank card.
+    static route, and a module that fails to load takes its importer down with
+    it — so a 404 here is a blank card, not a missing helper.
 
-    The specifier is read out of the card rather than restated, since the point
-    is that the two agree.
+    The specifier is read out of the card because the point is that the two
+    agree.
     """
     card = (WWW_DIR / "nina-observatory-card.js").read_text(encoding="utf-8")
     imported = re.findall(r'^import .*? from "\./([\w.-]+\.js)";$', card, re.MULTILINE)
@@ -202,11 +202,11 @@ def test_every_shipped_card_file_is_in_card_filenames() -> None:
     """`CARD_FILENAMES` is a fixed allowlist, not a directory listing — this
     is what keeps it from silently drifting out of sync with `www/`.
 
-    A module the cards import is not a card and must stay out of the allowlist:
-    it defines no custom element, so registering it would load it standalone on
-    every dashboard to no effect. Naming those here rather than widening
-    `CARD_FILENAMES` keeps both halves explicit — a new file in `www/` still has
-    to be declared one thing or the other.
+    A module the cards import is not a card and stays out of the allowlist: it
+    defines no custom element, so registering it would load it on every
+    dashboard to no effect. Naming those here rather than widening
+    `CARD_FILENAMES` means a new file in `www/` still has to be declared one
+    thing or the other.
     """
     assert {path.name for path in WWW_DIR.glob("*.js")} == set(CARD_FILENAMES) | {
         "nina-entity-resolver.js"

@@ -283,10 +283,9 @@ const STYLE = `
 // flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
 // instance, or for the second rig.
 //
-// Repeated in each card, but not because sharing is unsafe: 2.0 serves all of
-// `www/` from the integration as one unit (`frontend.py`), so there is no copy
-// step left that could miss a file — which is what lets a card import
-// `nina-entity-resolver.js`. One literal is simply not worth an import.
+// Repeated in each card rather than imported: it is one literal, and `www/` is
+// served whole from the integration (`frontend.py`), so a card that needs real
+// shared code imports it instead — see `nina-entity-resolver.js`.
 const DEFAULT_PREFIX = "n_i_n_a";
 
 class NinaObservatoryCard extends HTMLElement {
@@ -316,19 +315,13 @@ class NinaObservatoryCard extends HTMLElement {
     this._render();
   }
 
-  // Entity ids come from the registry: `translation_key` is the only handle
-  // that survives a user renaming a device or an entity, or Home Assistant
-  // generating an id under a different area (README troubleshooting). It is
-  // unique only per domain — the focuser position exists as both a sensor and
-  // a number.
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
   //
-  // The prefix path is the fallback: an entity with no translation key (the
-  // guider switch), one that ships disabled and so is absent from the
-  // registry payload (the dome reads, #93), or a rig the resolver cannot
-  // identify. `slug` is the entity-id suffix, which is the device name plus
-  // the entity name and so is not always the key: the select keyed `filter`
-  // lives on the Filter Wheel device, and `guider_rms_dec` is named "RMS
-  // declination".
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key. The select keyed `filter` lives on the Filter
+  // Wheel device; `guider_rms_dec` is named "RMS declination".
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -355,11 +348,10 @@ class NinaObservatoryCard extends HTMLElement {
     const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
     const gdrConnected = available(h, this._eid("sensor", "guider_status"));
     // Every dome entity ships disabled (§5.3.1: spec-derived, no hardware to
-    // verify against), and a disabled entity has no state object, so this reads
-    // false until a dome owner enables them — which is issue #93. Resolution
-    // cannot help: core omits disabled entities from the registry payload
-    // altogether, so the dome reads stay on the prefix path whatever happens
-    // here. Probing the dome *device* instead is #93's fix.
+    // verify against) and a disabled entity has no state object, so the dome
+    // section stays hidden until a dome owner enables them — issue #93, whose
+    // fix is to probe the dome *device*. Resolution cannot help: disabled
+    // entities are absent from the registry payload.
     const domeConnected = available(h, this._eid("binary_sensor", "dome_at_park"));
 
     // No `translation_key`: the switch takes the guider device's own name, so
@@ -369,7 +361,7 @@ class NinaObservatoryCard extends HTMLElement {
     const parked       = isOn(h, this._eid("binary_sensor", "mount_at_park"));
     const tracking     = isTracking(h, this._eid("select", "mount_tracking_rate"));
     // The shutter reports its own state; `Open` is the only one that is open.
-    // Disabled too, so this reads false unless it is enabled — see above.
+    // Disabled as well, so this reads false until enabled — see above.
     const domeOpen     = state(h, this._eid("sensor", "dome_shutter_status")) === "Open";
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");

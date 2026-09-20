@@ -1,10 +1,7 @@
-// Run the shipped resolver against a registry snapshot taken from a real Home
-// Assistant instance in `test_entity_resolver.py`, and print the map it returns
-// as JSON.
+// Print `resolveEntities` output as JSON, for `test_entity_resolver.py`.
 //
-// Node rather than a Python reimplementation of the same logic: the point is to
-// exercise the module the browser actually loads. A second implementation would
-// only ever prove itself right.
+// Node so that the module under test is the one a browser loads; a Python
+// reimplementation would only prove itself right.
 //
 // Usage: node resolve_entities.mjs <payload.json> [device_id]
 import { readFile } from "node:fs/promises";

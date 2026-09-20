@@ -6,11 +6,11 @@ rather than going through the integration, so a renamed entity or a corrected
 path leaves them behind — which is how the image-history endpoint stayed broken
 in `nina-image-panel-card.js` for a release after it was fixed everywhere else.
 
-Source checks: there is no JavaScript test harness here, and adding one to pin
-a handful of string literals would cost more than it returns. A card names an
-entity in one of two ways and both are checked against the same snapshot — by
-templating the configured prefix onto a suffix, or by asking the registry for a
-`translation_key` (`_eid`, `www/nina-entity-resolver.js`).
+Source checks only: these read the card files as text. A card names an entity
+either by templating its configured prefix onto a suffix, or by asking the
+registry for a `translation_key` (`_eid`); both are checked here against the
+committed entity list. `tests/ha/test_entity_resolver.py` covers the resolver
+itself, against a live registry.
 """
 
 from functools import cache
@@ -90,17 +90,12 @@ def test_no_card_reads_an_entity_that_2_0_does_not_create(card: Path) -> None:
 def _translation_keys(domain: str) -> frozenset[str]:
     """Every `translation_key` this domain has a name for.
 
-    Read from `translations/en.json` rather than parsed out of the descriptor
-    tables. Reading the tables looks more direct and is wrong: the weather
-    channels are built by a `_weather(key, ...)` factory that passes
-    `translation_key=key`, so the key is a parameter and not a literal — an AST
-    walk finds none of the thirteen, and would wave through a typo in every
-    weather lookup a card makes.
+    `en.json` rather than the descriptor tables: the weather channels come from
+    a factory that passes `translation_key=key`, so the tables hold no literal
+    for any of them. A key missing here has no name and no entity; a name no
+    descriptor uses is caught by the suffix half of the assertion instead.
 
-    `has_entity_name` plus a translation key means the name comes from here, so
-    a key absent from this file has no name and no entity. The reverse — a name
-    no descriptor uses — is what the suffix half of the assertion catches. The
-    switch-device channels are legitimately missing: they take driver-supplied
+    Switch-device channels are absent either way — they take driver-supplied
     names at runtime, so a card cannot resolve one.
     """
     names = json.loads(
@@ -111,9 +106,8 @@ def _translation_keys(domain: str) -> frozenset[str]:
 
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
 def test_every_registry_lookup_is_one_this_suite_can_read(card: Path) -> None:
-    """`_eid` moved the entity ids out of reach of `TEMPLATED`, so a lookup
-    built from anything but literals would be checked by nothing at all —
-    passing tests on the strings most likely to hold a typo.
+    """A lookup built from anything but literals is checked by nothing: the
+    test below can only read the calls this regex matches.
     """
     source = card.read_text(encoding="utf-8")
 
@@ -124,12 +118,10 @@ def test_every_registry_lookup_is_one_this_suite_can_read(card: Path) -> None:
 def test_every_registry_lookup_names_a_real_key_and_a_real_entity(card: Path) -> None:
     """Both halves of a lookup have to hold, and neither reports itself.
 
-    A wrong `translation_key` resolves nothing and silently falls back to the
-    prefix; a wrong suffix makes that fallback name an entity which does not
-    exist. Either way the card reads blank with no error, which is the whole
-    failure this indirection exists to remove — and the two halves are easy to
-    get out of step, since the suffix is the device name plus the entity name
-    and the key is neither.
+    A wrong key resolves nothing and falls back to the prefix; a wrong suffix
+    makes that fallback name an entity which does not exist. Either way the card
+    reads blank with no error. They are easy to get out of step: the suffix is
+    the device name plus the entity name, and the key is neither.
     """
     wrong = []
     for domain, key, suffix in lookups(card):

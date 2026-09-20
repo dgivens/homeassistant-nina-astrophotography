@@ -1,11 +1,11 @@
 """Reading entity names back out of the Lovelace card sources.
 
-Shared because both suites need the same parse and must not disagree about it:
-`tests/unit/test_cards.py` checks each name against the committed snapshot, and
-`tests/ha/test_entity_resolver.py` checks the same names against a live registry.
+Both suites parse the cards the same way and must not disagree about it:
+`tests/unit/test_cards.py` checks the names against the committed entity list,
+`tests/ha/test_entity_resolver.py` against a live registry.
 
-Deliberately free of Home Assistant — the unit suite imports this, and
-`tests/helpers.py` is not an option for that reason.
+Free of Home Assistant, because the unit suite imports it — which is why this
+is not in `tests/helpers.py`.
 """
 
 from pathlib import Path

@@ -194,10 +194,9 @@ const STYLE = `
 // slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
 // renamed instance, or for the second rig.
 //
-// Repeated in each card, but not because sharing is unsafe: 2.0 serves all of
-// `www/` from the integration as one unit (`frontend.py`), so there is no copy
-// step left that could miss a file — which is what lets a card import
-// `nina-entity-resolver.js`. One literal is simply not worth an import.
+// Repeated in each card rather than imported: it is one literal, and `www/` is
+// served whole from the integration (`frontend.py`), so a card that needs real
+// shared code imports it instead — see `nina-entity-resolver.js`.
 const DEFAULT_PREFIX = "n_i_n_a";
 
 class NinaSkyMapCard extends HTMLElement {

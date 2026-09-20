@@ -32,10 +32,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
-      # `test_entity_resolver.py` runs the shipped Lovelace resolver module
-      # itself, so it needs node. Declared rather than relied on: the runner
-      # image happens to carry one, and those tests SKIP without it — which
-      # would be a green CI over a card nothing had checked.
+      # `test_entity_resolver.py` runs a shipped Lovelace module under node.
+      # Pinned rather than left to the runner image, because those tests skip
+      # when node is missing — a green run over nothing.
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
