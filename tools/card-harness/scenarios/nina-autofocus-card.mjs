@@ -9,8 +9,6 @@
 
 import { rig } from "../hass.mjs";
 
-const draw = (card) => card._draw();
-
 const UP = "site_configured";
 const VERDICT = "binary_sensor.n_i_n_a_focuser_autofocus_failed";
 
@@ -25,15 +23,12 @@ const verdict = (dump, changes) => ({
 
 export const scenarios = {
   // Every id resolved, and a run that passed.
-  run: { hass: (dump) => rig(dump, UP).build(), draw },
+  run: { hass: (dump) => rig(dump, UP).build() },
 
   // The same rig with no registry, which is the prefix fallback. Its ops must
   // match `run`'s: the same entities, reached the other way. No `prefix:` — the
   // point is the id the card builds unaided.
-  templated: {
-    hass: (dump) => rig(dump, UP).unresolvable().build(),
-    draw,
-  },
+  templated: { hass: (dump) => rig(dump, UP).unresolvable().build() },
 
   // The banner, and the two branches only a rejected run reaches: the computed
   // position the focuser never took, and the restore back to where it started.
@@ -47,7 +42,6 @@ export const scenarios = {
       rig(dump, UP)
         .override(VERDICT, "on", verdict(dump, { r_squared: 0.42, reason: "rejected" }))
         .build(),
-    draw,
   },
 
   // A hung run wrote no report, so the curve below the banner is an earlier
@@ -61,7 +55,6 @@ export const scenarios = {
   hung: {
     hass: (dump) =>
       rig(dump, UP).override(VERDICT, "on", verdict(dump, { reason: "hung" })).build(),
-    draw,
   },
 
   // The temperature box flagged, off the rig's own 0.2 °C of drift rather than
@@ -69,10 +62,9 @@ export const scenarios = {
   drifted: {
     hass: (dump) => rig(dump, UP).build(),
     config: { temperature_delta: 0.1 },
-    draw,
   },
 
   // No focuser ever observed, so nothing resolves and no id has a state —
   // the empty card, which is what a fresh install shows.
-  no_run: { hass: (dump) => rig(dump, "equipment_disconnected").build(), draw },
+  no_run: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 };

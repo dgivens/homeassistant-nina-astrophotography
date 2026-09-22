@@ -70,12 +70,13 @@ if (!Card) {
 const instance = new Card();
 instance.setConfig(scenario.config ?? {});
 instance.hass = scenario.hass(dump);
-// A card paints on an animation frame, which node never fires, so the one the
-// render queued is run here. `draw` replaces that for a card whose canvas the
-// queued frame does not reach: the sky map paints on a loop it starts
-// elsewhere, and the autofocus chart redraws from a resize observer.
-if (scenario.draw) scenario.draw(instance);
-else frame();
+// Node fires no animation frames, so the one the render queued is run here;
+// a scenario's `draw` replaces it — see the README.
+if (scenario.draw) {
+  scenario.draw(instance);
+} else {
+  frame();
+}
 
 if (flags.includes("--html")) {
   console.log("--- html ---");

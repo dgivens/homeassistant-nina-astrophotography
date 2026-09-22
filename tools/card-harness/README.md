@@ -88,7 +88,8 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
 ```
 
 A card paints its canvas on an animation frame, which node never fires, so
-`ops.mjs` runs the one the render queued. `draw` replaces that for a card whose
-canvas the queued frame does not reach: the sky map paints on a loop it starts
-from `connectedCallback`, and the autofocus chart redraws from a resize
-observer.
+`ops.mjs` runs the ones the render queued. `draw` replaces that for a card the
+queued frames do not cover, which today is only the sky map: it paints from a
+loop started in `connectedCallback`, and nothing here attaches the element. A
+hook also *suppresses* the queued frames, so a card that stops queueing one
+still draws under its hook and the diff says nothing — prefer no hook.

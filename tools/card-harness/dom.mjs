@@ -75,7 +75,8 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   const log = [];
   let defined = null;
   let html = "";
-  let queued = null;
+  const queued = new Map();
+  let handle = 0;
 
   const canvas = {
     width: 0,
@@ -123,13 +124,16 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   globalThis.window = { devicePixelRatio: dpr, customCards: [] };
   globalThis.document = { createElement: () => ({ style: {}, addEventListener() {} }) };
   // Held rather than run: node fires no frames, so the runner decides when the
-  // one a render queued goes off.
+  // ones a render queued go off. Kept as a list against its handles, and not as
+  // one slot: a render that queues two frames would otherwise record only the
+  // second, and a card cancelling a stale handle would wipe a live callback —
+  // both of which read as "the card stopped drawing" in a diff.
   globalThis.requestAnimationFrame = (callback) => {
-    queued = callback;
-    return 0;
+    queued.set(++handle, callback);
+    return handle;
   };
-  globalThis.cancelAnimationFrame = () => {
-    queued = null;
+  globalThis.cancelAnimationFrame = (id) => {
+    queued.delete(id);
   };
   globalThis.ResizeObserver = undefined;
 
@@ -137,12 +141,13 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   Math.random = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
   Date.now = () => 1789000000000;
 
-  // Cleared before it runs: a card that re-queues from inside its own frame
-  // (the sky map animates) would otherwise loop here forever.
+  // Drained before the callbacks run, so a frame one of them queues for its own
+  // next tick is left pending rather than fired in the same pass — which is
+  // what an animating card expects, and what stops it looping here.
   const frame = () => {
-    const callback = queued;
-    queued = null;
-    callback?.();
+    const pending = [...queued.values()];
+    queued.clear();
+    for (const callback of pending) callback();
   };
 
   return { log, element: () => defined, html: () => html, frame };
