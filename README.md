@@ -713,10 +713,9 @@ What does need your attention:
   `imaging_stall_alert.yaml` is new. Re-import them and rebuild the
   automations. The old ones referenced entities 2.0 does not create, so they
   were inert either way.
-- **Two of the six Lovelace cards need `prefix:`** — `nina-observatory-card`,
-  `nina-sky-map-card`, `nina-autofocus-card` and `nina-weather-card` resolve
-  their entities from the registry instead. See
-  [Lovelace cards](#lovelace-cards).
+- **Two of the six Lovelace cards need `prefix:`** — `nina-frame-stats-card`
+  and `nina-image-panel-card`. The other four resolve their entities from the
+  registry instead. See [Lovelace cards](#lovelace-cards).
 - **`switch.<instance>_flat_panel_light` is gone** — the `light` entity survives.
   Its old registry row lingers as unavailable until you delete it.
 - **The poll interval is capped at 60 s**; an entry storing more keeps its rate
