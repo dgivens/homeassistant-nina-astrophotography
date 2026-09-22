@@ -12,7 +12,7 @@ spec, nothing else.
 | [`2026-09-04-phase-c-platforms.md`](2026-09-04-phase-c-platforms.md) | C · Platforms | XL | `api.py` deleted; registry snapshot reviewed |
 | [`2026-09-04-phase-d-services-docs-release.md`](2026-09-04-phase-d-services-docs-release.md) | D · Services, blueprints, docs, release | L | §12 definition of done |
 | [`2026-09-16-stall-alert-blueprint.md`](2026-09-16-stall-alert-blueprint.md) | Post-2.0 · Stall alert blueprint | S | Reviewed by all three reviewers; both suites green |
-| [`2026-09-19-lovelace-entity-resolution.md`](2026-09-19-lovelace-entity-resolution.md) | Post-2.0 · Lovelace entity resolution | M | Frontend registry fields confirmed; `test_cards.py` pins every `_eid` call; three of the six cards resolve with no config and survive a child-device rename — observatory, sky map, autofocus. Frame stats, image panel and weather remain prefix-only |
+| [`2026-09-19-lovelace-entity-resolution.md`](2026-09-19-lovelace-entity-resolution.md) | Post-2.0 · Lovelace entity resolution | M | Frontend registry fields confirmed; `test_cards.py` pins every `_eid` call; four of the six cards resolve with no config and survive a child-device rename — observatory, sky map, autofocus, weather. Frame stats and image panel remain prefix-only |
 
 ## Branch model
 

@@ -117,6 +117,15 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
         # report carried no fits to take the worst R² from.
         ("sensor", "autofocus_r_squared"): "ships disabled",
     },
+    "nina-weather-card.js": {
+        # A channel the station reports as "NaN" gets no entity, so there is
+        # nothing to resolve and nothing for the fallback to name either — the
+        # cell reads `—` either way. A station reporting them creates them, and
+        # then they resolve like the rest.
+        ("sensor", "cloud_cover"): "channel is NaN on this station",
+        ("sensor", "sky_quality"): "channel is NaN on this station",
+        ("sensor", "star_fwhm"): "channel is NaN on this station",
+    },
 }
 
 RESOLVING = resolving_cards()
