@@ -260,6 +260,16 @@ card data has the same defect as a hand-written fixture: it encodes what you
 assumed, so the card only proves itself right. `Rig.override` replaces an
 attribute map **wholesale**, so spread the row's own attributes and change only
 the field you mean — otherwise the scenario invents that field's siblings.
+**An override has to carry the readings physically tied to it**: the captured
+weather triple is self-consistent, so cooling the air towards its dew point
+without raising the humidity puts a state no station can report on screen, and
+the cell that should have flagged the night stays benign.
+
+`ops.mjs` fires the animation frames a render queued, so a card whose canvas its
+own frame reaches needs no `draw` hook — and is better without one, since a hook
+replaces those frames and would keep drawing if the card stopped queueing them.
+The sky map keeps its hook because it paints from a loop `connectedCallback`
+starts, and nothing there attaches the element.
 
 Traps when changing a card:
 
