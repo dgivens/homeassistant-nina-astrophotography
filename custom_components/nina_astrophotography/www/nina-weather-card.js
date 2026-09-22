@@ -197,7 +197,8 @@ class NinaWeatherCard extends HTMLElement {
   // `slug` is the entity-id suffix — the device name plus the entity name — so
   // it is not always the key, and on this card it almost never is: the weather
   // device supplies the leading "weather" that the channel keys do not carry,
-  // and the monitor supplies "safety monitor".
+  // and the monitor supplies "safety monitor". The source is the exception —
+  // it hangs off the hub, because it says which station is feeding the rest.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -216,8 +217,7 @@ class NinaWeatherCard extends HTMLElement {
     if (!this._hass) return;
 
     // Safety monitor
-    const safetyConnected = this._on(
-      this._eid("binary_sensor", "safety_monitor_connected"));
+    const safetyConnected = this._on(this._eid("binary_sensor", "safety_monitor_connected"));
     // The SAFETY device class is on = problem, so the entity is named for the
     // problem: it reads `on` when conditions are UNSAFE.
     //
@@ -233,11 +233,6 @@ class NinaWeatherCard extends HTMLElement {
     // disconnected device makes its entities unavailable instead. One read,
     // because the name is that same state and printing `unavailable` as the
     // station's name is worse than printing nothing.
-    //
-    // Every channel below hangs off the weather device, which supplies the
-    // "weather" its key does not carry — so all thirteen pass a slug, and the
-    // source, which is on the hub because it says which station is feeding
-    // them, is the one that does not.
     const source = this._s(this._eid("sensor", "weather_source"));
     const wxConnected = source !== null && source !== "unavailable"
       && source !== "unknown";
@@ -260,28 +255,32 @@ class NinaWeatherCard extends HTMLElement {
     const dewThreat = temp !== null && dewPt !== null && (temp - dewPt) < 3;
 
     // Safety banner content
+    // UNSAFE is tested first, and deliberately not behind the connectivity
+    // read: that entity is diagnostic, so a user may disable it, and a disabled
+    // entity has no state to read. Ordered the other way, hiding a diagnostic
+    // would turn a monitor screaming UNSAFE into a grey "not connected".
     let safetyIcon, safetyLabelCls, safetyLabel, safetyDetail, bannerCls;
-    if (!safetyConnected) {
+    if (isUnsafe) {
+      safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
+      safetyLabel = "UNSAFE — conditions exceeded";
+      safetyDetail = "Automated abort should be triggered if configured";
+      bannerCls = "safety-banner unsafe";
+    } else if (!safetyConnected) {
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor not connected";
       safetyDetail = "Connect a safety monitor in N.I.N.A. to enable automated abort";
       bannerCls = "safety-banner unknown";
-    } else if (!isUnsafe && !isSafe) {
+    } else if (!isSafe) {
       // Connected, but no reading yet — not the same thing as safe.
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor has no reading";
       safetyDetail = "The monitor is connected but has not reported yet";
       bannerCls = "safety-banner unknown";
-    } else if (isSafe) {
+    } else {
       safetyIcon = "✅"; safetyLabelCls = "safe";
       safetyLabel = "Conditions safe";
       safetyDetail = "Safety monitor reports all conditions within limits";
       bannerCls = "safety-banner safe";
-    } else {
-      safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
-      safetyLabel = "UNSAFE — conditions exceeded";
-      safetyDetail = "Automated abort should be triggered if configured";
-      bannerCls = "safety-banner unsafe";
     }
 
     // Sky quality: Bortle-ish mapping (mag/arcsec²)
