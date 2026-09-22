@@ -53,7 +53,7 @@ if (!scenario) {
   process.exit(2);
 }
 
-const { log, element, html } = install(scenario.viewport);
+const { log, element, html, frame } = install(scenario.viewport);
 
 // The card registers its element as a side effect of being imported, and logs
 // its version banner doing it. Stdout is the record, so the banner goes aside.
@@ -70,8 +70,12 @@ if (!Card) {
 const instance = new Card();
 instance.setConfig(scenario.config ?? {});
 instance.hass = scenario.hass(dump);
-// Cards that draw do it on an animation frame, which never fires here.
-scenario.draw?.(instance);
+// A card paints on an animation frame, which node never fires, so the one the
+// render queued is run here. `draw` replaces that for a card whose canvas the
+// queued frame does not reach: the sky map paints on a loop it starts
+// elsewhere, and the autofocus chart redraws from a resize observer.
+if (scenario.draw) scenario.draw(instance);
+else frame();
 
 if (flags.includes("--html")) {
   console.log("--- html ---");

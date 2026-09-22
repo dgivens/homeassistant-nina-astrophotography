@@ -83,9 +83,12 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
 {
   hass: (dump) => rig(dump, "site_configured").without("site_latitude").build(),
   config: { prefix: "n_i_n_a" },   // optional, straight to setConfig
-  draw: (card) => card._drawFrame(),  // only for cards that draw on a frame
+  draw: (card) => card._drawFrame(),  // optional, see below
 }
 ```
 
-`draw` exists because a card that paints a canvas does it on an animation frame,
-which never fires under node.
+A card paints its canvas on an animation frame, which node never fires, so
+`ops.mjs` runs the one the render queued. `draw` replaces that for a card whose
+canvas the queued frame does not reach: the sky map paints on a loop it starts
+from `connectedCallback`, and the autofocus chart redraws from a resize
+observer.

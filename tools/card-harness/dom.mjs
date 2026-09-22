@@ -68,12 +68,14 @@ function recorder(log) {
  * @param {object} [options]
  * @param {number} [options.width]   the canvas size a card reads off the layout
  * @param {number} [options.dpr]     `window.devicePixelRatio`
- * @returns {{log: string[], element: () => Function, html: () => string}}
+ * @returns {{log: string[], element: () => Function, html: () => string,
+ *            frame: () => void}}
  */
 export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   const log = [];
   let defined = null;
   let html = "";
+  let queued = null;
 
   const canvas = {
     width: 0,
@@ -120,13 +122,28 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   };
   globalThis.window = { devicePixelRatio: dpr, customCards: [] };
   globalThis.document = { createElement: () => ({ style: {}, addEventListener() {} }) };
-  globalThis.requestAnimationFrame = () => 0;
-  globalThis.cancelAnimationFrame = () => {};
+  // Held rather than run: node fires no frames, so the runner decides when the
+  // one a render queued goes off.
+  globalThis.requestAnimationFrame = (callback) => {
+    queued = callback;
+    return 0;
+  };
+  globalThis.cancelAnimationFrame = () => {
+    queued = null;
+  };
   globalThis.ResizeObserver = undefined;
 
   let seed = 1;
   Math.random = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
   Date.now = () => 1789000000000;
 
-  return { log, element: () => defined, html: () => html };
+  // Cleared before it runs: a card that re-queues from inside its own frame
+  // (the sky map animates) would otherwise loop here forever.
+  const frame = () => {
+    const callback = queued;
+    queued = null;
+    callback?.();
+  };
+
+  return { log, element: () => defined, html: () => html, frame };
 }
