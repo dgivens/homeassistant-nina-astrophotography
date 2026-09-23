@@ -207,11 +207,15 @@ class NinaFrameStatsCard extends HTMLElement {
     // `_state`'s fallback covers a missing entity only; `shown` covers one
     // that exists and reads `unknown` or `unavailable`, which would otherwise
     // print as the word.
-    const frameCount   = shown(this._state(this._eid("sensor", "session_image_count"), "0"));
-    const integration  = shown(this._state(this._eid("sensor", "session_integration_time"), "—"));
+    //
+    // Lights, not frames: the count sensor's state includes the flats, and
+    // everything beside it — the integration, the HFR figures, the chips — is
+    // lights only.
+    const lightCount   = shown(this._attr(this._eid("sensor", "session_image_count"), "light_count"));
+    const integration  = shown(this._state(this._eid("sensor", "session_integration_time")));
     const lastHfr      = this._state(this._eid("sensor", "last_image_hfr"), "—");
-    const lastStars    = this._state(this._eid("sensor", "last_image_star_count"), "—");
-    const lastFilter   = shown(this._state(this._eid("sensor", "last_image_filter"), "—"));
+    const lastStars    = shown(this._state(this._eid("sensor", "last_image_star_count")));
+    const lastFilter   = shown(this._state(this._eid("sensor", "last_image_filter")));
     const lastExposure = this._state(this._eid("sensor", "last_image_exposure"), "—");
     const avgHfrId = this._eid("sensor", "session_avg_hfr");
     const sessionAvgHfr = this._state(avgHfrId, "—");
@@ -271,15 +275,15 @@ class NinaFrameStatsCard extends HTMLElement {
           <span style="font-size:1.3rem">📊</span>
           <div>
             <div class="title">Frame Statistics</div>
-            <div class="subtitle">${frameCount} frames · ${integration} h · ${lastFilter}</div>
+            <div class="subtitle">${lightCount} lights · ${integration} h · ${lastFilter}</div>
           </div>
         </div>
         <div class="body">
           ${!hasData ? `
             <div class="no-data">
               <div class="icon">🔭</div>
-              <div>Waiting for frames…</div>
-              <div style="font-size:0.72rem;margin-top:4px">Statistics will appear once N.I.N.A. saves an image</div>
+              <div>Waiting for lights…</div>
+              <div style="font-size:0.72rem;margin-top:4px">Statistics will appear once N.I.N.A. saves a light frame</div>
             </div>
           ` : `
             <!-- KPI row -->
@@ -291,7 +295,7 @@ class NinaFrameStatsCard extends HTMLElement {
               </div>
               <div class="stat-box">
                 <div class="label">Stars</div>
-                <div class="value">${shown(lastStars)}</div>
+                <div class="value">${lastStars}</div>
                 <div class="sub">Last frame</div>
               </div>
               <div class="stat-box">
@@ -311,7 +315,7 @@ class NinaFrameStatsCard extends HTMLElement {
               <div class="stat-box">
                 <div class="label">Session avg / best</div>
                 <div class="value" style="font-size:0.85rem">${parseFloat(sessionAvgHfr) ? parseFloat(sessionAvgHfr).toFixed(2) : "—"} / ${parseFloat(sessionBestHfr) ? parseFloat(sessionBestHfr).toFixed(2) : "—"} <span style="font-size:0.65rem;color:var(--muted)">px</span></div>
-                <div class="sub">${frameCount} frames total</div>
+                <div class="sub">${lightCount} lights</div>
               </div>
             </div>
 
@@ -349,14 +353,14 @@ class NinaFrameStatsCard extends HTMLElement {
 
     if (hasData) {
       requestAnimationFrame(() => {
-        this._drawSparkline("hfr-chart", this._hfr, this._filters, "#7b8de8", true);
-        this._drawSparkline("stars-chart", this._stars, this._filters, "#5bcfcf", false);
-        this._drawSparkline("adu-chart", this._adu, this._filters, "#f4a261", false);
+        this._drawSparkline("hfr-chart", this._hfr, "#7b8de8", true);
+        this._drawSparkline("stars-chart", this._stars, "#5bcfcf", false);
+        this._drawSparkline("adu-chart", this._adu, "#f4a261", false);
       });
     }
   }
 
-  _drawSparkline(canvasId, data, filters, defaultColor, showAvgLine) {
+  _drawSparkline(canvasId, data, defaultColor, showAvgLine) {
     const canvas = this.shadowRoot.getElementById(canvasId);
     if (!canvas) return;
 
@@ -423,8 +427,9 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fill();
 
     // A frame with no filter — a rig without a wheel — takes the chart's own
-    // colour rather than one the legend gives a real filter.
-    const colourOf = (i) => this._colours.get(filters[i]) ?? defaultColor;
+    // colour. It has no chip; in a night that mixes the two, that colour can
+    // coincide with the first few filters' chips.
+    const colourOf = (i) => this._colours.get(this._filters[i]) ?? defaultColor;
 
     // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
