@@ -25,12 +25,23 @@ from custom_components.nina_astrophotography.const import DOMAIN
 SNAPSHOTS = Path(__file__).parent / "snapshots"
 DUMP = SNAPSHOTS / "card_states.json"
 
+# Each rig state, and the clock it is dumped at — `None` for the real one.
+#
 # `site_configured` rather than the `imaging_guiding` it derives from: it is the
 # same rig with every endpoint captured and the guider up, plus the observing
 # site, so it is a superset and a card that wants no site drops one entity.
 # `equipment_disconnected` is the degraded half — what a card shows with the
 # drivers down.
-RIG_STATES = ("site_configured", "equipment_disconnected")
+#
+# Neither holds a session: the fold measures the noon rollover against the
+# clock, and their frames are months behind it. `dawn_flats` is dumped from
+# inside its own night, so it carries the whole session — 55 lights over four
+# targets and five filters, with the dawn flats after them.
+RIG_STATES = {
+    "site_configured": None,
+    "equipment_disconnected": None,
+    "dawn_flats": "2026-09-04T12:30:00+00:00",
+}
 
 # Home Assistant mints these per run, so they are the one thing here that is not
 # reproducible — and a token is not something to commit either way.
@@ -114,15 +125,23 @@ def _hass_for_a_card(hass: HomeAssistant, entry) -> dict:
     }
 
 
-@pytest.mark.parametrize("rig_state", RIG_STATES)
+@pytest.mark.parametrize(("rig_state", "clock"), RIG_STATES.items())
 async def test_the_card_harness_dump_is_current(
-    hass: HomeAssistant, config_entry, rig, set_up_at, rig_state: str
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    freezer,
+    rig_state: str,
+    clock: str | None,
 ) -> None:
     """One rig state per run, merged into the committed dump.
 
     Parametrized rather than looped because each state needs its own `hass`:
     a tier-polled endpoint latches at setup and will not be advanced on to.
     """
+    if clock:
+        freezer.move_to(clock)
     await set_up_at(hass, config_entry, rig, rig_state)
 
     current = json.loads(DUMP.read_text(encoding="utf-8")) if DUMP.exists() else {}
