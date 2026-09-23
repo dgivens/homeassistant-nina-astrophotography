@@ -2,7 +2,7 @@
  * Enough of a DOM to run a card under node, with a canvas that records rather
  * than draws.
  *
- * Every card is a custom element over a shadow root and, for three of them, a
+ * Every card is a custom element over a shadow root and, for five of them, a
  * 2D canvas — none of which node has. Installing stubs lets the card's own
  * render path execute, so a refactor can be diffed call for call against the
  * file it replaced.
@@ -99,7 +99,8 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     // A canvas is whatever the card's own markup declares as one, rather than
     // a list of ids to keep in step with six cards.
     getElementById(id) {
-      if (new RegExp(`<canvas[^>]*\\bid="${id}"`).test(html)) return canvas;
+      const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp(`<canvas[^>]*\\sid="${escaped}"`).test(html)) return canvas;
       if (!nodes.has(id)) {
         nodes.set(id, { textContent: "", innerHTML: "", style: {}, addEventListener() {} });
       }

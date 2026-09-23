@@ -3,14 +3,19 @@
  *
  * `dawn_flats` is the one state dumped from inside its own night, so it is the
  * one with a session: 55 lights over four targets and five filters, the newest
- * 24 of them through S, and the dawn flats after them. That reaches every
- * branch the sparklines have — the target boundaries, a colour per filter, the
- * HFR trend, which needs ten frames in the newest filter — and the flats prove
- * the series skips calibration frames rather than charting them.
+ * 24 of them through S, and the dawn flats after them. That reaches the target
+ * boundaries, a colour per filter and the HFR trend, which needs ten frames in
+ * the newest filter; it reads Stable. The flats never reach `recent_lights`, so
+ * the charts hold lights alone, and the header counts lights rather than the
+ * 122 frames the count sensor reports.
  *
- * `site_configured` holds no session, because it is dumped months after its
- * night. That is the empty card, and it is also what a new night shows before
- * its first light.
+ * Not reached: a gap in a series or a frame with no filter, since no captured
+ * light lacks a reading or a filter, nor a trend that reads Improving or
+ * Degrading, since the newest ten S frames hold steady.
+ *
+ * `site_configured` holds no session, because it is dumped on a later day than
+ * its night. That is the empty card, and it is also what a new night shows
+ * before its first light.
  */
 
 import { rig } from "../hass.mjs";

@@ -28,7 +28,8 @@ SNAPSHOTS = Path(__file__).parent / "snapshots"
 DUMP = SNAPSHOTS / "card_states.json"
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 
-# Each rig state, and the clock it is dumped at — `None` for the real one.
+# Each rig state, and the conftest fixture that sets its clock — `None` to leave
+# the real one running.
 #
 # `site_configured` rather than the `imaging_guiding` it derives from: it is the
 # same rig with every endpoint captured and the guider up, plus the observing
@@ -37,13 +38,13 @@ DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 # drivers down.
 #
 # Neither holds a session: the fold measures the noon rollover against the
-# clock, and their frames are months behind it. `dawn_flats` is dumped from
+# clock, and their frames are from a night long past. `dawn_flats` is dumped from
 # inside its own night, so it carries the whole session — 55 lights over four
 # targets and five filters, with the dawn flats after them.
 RIG_STATES = {
     "site_configured": None,
     "equipment_disconnected": None,
-    "dawn_flats": "2026-09-04T12:30:00+00:00",
+    "dawn_flats": "inside_the_dawn_session",
 }
 
 # Home Assistant mints these per run, so they are the one thing here that is not
@@ -137,7 +138,7 @@ async def test_the_card_harness_dump_is_current(
     config_entry,
     rig,
     set_up_at,
-    freezer,
+    request: pytest.FixtureRequest,
     rig_state: str,
     clock: str | None,
 ) -> None:
@@ -147,7 +148,7 @@ async def test_the_card_harness_dump_is_current(
     a tier-polled endpoint latches at setup and will not be advanced on to.
     """
     if clock:
-        freezer.move_to(clock)
+        request.getfixturevalue(clock)
     await set_up_at(hass, config_entry, rig, rig_state)
 
     current = json.loads(DUMP.read_text(encoding="utf-8")) if DUMP.exists() else {}
