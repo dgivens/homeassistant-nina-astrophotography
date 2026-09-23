@@ -96,10 +96,10 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     get innerHTML() {
       return html;
     },
+    // A canvas is whatever the card's own markup declares as one, rather than
+    // a list of ids to keep in step with six cards.
     getElementById(id) {
-      if (id.includes("canvas") || ["sky", "curve", "chart", "hist"].includes(id)) {
-        return canvas;
-      }
+      if (new RegExp(`<canvas[^>]*\\bid="${id}"`).test(html)) return canvas;
       if (!nodes.has(id)) {
         nodes.set(id, { textContent: "", innerHTML: "", style: {}, addEventListener() {} });
       }
