@@ -5,10 +5,14 @@
  * so they survive a page reload.
  *
  * Ships with the integration and registers itself as a dashboard resource —
- * nothing to copy or add under Resources. Add card:
+ * nothing to copy or add under Resources. One rig needs no configuration at
+ * all: the card finds its own session sensors in the registry.
  *   type: custom:nina-frame-stats-card
- *   prefix: n_i_n_a   # the slugified instance name your entities carry
+ *   device_id: abc123      # which rig, for two or more; any one of its devices
+ *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
+
+import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
 
@@ -94,10 +98,11 @@ const STYLE = `
   .no-data .icon { font-size: 2rem; margin-bottom: 8px; }
 `;
 
-// 2.0 entity ids carry the instance name, so the card is told the prefix
-// rather than guessing it: it is the instance name from the config flow,
-// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
-// renamed instance, or for the second rig.
+// The fallback path, not the primary one: entity ids normally come from the
+// registry (`_eid`), and the prefix is what an id is built from when a
+// particular entity cannot be resolved. It is the instance name from the config
+// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
+// instance, or for the second rig.
 //
 // Repeated in each card rather than imported: it is one literal, and `www/` is
 // served whole from the integration (`frontend.py`), so a card that needs real
@@ -128,12 +133,34 @@ class NinaFrameStatsCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._prefix = this._config.prefix || DEFAULT_PREFIX;
+    // A new config may name a different rig: make the next `set hass` re-resolve.
+    this._resolved = {};
+    this._resolvedFrom = null;
   }
 
   set hass(hass) {
     this._hass = hass;
+    // The frontend replaces `hass.entities` only when the registry itself
+    // changes, so this walks it on a rename, not on every state tick.
+    // `hass.devices` needs no second memo key: every device change that alters
+    // the map arrives with an entity-registry change too.
+    if (hass.entities !== this._resolvedFrom) {
+      this._resolvedFrom = hass.entities;
+      this._resolved = resolveEntities(hass, this._config.device_id);
+    }
     this._updateData();
     this._render();
+  }
+
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
+  //
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key. On this card it always is: every read is a hub
+  // sensor, and the hub adds nothing past the instance name.
+  _eid(domain, key, slug = key) {
+    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
 
   _state(id, fallback = null) {
@@ -151,7 +178,7 @@ class NinaFrameStatsCard extends HTMLElement {
   // keeps it. An unavailable entity carries no attributes at all, so one
   // failed poll keeps the last series rather than blanking the charts.
   _updateData() {
-    const entity = this._hass?.states[`sensor.${this._prefix}_last_image_hfr`];
+    const entity = this._hass?.states[this._eid("sensor", "last_image_hfr")];
     if (entity?.state === "unavailable") return;
     const lights = entity?.attributes.recent_lights ?? [];
     this._hfr = lights.map((light) => light.hfr ?? null);
@@ -176,19 +203,19 @@ class NinaFrameStatsCard extends HTMLElement {
   _render() {
     const h = this._hass;
     if (!h) return;
-    const prefix = this._prefix;
 
-    const frameCount   = this._state(`sensor.${prefix}_session_image_count`, "0");
-    const integration  = this._state(`sensor.${prefix}_session_integration_time`, "—");
-    const lastHfr      = this._state(`sensor.${prefix}_last_image_hfr`, "—");
-    const lastStars    = this._state(`sensor.${prefix}_last_image_star_count`, "—");
-    const lastFilter   = this._state(`sensor.${prefix}_last_image_filter`, "—");
-    const lastExposure = this._state(`sensor.${prefix}_last_image_exposure`, "—");
-    const sessionAvgHfr = this._state(`sensor.${prefix}_session_avg_hfr`, "—");
-    const sessionBestHfr = this._state(`sensor.${prefix}_session_best_hfr`, "—");
+    const frameCount   = this._state(this._eid("sensor", "session_image_count"), "0");
+    const integration  = this._state(this._eid("sensor", "session_integration_time"), "—");
+    const lastHfr      = this._state(this._eid("sensor", "last_image_hfr"), "—");
+    const lastStars    = this._state(this._eid("sensor", "last_image_star_count"), "—");
+    const lastFilter   = this._state(this._eid("sensor", "last_image_filter"), "—");
+    const lastExposure = this._state(this._eid("sensor", "last_image_exposure"), "—");
+    const avgHfrId = this._eid("sensor", "session_avg_hfr");
+    const sessionAvgHfr = this._state(avgHfrId, "—");
+    const sessionBestHfr = this._state(this._eid("sensor", "session_best_hfr"), "—");
     // The session breakdown rides on the average-HFR sensor, one row per
     // filter: {count, integration_hours, hfr_mean}.
-    const byFilter = this._attr(`sensor.${prefix}_session_avg_hfr`, "by_filter", {}) || {};
+    const byFilter = this._attr(avgHfrId, "by_filter", {}) || {};
 
     // The last five frames against the five before them, in the newest
     // frame's filter only: filters differ by tenths of a pixel, so an LRGB or
