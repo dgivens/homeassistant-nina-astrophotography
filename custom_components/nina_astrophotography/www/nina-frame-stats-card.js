@@ -204,11 +204,14 @@ class NinaFrameStatsCard extends HTMLElement {
     const h = this._hass;
     if (!h) return;
 
-    const frameCount   = this._state(this._eid("sensor", "session_image_count"), "0");
-    const integration  = this._state(this._eid("sensor", "session_integration_time"), "—");
+    // `_state`'s fallback covers a missing entity only; `shown` covers one
+    // that exists and reads `unknown` or `unavailable`, which would otherwise
+    // print as the word.
+    const frameCount   = shown(this._state(this._eid("sensor", "session_image_count"), "0"));
+    const integration  = shown(this._state(this._eid("sensor", "session_integration_time"), "—"));
     const lastHfr      = this._state(this._eid("sensor", "last_image_hfr"), "—");
     const lastStars    = this._state(this._eid("sensor", "last_image_star_count"), "—");
-    const lastFilter   = this._state(this._eid("sensor", "last_image_filter"), "—");
+    const lastFilter   = shown(this._state(this._eid("sensor", "last_image_filter"), "—"));
     const lastExposure = this._state(this._eid("sensor", "last_image_exposure"), "—");
     const avgHfrId = this._eid("sensor", "session_avg_hfr");
     const sessionAvgHfr = this._state(avgHfrId, "—");
