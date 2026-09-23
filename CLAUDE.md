@@ -146,7 +146,9 @@ disk proves nothing.
   bases but GitHub tracks no stack, so a bottom-up merge strands the upper PR on
   a deleted branch. Adopting already-open PRs after the fact is safe and edits
   neither; `--remote` is a flag on `submit`, not on `init`.
-  **Extend an existing stack with `gh stack add <branch>` from its top** —
+  **Extend an existing stack with `gh stack add <branch>` from the stack's
+  current top branch** — run from the new branch it answers "is not part of a
+  stack"; it adopts an existing branch with its commits and checks it out.
   `init` fails with "already exists in a stack", and `gh stack view` works only
   from a branch inside it (checking one out swaps the working tree).
   `submit --auto` creates each new PR as a **draft titled from the branch
@@ -243,13 +245,17 @@ suite; say which of the two things below you actually ran.
   change was a refactor, and the diff is what it altered. Use it on **every**
   card refactor — it is what proves an entity-resolution conversion changed no
   drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
-  twinkle stars and pulse the meridian.
+  twinkle stars and pulse the meridian. A card pulled out of git imports
+  `./nina-entity-resolver.js` relatively, so copy that file beside the copy or
+  the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs` finds the dump relative to
+  its own path, so run the shipped one.
 - **`render.html`** — the cards side by side in a real browser, over
   `python3 -m http.server` from the repo root (`file://` refuses their ES
   imports). Screenshot it with the Playwright MCP tools and **look at it**: this
   is the only check that covers layout, fonts and the canvas for real. Playwright
-  can only write under the repo, so it lands in the git-ignored
-  `.playwright-mcp/`; the page title carries an error count, and the console
+  can only write under the repo, and a bare filename lands in the **repo root**,
+  untracked — pass `.playwright-mcp/<name>.png`, which is git-ignored, or delete
+  it before committing. The page title carries an error count, and the console
   usually holds one 404 for `favicon.ico`, which is nothing.
 
 Both drive `tests/ha/snapshots/card_states.json` — the whole `hass` a card is
