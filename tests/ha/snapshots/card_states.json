@@ -5,8 +5,8 @@
     "id": "camera",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_camera",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_camera"
      ]
     ],
     "name": "N.I.N.A. Camera",
@@ -16,8 +16,8 @@
     "id": "filter_wheel",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_filter_wheel",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_filter_wheel"
      ]
     ],
     "name": "N.I.N.A. Filter Wheel",
@@ -27,8 +27,8 @@
     "id": "flat_device",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_flat_device",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_flat_device"
      ]
     ],
     "name": "N.I.N.A. Flat Panel",
@@ -38,8 +38,8 @@
     "id": "focuser",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_focuser",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_focuser"
      ]
     ],
     "name": "N.I.N.A. Focuser",
@@ -49,8 +49,8 @@
     "id": "hub",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
      ]
     ],
     "name": "N.I.N.A.",
@@ -60,8 +60,8 @@
     "id": "mount",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_mount",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_mount"
      ]
     ],
     "name": "N.I.N.A. Mount",
@@ -71,8 +71,8 @@
     "id": "rotator",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_rotator",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_rotator"
      ]
     ],
     "name": "N.I.N.A. Rotator",
@@ -82,8 +82,8 @@
     "id": "safety_monitor",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_safety_monitor",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_safety_monitor"
      ]
     ],
     "name": "N.I.N.A. Safety Monitor",
@@ -93,8 +93,8 @@
     "id": "switch_device",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_switch_device",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_switch_device"
      ]
     ],
     "name": "N.I.N.A. Switch",
@@ -104,8 +104,8 @@
     "id": "weather",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_weather",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_weather"
      ]
     ],
     "name": "N.I.N.A. Weather",
@@ -1907,8 +1907,8 @@
     "id": "hub",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
      ]
     ],
     "name": "N.I.N.A.",
@@ -2250,8 +2250,8 @@
     "id": "camera",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_camera",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_camera"
      ]
     ],
     "name": "N.I.N.A. Camera",
@@ -2261,8 +2261,8 @@
     "id": "filter_wheel",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_filter_wheel",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_filter_wheel"
      ]
     ],
     "name": "N.I.N.A. Filter Wheel",
@@ -2272,8 +2272,8 @@
     "id": "focuser",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_focuser",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_focuser"
      ]
     ],
     "name": "N.I.N.A. Focuser",
@@ -2283,8 +2283,8 @@
     "id": "guider",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_guider",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_guider"
      ]
     ],
     "name": "N.I.N.A. Guider",
@@ -2294,8 +2294,8 @@
     "id": "hub",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
      ]
     ],
     "name": "N.I.N.A.",
@@ -2305,8 +2305,8 @@
     "id": "mount",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_mount",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_mount"
      ]
     ],
     "name": "N.I.N.A. Mount",
@@ -2316,8 +2316,8 @@
     "id": "rotator",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_rotator",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_rotator"
      ]
     ],
     "name": "N.I.N.A. Rotator",
@@ -2327,8 +2327,8 @@
     "id": "safety_monitor",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_safety_monitor",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_safety_monitor"
      ]
     ],
     "name": "N.I.N.A. Safety Monitor",
@@ -2338,8 +2338,8 @@
     "id": "switch_device",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_switch_device",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_switch_device"
      ]
     ],
     "name": "N.I.N.A. Switch",
@@ -2349,8 +2349,8 @@
     "id": "weather",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_weather",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_weather"
      ]
     ],
     "name": "N.I.N.A. Weather",

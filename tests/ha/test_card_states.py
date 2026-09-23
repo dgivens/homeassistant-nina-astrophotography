@@ -14,6 +14,8 @@ Regenerating is part of the snapshot commit, the same as `entity_ids.txt`.
 
 import json
 from pathlib import Path
+import shutil
+import subprocess
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -24,6 +26,7 @@ from custom_components.nina_astrophotography.const import DOMAIN
 
 SNAPSHOTS = Path(__file__).parent / "snapshots"
 DUMP = SNAPSHOTS / "card_states.json"
+DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 
 # Each rig state, and the clock it is dumped at — `None` for the real one.
 #
@@ -117,7 +120,10 @@ def _hass_for_a_card(hass: HomeAssistant, entry) -> dict:
             named[device.id]: {
                 "id": named[device.id],
                 "name": device.name,
-                "identifiers": sorted(sorted(pair) for pair in device.identifiers),
+                # `[domain, id]`, as the frontend holds it: the resolver reads
+                # the domain first, so sorting inside a pair — an entry id sorts
+                # before `nina_astrophotography` — would hide every hub.
+                "identifiers": sorted(list(pair) for pair in device.identifiers),
                 "via_device_id": _link(named, device.via_device_id),
             }
             for device in sorted(devices, key=lambda d: named[d.id])
@@ -157,3 +163,32 @@ async def test_the_card_harness_dump_is_current(
         encoding="utf-8",
     )
     pytest.fail(f"card_states.json regenerated for {rig_state} — review and commit it")
+
+
+@pytest.mark.skipif(
+    shutil.which("node") is None, reason="needs node to run the shipped card module"
+)
+@pytest.mark.parametrize("rig_state", RIG_STATES)
+def test_every_keyed_entity_in_the_dump_resolves(
+    rig_state: str, tmp_path: Path
+) -> None:
+    """The harness checks a conversion by rendering a card off resolved ids and
+    again off templated ones. A dump whose registry resolved nothing would make
+    both the fallback, and that comparison would pass while proving nothing.
+    """
+    state = json.loads(DUMP.read_text(encoding="utf-8"))[rig_state]
+    payload = tmp_path / "hass.json"
+    payload.write_text(json.dumps(state), encoding="utf-8")
+    resolved = json.loads(
+        subprocess.run(
+            ["node", str(DRIVER), str(payload)],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
+    assert sorted(resolved.values()) == sorted(
+        entity_id
+        for entity_id, row in state["entities"].items()
+        if row["translation_key"]
+    )
