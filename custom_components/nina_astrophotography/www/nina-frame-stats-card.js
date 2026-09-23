@@ -242,10 +242,19 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const hasData = this._hfr.some(v => v !== null);
 
-    // Build filter chip HTML
+    // One colour per filter, shared by the chips and the sparklines, so the
+    // chips are the charts' legend: the session's filters in the chips' order,
+    // then any the series holds that the breakdown does not.
+    this._colours = new Map();
+    for (const name of [...Object.keys(byFilter), ...this._filters]) {
+      if (name !== null && !this._colours.has(name)) {
+        this._colours.set(name, FILTER_COLOURS[this._colours.size % FILTER_COLOURS.length]);
+      }
+    }
+
     const filterEntries = Object.entries(byFilter);
-    const filterChipsHtml = filterEntries.map(([name, row], i) => {
-      const colour = FILTER_COLOURS[i % FILTER_COLOURS.length];
+    const filterChipsHtml = filterEntries.map(([name, row]) => {
+      const colour = this._colours.get(name);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${name}: ${row?.count ?? 0}</span>
@@ -410,18 +419,16 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Main line, coloured by filter. The name list is built once: it was
-    // rebuilt twice per segment, and a null filter — which a calibration frame
-    // pushes — used to index straight into a real filter's colour.
-    const names = [...new Set(filters.filter((name) => name !== null))];
+    // A frame with no filter — a rig without a wheel — takes the chart's own
+    // colour rather than one the legend gives a real filter.
+    const colourOf = (i) => this._colours.get(filters[i]) ?? defaultColor;
+
+    // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
       const y0 = yOf(data[i - 1]);
       const y1 = yOf(data[i]);
       if (y0 === null || y1 === null) continue;
-      const named = names.indexOf(filters[i]);
-      const col = named >= 0
-        ? FILTER_COLOURS[named % FILTER_COLOURS.length]
-        : defaultColor;
+      const col = colourOf(i);
       ctx.beginPath();
       ctx.moveTo(xOf(i - 1), y0);
       ctx.lineTo(xOf(i), y1);
@@ -455,9 +462,7 @@ class NinaFrameStatsCard extends HTMLElement {
       const y = yOf(data[i]);
       if (y === null) continue;
       const isLast = i === data.length - 1;
-      const col = filters.length > 0
-        ? FILTER_COLOURS[[...new Set(filters)].indexOf(filters[i]) % FILTER_COLOURS.length]
-        : defaultColor;
+      const col = colourOf(i);
       ctx.beginPath();
       ctx.arc(xOf(i), y, isLast ? 3.5 : 2, 0, Math.PI * 2);
       ctx.fillStyle = isLast ? col : col + "99";
