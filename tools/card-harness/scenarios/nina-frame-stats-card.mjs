@@ -10,9 +10,7 @@
  * 122 frames the count sensor reports.
  *
  * Every captured light has a filter from one wheel of single letters, so the
- * filter scenarios relabel that night rather than invent one: the series is
- * the whole night's 55 lights, so the breakdown and the last-filter reading
- * are rebuilt from it and stay consistent with it.
+ * filter scenarios relabel that night rather than invent one.
  *
  * Not reached: a gap in a series, since no captured light lacks a reading,
  * nor a trend that reads Improving or Degrading, since the newest ten S frames
@@ -32,37 +30,26 @@ const HFR = "sensor.n_i_n_a_last_image_hfr";
 const AVG_HFR = "sensor.n_i_n_a_session_avg_hfr";
 const FILTER = "sensor.n_i_n_a_last_image_filter";
 
-const round = (value, places) => Math.round(value * 10 ** places) / 10 ** places;
-
-// The night with each light's filter replaced by `relabel(light, i)`, and
-// everything the card reads that is tied to it rebuilt to match: the
-// breakdown, sorted by name as the integration sorts it, and the newest
-// light's filter, `unknown` when it has none.
-function refiltered(dump, relabel) {
-  const night = rig(dump, NIGHT);
+// The night with its filters renamed by `names`, captured name to new, where
+// null takes the name away. Only labels change: each light, breakdown row and
+// the last-filter reading keeps what the integration published, re-sorted by
+// name as it sorts them, and a filter named null loses its row as a light
+// with no filter has none.
+function relabelled(dump, names) {
   const states = dump[NIGHT].states;
+  const label = (name) => (name in names ? names[name] : name);
   const lights = states[HFR].attributes.recent_lights.map(
-    (light, i) => ({ ...light, filter: relabel(light, i) }));
-  const groups = {};
-  for (const light of lights) {
-    if (light.filter !== null) (groups[light.filter] ??= []).push(light);
-  }
-  const byFilter = Object.fromEntries(Object.keys(groups).sort().map((name) => {
-    const members = groups[name];
-    return [name, {
-      count: members.length,
-      hfr_mean: round(members.reduce((sum, l) => sum + l.hfr, 0) / members.length, 3),
-      integration_hours: round(members.reduce((sum, l) => sum + l.exposure, 0) / 3600, 2),
-    }];
-  }));
-  const newest = lights[lights.length - 1].filter;
-  return night
+    (light) => ({ ...light, filter: label(light.filter) }));
+  const byFilter = Object.fromEntries(
+    Object.entries(states[AVG_HFR].attributes.by_filter)
+      .map(([name, row]) => [label(name), row])
+      .filter(([name]) => name !== null)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  return rig(dump, NIGHT)
     .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
     .override(AVG_HFR, states[AVG_HFR].state, { ...states[AVG_HFR].attributes, by_filter: byFilter })
-    .override(FILTER, newest ?? "unknown", states[FILTER].attributes);
+    .override(FILTER, label(states[FILTER].state) ?? "unknown", states[FILTER].attributes);
 }
-
-const renamed = (names) => (light) => names[light.filter] ?? light.filter;
 
 // No `draw` hook: the three sparklines are painted from the frame the render
 // queues, which the runner fires.
@@ -91,26 +78,21 @@ export const scenarios = {
   // its passband's, not its label's.
   wheel_names: {
     hass: (dump) =>
-      refiltered(dump, renamed({
+      relabelled(dump, {
         B: "Blue", L: "Lum", O: "OIII 3nm", R: "red", S: "SII 3nm",
-      })).build(),
+      }).build(),
   },
 
   // Filters with no fixed colour, which take one hashed from the name. Two of
   // them, so they must not share a colour.
   other_names: {
     hass: (dump) =>
-      refiltered(dump, renamed({ B: "UV/IR Cut", L: "L-eXtreme" })).build(),
+      relabelled(dump, { B: "UV/IR Cut", L: "L-eXtreme" }).build(),
   },
 
-  // The Wizard Nebula's five R lights with no filter, as a wheel that dropped
-  // out for that target leaves them: a grey no chip shares, beside R's four
-  // remaining lights.
-  unfiltered: {
-    hass: (dump) =>
-      refiltered(dump, (light) =>
-        light.target === "Wizard Nebula" ? null : light.filter).build(),
-  },
+  // Every R light with no filter, as a wheel slot with no name leaves them:
+  // nine lights over two targets in a grey no chip shares.
+  unfiltered: { hass: (dump) => relabelled(dump, { R: null }).build() },
 
   // No lights in the session, so no charts: the waiting panel under the
   // header's session totals.

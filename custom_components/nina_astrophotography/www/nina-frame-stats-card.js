@@ -58,7 +58,7 @@ function filterKey(name) {
     .replace(/[^a-z0-9α]/g, "");
 }
 
-// FNV-1a: stable across browsers and sessions, unlike anything keyed on order.
+// FNV-1a: stable across browsers and sessions.
 function nameHash(text) {
   let hash = 0x811c9dc5;
   for (const ch of text) hash = Math.imul(hash ^ ch.codePointAt(0), 0x01000193);
@@ -80,7 +80,7 @@ function filterColours(names) {
   const taken = new Set();
   for (const name of unnamed.sort()) {
     let slot = nameHash(filterKey(name)) % OTHER_COLOURS.length;
-    for (let probe = 0; probe < OTHER_COLOURS.length && taken.has(slot); probe++) {
+    while (taken.size < OTHER_COLOURS.length && taken.has(slot)) {
       slot = (slot + 1) % OTHER_COLOURS.length;
     }
     taken.add(slot);
@@ -303,9 +303,8 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const hasData = this._hfr.some(v => v !== null);
 
-    // One colour per filter, shared by the chips and the sparklines, so the
-    // chips are the charts' legend: the session's filters, and any the series
-    // holds that the breakdown does not.
+    // Shared by the chips and the sparklines; the series may hold filters the
+    // breakdown does not.
     this._colours = filterColours(
       [...Object.keys(byFilter), ...this._filters].filter((name) => name !== null));
 
