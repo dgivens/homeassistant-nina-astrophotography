@@ -24,8 +24,6 @@ from helpers import needs_node, run_node
 
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 
-pytestmark = needs_node
-
 
 async def _snapshot(hass: HomeAssistant, hass_ws_client) -> dict:
     """The registries as the frontend holds them, in `hass.entities`/`.devices`.
@@ -125,6 +123,7 @@ def test_every_resolving_card_is_accounted_for() -> None:
     assert {card.name for card in RESOLVING} == set(CANNOT_RESOLVE)
 
 
+@needs_node
 @pytest.mark.parametrize("card", RESOLVING, ids=lambda p: p.name)
 async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     hass: HomeAssistant,
@@ -155,6 +154,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     assert not wrong, f"resolved to a different entity than it templated: {wrong}"
 
 
+@needs_node
 @pytest.mark.parametrize("card", RESOLVING, ids=lambda p: p.name)
 async def test_only_the_entities_that_cannot_resolve_fall_back(
     hass: HomeAssistant,
@@ -201,6 +201,7 @@ async def test_a_disabled_entity_is_absent_from_what_the_frontend_sees(
     assert progress not in snapshot["entities"]
 
 
+@needs_node
 async def test_two_rigs_resolve_nothing_until_one_is_named(
     hass: HomeAssistant, config_entry, nina_responses, hass_ws_client
 ) -> None:
@@ -226,6 +227,7 @@ async def test_two_rigs_resolve_nothing_until_one_is_named(
     assert resolved == {}
 
 
+@needs_node
 async def test_naming_a_child_device_resolves_its_whole_rig(
     hass: HomeAssistant, config_entry, nina_responses, hass_ws_client
 ) -> None:
@@ -267,6 +269,7 @@ async def test_naming_a_child_device_resolves_its_whole_rig(
     assert "sensor.sequence_target" in resolved
 
 
+@needs_node
 async def test_renaming_a_device_does_not_break_resolution(
     hass: HomeAssistant, loaded_entry, hass_ws_client
 ) -> None:

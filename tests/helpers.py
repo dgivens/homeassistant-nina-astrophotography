@@ -1,10 +1,11 @@
-"""Test doubles for the N.I.N.A. HTTP API, and the captured-fixture loader.
+"""Test doubles for the N.I.N.A. HTTP API, the captured-fixture loader, and a
+runner for the shipped `www/` modules under node.
 
 `responses` maps a path fragment to a payload, a FakeResponse, or an exception
 to raise; the first fragment found in the URL wins, so register the more
 specific fragment first. `default` covers everything else.
 
-`run_node` runs a shipped card module under node, through a driver script that
+`run_node` runs a shipped `www/` module under node, through a driver script that
 reads its input from a JSON file and prints its result as JSON.
 
 Imports neither Home Assistant nor the integration at runtime, so both suites
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 needs_node = pytest.mark.skipif(
-    shutil.which("node") is None, reason="needs node to run the shipped card module"
+    shutil.which("node") is None, reason="needs node to run a shipped www/ module"
 )
 
 
@@ -154,11 +155,12 @@ def run_node(driver: Path, payload: Any, *args: str) -> Any:
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "payload.json"
         path.write_text(json.dumps(payload), encoding="utf-8")
-        return json.loads(
-            subprocess.run(
-                ["node", str(driver), str(path), *args],
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout
+        result = subprocess.run(
+            ["node", str(driver), str(path), *args],
+            capture_output=True,
+            text=True,
+            check=False,
         )
+    if result.returncode:
+        pytest.fail(f"node {driver.name} exited {result.returncode}:\n{result.stderr}")
+    return json.loads(result.stdout)
