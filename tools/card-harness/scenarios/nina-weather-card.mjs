@@ -6,7 +6,9 @@
  * safe verdict — so the atmosphere cells, the wind rose and the banner all
  * render off captured data. `equipment_disconnected` has no weather device and
  * no monitor; its one weather entity is the hub's source, reading `unknown`,
- * which is what drives the not-connected panel.
+ * which is what drives the not-connected panel. `nina_unreachable` is the
+ * first rig once N.I.N.A. stops answering, where that same source reads
+ * `unavailable`.
  *
  * Three channels this source reports as `"NaN"` have no entity anywhere in the
  * corpus: cloud cover, sky quality and star FWHM. Their cells therefore render
@@ -89,4 +91,9 @@ export const scenarios = {
   // No station and no monitor, which is what a fresh install shows: the
   // not-connected panel in place of the whole body, under a grey banner.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
+
+  // The station and monitor of `station`, after N.I.N.A. stops answering: every
+  // entity unavailable, the hub's source included. Must not read as the
+  // unconfigured rig above, nor advise connecting anything.
+  unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
 };

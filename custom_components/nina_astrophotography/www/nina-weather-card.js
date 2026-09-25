@@ -209,7 +209,8 @@ class NinaWeatherCard extends HTMLElement {
     if (!this._hass) return;
 
     // Safety monitor
-    const safetyConnected = this._on(this._eid("binary_sensor", "safety_monitor_connected"));
+    const safetyLink = this._s(this._eid("binary_sensor", "safety_monitor_connected"));
+    const safetyConnected = safetyLink === "on";
     // The SAFETY device class is on = problem, so the entity is named for the
     // problem: it reads `on` when conditions are UNSAFE.
     //
@@ -226,8 +227,12 @@ class NinaWeatherCard extends HTMLElement {
     // because the name is that same state and printing `unavailable` as the
     // station's name is worse than printing nothing.
     const source = this._s(this._eid("sensor", "weather_source"));
-    const wxConnected = source !== null && source !== "unavailable"
-      && source !== "unknown";
+    // Only a lost link to N.I.N.A. makes either of these unavailable: the
+    // source hangs off the hub, which has no driver of its own to lose, and
+    // the monitor's connectivity stays available while the monitor is down.
+    // A station or monitor that is merely down reads `unknown` or `off`.
+    const unreachable = source === "unavailable" || safetyLink === "unavailable";
+    const wxConnected = source !== null && !unreachable && source !== "unknown";
     // Every channel Home Assistant can convert is read with its unit: it is
     // printed in that unit, and converted only to meet a threshold here, which
     // is in the unit the integration publishes.
@@ -267,6 +272,11 @@ class NinaWeatherCard extends HTMLElement {
       safetyLabel = "UNSAFE — conditions exceeded";
       safetyDetail = "Automated abort should be triggered if configured";
       bannerCls = "safety-banner unsafe";
+    } else if (unreachable) {
+      safetyIcon = "🔘"; safetyLabelCls = "unknown";
+      safetyLabel = "N.I.N.A. unreachable";
+      safetyDetail = "Safety state unknown until Home Assistant reaches N.I.N.A. again";
+      bannerCls = "safety-banner unknown";
     } else if (!safetyConnected) {
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor not connected";
@@ -318,7 +328,7 @@ class NinaWeatherCard extends HTMLElement {
           </svg>
           <div>
             <div class="title">${wxName}</div>
-            <div class="sub">${wxConnected ? "Connected" : "Not connected"} · N.I.N.A. weather station</div>
+            <div class="sub">${wxConnected ? "Connected" : unreachable ? "Unreachable" : "Not connected"} · N.I.N.A. weather station</div>
           </div>
         </div>
 
@@ -331,7 +341,12 @@ class NinaWeatherCard extends HTMLElement {
           </div>
         </div>
 
-        ${!wxConnected ? `
+        ${unreachable ? `
+          <div class="not-connected">
+            <div>No weather readings</div>
+            <div class="hint">Home Assistant cannot reach N.I.N.A.; readings return with the link.</div>
+          </div>
+        ` : !wxConnected ? `
           <div class="not-connected">
             <div>No weather station connected</div>
             <div class="hint">Connect an ASCOM ObservingConditions or weather driver in N.I.N.A.<br>
