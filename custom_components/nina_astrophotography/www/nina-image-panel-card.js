@@ -24,7 +24,8 @@
  *   for the strip's labels and the histogram's range.
  *
  * The overlay and the stats row describe the newest light, not the frame on
- * screen, which at dawn is a flat. When the two differ the pills are dimmed
+ * screen, which at dawn is a flat. When the two differ — matched by date
+ * against the HFR sensor's `recent_lights` — the pills and target are dimmed
  * behind a "Last light" tag, and the stats row dimmed with them.
  *
  * Card config — one rig needs none: the card finds its own sensors in the
@@ -84,10 +85,11 @@ function finite(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-// A frame with no type is one the integration did not classify, and is not
-// marked: only a frame known to be something else is.
-function isLight(frame) {
-  return frame?.image_type == null || frame.image_type === "LIGHT";
+// The type a thumbnail is tagged with: a light is the ordinary case, and a
+// frame with no type is one the integration did not classify.
+function tagFor(frame) {
+  const type = frame?.image_type;
+  return type && type !== "LIGHT" ? type : null;
 }
 
 // A browser draws an image with no src, or a failed one, as its alt text and a
@@ -182,7 +184,7 @@ const STYLE = `
   }
   .stat-pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); }
   .stat-pill.warn .dot { background: var(--warn); }
-  .overlay-left.stale .stat-pill:not(.tag) { opacity: 0.5; }
+  .overlay.stale .stat-pill:not(.tag), .overlay.stale .target { opacity: 0.5; }
   .stat-pill.tag { color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
 
   /* ── Exposing indicator ── */
@@ -306,7 +308,7 @@ class NinaImagePanelCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._currentIndex = 0;   // 0 = latest
+    this._currentIndex = 0;   // 0 = latest; the frame on screen, set once it has loaded
     this._totalFrames  = 0;
     this._loading = false;
     this._historyMeta = [];   // [{date, filename, image_type, filter, mean, median, min, max}]
@@ -458,7 +460,19 @@ class NinaImagePanelCard extends HTMLElement {
 
   // The frame on screen, from the `recent_frames` attribute. Index 0 is the
   // newest of any type, matching what the proxy serves at history index 0.
-  _frame() { return this._historyMeta[this._currentIndex] || {}; }
+  // Read from the attribute, not the strip's copy, which is filled only while
+  // the strip or the histogram is shown.
+  _frame() { return this._recentFrames()[this._currentIndex] || {}; }
+
+  // Whether the frame on screen is the light the `last_image_*` sensors
+  // describe. A frame the attribute does not list is given the benefit, and
+  // with no light this session there are no readings to mislabel.
+  _showsLastLight() {
+    const date = this._frame().date;
+    const lights = this._attr(this._eid("sensor", "last_image_hfr"), "recent_lights", []);
+    if (!date || lights.length === 0) return true;
+    return date === lights[lights.length - 1].date;
+  }
   _attr(id, attr, fallback = null) {
     const e = this._hass?.states?.[id];
     return e?.attributes?.[attr] ?? fallback;
@@ -593,9 +607,6 @@ class NinaImagePanelCard extends HTMLElement {
     // it just does nothing.
     const token = ++this._loadToken;
     this._loading = true;
-    this._currentIndex = index;
-    this._updateOverlay();
-    this._updateStatsRow();
 
     if (!silent) {
       img.classList.add("loading");
@@ -612,6 +623,9 @@ class NinaImagePanelCard extends HTMLElement {
       });
       if (token !== this._loadToken) return;
       img.src = url;
+      // Only now: a failed or pending load leaves the previous frame on screen,
+      // and everything describing it must stay on it too.
+      this._currentIndex = index;
       this._hasImage = true;
       img.classList.remove("loading");
       spinner?.classList.remove("active");
@@ -619,6 +633,9 @@ class NinaImagePanelCard extends HTMLElement {
       img.style.display = "block";
       if (this._config.show_histogram) this._drawHistogram();
       this._updateStripActive();
+      this._updateOverlay();
+      this._updateStatsRow();
+      this._updateHeaderBadge();
     } catch (err) {
       if (token !== this._loadToken) return;
       this._hasImage = false;
@@ -669,16 +686,16 @@ class NinaImagePanelCard extends HTMLElement {
         .catch(dim);
 
       // Only a calibration frame is tagged: a light is the ordinary case.
-      const frame = this._historyMeta[i];
-      if (!isLight(frame)) {
+      const type = tagFor(this._historyMeta[i]);
+      if (type) {
         const tag = document.createElement("div");
         tag.className = "strip-type";
-        tag.textContent = frame.image_type;
+        tag.textContent = type;
         thumb.appendChild(tag);
       }
 
       // Filter label from the recent-frames metadata
-      const filterName = frame?.filter ?? "";
+      const filterName = this._historyMeta[i]?.filter ?? "";
       if (filterName) {
         const lbl = document.createElement("div");
         lbl.className = "strip-filter";
@@ -825,15 +842,16 @@ class NinaImagePanelCard extends HTMLElement {
     }
 
     const targetHtml = target && target !== "null"
-      ? `<span style="font-size:0.65rem;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;max-width:120px;text-overflow:ellipsis">${target}</span>`
+      ? `<span class="target" style="font-size:0.65rem;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;max-width:120px;text-overflow:ellipsis">${target}</span>`
       : "";
 
-    // The pills are the newest light's, so over another type of frame they
-    // say whose readings they are.
-    const stale = pills.length > 0 && !isLight(this._frame());
+    // The pills are the newest light's, so over any other frame they say
+    // whose readings they are.
+    const stale = (pills.length > 0 || targetHtml !== "") && !this._showsLastLight();
     if (stale) pills.unshift(`<span class="stat-pill tag">Last light</span>`);
 
-    overlay.innerHTML = `<div class="overlay-left${stale ? " stale" : ""}">${pills.join("")}</div>${targetHtml}`;
+    overlay.classList.toggle("stale", stale);
+    overlay.innerHTML = `<div class="overlay-left">${pills.join("")}</div>${targetHtml}`;
   }
 
   _updateStatsRow() {
@@ -853,7 +871,7 @@ class NinaImagePanelCard extends HTMLElement {
 
     // The newest light's too, beside a histogram of the frame on screen.
     this.shadowRoot?.getElementById("stats-row")
-      ?.classList.toggle("stale", !isLight(this._frame()));
+      ?.classList.toggle("stale", !this._showsLastLight());
 
     // Colour HFR
     const hfrEl = this.shadowRoot?.getElementById("st-hfr");

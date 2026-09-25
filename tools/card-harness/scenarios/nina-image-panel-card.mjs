@@ -63,6 +63,13 @@ export const scenarios = {
         .build(),
   },
 
+  // No strip and no histogram, which must still mark the pills over a flat:
+  // the frame on screen is read from the attribute, not from the strip.
+  bare: {
+    hass: (dump) => rig(dump, NIGHT).build(),
+    config: { show_strip: false, show_histogram: false },
+  },
+
   // Exposing, with frames in the history but no light this session.
   exposing: { hass: (dump) => rig(dump, "site_configured").build() },
 
