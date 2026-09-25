@@ -77,6 +77,14 @@ hass.callWS = async (message) => {
   log.push(`callWS ${JSON.stringify(message)}`);
   return { path: message.path };
 };
+// Held so a scenario's `events` can be fired at whichever the card subscribed.
+const subscribed = [];
+hass.connection = {
+  subscribeEvents: async (callback, type) => {
+    subscribed.push({ callback, type });
+    return () => {};
+  },
+};
 instance.hass = hass;
 // Node fires no animation frames, so the one the render queued is run here;
 // a scenario's `draw` replaces it — see the README.
@@ -89,6 +97,14 @@ if (scenario.draw) {
 // A load the card started — a signed path, then the image behind it — settles
 // on later ticks, and what it leaves on screen is part of the output.
 await new Promise((resolve) => setTimeout(resolve));
+
+// Bus events, fired after the first render has settled. Each is logged, so the
+// lines that follow it — a signed path, say — are what the event set off.
+for (const { type, data } of scenario.events?.(dump) ?? []) {
+  log.push(`event ${type} ${JSON.stringify(data)}`);
+  for (const sub of subscribed) if (sub.type === type) sub.callback({ event_type: type, data });
+  await new Promise((resolve) => setTimeout(resolve));
+}
 
 if (flags.includes("--html")) {
   console.log("--- html ---");

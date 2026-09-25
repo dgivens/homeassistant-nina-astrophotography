@@ -87,8 +87,13 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
   hass: (dump) => rig(dump, "site_configured").without("site_latitude").build(),
   config: { prefix: "n_i_n_a" },   // optional, straight to setConfig
   draw: (card) => card._drawFrame(),  // optional, see below
+  events: (dump) => [{ type: "nina_image_save", data: { … } }],  // optional
 }
 ```
+
+`events` are bus events `ops.mjs` fires at whatever the card subscribed to,
+once the first render has settled; each is logged, so the lines after it are
+what it set off. `render.html` fires none.
 
 A card paints its canvas on an animation frame, which node never fires, so
 `ops.mjs` runs the ones the render queued. `draw` replaces that for a card the
