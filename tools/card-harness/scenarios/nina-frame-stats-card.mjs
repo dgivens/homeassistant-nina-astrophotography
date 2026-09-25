@@ -83,8 +83,7 @@ export const scenarios = {
       }).build(),
   },
 
-  // Filters with no fixed colour, which take one hashed from the name. Two of
-  // them, so they must not share a colour.
+  // Filters with no fixed colour, which take one hashed from the name alone.
   other_names: {
     hass: (dump) =>
       relabelled(dump, { B: "UV/IR Cut", L: "L-eXtreme" }).build(),

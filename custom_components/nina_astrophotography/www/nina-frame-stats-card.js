@@ -40,10 +40,11 @@ const NAMED_FILTERS = [
 const NAMED_COLOURS = new Map(
   NAMED_FILTERS.flatMap(([colour, keys]) => keys.map((key) => [key, colour])));
 
-// Any other filter, by a hash of its name. None of these is a named filter's
-// hue or the unfiltered grey.
+// Any other filter, by a hash of its name alone, so that no other filter can
+// move it: two may share a colour, and their chips still name them. Each sits
+// in a gap between the named hues.
 const OTHER_COLOURS = [
-  "#ffd166", "#f4a261", "#b5e05a", "#c8a27c", "#9bd0ff", "#ffb4a2",
+  "#ff9447", "#f2e35c", "#b5e05a", "#6fe3a8", "#8a86ff", "#eb7ff0",
 ];
 
 // A light with no filter — a rig without a wheel. It has no chip, so it takes
@@ -54,7 +55,7 @@ const NO_FILTER = "#8a909c";
 // "H-alpha" and "HA" are one filter.
 function filterKey(name) {
   return String(name).toLowerCase()
-    .replace(/\d+(\.\d+)?\s*nm\b/g, "")
+    .replace(/\d+([.,]\d+)?\s*nm\b/g, "")
     .replace(/[^a-z0-9α]/g, "");
 }
 
@@ -65,28 +66,10 @@ function nameHash(text) {
   return hash >>> 0;
 }
 
-// Each name's colour. An unnamed filter probes past a slot another has already
-// taken, in name order, so two never share one while there are slots to spare.
-// Only then does a colour depend on the night; the order names arrive in never
-// does.
-function filterColours(names) {
-  const colours = new Map();
-  const unnamed = [];
-  for (const name of new Set(names)) {
-    const named = NAMED_COLOURS.get(filterKey(name));
-    if (named) colours.set(name, named);
-    else unnamed.push(name);
-  }
-  const taken = new Set();
-  for (const name of unnamed.sort()) {
-    let slot = nameHash(filterKey(name)) % OTHER_COLOURS.length;
-    while (taken.size < OTHER_COLOURS.length && taken.has(slot)) {
-      slot = (slot + 1) % OTHER_COLOURS.length;
-    }
-    taken.add(slot);
-    colours.set(name, OTHER_COLOURS[slot]);
-  }
-  return colours;
+function filterColour(name) {
+  if (name === null) return NO_FILTER;
+  const key = filterKey(name);
+  return NAMED_COLOURS.get(key) ?? OTHER_COLOURS[nameHash(key) % OTHER_COLOURS.length];
 }
 
 const STYLE = `
@@ -303,14 +286,9 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const hasData = this._hfr.some(v => v !== null);
 
-    // Shared by the chips and the sparklines; the series may hold filters the
-    // breakdown does not.
-    this._colours = filterColours(
-      [...Object.keys(byFilter), ...this._filters].filter((name) => name !== null));
-
     const filterEntries = Object.entries(byFilter);
     const filterChipsHtml = filterEntries.map(([name, row]) => {
-      const colour = this._colours.get(name);
+      const colour = filterColour(name);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${name}: ${row?.count ?? 0}</span>
@@ -475,7 +453,7 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    const colourOf = (i) => this._colours.get(this._filters[i]) ?? NO_FILTER;
+    const colourOf = (i) => filterColour(this._filters[i]);
 
     // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {

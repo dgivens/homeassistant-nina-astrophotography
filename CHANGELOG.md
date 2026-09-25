@@ -287,13 +287,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   warm-up's final value, so switching on resumes there; set
   `number.<instance>_camera_target_temperature` to cool to a chosen value.
 - **The frame statistics card gives each filter the same colour every night.**
-  1.4.5 coloured filters by their place in the night's sorted list, which made
-  R green on a night of B, L, O, R and S, and moved colours when a filter was
-  added.
-  L is neutral, R, G and B their own hues, Ha rose, OIII cyan and SII violet,
-  whatever the wheel calls them (`Lum`, `Red`, `Ha 3nm`, `OIII`); any other
-  filter takes a colour hashed from its name. A light with no filter is drawn
-  grey, which no chip uses.
+  1.4.5 coloured the chips in the order the night first used each filter and
+  the lines in their order on screen, so R could take any colour, and a chip
+  and its line could disagree. L is neutral, R, G and B their own hues, Ha
+  rose, OIII cyan and SII violet, whatever the wheel calls them (`Lum`, `Red`,
+  `Ha 3nm`, `OIII`); any other filter takes a colour from its name alone, which
+  two such filters may share. A light with no filter is drawn grey, which no
+  chip uses.
 
 ### Fixed
 
