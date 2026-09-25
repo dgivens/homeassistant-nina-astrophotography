@@ -19,13 +19,15 @@
  * Reads HA sensors for the overlay and the strip/histogram:
  *   The newest LIGHT frame's HFR, star count, mean ADU, filter, exposure,
  *   guide RMS and target; the session frame count and integration time;
- *   whether the camera is exposing; and `sensor.<prefix>_last_image_mean_adu`'s
- *   `recent_frames` attribute — the newest frames of any type, already
- *   bounded and ordered — for the strip's labels and the histogram's range.
+ *   whether the camera is exposing; and the mean-ADU sensor's `recent_frames`
+ *   attribute — the newest frames of any type, already bounded and ordered —
+ *   for the strip's labels and the histogram's range.
  *
- * Card config:
+ * Card config — one rig needs none: the card finds its own sensors in the
+ * registry.
  *   type: custom:nina-image-panel-card
- *   prefix: n_i_n_a         # the slugified instance name your entities carry
+ *   device_id: abc123       # which rig, for two or more; any one of its devices
+ *   prefix: n_i_n_a         # fallback only, for the entities that cannot resolve
  *   refresh_on_save: true   # auto-refresh when IMAGE-SAVE fires via HA event (default true)
  *   show_strip: true        # show recent-frames strip at bottom (default true)
  *   show_histogram: true    # show ADU histogram bar (default true)
@@ -33,6 +35,8 @@
  *   stretch: true           # use N.I.N.A.'s auto-stretch (default true)
  *   strip_count: 6          # number of thumbnails in the recent strip (default 6)
  */
+
+import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "3.0.0";
 
@@ -256,10 +260,11 @@ const STYLE = `
   }
 `;
 
-// 2.0 entity ids carry the instance name, so the card is told the prefix
-// rather than guessing it: it is the instance name from the config flow,
-// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
-// renamed instance, or for the second rig.
+// The fallback path, not the primary one: entity ids normally come from the
+// registry (`_eid`), and the prefix is what an id is built from when a
+// particular entity cannot be resolved. It is the instance name from the config
+// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
+// instance, or for the second rig.
 //
 // Repeated in each card rather than imported: it is one literal, and `www/` is
 // served whole from the integration (`frontend.py`), so a card that needs real
@@ -290,12 +295,27 @@ class NinaImagePanelCard extends HTMLElement {
       stretch: config.stretch ?? true,
       strip_count: config.strip_count ?? 6,
       prefix: config.prefix ?? DEFAULT_PREFIX,
+      device_id: config.device_id,
     };
+    // A new config may name a different rig: make the next `set hass` re-resolve.
+    this._resolved = {};
+    this._resolvedFrom = null;
+    this._entryId = null;
   }
 
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
+
+    // The frontend replaces `hass.entities` only when the registry itself
+    // changes, so this walks it on a rename, not on every state tick.
+    // `hass.devices` needs no second memo key: every device change that alters
+    // the map arrives with an entity-registry change too.
+    if (hass.entities !== this._resolvedFrom) {
+      this._resolvedFrom = hass.entities;
+      this._resolved = resolveEntities(hass, this._config.device_id);
+      this._entryId = this._rigEntryId(hass);
+    }
 
     if (!this._rendered) {
       this._buildDOM();
@@ -321,11 +341,14 @@ class NinaImagePanelCard extends HTMLElement {
     // Subscribe to nina_image_save HA event for auto-refresh
     if (first && this._config.refresh_on_save && hass.connection) {
       // Every configured rig fires this event, so a two-rig dashboard would
-      // otherwise refresh both panels off whichever rig saved a frame.
+      // otherwise refresh both panels off whichever rig saved a frame. The
+      // entry id is exact; the instance name is what is left when the rig did
+      // not resolve, and it matches only while `prefix:` is its slug.
       this._unsubHassEvent = hass.connection.subscribeEvents(
         (event) => {
-          const instance = event?.data?.instance;
-          if (instance && slug(instance) !== this._config.prefix) return;
+          const { entry_id: entryId, instance } = event?.data ?? {};
+          if (this._entryId ? entryId !== this._entryId
+              : instance && slug(instance) !== this._config.prefix) return;
           this._currentIndex = 0;
           this._loadImage(0, true);
         },
@@ -349,13 +372,33 @@ class NinaImagePanelCard extends HTMLElement {
   }
   _f(id, fallback = 0) { return parseFloat(this._s(id)) || fallback; }
 
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
+  //
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key: the camera's exposing sensor is keyed
+  // `camera_is_exposing`.
+  _eid(domain, key, slug = key) {
+    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._config.prefix}_${slug}`;
+  }
+
   // The entity the proxy resolves to a rig by — any of this integration's
   // own hub entities works, but NOT a piece of equipment's: `camera_state`
   // is gated behind the camera being observed (kind="camera") and is absent
   // from the registry on a fresh install, which would 404 every request.
   // `last_image_mean_adu` (kind=None) is a hub entity, always created at
   // setup, and the card already reads it for `recent_frames`.
-  _entityId() { return `sensor.${this._config.prefix}_last_image_mean_adu`; }
+  _entityId() { return this._eid("sensor", "last_image_mean_adu"); }
+
+  // The config entry of the rig whose images this card shows, which is how a
+  // `nina_image_save` event names its rig: the hub's own identifier is the
+  // entry id (device.py `device_identifiers`). `null` without a registry.
+  _rigEntryId(hass) {
+    const hub = hass.devices?.[hass.entities?.[this._entityId()]?.device_id];
+    return hub?.identifiers?.find(([domain]) => domain === "nina_astrophotography")?.[1]
+      ?? null;
+  }
 
   // The frame on screen, from the `recent_frames` attribute. Index 0 is the
   // newest of any type, matching what the proxy serves at history index 0.
@@ -596,8 +639,7 @@ class NinaImagePanelCard extends HTMLElement {
     // Min, Max and Median come from `recent_frames`; the sensor's own state
     // is the mean alone, the one an operator watches for a saturated flat.
     const frame = this._frame();
-    const mean = finite(frame.mean) ?? this._f(
-      `sensor.${this._config.prefix}_last_image_mean_adu`);
+    const mean = finite(frame.mean) ?? this._f(this._entityId());
     const min = finite(frame.min);
     const max = finite(frame.max);
     const median = finite(frame.median) ?? mean;
@@ -684,11 +726,11 @@ class NinaImagePanelCard extends HTMLElement {
     const overlay = this.shadowRoot?.getElementById("overlay");
     if (!overlay) return;
 
-    const hfr    = this._f(`sensor.${this._config.prefix}_last_image_hfr`);
-    const stars  = this._s(`sensor.${this._config.prefix}_last_image_star_count`);
-    const filter = this._s(`sensor.${this._config.prefix}_last_image_filter`);
-    const rms    = this._s(`sensor.${this._config.prefix}_last_image_rms`);
-    const target = this._s(`sensor.${this._config.prefix}_last_image_target`);
+    const hfr    = this._f(this._eid("sensor", "last_image_hfr"));
+    const stars  = this._s(this._eid("sensor", "last_image_star_count"));
+    const filter = this._s(this._eid("sensor", "last_image_filter"));
+    const rms    = this._s(this._eid("sensor", "last_image_rms"));
+    const target = this._s(this._eid("sensor", "last_image_target"));
 
     const pills = [];
     if (filter && filter !== "null") {
@@ -717,10 +759,10 @@ class NinaImagePanelCard extends HTMLElement {
       const el = this.shadowRoot?.getElementById(id);
       if (el) el.textContent = val;
     };
-    const hfr  = this._f(`sensor.${this._config.prefix}_last_image_hfr`);
-    const stars = this._s(`sensor.${this._config.prefix}_last_image_star_count`, "—");
-    const adu   = this._f(`sensor.${this._config.prefix}_last_image_mean_adu`);
-    const exp   = this._f(`sensor.${this._config.prefix}_last_image_exposure`);
+    const hfr  = this._f(this._eid("sensor", "last_image_hfr"));
+    const stars = this._s(this._eid("sensor", "last_image_star_count"), "—");
+    const adu   = this._f(this._entityId());
+    const exp   = this._f(this._eid("sensor", "last_image_exposure"));
 
     set("st-hfr",   hfr  > 0 ? `${hfr.toFixed(2)} px`   : "—");
     set("st-stars", shown(stars));
@@ -741,18 +783,16 @@ class NinaImagePanelCard extends HTMLElement {
     const expBar = this.shadowRoot?.getElementById("exposing-bar");
     if (!badge) return;
 
-    const count   = this._s(`sensor.${this._config.prefix}_session_image_count`, "0");
-    const intTime = this._f(`sensor.${this._config.prefix}_session_integration_time`);
-    const exposing = this._hass
-      ?.states?.[`binary_sensor.${this._config.prefix}_camera_exposing`]
-      ?.state === "on";
+    const count   = this._s(this._eid("sensor", "session_image_count"), "0");
+    const intTime = this._f(this._eid("sensor", "session_integration_time"));
+    const exposing = this._s(
+      this._eid("binary_sensor", "camera_is_exposing", "camera_exposing")) === "on";
     // A disconnected camera makes its entities unavailable rather than
     // publishing an off state.
-    const cameraState = this._hass
-      ?.states?.[`sensor.${this._config.prefix}_camera_state`]?.state;
-    const connected = cameraState !== undefined && cameraState !== "unavailable";
-    const target = this._s(`sensor.${this._config.prefix}_last_image_target`, "");
-    const filter = this._s(`sensor.${this._config.prefix}_last_image_filter`, "");
+    const cameraState = this._s(this._eid("sensor", "camera_state"));
+    const connected = cameraState !== null && cameraState !== "unavailable";
+    const target = this._s(this._eid("sensor", "last_image_target"), "");
+    const filter = this._s(this._eid("sensor", "last_image_filter"), "");
     const index  = this._currentIndex;
 
     if (!connected) {
@@ -798,7 +838,7 @@ class NinaImagePanelCard extends HTMLElement {
   getCardSize() { return 7; }
 
   static getStubConfig() {
-    return { prefix: DEFAULT_PREFIX };
+    return {};
   }
 }
 

@@ -86,13 +86,12 @@ custom_components/nina_astrophotography/
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
   www/                6 Lovelace cards, plus `nina-entity-resolver.js`, which
-                      is not one. A converted card resolves its entity ids from
-                      the registry by `translation_key` and keeps the configured
-                      instance prefix only as a per-entity fallback; the rest
-                      still template the prefix. `frontend.py` serves them and
-                      self-registers each as a Lovelace resource — nothing for a
-                      user to copy into `/config/www/`. Render them with
-                      `tools/card-harness/`
+                      is not one. Every card resolves its entity ids from the
+                      registry by `translation_key` and keeps the configured
+                      instance prefix only as a per-entity fallback.
+                      `frontend.py` serves them and self-registers each as a
+                      Lovelace resource — nothing for a user to copy into
+                      `/config/www/`. Render them with `tools/card-harness/`
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
