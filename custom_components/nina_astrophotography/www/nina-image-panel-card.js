@@ -821,7 +821,9 @@ class NinaImagePanelCard extends HTMLElement {
     const expBar = this.shadowRoot?.getElementById("exposing-bar");
     if (!badge) return;
 
-    const count   = shown(this._s(this._eid("sensor", "session_image_count"), "0"));
+    // Lights, not frames: the count sensor's state includes the calibration
+    // frames, and the integration time beside it is lights only.
+    const count   = shown(this._attr(this._eid("sensor", "session_image_count"), "light_count"));
     const intTime = this._f(this._eid("sensor", "session_integration_time"));
     const exposing = this._s(
       this._eid("binary_sensor", "camera_is_exposing", "camera_exposing")) === "on";
@@ -840,7 +842,7 @@ class NinaImagePanelCard extends HTMLElement {
       badge.textContent = "Exposing…";
       badge.className   = "badge";
     } else {
-      badge.textContent = `${count} frames`;
+      badge.textContent = `${count} lights`;
       badge.className   = "badge";
     }
 
@@ -854,7 +856,7 @@ class NinaImagePanelCard extends HTMLElement {
       if (target && target !== "null") parts.push(target);
       if (filter && filter !== "null") parts.push(filter);
       if (intTime > 0) parts.push(`${intTime.toFixed(1)} h`);
-      sub.textContent = parts.join(" · ") || "Waiting for first frame…";
+      sub.textContent = parts.join(" · ") || "No lights yet this session";
     }
   }
 
