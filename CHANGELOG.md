@@ -222,7 +222,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   thumbnail that is not a light, and over any frame but the newest light — a
   dawn flat, or an older light picked from the strip — dims the overlay pills,
   target and stats row, which are the newest light's, behind a "Last light"
-  tag. A strip click that fails to load no longer retitles the panel.
+  tag. A strip click that fails to load no longer retitles the panel. Each
+  thumbnail is a button a keyboard reaches and Enter or Space opens, named by
+  its frame, type and filter.
 - `sensor.<instance>_last_image_hfr` carries a `recent_lights` attribute — the
   session's newest 60 lights, oldest first, with target, filter, exposure, HFR,
   star count and mean ADU. The frame statistics card draws its sparklines and HFR trend from

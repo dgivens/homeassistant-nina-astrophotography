@@ -97,6 +97,8 @@ function tagFor(frame) {
 function hideUntilLoaded(img) {
   img.style.visibility = "hidden";
   img.onload = () => { img.style.visibility = ""; };
+  // A later `src` that fails would otherwise swap the frame for the broken-image icon.
+  img.onerror = () => { img.style.visibility = "hidden"; };
 }
 
 const STYLE = `
@@ -267,6 +269,9 @@ const STYLE = `
   }
   .strip-thumb.active { border-color: var(--accent2); }
   .strip-thumb:hover { border-color: rgba(255,255,255,0.3); }
+  /* Not the accent, or a focused tile reads as a second selected frame; and
+     inset, since the scrolling strip clips anything drawn outside a tile. */
+  .strip-thumb:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
   .strip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .strip-thumb .strip-filter {
     position: absolute; bottom: 2px; left: 2px; right: 2px;
@@ -674,9 +679,16 @@ class NinaImagePanelCard extends HTMLElement {
       const thumb = document.createElement("div");
       thumb.className = `strip-thumb${i === this._currentIndex ? " active" : ""}`;
       thumb.dataset.index = i;
+      // A tile is a button in all but tag: a `div` keeps the thumbnail's
+      // layout free of a button's default styling.
+      thumb.setAttribute("role", "button");
+      thumb.setAttribute("tabindex", "0");
+      if (i === this._currentIndex) thumb.setAttribute("aria-current", "true");
 
+      // Decorative: the tile's `aria-label` names it, and still does once a
+      // failed thumbnail leaves nothing on it but the tags.
       const img = document.createElement("img");
-      img.alt = `Frame -${i}`;
+      img.alt = "";
       const dim = () => { thumb.style.opacity = "0.3"; };
       hideUntilLoaded(img);
       img.onerror = dim;
@@ -703,8 +715,16 @@ class NinaImagePanelCard extends HTMLElement {
         thumb.appendChild(lbl);
       }
 
-      thumb.addEventListener("click", () => {
-        this._loadImage(parseInt(thumb.dataset.index));
+      thumb.setAttribute("aria-label", [
+        i === 0 ? "Latest image" : `Frame -${i}`, type, filterName,
+      ].filter(Boolean).join(", "));
+
+      const pick = () => this._loadImage(parseInt(thumb.dataset.index));
+      thumb.addEventListener("click", pick);
+      thumb.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();   // Space would scroll the page
+        pick();
       });
       strip.appendChild(thumb);
     }
@@ -714,7 +734,10 @@ class NinaImagePanelCard extends HTMLElement {
     const strip = this.shadowRoot?.getElementById("strip");
     if (!strip) return;
     strip.querySelectorAll(".strip-thumb").forEach(t => {
-      t.classList.toggle("active", parseInt(t.dataset.index) === this._currentIndex);
+      const current = parseInt(t.dataset.index) === this._currentIndex;
+      t.classList.toggle("active", current);
+      if (current) t.setAttribute("aria-current", "true");
+      else t.removeAttribute("aria-current");
     });
   }
 

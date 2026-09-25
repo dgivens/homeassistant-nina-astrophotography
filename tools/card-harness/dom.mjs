@@ -71,7 +71,14 @@ function element(tag) {
     textContent: "",
     style: {},
     dataset: {},
+    attributes: {},
     children: [],
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
+    removeAttribute(name) {
+      delete this.attributes[name];
+    },
     get innerHTML() {
       return markup;
     },
@@ -125,6 +132,7 @@ function describe(node, id, depth = 0) {
     node.className && `class="${node.className}"`,
     Object.keys(node.style).length && `style=${JSON.stringify(node.style)}`,
     Object.keys(node.dataset).length && `data=${JSON.stringify(node.dataset)}`,
+    Object.keys(node.attributes).length && `attrs=${JSON.stringify(node.attributes)}`,
     node.src && `src=${node.src}`,
     node.alt && `alt="${node.alt}"`,
     node.textContent !== "" && `text="${node.textContent}"`,
