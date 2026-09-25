@@ -156,30 +156,32 @@ def test_no_card_puts_the_image_index_in_the_query_string(card: Path) -> None:
     assert "/image?" not in card.read_text(encoding="utf-8")
 
 
-ELEMENTS = [card for card in CARDS if "customElements.define(" in card.read_text()]
+ELEMENTS = [
+    card
+    for card in CARDS
+    if "customElements.define(" in card.read_text(encoding="utf-8")
+]
 assert len(ELEMENTS) == 6, [card.name for card in ELEMENTS]
 
-# `this._config.<key>`, or `config.<key>` on the argument `setConfig` is handed
-# — not `hass.config`, which is Home Assistant's own, nor the `card-config.js`
-# the cards import.
-CONFIG_READ = re.compile(r"(?:this\._config|(?<![\w.-])config)\??\.([a-z_]+)")
+# `this._config.<key>`, `config.<key>` or its `cfg` alias, but not `hass.config`
+# or the `nina-card-config.js` import.
+CONFIG_READ = re.compile(r"(?:this\._config|(?<![\w.-])(?:config|cfg))\??\.([a-z_]+)")
 FORM_FIELD = re.compile(r'\bname: "([a-z_]+)"')
 # The method on one line, or its body up to the class-level closing brace.
 FORM_METHOD = re.compile(
     r"static getConfigForm\(\) \{(?:[^\n]*\}$|.*?\n  \}$)", re.DOTALL | re.MULTILINE
 )
-EDITOR_TAG = re.compile(
-    r'getConfigElement\(\) \{\s*return document\.createElement\("([\w-]+)"\)'
+SHARED_FIELDS = set(
+    FORM_FIELD.findall((WWW_DIR / "nina-card-config.js").read_text(encoding="utf-8"))
 )
-DEFINED_TAG = re.compile(r'customElements\.define\("([\w-]+)"')
 
 
 def _form_fields(card: Path) -> set[str]:
     """The fields a card's visual editor offers: its own plus the shared ones."""
     form = FORM_METHOD.search(card.read_text(encoding="utf-8"))
     assert form, f"{card.name} has no getConfigForm()"
-    shared = (WWW_DIR / "nina-card-config.js").read_text(encoding="utf-8")
-    return set(FORM_FIELD.findall(form[0])) | set(FORM_FIELD.findall(shared))
+    shared = SHARED_FIELDS if "configForm(" in form[0] else set()
+    return set(FORM_FIELD.findall(form[0])) | shared
 
 
 @pytest.mark.parametrize("card", ELEMENTS, ids=lambda p: p.name)
@@ -194,15 +196,10 @@ def test_the_visual_editor_offers_exactly_the_options_the_card_reads(
     assert _form_fields(card) == read
 
 
-def test_no_card_names_an_editor_element_nothing_defines() -> None:
-    """Home Assistant shows an unknown element in place of the editor, with no
-    error to say why.
-    """
-    sources = [card.read_text(encoding="utf-8") for card in CARDS]
-    defined = {tag for source in sources for tag in DEFINED_TAG.findall(source)}
-    named = {tag for source in sources for tag in EDITOR_TAG.findall(source)}
-
-    assert named <= defined
+@pytest.mark.parametrize("card", ELEMENTS, ids=lambda p: p.name)
+def test_no_card_hides_its_form_behind_an_editor_element(card: Path) -> None:
+    """Home Assistant prefers `getConfigElement()`, so defining it hides the form."""
+    assert "getConfigElement" not in card.read_text(encoding="utf-8")
 
 
 def test_the_documented_action_fields_are_the_translated_ones() -> None:

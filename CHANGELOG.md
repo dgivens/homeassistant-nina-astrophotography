@@ -79,8 +79,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   - `weather_abort.yaml` **no longer triggers on weather sensors**. It aborts on
     the safety monitor reporting unsafe or dropping out; weather conditions are
     only used to hold back a resume.
-- **The Lovelace cards take a `prefix:`** — the slugified instance name their
-  entity ids carry, `n_i_n_a` by default. Without it a card reads nothing.
+- **The Lovelace cards find their entities in the registry**, so one rig needs
+  no configuration. With two or more, each card takes `device_id:` naming its
+  rig. `prefix:`, the slugified instance name (`n_i_n_a` by default), is only a
+  fallback for the few entities the registry cannot supply.
 - **The Lovelace cards are no longer copied into `/config/www/`.** They ship
   inside the integration and register themselves as dashboard resources on
   load. An existing install that copied 1.4.5's cards manually **must** delete
@@ -226,6 +228,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   exposure length, which moves star count and ADU by whole factors.
   The card's HFR trend and rolling average compare the newest frame's filter
   only, so a filter rotation no longer reads as improving or degrading.
+- **A visual editor for every card.** **Add card** lists all six, the rig is
+  a device picker showing only N.I.N.A.'s devices, and only the fields you
+  change are saved. The observatory card's editor, which never opened, works.
 
 ### Changed
 

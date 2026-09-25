@@ -249,8 +249,8 @@ suite; say which of the two things below you actually ran.
   drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
   twinkle stars and pulse the meridian. A card pulled out of git imports
   `./nina-entity-resolver.js` and `./nina-card-config.js` relatively, so copy
-  both beside the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs` finds the dump relative to
-  its own path, so run the shipped one.
+  both beside the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs`
+  finds the dump relative to its own path, so run the shipped one.
 - **`render.html`** — the cards side by side in a real browser, over
   `python3 -m http.server` from the repo root (`file://` refuses their ES
   imports). Screenshot it with the Playwright MCP tools and **look at it**: this
@@ -296,11 +296,10 @@ Traps when changing a card:
   expression around it instead. A converted card also needs a `CANNOT_RESOLVE`
   entry in `tests/ha/test_entity_resolver.py` — an empty one if all of it
   resolves.
-- **A new config option needs a field in the card's `getConfigForm()`.**
-  `test_the_visual_editor_offers_exactly_the_options_the_card_reads` compares
-  the two by text. Give it a `default` there, which the form only displays, and
-  apply that default in `setConfig` with `??`, not by spreading the config over
-  a defaults object: a field cleared in the editor comes back present but
+- **A new config option needs a field in the card's `getConfigForm()`**, which
+  `test_the_visual_editor_offers_exactly_the_options_the_card_reads` enforces.
+  The form's `default` is only displayed, so `setConfig` applies it — per key,
+  not by spreading over a defaults object: the editor sends a cleared field as
   `undefined`, which a spread keeps.
 
 ### Keep tests tightly scoped

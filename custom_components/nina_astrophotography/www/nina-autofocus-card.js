@@ -835,10 +835,12 @@ class NinaAutofocusCard extends HTMLElement {
     return configForm([
       {
         name: "temperature_delta",
-        label: "Temperature drift worth flagging",
-        helper: "How far the focuser temperature may move from the last run's before the card marks it.",
+        label: "Refocus temperature change",
+        helper: "Flag the focuser temperature once it moves this far from the last run's, "
+          + "in the unit it is shown in. Match your sequence's refocus trigger.",
         default: DEFAULT_TEMPERATURE_DELTA,
-        selector: { number: { min: 0.1, step: 0.1, mode: "box", unit_of_measurement: "°C" } },
+        // No unit: the sensor states it compares are in Home Assistant's unit system.
+        selector: { number: { min: 0.1, max: 10, step: "any", mode: "box" } },
       },
     ]);
   }

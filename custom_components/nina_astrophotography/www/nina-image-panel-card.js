@@ -41,6 +41,9 @@ import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "3.0.0";
 
+const DEFAULT_QUALITY = 85;
+const DEFAULT_STRIP_COUNT = 6;
+
 // Signed just before use, not cached: a fresh signature each call is what
 // naturally busts the browser's cache across reloads of the same index.
 const SIGNED_URL_TTL_SECONDS = 30;
@@ -292,10 +295,10 @@ class NinaImagePanelCard extends HTMLElement {
       refresh_on_save: config.refresh_on_save ?? true,
       show_strip: config.show_strip ?? true,
       show_histogram: config.show_histogram ?? true,
-      quality: config.quality ?? 85,
+      quality: config.quality ?? DEFAULT_QUALITY,
       stretch: config.stretch ?? true,
-      strip_count: config.strip_count ?? 6,
-      prefix: config.prefix ?? DEFAULT_PREFIX,
+      strip_count: config.strip_count ?? DEFAULT_STRIP_COUNT,
+      prefix: config.prefix || DEFAULT_PREFIX,
       device_id: config.device_id,
     };
     // A new config may name a different rig: make the next `set hass` re-resolve.
@@ -873,27 +876,36 @@ class NinaImagePanelCard extends HTMLElement {
       {
         name: "refresh_on_save",
         label: "Refresh on save",
-        helper: "Load each frame as N.I.N.A. saves it.",
+        helper: "Load each frame as N.I.N.A. saves it. Off keeps the frame shown until "
+          + "you pick one from the strip.",
         ...toggle,
       },
       {
         name: "stretch",
         label: "Auto-stretch",
-        helper: "Ask N.I.N.A. for a stretched preview rather than the linear frame.",
+        helper: "Let N.I.N.A. prepare the preview with its own image settings. Off shows "
+          + "the linear frame, which looks almost black.",
         ...toggle,
       },
-      { name: "show_histogram", label: "Show histogram", ...toggle },
+      {
+        name: "show_histogram",
+        label: "Show ADU range",
+        helper: "Min, mean and max ADU of the frame on screen.",
+        ...toggle,
+      },
       { name: "show_strip", label: "Show recent frames", ...toggle },
       {
         name: "strip_count",
-        label: "Recent frames",
-        default: 6,
-        selector: { number: { min: 1, mode: "box" } },
+        label: "Number of recent frames",
+        helper: "Up to 20, the frames the integration keeps.",
+        default: DEFAULT_STRIP_COUNT,
+        selector: { number: { min: 1, max: 20, mode: "box" } },
       },
       {
         name: "quality",
         label: "JPEG quality",
-        default: 85,
+        helper: "The main frame only; thumbnails are fixed at 40.",
+        default: DEFAULT_QUALITY,
         selector: { number: { min: 1, max: 100, mode: "box" } },
       },
     ]);
