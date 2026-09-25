@@ -59,7 +59,11 @@
           const element = document.createElement(card);
           element.setConfig(scenario.config ?? {});
           slot.appendChild(element);
-          element.hass = scenario.hass(dump);
+          const hass = scenario.hass(dump);
+          // `auth/sign_path`, answered with the path unsigned: the image panel
+          // then asks this server for its frames, which it does not have.
+          hass.callWS = async ({ path }) => ({ path });
+          element.hass = hass;
         } catch (error) {
           const shown = document.createElement("div");
           shown.className = "err";
