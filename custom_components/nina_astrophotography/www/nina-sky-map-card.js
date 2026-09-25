@@ -22,7 +22,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
-import { inUnit, quantity } from "./nina-units.js";
+import { quantityIn } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -271,7 +271,7 @@ class NinaSkyMapCard extends HTMLElement {
   // Time to the flip in minutes, whatever unit the sensor is shown in; 999, as
   // `_f` has it, for none.
   _flipMinutes(id) {
-    return inUnit(quantity(this._hass, id), "min") || 999;
+    return quantityIn(this._hass, id, "min") || 999;
   }
 
   // A device that is disconnected makes its entities unavailable rather than

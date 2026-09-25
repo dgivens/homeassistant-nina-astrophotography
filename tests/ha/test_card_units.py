@@ -43,7 +43,7 @@ CONVERTIBLE = sorted(
 )
 
 
-def _run(cases: list[list], tmp_path: Path) -> list[float | None]:
+def _run(cases: list[list[str | float | None]], tmp_path: Path) -> list[float | None]:
     payload = tmp_path / "cases.json"
     payload.write_text(json.dumps(cases), encoding="utf-8")
     return json.loads(
@@ -90,9 +90,8 @@ def test_a_temperature_difference_converts_as_an_interval(tmp_path: Path) -> Non
 
 
 def test_units_that_measure_different_things_do_not_convert(tmp_path: Path) -> None:
-    assert _run(
-        [["convert", 3.0, "m/s", "mm/h"], ["convert", 3.0, "°C", "s"]], tmp_path
-    ) == [
-        None,
-        None,
+    cases: list[list[str | float | None]] = [
+        ["convert", 3.0, "m/s", "mm/h"],
+        ["convert", 3.0, "°C", "s"],
     ]
+    assert _run(cases, tmp_path) == [None] * len(cases)

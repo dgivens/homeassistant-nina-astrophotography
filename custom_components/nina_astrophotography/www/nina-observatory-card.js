@@ -12,7 +12,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
-import { displayed, inUnit, quantity } from "./nina-units.js";
+import { displayed, quantity, quantityIn } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -383,7 +383,7 @@ class NinaObservatoryCard extends HTMLElement {
     // the sensor publishes rather than to a bare number. Both in minutes: the
     // attribute always is, and the state is shown in whatever unit was picked.
     const flipId       = this._eid("sensor", "mount_time_to_meridian_flip");
-    const ttf          = inUnit(quantity(h, flipId), "min") ?? NaN;
+    const ttf          = quantityIn(h, flipId, "min") ?? NaN;
     const flipFiresAt  = parseFloat(attr(h, flipId, "flip_fires_at_minutes", "")) || 0;
 
     const focPos       = shown(state(h, this._eid("number", "focuser_position")));

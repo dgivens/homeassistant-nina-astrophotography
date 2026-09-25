@@ -38,7 +38,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
-import { inUnit, quantity } from "./nina-units.js";
+import { quantityIn } from "./nina-units.js";
 
 const VERSION = "3.0.0";
 
@@ -400,7 +400,7 @@ class NinaImagePanelCard extends HTMLElement {
   }
   _f(id, fallback = 0) { return parseFloat(this._s(id)) || fallback; }
   // A duration in `unit`, whichever unit the sensor is shown in; 0 for none.
-  _duration(id, unit) { return inUnit(quantity(this._hass, id), unit) || 0; }
+  _duration(id, unit) { return quantityIn(this._hass, id, unit) || 0; }
 
   // The resolved entity id for a `translation_key`, falling back to a prefixed
   // `slug` when there is nothing to resolve: an entity with no translation key,

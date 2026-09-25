@@ -154,7 +154,11 @@ def _hass_for_a_card(hass: HomeAssistant, entry) -> dict:
     }
 
 
-@pytest.mark.parametrize(("dump", "setup"), DUMPS.items(), ids=DUMPS)
+@pytest.mark.parametrize(
+    ("dump", "rig_state", "clock", "units"),
+    [(name, *setup) for name, setup in DUMPS.items()],
+    ids=DUMPS,
+)
 async def test_the_card_harness_dump_is_current(
     hass: HomeAssistant,
     config_entry,
@@ -162,14 +166,15 @@ async def test_the_card_harness_dump_is_current(
     set_up_at,
     request: pytest.FixtureRequest,
     dump: str,
-    setup: tuple[str, str | None, UnitSystem],
+    rig_state: str,
+    clock: str | None,
+    units: UnitSystem,
 ) -> None:
     """One dump per run, merged into the committed file.
 
     Parametrized rather than looped because each state needs its own `hass`:
     a tier-polled endpoint latches at setup and will not be advanced on to.
     """
-    rig_state, clock, units = setup
     if clock:
         request.getfixturevalue(clock)
     hass.config.units = units

@@ -255,7 +255,6 @@ class NinaWeatherCard extends HTMLElement {
     const dewThreat = dewMargin !== null && dewMargin < 3;
     const windColor = windMs !== null && windMs > 12 ? "var(--danger)"
       : windMs !== null && windMs > 8 ? "var(--warn)" : "var(--text)";
-    const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
     // Safety banner content
     // UNSAFE is tested first, and deliberately not behind the connectivity
@@ -308,6 +307,7 @@ class NinaWeatherCard extends HTMLElement {
     // when there is no reading.
     const qcell = (icon, label, q, decimals, ...flags) =>
       cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
+    const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
     const html = `
       <style>${STYLE}</style>

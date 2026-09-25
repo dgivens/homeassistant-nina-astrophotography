@@ -14,7 +14,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
-import { inUnit, quantity } from "./nina-units.js";
+import { quantityIn } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -204,12 +204,13 @@ class NinaFrameStatsCard extends HTMLElement {
     // lights only.
     const lightCount   = shown(this._attr(this._eid("sensor", "session_image_count"), "light_count"));
     // Durations in the units printed beside them, whichever each is shown in.
-    const hours        = inUnit(quantity(this._hass, this._eid("sensor", "session_integration_time")), "h");
+    const hours        = quantityIn(this._hass, this._eid("sensor", "session_integration_time"), "h");
     const integration  = hours === null ? "—" : hours.toFixed(1);
     const lastHfr      = this._state(this._eid("sensor", "last_image_hfr"), "—");
     const lastStars    = shown(this._state(this._eid("sensor", "last_image_star_count")));
     const lastFilter   = shown(this._state(this._eid("sensor", "last_image_filter")));
-    const lastExposure = inUnit(quantity(this._hass, this._eid("sensor", "last_image_exposure")), "s");
+    const exposure     = quantityIn(this._hass, this._eid("sensor", "last_image_exposure"), "s");
+    const lastExposure = exposure ? exposure.toFixed(0) : "—";
     const avgHfrId = this._eid("sensor", "session_avg_hfr");
     const sessionAvgHfr = this._state(avgHfrId, "—");
     const sessionBestHfr = this._state(this._eid("sensor", "session_best_hfr"), "—");
@@ -293,7 +294,7 @@ class NinaFrameStatsCard extends HTMLElement {
               </div>
               <div class="stat-box">
                 <div class="label">Exposure</div>
-                <div class="value">${lastExposure ? lastExposure.toFixed(0) : "—"} <span style="font-size:0.7rem;font-weight:400;color:var(--muted)">s</span></div>
+                <div class="value">${lastExposure} <span style="font-size:0.7rem;font-weight:400;color:var(--muted)">s</span></div>
                 <div class="sub">${lastFilter}</div>
               </div>
             </div>

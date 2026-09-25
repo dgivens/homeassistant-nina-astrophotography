@@ -105,14 +105,19 @@ export function quantity(hass, id) {
 }
 
 /** A quantity converted to `unit`, or `null` if it has none or cannot be. */
-export function inUnit(r, unit) {
-  return r ? convert(r.value, r.unit, unit) : null;
+export function inUnit(q, unit) {
+  return q ? convert(q.value, q.unit, unit) : null;
+}
+
+/** An entity's state in `unit`, or `null` if it has none or cannot be. */
+export function quantityIn(hass, id, unit) {
+  return inUnit(quantity(hass, id), unit);
 }
 
 /**
  * A quantity's number as Home Assistant would print it, or `null` for none.
  * `decimals` is only for an entity the registry gives no precision.
  */
-export function displayed(r, decimals) {
-  return r ? r.value.toFixed(r.precision ?? decimals) : null;
+export function displayed(q, decimals) {
+  return q ? q.value.toFixed(q.precision ?? decimals) : null;
 }
