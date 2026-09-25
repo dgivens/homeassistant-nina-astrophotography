@@ -286,6 +286,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   reporting no setpoint is refused. After a warm-up the setpoint is the
   warm-up's final value, so switching on resumes there; set
   `number.<instance>_camera_target_temperature` to cool to a chosen value.
+- **The frame statistics card gives each filter the same colour every night.**
+  1.4.5 coloured filters by their place in the night's sorted list, which made
+  R green on a night of B, L, O, R and S, and moved colours when a filter was
+  added.
+  L is neutral, R, G and B their own hues, Ha rose, OIII cyan and SII violet,
+  whatever the wheel calls them (`Lum`, `Red`, `Ha 3nm`, `OIII`); any other
+  filter takes a colour hashed from its name. A light with no filter is drawn
+  grey, which no chip uses.
 
 ### Fixed
 

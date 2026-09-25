@@ -24,10 +24,70 @@ function shown(value) {
     || value === "unknown" || value === "unavailable" ? "—" : value;
 }
 
-const FILTER_COLOURS = [
-  "#7b8de8", "#5bcfcf", "#f4a261", "#57cc99",
-  "#e76f51", "#a8dadc", "#c77dff", "#ffd166",
+// A filter keeps its colour from night to night, whichever others the session
+// used: the chips are the charts' legend, and an imager reads R as red. The
+// common passbands take their own hue; Ha is rose rather than red so that an
+// HaRGB night keeps it apart from R.
+const NAMED_FILTERS = [
+  ["#e4e7ed", ["l", "lum", "luminance"]],
+  ["#f0524a", ["r", "red"]],
+  ["#5fcf6a", ["g", "green"]],
+  ["#4f8ff7", ["b", "blue"]],
+  ["#ff6fa8", ["h", "ha", "halpha", "hα"]],
+  ["#35cfd4", ["o", "oiii", "o3"]],
+  ["#b565f0", ["s", "sii", "s2"]],
 ];
+const NAMED_COLOURS = new Map(
+  NAMED_FILTERS.flatMap(([colour, keys]) => keys.map((key) => [key, colour])));
+
+// Any other filter, by a hash of its name. None of these is a named filter's
+// hue or the unfiltered grey.
+const OTHER_COLOURS = [
+  "#ffd166", "#f4a261", "#b5e05a", "#c8a27c", "#9bd0ff", "#ffb4a2",
+];
+
+// A light with no filter — a rig without a wheel. It has no chip, so it takes
+// a colour no chip can.
+const NO_FILTER = "#8a909c";
+
+// Case, a bandwidth and punctuation do not change the passband: "Ha 3nm",
+// "H-alpha" and "HA" are one filter.
+function filterKey(name) {
+  return String(name).toLowerCase()
+    .replace(/\d+(\.\d+)?\s*nm\b/g, "")
+    .replace(/[^a-z0-9α]/g, "");
+}
+
+// FNV-1a: stable across browsers and sessions, unlike anything keyed on order.
+function nameHash(text) {
+  let hash = 0x811c9dc5;
+  for (const ch of text) hash = Math.imul(hash ^ ch.codePointAt(0), 0x01000193);
+  return hash >>> 0;
+}
+
+// Each name's colour. An unnamed filter probes past a slot another has already
+// taken, in name order, so two never share one while there are slots to spare.
+// Only then does a colour depend on the night; the order names arrive in never
+// does.
+function filterColours(names) {
+  const colours = new Map();
+  const unnamed = [];
+  for (const name of new Set(names)) {
+    const named = NAMED_COLOURS.get(filterKey(name));
+    if (named) colours.set(name, named);
+    else unnamed.push(name);
+  }
+  const taken = new Set();
+  for (const name of unnamed.sort()) {
+    let slot = nameHash(filterKey(name)) % OTHER_COLOURS.length;
+    for (let probe = 0; probe < OTHER_COLOURS.length && taken.has(slot); probe++) {
+      slot = (slot + 1) % OTHER_COLOURS.length;
+    }
+    taken.add(slot);
+    colours.set(name, OTHER_COLOURS[slot]);
+  }
+  return colours;
+}
 
 const STYLE = `
   :host {
@@ -244,14 +304,10 @@ class NinaFrameStatsCard extends HTMLElement {
     const hasData = this._hfr.some(v => v !== null);
 
     // One colour per filter, shared by the chips and the sparklines, so the
-    // chips are the charts' legend: the session's filters in the chips' order,
-    // then any the series holds that the breakdown does not.
-    this._colours = new Map();
-    for (const name of [...Object.keys(byFilter), ...this._filters]) {
-      if (name !== null && !this._colours.has(name)) {
-        this._colours.set(name, FILTER_COLOURS[this._colours.size % FILTER_COLOURS.length]);
-      }
-    }
+    // chips are the charts' legend: the session's filters, and any the series
+    // holds that the breakdown does not.
+    this._colours = filterColours(
+      [...Object.keys(byFilter), ...this._filters].filter((name) => name !== null));
 
     const filterEntries = Object.entries(byFilter);
     const filterChipsHtml = filterEntries.map(([name, row]) => {
@@ -354,7 +410,7 @@ class NinaFrameStatsCard extends HTMLElement {
     }
   }
 
-  _drawSparkline(canvasId, data, defaultColor, showAvgLine) {
+  _drawSparkline(canvasId, data, fillColour, showAvgLine) {
     const canvas = this.shadowRoot.getElementById(canvasId);
     if (!canvas) return;
 
@@ -415,15 +471,12 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.lineTo(xOf(firstValid), H - pad.b);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, pad.t, 0, H);
-    grad.addColorStop(0, defaultColor + "44");
-    grad.addColorStop(1, defaultColor + "06");
+    grad.addColorStop(0, fillColour + "44");
+    grad.addColorStop(1, fillColour + "06");
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // A frame with no filter — a rig without a wheel — takes the chart's own
-    // colour. It has no chip; in a night that mixes the two, that colour can
-    // coincide with the first few filters' chips.
-    const colourOf = (i) => this._colours.get(this._filters[i]) ?? defaultColor;
+    const colourOf = (i) => this._colours.get(this._filters[i]) ?? NO_FILTER;
 
     // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
