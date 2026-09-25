@@ -154,7 +154,7 @@
     }),
     dict({
       'enabled_default': True,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': <EntityCategory.CONFIG: 'config'>,
       'entity_id': 'button.n_i_n_a_guider_clear_calibration',
       'original_name': 'Clear calibration',
       'unique_id': '01JTESTENTRY0000000000000_guider_clear_calibration',
@@ -514,14 +514,14 @@
     }),
     dict({
       'enabled_default': True,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': None,
       'entity_id': 'sensor.n_i_n_a_guider_rms_declination',
       'original_name': 'RMS declination',
       'unique_id': '01JTESTENTRY0000000000000_guider_rms_dec',
     }),
     dict({
       'enabled_default': True,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': None,
       'entity_id': 'sensor.n_i_n_a_guider_rms_ra',
       'original_name': 'RMS RA',
       'unique_id': '01JTESTENTRY0000000000000_guider_rms_ra',
