@@ -52,6 +52,16 @@ export const scenarios = {
   // `prefix:` — the point is the id the card builds unaided.
   templated: { hass: (dump) => rig(dump, NIGHT).unresolvable().build() },
 
+  // The exposure and the integration time shown in minutes, which must render
+  // what `night` does.
+  in_minutes: {
+    hass: (dump) =>
+      rig(dump, NIGHT)
+        .displayedIn("sensor.n_i_n_a_last_image_exposure", "min", 1 / 60)
+        .displayedIn("sensor.n_i_n_a_session_integration_time", "min", 60)
+        .build(),
+  },
+
   // Exposing, with frames in the history but no light this session.
   exposing: { hass: (dump) => rig(dump, "site_configured").build() },
 

@@ -85,10 +85,11 @@ custom_components/nina_astrophotography/
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
-  www/                6 Lovelace cards, plus two modules they import, which
-                      are not cards: `nina-entity-resolver.js` and
+  www/                6 Lovelace cards, plus three modules they import, which
+                      are not cards: `nina-entity-resolver.js`,
                       `nina-card-config.js` (the prefix and the visual
-                      editor's `getConfigForm()` schema). Every card resolves
+                      editor's `getConfigForm()` schema) and `nina-units.js`
+                      (readings in the unit HA shows them in). Every card resolves
                       its entity ids from the registry by `translation_key`
                       and keeps the configured instance prefix only as a
                       per-entity fallback.
@@ -234,8 +235,9 @@ conftest fixture, which outranks both plugins.
 ### The Lovelace cards: neither suite renders one
 
 Both suites read the cards **as text** — `tests/unit/test_cards.py` checks the
-entity names they use, and `tests/ha/test_entity_resolver.py` runs only
-`nina-entity-resolver.js`, under node. Nothing below `setConfig`/`set hass`
+entity names they use, and `tests/ha/test_entity_resolver.py` and
+`test_card_units.py` run only `nina-entity-resolver.js` and `nina-units.js`,
+under node. Nothing below `setConfig`/`set hass`
 executes in CI: the shadow DOM, the canvases, and every branch deciding what to
 draw are reached by no test. Do not report a card change as verified on a green
 suite; say which of the two things below you actually ran.
@@ -247,9 +249,9 @@ suite; say which of the two things below you actually ran.
   change was a refactor, and the diff is what it altered. Use it on **every**
   card refactor — it is what proves an entity-resolution conversion changed no
   drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
-  twinkle stars and pulse the meridian. A card pulled out of git imports
-  `./nina-entity-resolver.js` and `./nina-card-config.js` relatively, so copy
-  both beside the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs`
+  twinkle stars and pulse the meridian. A card pulled out of git imports the
+  three shared modules relatively, so copy every non-card `www/` file beside
+  the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs`
   finds the dump relative to its own path, so run the shipped one.
 - **`render.html`** — the cards side by side in a real browser, over
   `python3 -m http.server` from the repo root (`file://` refuses their ES
@@ -280,6 +282,14 @@ The sky map keeps its hook because it paints from a loop `connectedCallback`
 starts, and nothing there attaches the element.
 
 Traps when changing a card:
+
+- **Home Assistant converts a state before the card sees it** — into the
+  instance's unit system, or a display unit picked for that entity — so a
+  sensor published in m/s arrives in km/h or mph, and a duration in minutes may
+  arrive in hours. Read any reading with a device class through `nina-units.js`:
+  print it with its own `unit_of_measurement` and `display_precision`, and
+  convert it to the published unit only to meet a threshold. The
+  `site_configured_us_customary` dump is HA's own conversion to render against.
 
 - A card's `_s`/`_f`/`_state` fallback applies only when the entity is
   **missing**, not when it reads `unavailable` or `unknown` — so a down driver

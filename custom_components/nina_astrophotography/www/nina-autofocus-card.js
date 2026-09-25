@@ -9,12 +9,14 @@
  * all: the card finds its own focuser in the registry.
  *   type: custom:nina-autofocus-card
  *   device_id: abc123      # which rig, for two or more; any one of its devices
- *   temperature_delta: 2   # °C of drift since the run worth flagging
+ *   temperature_delta: 2   # drift since the run worth flagging, in the unit
+ *                          # Home Assistant shows the focuser temperature in
  *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
+import { inUnit, quantity } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -310,9 +312,15 @@ class NinaAutofocusCard extends HTMLElement {
       null,
     );
 
-    const temperature = this._number(this._eid("sensor", "focuser_temperature"));
-    const at = this._number(
+    // Both in the unit the focuser's reading is shown in, which is the unit
+    // `temperature_delta` is compared in. The two can differ: a display unit is
+    // picked per entity.
+    const now = quantity(this._hass, this._eid("sensor", "focuser_temperature"));
+    const then = quantity(this._hass,
       this._eid("sensor", "autofocus_temperature", "focuser_autofocus_temperature"));
+    const degrees = now?.unit ?? then?.unit ?? "";
+    const temperature = inUnit(now, degrees);
+    const at = inUnit(then, degrees);
 
     // The verdict, from the entity that makes it. `reason` separates a run
     // that hung — which wrote no report, so the curve below belongs to an
@@ -357,10 +365,11 @@ class NinaAutofocusCard extends HTMLElement {
       startHfr: this._number(
         this._eid("sensor", "autofocus_starting_hfr", "focuser_autofocus_starting_hfr")),
       filter: this._state(this._eid("sensor", "autofocus_filter", "focuser_autofocus_filter")),
-      duration: this._number(
-        this._eid("sensor", "autofocus_duration", "focuser_autofocus_duration")),
+      duration: inUnit(quantity(this._hass,
+        this._eid("sensor", "autofocus_duration", "focuser_autofocus_duration")), "s"),
       temperature: at,
       nowTemperature: temperature,
+      degrees,
       // The number domain and not the sensor one: the focuser position exists
       // as both, and the sensor is the diagnostic one, disabled by default.
       // The observatory card reads the same number for the same reason.
@@ -416,7 +425,7 @@ class NinaAutofocusCard extends HTMLElement {
     return [
       when,
       shown(run.filter) === "—" ? null : `${safe(run.filter)} filter`,
-      Number.isFinite(run.temperature) ? `${fixed(run.temperature, 1)} °C` : null,
+      Number.isFinite(run.temperature) ? `${fixed(run.temperature, 1)} ${run.degrees}` : null,
     ].filter(Boolean).join(" · ") || "No run reported";
   }
 
@@ -517,9 +526,9 @@ class NinaAutofocusCard extends HTMLElement {
             <div class="stat-box ${drifted ? "drifted" : ""}">
               <div class="label">Temperature since</div>
               <div class="value">${run.drift === null ? "—"
-                : `${run.drift >= 0 ? "+" : "−"}${fixed(Math.abs(run.drift), 1)}`} <span class="unit">°C</span></div>
-              <div class="sub">${fixed(run.temperature, 1)} → ${fixed(run.nowTemperature, 1)} °C${
-                drifted ? ` · past ${fixed(this._temperatureDelta, 1)} °C` : ""}</div>
+                : `${run.drift >= 0 ? "+" : "−"}${fixed(Math.abs(run.drift), 1)}`} <span class="unit">${run.degrees}</span></div>
+              <div class="sub">${fixed(run.temperature, 1)} → ${fixed(run.nowTemperature, 1)} ${run.degrees}${
+                drifted ? ` · past ${fixed(this._temperatureDelta, 1)} ${run.degrees}` : ""}</div>
             </div>` : ""}
           ${away !== null ? `
             <div class="stat-box">

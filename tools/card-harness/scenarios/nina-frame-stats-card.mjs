@@ -21,6 +21,8 @@
 import { rig } from "../hass.mjs";
 
 const NIGHT = "dawn_flats";
+const EXPOSURE = "sensor.n_i_n_a_last_image_exposure";
+const INTEGRATION = "sensor.n_i_n_a_session_integration_time";
 
 // No `draw` hook: the three sparklines are painted from the frame the render
 // queues, which the runner fires.
@@ -33,6 +35,16 @@ export const scenarios = {
   // match `session`'s: the same entities, reached the other way. No `prefix:` —
   // the point is the id the card builds unaided.
   templated: { hass: (dump) => rig(dump, NIGHT).unresolvable().build() },
+
+  // The exposure and the integration time shown in minutes, which must render
+  // what `session` does.
+  in_minutes: {
+    hass: (dump) =>
+      rig(dump, NIGHT)
+        .displayedIn(EXPOSURE, "min", 1 / 60)
+        .displayedIn(INTEGRATION, "min", 60)
+        .build(),
+  },
 
   // No lights in the session, so no charts: the waiting panel under the
   // header's session totals.

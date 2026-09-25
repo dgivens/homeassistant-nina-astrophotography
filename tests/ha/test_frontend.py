@@ -211,6 +211,7 @@ def test_every_shipped_card_file_is_in_card_filenames() -> None:
     assert {path.name for path in WWW_DIR.glob("*.js")} == set(CARD_FILENAMES) | {
         "nina-card-config.js",
         "nina-entity-resolver.js",
+        "nina-units.js",
     }
 
 

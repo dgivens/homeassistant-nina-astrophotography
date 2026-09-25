@@ -20,6 +20,11 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.util.unit_system import (
+    METRIC_SYSTEM,
+    US_CUSTOMARY_SYSTEM,
+    UnitSystem,
+)
 import pytest
 
 from custom_components.nina_astrophotography.const import DOMAIN
@@ -28,8 +33,9 @@ SNAPSHOTS = Path(__file__).parent / "snapshots"
 DUMP = SNAPSHOTS / "card_states.json"
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 
-# Each rig state, and the conftest fixture that sets its clock — `None` to leave
-# the real one running.
+# Each dump: the rig state it is set up at, the conftest fixture that sets its
+# clock — `None` to leave the real one running — and Home Assistant's unit
+# system.
 #
 # `site_configured` rather than the `imaging_guiding` it derives from: it is the
 # same rig with every endpoint captured and the guider up, plus the observing
@@ -41,10 +47,15 @@ DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 # clock, and their frames are from a night long past. `dawn_flats` is dumped from
 # inside its own night, so it carries the whole session — 55 lights over four
 # targets and five filters, with the dawn flats after them.
-RIG_STATES = {
-    "site_configured": None,
-    "equipment_disconnected": None,
-    "dawn_flats": "inside_the_dawn_session",
+#
+# `site_configured_us_customary` is `site_configured` on a US customary
+# instance: Home Assistant's own conversion of the same readings, which is what
+# a card that assumed the integration's units would mislabel.
+DUMPS: dict[str, tuple[str, str | None, UnitSystem]] = {
+    "site_configured": ("site_configured", None, METRIC_SYSTEM),
+    "equipment_disconnected": ("equipment_disconnected", None, METRIC_SYSTEM),
+    "dawn_flats": ("dawn_flats", "inside_the_dawn_session", METRIC_SYSTEM),
+    "site_configured_us_customary": ("site_configured", None, US_CUSTOMARY_SYSTEM),
 }
 
 # Home Assistant mints these per run, so they are the one thing here that is not
@@ -84,6 +95,21 @@ def _link(named: dict[str, str], device_id: str | None) -> str | None:
     return named.get(device_id) if device_id else None
 
 
+def _entity(named: dict[str, str], row: er.RegistryEntry) -> dict:
+    """A registry row as the frontend holds it. `display_precision` is present
+    only when core sends one, and is core's own figure for the unit the state
+    is shown in, read from the payload it sends.
+    """
+    entity = {
+        "entity_id": row.entity_id,
+        "device_id": _link(named, row.device_id),
+        "translation_key": row.translation_key,
+    }
+    if (precision := json.loads(row.display_json_repr or b"{}").get("dp")) is not None:
+        entity["display_precision"] = precision
+    return entity
+
+
 def _hass_for_a_card(hass: HomeAssistant, entry) -> dict:
     """The states and registries, under the names the frontend gives them.
 
@@ -109,11 +135,7 @@ def _hass_for_a_card(hass: HomeAssistant, entry) -> dict:
         # A disabled entity is absent from what a dashboard receives, which is
         # what makes one unresolvable — so it is absent here too.
         "entities": {
-            row.entity_id: {
-                "entity_id": row.entity_id,
-                "device_id": _link(named, row.device_id),
-                "translation_key": row.translation_key,
-            }
+            row.entity_id: _entity(named, row)
             for row in sorted(entities, key=lambda r: r.entity_id)
             if row.disabled_by is None
         },
@@ -132,23 +154,25 @@ def _hass_for_a_card(hass: HomeAssistant, entry) -> dict:
     }
 
 
-@pytest.mark.parametrize(("rig_state", "clock"), RIG_STATES.items())
+@pytest.mark.parametrize(("dump", "setup"), DUMPS.items(), ids=DUMPS)
 async def test_the_card_harness_dump_is_current(
     hass: HomeAssistant,
     config_entry,
     rig,
     set_up_at,
     request: pytest.FixtureRequest,
-    rig_state: str,
-    clock: str | None,
+    dump: str,
+    setup: tuple[str, str | None, UnitSystem],
 ) -> None:
-    """One rig state per run, merged into the committed dump.
+    """One dump per run, merged into the committed file.
 
     Parametrized rather than looped because each state needs its own `hass`:
     a tier-polled endpoint latches at setup and will not be advanced on to.
     """
+    rig_state, clock, units = setup
     if clock:
         request.getfixturevalue(clock)
+    hass.config.units = units
     await set_up_at(hass, config_entry, rig, rig_state)
 
     current = json.loads(DUMP.read_text(encoding="utf-8")) if DUMP.exists() else {}
@@ -156,28 +180,26 @@ async def test_the_card_harness_dump_is_current(
     # tuple comes back from the committed file as a list and is otherwise
     # unequal to itself for ever.
     fresh = json.loads(json.dumps(_hass_for_a_card(hass, config_entry)))
-    if current.get(rig_state) == fresh:
+    if current.get(dump) == fresh:
         return
 
     DUMP.write_text(
-        json.dumps({**current, rig_state: fresh}, indent=1, sort_keys=True) + "\n",
+        json.dumps({**current, dump: fresh}, indent=1, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    pytest.fail(f"card_states.json regenerated for {rig_state} — review and commit it")
+    pytest.fail(f"card_states.json regenerated for {dump} — review and commit it")
 
 
 @pytest.mark.skipif(
     shutil.which("node") is None, reason="needs node to run the shipped card module"
 )
-@pytest.mark.parametrize("rig_state", RIG_STATES)
-def test_every_keyed_entity_in_the_dump_resolves(
-    rig_state: str, tmp_path: Path
-) -> None:
+@pytest.mark.parametrize("dump", DUMPS)
+def test_every_keyed_entity_in_the_dump_resolves(dump: str, tmp_path: Path) -> None:
     """The harness checks a conversion by rendering a card off resolved ids and
     again off templated ones. A dump whose registry resolved nothing would make
     both the fallback, and that comparison would pass while proving nothing.
     """
-    state = json.loads(DUMP.read_text(encoding="utf-8"))[rig_state]
+    state = json.loads(DUMP.read_text(encoding="utf-8"))[dump]
     payload = tmp_path / "hass.json"
     payload.write_text(json.dumps(state), encoding="utf-8")
     resolved = json.loads(

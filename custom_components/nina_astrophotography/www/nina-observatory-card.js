@@ -12,6 +12,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
+import { displayed, inUnit, quantity } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -65,6 +66,13 @@ function shown(value) {
 function numState(hass, entity_id, decimals = 1, fallback = "—") {
   const v = parseFloat(state(hass, entity_id, NaN));
   return isNaN(v) ? fallback : v.toFixed(decimals);
+}
+
+// A reading printed in the unit Home Assistant converted it to, and with no
+// unit at all when there is no reading.
+function measured(hass, entity_id, decimals = 1) {
+  const q = quantity(hass, entity_id);
+  return { value: displayed(q, decimals) ?? "—", unit: q?.unit ?? "" };
 }
 
 function statusDot(on) {
@@ -360,8 +368,8 @@ class NinaObservatoryCard extends HTMLElement {
     const progress     = parseFloat(state(h, this._eid("sensor", "sequence_progress"), ""));
     const frameCount   = state(h, this._eid("sensor", "session_image_count"), "0");
 
-    const camTemp      = numState(h, this._eid("sensor", "camera_temperature"));
-    const camTargTemp  = numState(h, this._eid("number", "camera_target_temperature"));
+    const camTemp      = measured(h, this._eid("sensor", "camera_temperature"));
+    const camTargTemp  = measured(h, this._eid("number", "camera_target_temperature"));
     const coolerPwr    = numState(h, this._eid("sensor", "camera_cooler_power"), 0);
     const camGain      = shown(state(h, this._eid("sensor", "camera_gain")));
     const camFilter    = shown(state(h, this._eid("select", "filter", "filter_wheel_filter")));
@@ -372,13 +380,14 @@ class NinaObservatoryCard extends HTMLElement {
     const mntAz        = numState(h, this._eid("sensor", "mount_azimuth"), 1);
     // The flip fires when the reading reaches (Max - Min), not zero, and both
     // bounds are per-profile — so the warning window is added to the offset
-    // the sensor publishes rather than to a bare number.
+    // the sensor publishes rather than to a bare number. Both in minutes: the
+    // attribute always is, and the state is shown in whatever unit was picked.
     const flipId       = this._eid("sensor", "mount_time_to_meridian_flip");
-    const ttf          = parseFloat(state(h, flipId, ""));
+    const ttf          = inUnit(quantity(h, flipId), "min") ?? NaN;
     const flipFiresAt  = parseFloat(attr(h, flipId, "flip_fires_at_minutes", "")) || 0;
 
     const focPos       = shown(state(h, this._eid("number", "focuser_position")));
-    const focTemp      = numState(h, this._eid("sensor", "focuser_temperature"));
+    const focTemp      = measured(h, this._eid("sensor", "focuser_temperature"));
 
     // NaN rather than 0 when there is no reading: a missing RMS rendered as
     // 0.00" is indistinguishable from perfect guiding.
@@ -452,8 +461,8 @@ class NinaObservatoryCard extends HTMLElement {
           <div class="section">
             <div class="section-title">Camera ${cooling ? "· ❄️ Cooling" : ""}</div>
             <div class="metric-grid">
-              ${metric("Temp", camTemp, "°C")}
-              ${metric("Setpoint", camTargTemp, "°C")}
+              ${metric("Temp", camTemp.value, camTemp.unit)}
+              ${metric("Setpoint", camTargTemp.value, camTargTemp.unit)}
               ${metric("Cooler", coolerPwr + "%", "")}
               ${metric("Gain", camGain, "")}
               ${metric("Filter", camFilter, "")}
@@ -477,7 +486,7 @@ class NinaObservatoryCard extends HTMLElement {
             <div class="section-title">Focuser</div>
             <div class="metric-grid">
               ${metric("Position", focPos, "steps")}
-              ${metric("Temp", focTemp, "°C")}
+              ${metric("Temp", focTemp.value, focTemp.unit)}
             </div>
           </div>
 

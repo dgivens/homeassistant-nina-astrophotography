@@ -684,11 +684,16 @@ and the rig is a device picker showing only N.I.N.A.'s devices, rather than a
 registry id you have to look up. `prefix` is under *Entity id fallback*. The
 editor saves only the fields you change; the rest keep their defaults.
 
+The cards show each reading in the unit the rest of Home Assistant does: your
+unit system's, or the one you picked for that entity. Their warnings keep
+their meaning whatever you chose: the weather card flags wind past 8 m/s and a
+dew point within 3 °C whether it prints mph or km/h, °F or °C.
+
 | Card | |
 |---|---|
 | `nina-observatory-card` | Session banner and progress, equipment chips, meridian countdown, camera / mount / focuser readings, guiding RMS bars, last-frame statistics, and one-tap controls. Stopping a sequence, parking and closing the dome ask for confirmation. |
 | `nina-frame-stats-card` | Per-frame HFR, star-count and ADU sparklines with a trend, and a per-filter breakdown. The series is the session's recent lights as the integration publishes them, so a page reload keeps it. |
-| `nina-autofocus-card` | The last autofocus run as a chart: the measured V with error bars, the fitted curves and their minima, and the position the run left the focuser at. Says whether the fit passed your profile's R² threshold, reports the starting HFR against the best measured so a run that bought nothing says so, and flags a fit that landed at the edge of the sweep. Takes an optional `temperature_delta:` (default 2 °C) — the drift since the run worth flagging, which is really your sequence's own refocus trigger. |
+| `nina-autofocus-card` | The last autofocus run as a chart: the measured V with error bars, the fitted curves and their minima, and the position the run left the focuser at. Says whether the fit passed your profile's R² threshold, reports the starting HFR against the best measured so a run that bought nothing says so, and flags a fit that landed at the edge of the sweep. Takes an optional `temperature_delta:` (default 2) — the drift since the run worth flagging, in the unit Home Assistant shows the focuser temperature in, which is really your sequence's own refocus trigger. |
 | `nina-image-panel-card` | The latest image with a filmstrip of recent frames, an ADU histogram, and per-frame statistics. Images are proxied through Home Assistant itself, so no `host:`/`port:` is needed. |
 | `nina-sky-map-card` | A live star chart with the current pointing, a trail of recent positions, and the meridian. Projects the star field from the site N.I.N.A. is configured for — which for a hosted rig is not where Home Assistant is — falling back to your Home Assistant location. `latitude:` still overrides both and is otherwise no longer needed. `trail_length:` sets how many past positions the trail keeps (default 60), and `map_size:` the map's width and height in pixels (default 320). |
 | `nina-weather-card` | Safety banner, atmospheric and wind conditions, and sky quality. Channels the source cannot provide are shown as absent rather than zero. |
