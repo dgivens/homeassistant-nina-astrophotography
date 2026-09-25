@@ -357,7 +357,7 @@ class NinaWeatherCard extends HTMLElement {
 
           ${dewThreat ? `
             <div class="dew-alert">
-              ⚠ Dew alert — temperature (${withUnit(temp, 1)}) within ${interval(dewMargin, "°C", temp.unit)?.toFixed(1)} ${temp.unit} of dew point (${withUnit(dewPt, 1)})
+              ⚠ Dew alert — temperature (${withUnit(temp, 1)}) ${dewMargin <= 0 ? "at or below" : `within ${interval(dewMargin, "°C", temp.unit)?.toFixed(1)} ${temp.unit} of`} dew point (${withUnit(dewPt, 1)})
             </div>
           ` : ""}
 
@@ -397,10 +397,11 @@ class NinaWeatherCard extends HTMLElement {
           <!-- Sky conditions -->
           <div class="section-title">Sky conditions</div>
           <div class="weather-grid">
-            ${cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > 60, cloud !== null && cloud > 85)}
-            ${qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0)}
+            ${cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > 60, cloud !== null && cloud > 85, cloud === null)}
+            ${qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null)}
             ${qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null)}
             ${cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > 3, seeing !== null && seeing > 5, seeing === null)}
+            ${skyB !== null ? qcell("✨", "Sky brightness", skyB, 2) : ""}
           </div>
 
           <!-- Sky quality -->
@@ -420,11 +421,6 @@ class NinaWeatherCard extends HTMLElement {
                 <span>22+ (dark)</span>
               </div>
             </div>
-          ` : ""}
-
-          <!-- Sky brightness -->
-          ${skyB !== null ? `
-            ${qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null)}
           ` : ""}
 
         </div>

@@ -75,6 +75,14 @@ export const scenarios = {
       rig(dump, UP).override(TEMPERATURE, 22.0).override(HUMIDITY, 91.0).build(),
   },
 
+  // Fog: the air down at its 20.5 °C dew point, so no margin is left to print.
+  // Invented as `dew` is, as a self-consistent pair: air at its dew point is
+  // saturated, 100%.
+  fog: {
+    hass: (dump) =>
+      rig(dump, UP).override(TEMPERATURE, 20.5).override(HUMIDITY, 100.0).build(),
+  },
+
   // The station on a US customary instance: Home Assistant's own °F, mph, inHg
   // and in/h, each printed in its own unit at its own precision.
   us_customary: { hass: (dump) => rig(dump, US).build() },
