@@ -50,8 +50,7 @@ const OTHER_COLOURS = [
   "#f4bc25", "#94d1f9", "#dba5e9", "#d8f425", "#f1a29d", "#f48525", "#e9c5a5",
 ];
 
-// A light N.I.N.A. names no filter for, beside lights it does: a wheel that
-// dropped out. It has no chip, so it takes a colour no chip can.
+// A light with no filter name among named ones, which no chip uses.
 const NO_FILTER = "#8a909c";
 
 // Case, a bandwidth and punctuation do not change the passband: "Ha 3nm",
@@ -73,7 +72,7 @@ function nameHash(text) {
 // match nothing above. Its slot list is the stable set: each slot a named
 // passband does not claim takes the next colour in slot order, so no two share
 // one while there are colours to spare, and a colour changes only when the
-// wheel is reconfigured, never with the night.
+// wheel is reconfigured.
 function wheelColours(slots) {
   const colours = new Map();
   for (const slot of slots) {
@@ -308,14 +307,16 @@ class NinaFrameStatsCard extends HTMLElement {
     const hasData = this._hfr.some(v => v !== null);
 
     const filterEntries = Object.entries(byFilter);
-    this._chipless = filterEntries.length === 0;
-    // Latched: a wheel that drops out mid-night can stop listing its slots, and
-    // the filters it did list must keep their colours.
-    const slots = this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options");
-    if (slots?.length) this._slots = slots;
-    this._wheel = wheelColours(this._slots ?? []);
+    const chipless = filterEntries.length === 0;
+    const wheel = wheelColours(
+      this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options") ?? []);
+    // N.I.N.A. names a filter only while a wheel is connected, so a night with
+    // no chips is usually a one-shot-colour camera: its lights have nothing to
+    // be told apart from, and null leaves each to the chart's own colour.
+    const lightColours = this._filters.map((name) =>
+      (name === null && chipless ? null : filterColour(name, wheel)));
     const filterChipsHtml = filterEntries.map(([name, row]) => {
-      const colour = filterColour(name, this._wheel);
+      const colour = filterColour(name, wheel);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${name}: ${row?.count ?? 0}</span>
@@ -392,7 +393,7 @@ class NinaFrameStatsCard extends HTMLElement {
             </div>
 
             <!-- Filter breakdown -->
-            ${filterEntries.length > 0 ? `
+            ${!chipless ? `
               <div class="chart-section">
                 <div class="chart-label">Frames per filter</div>
                 <div class="filter-bar">${filterChipsHtml}</div>
@@ -407,14 +408,14 @@ class NinaFrameStatsCard extends HTMLElement {
 
     if (hasData) {
       requestAnimationFrame(() => {
-        this._drawSparkline("hfr-chart", this._hfr, "#7b8de8", true);
-        this._drawSparkline("stars-chart", this._stars, "#5bcfcf", false);
-        this._drawSparkline("adu-chart", this._adu, "#f4a261", false);
+        this._drawSparkline("hfr-chart", this._hfr, "#7b8de8", true, lightColours);
+        this._drawSparkline("stars-chart", this._stars, "#5bcfcf", false, lightColours);
+        this._drawSparkline("adu-chart", this._adu, "#f4a261", false, lightColours);
       });
     }
   }
 
-  _drawSparkline(canvasId, data, fillColour, showAvgLine) {
+  _drawSparkline(canvasId, data, fillColour, showAvgLine, colours) {
     const canvas = this.shadowRoot.getElementById(canvasId);
     if (!canvas) return;
 
@@ -480,14 +481,10 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // N.I.N.A. names a filter only while a wheel is connected, so a night with
-    // no chips is usually a one-shot-colour camera: its lights have nothing to
-    // be told apart from and take the chart's own colour. Beside named filters
-    // an unnamed light is grey, hollow and dashed, since an L dot drawn at 60%
-    // is much the same grey.
-    const flagged = (i) => this._filters[i] === null && !this._chipless;
-    const colourOf = (i) => (this._filters[i] === null && this._chipless
-      ? fillColour : filterColour(this._filters[i], this._wheel));
+    // An unnamed light beside named ones is grey, and hollow and dashed too,
+    // since an L dot drawn at 60% is much the same grey.
+    const colourOf = (i) => colours[i] ?? fillColour;
+    const flagged = (i) => this._filters[i] === null && colours[i] !== null;
 
     // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
@@ -500,9 +497,10 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.lineTo(xOf(i), y1);
       ctx.strokeStyle = col;
       ctx.lineWidth = 1.8;
-      if (flagged(i)) ctx.setLineDash([3, 3]);
+      const dashed = flagged(i);
+      if (dashed) ctx.setLineDash([3, 3]);
       ctx.stroke();
-      if (flagged(i)) ctx.setLineDash([]);
+      if (dashed) ctx.setLineDash([]);
     }
 
     // Average line
