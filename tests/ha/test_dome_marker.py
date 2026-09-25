@@ -12,6 +12,8 @@ from homeassistant.const import EntityCategory
 import pytest
 
 PLATFORMS = ("binary_sensor", "sensor", "number", "switch", "button")
+# The dome buttons ship primary, like mount park; `test_button.py` asserts it.
+DIAGNOSTIC_PLATFORMS = tuple(p for p in PLATFORMS if p != "button")
 
 
 def _dome(module_name: str) -> list:
@@ -31,7 +33,7 @@ def test_every_dome_descriptor_is_marked_unverified(module_name: str) -> None:
     assert [d.key for d in dome if d.verified] == []
 
 
-@pytest.mark.parametrize("module_name", PLATFORMS, ids=PLATFORMS)
+@pytest.mark.parametrize("module_name", DIAGNOSTIC_PLATFORMS, ids=DIAGNOSTIC_PLATFORMS)
 def test_every_dome_entity_ships_diagnostic_and_disabled(module_name: str) -> None:
     """Asserted on the descriptors: no capture observes a dome, so there is no
     registry row to read it off.
