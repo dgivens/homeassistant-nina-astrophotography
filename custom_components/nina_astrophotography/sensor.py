@@ -829,7 +829,6 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
     NinaSensorDescription(
         key="dome_shutter_status",
         translation_key="dome_shutter_status",
-        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,

@@ -204,7 +204,6 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         native_step=0.1,
         native_unit_of_measurement=DEGREE,
         mode=NumberMode.BOX,
-        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,

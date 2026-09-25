@@ -128,9 +128,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Controls and readings 1.4.5 did not have:** camera dew heater, flat panel
   cover and rotator reverse (`switch`); flat panel brightness, camera USB limit
   and rotator mechanical position (`number`); guider clear calibration
-  (`button`); mount side of pier and flat panel cover state (`sensor`); filter
-  wheel moving, rotator moving and rotator synced (`binary_sensor`). The
-  livestack `switch` is new too.
+  (`button`, in the configuration section); mount side of pier and flat panel
+  cover state (`sensor`); filter wheel moving, rotator moving and rotator synced
+  (`binary_sensor`). The livestack `switch` is new too.
 - **Dome entities** — shutter status, azimuth, following, at park, at home,
   slewing, and open, close, park and home buttons. They are derived from the API
   specification and untested against hardware, and ship disabled.
@@ -280,11 +280,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   reporting no setpoint is refused. After a warm-up the setpoint is the
   warm-up's final value, so switching on resumes there; set
   `number.<instance>_camera_target_temperature` to cool to a chosen value.
-- **Entities moved between sections of their device page.** Guider RA and
-  declination error are primary readings beside the total, not diagnostics.
-  Guider clear calibration moves to the configuration section. The dome's open,
-  close, park and home buttons sit with the other controls, like mount park, and
-  still ship disabled. Entity ids are unchanged.
 
 ### Fixed
 

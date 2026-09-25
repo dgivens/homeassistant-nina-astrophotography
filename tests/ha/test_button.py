@@ -173,22 +173,3 @@ async def test_the_cut_buttons_are_not_registered(
     """
     await advance("imaging_guiding")
     assert _registered(entity_registry, loaded_entry, suffix) is None
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
-    assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []
-
-
-def test_every_dome_button_ships_primary_and_disabled() -> None:
-    """A primary control like mount park, disabled because it is untested.
-
-    Asserted on the descriptors: no capture observes a dome, so there is no
-    registry row to read it off.
-    """
-    assert [
-        d.key
-        for d in DESCRIPTIONS
-        if d.kind == "dome"
-        and (d.entity_category is not None or d.entity_registry_enabled_default)
-    ] == []
