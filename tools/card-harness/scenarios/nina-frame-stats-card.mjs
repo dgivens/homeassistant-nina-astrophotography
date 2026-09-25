@@ -86,12 +86,19 @@ export const scenarios = {
   // Filters with no fixed colour, which take one hashed from the name alone.
   other_names: {
     hass: (dump) =>
-      relabelled(dump, { B: "UV/IR Cut", L: "L-eXtreme" }).build(),
+      relabelled(dump, { B: "L-eNhance", L: "L-eXtreme" }).build(),
   },
 
-  // Every R light with no filter, as a wheel slot with no name leaves them:
-  // nine lights over two targets in a grey no chip shares.
+  // Every R light with no filter name, as a wheel that dropped out for them
+  // leaves them: nine lights over two targets, grey, hollow and dashed.
   unfiltered: { hass: (dump) => relabelled(dump, { R: null }).build() },
+
+  // No light with a filter name, as a one-shot-colour camera with no wheel
+  // reports them: no chips, and each chart in its own colour.
+  one_shot_colour: {
+    hass: (dump) =>
+      relabelled(dump, { B: null, L: null, O: null, R: null, S: null }).build(),
+  },
 
   // No lights in the session, so no charts: the waiting panel under the
   // header's session totals.

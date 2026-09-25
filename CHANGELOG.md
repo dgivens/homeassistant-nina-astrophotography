@@ -291,9 +291,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   the lines in their order on screen, so R could take any colour, and a chip
   and its line could disagree. L is neutral, R, G and B their own hues, Ha
   rose, OIII cyan and SII violet, whatever the wheel calls them (`Lum`, `Red`,
-  `Ha 3nm`, `OIII`); any other filter takes a colour from its name alone, which
-  two such filters may share. A light with no filter is drawn grey, which no
-  chip uses.
+  `Ha 3nm`, `OIII`), with `Clear` and `UV/IR Cut` as L; any other filter takes
+  a colour from its name alone, which two such filters may share. A night with
+  no filter names — a one-shot-colour camera — draws each chart in its own
+  colour; beside named filters, a light with no name is a hollow grey point on
+  a dashed line.
 
 ### Fixed
 

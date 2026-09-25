@@ -29,7 +29,9 @@ function shown(value) {
 // common passbands take their own hue; Ha is rose rather than red so that an
 // HaRGB night keeps it apart from R.
 const NAMED_FILTERS = [
-  ["#e4e7ed", ["l", "lum", "luminance"]],
+  // A slot that passes the whole visible band reads as luminance.
+  ["#e4e7ed", ["l", "lum", "luminance", "clear", "open", "empty", "none",
+               "uvir", "uvircut", "ircut"]],
   ["#f0524a", ["r", "red"]],
   ["#5fcf6a", ["g", "green"]],
   ["#4f8ff7", ["b", "blue"]],
@@ -47,8 +49,8 @@ const OTHER_COLOURS = [
   "#ff9447", "#f2e35c", "#b5e05a", "#6fe3a8", "#8a86ff", "#eb7ff0",
 ];
 
-// A light with no filter — a rig without a wheel. It has no chip, so it takes
-// a colour no chip can.
+// A light N.I.N.A. names no filter for, beside lights it does: a wheel that
+// dropped out. It has no chip, so it takes a colour no chip can.
 const NO_FILTER = "#8a909c";
 
 // Case, a bandwidth and punctuation do not change the passband: "Ha 3nm",
@@ -287,6 +289,7 @@ class NinaFrameStatsCard extends HTMLElement {
     const hasData = this._hfr.some(v => v !== null);
 
     const filterEntries = Object.entries(byFilter);
+    this._chipless = filterEntries.length === 0;
     const filterChipsHtml = filterEntries.map(([name, row]) => {
       const colour = filterColour(name);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
@@ -453,7 +456,14 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    const colourOf = (i) => filterColour(this._filters[i]);
+    // N.I.N.A. names a filter only while a wheel is connected, so a night with
+    // no chips is usually a one-shot-colour camera: its lights have nothing to
+    // be told apart from and take the chart's own colour. Beside named filters
+    // an unnamed light is grey, hollow and dashed, since an L dot drawn at 60%
+    // is much the same grey.
+    const flagged = (i) => this._filters[i] === null && !this._chipless;
+    const colourOf = (i) => (this._filters[i] === null && this._chipless
+      ? fillColour : filterColour(this._filters[i]));
 
     // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
@@ -466,7 +476,9 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.lineTo(xOf(i), y1);
       ctx.strokeStyle = col;
       ctx.lineWidth = 1.8;
+      if (flagged(i)) ctx.setLineDash([3, 3]);
       ctx.stroke();
+      if (flagged(i)) ctx.setLineDash([]);
     }
 
     // Average line
@@ -497,6 +509,12 @@ class NinaFrameStatsCard extends HTMLElement {
       const col = colourOf(i);
       ctx.beginPath();
       ctx.arc(xOf(i), y, isLast ? 3.5 : 2, 0, Math.PI * 2);
+      if (flagged(i)) {
+        ctx.strokeStyle = col;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        continue;
+      }
       ctx.fillStyle = isLast ? col : col + "99";
       ctx.fill();
       if (isLast) {
