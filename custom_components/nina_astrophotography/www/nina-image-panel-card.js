@@ -630,6 +630,10 @@ class NinaImagePanelCard extends HTMLElement {
 
       const img = document.createElement("img");
       img.alt = `Frame -${i}`;
+      // Hidden until it loads: a browser draws an image with no src, or a
+      // failed one, as its alt text. Hidden, it is not announced either.
+      img.style.visibility = "hidden";
+      img.onload = () => { img.style.visibility = ""; };
       img.onerror = () => { thumb.style.opacity = "0.3"; };
       thumb.appendChild(img);
       this._signedUrl(this._imagePath(i, true))
@@ -675,16 +679,24 @@ class NinaImagePanelCard extends HTMLElement {
     const max = finite(frame.max);
     const median = finite(frame.median) ?? mean;
 
+    // The canvas keeps whatever it last drew, so a frame with no curve of its
+    // own must wipe the previous frame's.
+    const clear = () => canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+
     const rangeEl = this.shadowRoot?.getElementById("hist-range");
     if (mean === null || min === null || max === null) {
       if (rangeEl) rangeEl.textContent = "—";
+      clear();
       return;
     }
     if (rangeEl && max > 0) {
       rangeEl.textContent = `${Math.round(min)} – ${Math.round(max)} (mean ${Math.round(mean)})`;
     }
 
-    if (!max || max <= min) return;
+    if (!max || max <= min) {
+      clear();
+      return;
+    }
 
     const W = canvas.offsetWidth || 300;
     const H = canvas.offsetHeight || 28;
@@ -851,7 +863,8 @@ class NinaImagePanelCard extends HTMLElement {
       const parts = [];
       if (target && target !== "null") parts.push(target);
       if (filter && filter !== "null") parts.push(filter);
-      if (intTime > 0) parts.push(`${intTime.toFixed(1)} h`);
+      // Every light this session, not the target's or the filter's beside it.
+      if (intTime > 0) parts.push(`session ${intTime.toFixed(1)} h`);
       sub.textContent = parts.join(" · ") || "No lights yet this session";
     }
   }
