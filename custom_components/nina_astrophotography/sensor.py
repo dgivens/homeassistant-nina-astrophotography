@@ -236,11 +236,15 @@ def _recent_frames(data: NinaData) -> tuple[Mapping[str, Any], ...]:
     and ADU histogram need to browse recent frames without their own fetch to
     N.I.N.A. Not `dataclasses.asdict(frame)`: this is a card's contract, free
     to diverge from `Frame`'s own fold/identity semantics on purpose.
+
+    `image_type` is what lets a card tell a flat from a light: the strip is
+    every type, while the `last_image_*` sensors beside it are lights only.
     """
     return tuple(
         {
             "date": frame.date.isoformat(),
             "filename": frame.filename,
+            "image_type": frame.image_type,
             "filter": frame.filter_name,
             "mean": frame.mean,
             "median": frame.median,

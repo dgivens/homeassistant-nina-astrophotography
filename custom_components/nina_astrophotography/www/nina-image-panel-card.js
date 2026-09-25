@@ -23,6 +23,10 @@
  *   attribute — the newest frames of any type, already bounded and ordered —
  *   for the strip's labels and the histogram's range.
  *
+ * The overlay and the stats row describe the newest light, not the frame on
+ * screen, which at dawn is a flat. When the two differ the pills are dimmed
+ * behind a "Last light" tag, and the stats row dimmed with them.
+ *
  * Card config — one rig needs none: the card finds its own sensors in the
  * registry.
  *   type: custom:nina-image-panel-card
@@ -78,6 +82,12 @@ function known(value) {
 function finite(value) {
   const number = typeof value === "number" ? value : parseFloat(value);
   return Number.isFinite(number) ? number : null;
+}
+
+// A frame with no type is one the integration did not classify, and is not
+// marked: only a frame known to be something else is.
+function isLight(frame) {
+  return frame?.image_type == null || frame.image_type === "LIGHT";
 }
 
 // A browser draws an image with no src, or a failed one, as its alt text and a
@@ -172,6 +182,8 @@ const STYLE = `
   }
   .stat-pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); }
   .stat-pill.warn .dot { background: var(--warn); }
+  .overlay-left.stale .stat-pill:not(.tag) { opacity: 0.5; }
+  .stat-pill.tag { color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
 
   /* ── Exposing indicator ── */
   .exposing-bar {
@@ -226,6 +238,7 @@ const STYLE = `
   .stat-cell .val { font-size: 0.8rem; font-weight: 600; }
   .stat-cell .val.good { color: var(--success); }
   .stat-cell .val.warn { color: var(--warn); }
+  .stats-row.stale .stat-cell .val { opacity: 0.5; }
 
   /* ── Image strip ── */
   .strip-wrap {
@@ -259,6 +272,12 @@ const STYLE = `
     background: rgba(0,0,0,0.65); border-radius: 2px; padding: 1px 2px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .strip-thumb .strip-type {
+    position: absolute; top: 2px; left: 2px;
+    font-size: 0.5rem; font-weight: 700; letter-spacing: .3px;
+    color: var(--warn);
+    background: rgba(0,0,0,0.65); border-radius: 2px; padding: 0 2px;
+  }
 
   /* ── Fullscreen modal ── */
   .modal-bg {
@@ -290,7 +309,7 @@ class NinaImagePanelCard extends HTMLElement {
     this._currentIndex = 0;   // 0 = latest
     this._totalFrames  = 0;
     this._loading = false;
-    this._historyMeta = [];   // [{date, filename, filter, mean, median, min, max}]
+    this._historyMeta = [];   // [{date, filename, image_type, filter, mean, median, min, max}]
     this._hasImage = false;
     this._loadToken = 0;
     this._rendered = false;
@@ -575,6 +594,8 @@ class NinaImagePanelCard extends HTMLElement {
     const token = ++this._loadToken;
     this._loading = true;
     this._currentIndex = index;
+    this._updateOverlay();
+    this._updateStatsRow();
 
     if (!silent) {
       img.classList.add("loading");
@@ -647,8 +668,17 @@ class NinaImagePanelCard extends HTMLElement {
         .then((url) => { img.src = url; })
         .catch(dim);
 
+      // Only a calibration frame is tagged: a light is the ordinary case.
+      const frame = this._historyMeta[i];
+      if (!isLight(frame)) {
+        const tag = document.createElement("div");
+        tag.className = "strip-type";
+        tag.textContent = frame.image_type;
+        thumb.appendChild(tag);
+      }
+
       // Filter label from the recent-frames metadata
-      const filterName = this._historyMeta[i]?.filter ?? "";
+      const filterName = frame?.filter ?? "";
       if (filterName) {
         const lbl = document.createElement("div");
         lbl.className = "strip-filter";
@@ -798,7 +828,12 @@ class NinaImagePanelCard extends HTMLElement {
       ? `<span style="font-size:0.65rem;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;max-width:120px;text-overflow:ellipsis">${target}</span>`
       : "";
 
-    overlay.innerHTML = `<div class="overlay-left">${pills.join("")}</div>${targetHtml}`;
+    // The pills are the newest light's, so over another type of frame they
+    // say whose readings they are.
+    const stale = pills.length > 0 && !isLight(this._frame());
+    if (stale) pills.unshift(`<span class="stat-pill tag">Last light</span>`);
+
+    overlay.innerHTML = `<div class="overlay-left${stale ? " stale" : ""}">${pills.join("")}</div>${targetHtml}`;
   }
 
   _updateStatsRow() {
@@ -815,6 +850,10 @@ class NinaImagePanelCard extends HTMLElement {
     set("st-stars", shown(stars));
     set("st-adu",   adu  > 0 ? Math.round(adu).toString() : "—");
     set("st-exp",   exp  > 0 ? `${exp.toFixed(0)} s`      : "—");
+
+    // The newest light's too, beside a histogram of the frame on screen.
+    this.shadowRoot?.getElementById("stats-row")
+      ?.classList.toggle("stale", !isLight(this._frame()));
 
     // Colour HFR
     const hfrEl = this.shadowRoot?.getElementById("st-hfr");

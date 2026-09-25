@@ -101,6 +101,17 @@ async def test_recent_frames_is_every_type_newest_first_and_bounded(
     assert recent[0]["mean"] == pytest.approx(33139.77, abs=0.01)
 
 
+async def test_recent_frames_name_their_type(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
+) -> None:
+    """A strip of flats must not read as a run of lights: filter alone cannot
+    tell them apart, so each frame carries its type.
+    """
+    await advance("dawn_flats")
+    recent = state_of(hass, LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
+    assert recent[0]["image_type"] == "FLAT"
+
+
 async def test_recent_lights_survive_a_dawn_flat_run(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
