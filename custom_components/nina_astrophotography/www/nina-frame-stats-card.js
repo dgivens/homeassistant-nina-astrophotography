@@ -31,7 +31,7 @@ function shown(value) {
 const NAMED_FILTERS = [
   // A slot that passes the whole visible band reads as luminance.
   ["#e4e7ed", ["l", "lum", "luminance", "clear", "open", "empty", "none",
-               "uvir", "uvircut", "ircut"]],
+               "uv", "uvir", "uvircut", "ircut"]],
   ["#f0524a", ["r", "red"]],
   ["#5fcf6a", ["g", "green"]],
   ["#4f8ff7", ["b", "blue"]],
@@ -42,9 +42,7 @@ const NAMED_FILTERS = [
 const NAMED_COLOURS = new Map(
   NAMED_FILTERS.flatMap(([colour, keys]) => keys.map((key) => [key, colour])));
 
-// Any other filter, by a hash of its name alone, so that no other filter can
-// move it: two may share a colour, and their chips still name them. Each sits
-// in a gap between the named hues.
+// Any other filter. Each sits in a gap between the named hues.
 const OTHER_COLOURS = [
   "#ff9447", "#f2e35c", "#b5e05a", "#6fe3a8", "#8a86ff", "#eb7ff0",
 ];
@@ -68,10 +66,28 @@ function nameHash(text) {
   return hash >>> 0;
 }
 
-function filterColour(name) {
+// A wheel's names are whatever its owner typed — "HaOiii", "LPro" — so most
+// match nothing above. Its slot list is the stable set: each slot a named
+// passband does not claim takes the next colour in slot order, so no two share
+// one while there are colours to spare, and a colour changes only when the
+// wheel is reconfigured, never with the night.
+function wheelColours(slots) {
+  const colours = new Map();
+  for (const slot of slots) {
+    if (!colours.has(slot) && !NAMED_COLOURS.has(filterKey(slot))) {
+      colours.set(slot, OTHER_COLOURS[colours.size % OTHER_COLOURS.length]);
+    }
+  }
+  return colours;
+}
+
+// A name the wheel does not list — a slot renamed since the light was taken —
+// falls back to a hash of the name alone, which no other filter can move.
+function filterColour(name, wheel) {
   if (name === null) return NO_FILTER;
   const key = filterKey(name);
-  return NAMED_COLOURS.get(key) ?? OTHER_COLOURS[nameHash(key) % OTHER_COLOURS.length];
+  return NAMED_COLOURS.get(key) ?? wheel.get(name)
+    ?? OTHER_COLOURS[nameHash(key) % OTHER_COLOURS.length];
 }
 
 const STYLE = `
@@ -193,8 +209,8 @@ class NinaFrameStatsCard extends HTMLElement {
   // a disabled one, or a rig the resolver cannot identify.
   //
   // `slug` is the entity-id suffix — the device name plus the entity name — so
-  // it is not always the key. On this card it always is: every read is a hub
-  // sensor, and the hub adds nothing past the instance name.
+  // it is not always the key. A hub sensor adds nothing past the instance
+  // name; the filter wheel's select adds its device's.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -290,8 +306,13 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const filterEntries = Object.entries(byFilter);
     this._chipless = filterEntries.length === 0;
+    // Latched: a wheel that drops out mid-night can stop listing its slots, and
+    // the filters it did list must keep their colours.
+    const slots = this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options");
+    if (slots?.length) this._slots = slots;
+    this._wheel = wheelColours(this._slots ?? []);
     const filterChipsHtml = filterEntries.map(([name, row]) => {
-      const colour = filterColour(name);
+      const colour = filterColour(name, this._wheel);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${name}: ${row?.count ?? 0}</span>
@@ -463,7 +484,7 @@ class NinaFrameStatsCard extends HTMLElement {
     // is much the same grey.
     const flagged = (i) => this._filters[i] === null && !this._chipless;
     const colourOf = (i) => (this._filters[i] === null && this._chipless
-      ? fillColour : filterColour(this._filters[i]));
+      ? fillColour : filterColour(this._filters[i], this._wheel));
 
     // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {

@@ -29,15 +29,19 @@ const INTEGRATION = "sensor.n_i_n_a_session_integration_time";
 const HFR = "sensor.n_i_n_a_last_image_hfr";
 const AVG_HFR = "sensor.n_i_n_a_session_avg_hfr";
 const FILTER = "sensor.n_i_n_a_last_image_filter";
+const WHEEL = "select.n_i_n_a_filter_wheel_filter";
 
 // The night with its filters renamed by `names`, captured name to new, where
 // null takes the name away. Only labels change: each light, breakdown row and
 // the last-filter reading keeps what the integration published, re-sorted by
 // name as it sorts them, and a filter named null loses its row as a light
-// with no filter has none.
-function relabelled(dump, names) {
+// with no filter has none. The wheel's slots are renamed with them unless
+// `wheel` is false; a slot whose lights lost their name keeps it.
+function relabelled(dump, names, { wheel = true } = {}) {
   const states = dump[NIGHT].states;
   const label = (name) => (name in names ? names[name] : name);
+  const slots = states[WHEEL].attributes.options.map(
+    (slot) => (wheel ? label(slot) ?? slot : slot));
   const lights = states[HFR].attributes.recent_lights.map(
     (light) => ({ ...light, filter: label(light.filter) }));
   const byFilter = Object.fromEntries(
@@ -48,7 +52,8 @@ function relabelled(dump, names) {
   return rig(dump, NIGHT)
     .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
     .override(AVG_HFR, states[AVG_HFR].state, { ...states[AVG_HFR].attributes, by_filter: byFilter })
-    .override(FILTER, label(states[FILTER].state) ?? "unknown", states[FILTER].attributes);
+    .override(FILTER, label(states[FILTER].state) ?? "unknown", states[FILTER].attributes)
+    .override(WHEEL, states[WHEEL].state, { ...states[WHEEL].attributes, options: slots });
 }
 
 // No `draw` hook: the three sparklines are painted from the frame the render
@@ -83,10 +88,21 @@ export const scenarios = {
       }).build(),
   },
 
-  // Filters with no fixed colour, which take one hashed from the name alone.
-  other_names: {
+  // A one-shot-colour rig's wheel of dual-band and broadband filters, named as
+  // its owner typed them. Only UV reads as a passband (L); the other four take
+  // the first four spare colours in slot order, so no two share one.
+  dual_band: {
     hass: (dump) =>
-      relabelled(dump, { B: "L-eNhance", L: "L-eXtreme" }).build(),
+      relabelled(dump, {
+        L: "UV", R: "LPro", B: "L-eNhance", O: "HaOiii", S: "SiiOiii",
+      }).build(),
+  },
+
+  // Names the wheel does not list, as renaming a slot mid-session leaves the
+  // lights taken before it: each takes a colour hashed from its name.
+  off_wheel: {
+    hass: (dump) =>
+      relabelled(dump, { B: "L-eNhance", L: "L-eXtreme" }, { wheel: false }).build(),
   },
 
   // Every R light with no filter name, as a wheel that dropped out for them
@@ -97,7 +113,9 @@ export const scenarios = {
   // reports them: no chips, and each chart in its own colour.
   one_shot_colour: {
     hass: (dump) =>
-      relabelled(dump, { B: null, L: null, O: null, R: null, S: null }).build(),
+      relabelled(dump, { B: null, L: null, O: null, R: null, S: null })
+        .without("filter_wheel_filter")
+        .build(),
   },
 
   // No lights in the session, so no charts: the waiting panel under the
