@@ -27,39 +27,59 @@ function shown(value) {
 // A filter keeps its colour from night to night, whichever others the session
 // used: the chips are the charts' legend, and an imager reads R as red. The
 // common passbands take their own hue; Ha is rose rather than red so that an
-// HaRGB night keeps it apart from R.
-const NAMED_FILTERS = [
+// HaRGB night keeps it apart from R, and SII sits far enough from B that a
+// deuteranope can still tell them apart.
+const PASSBANDS = {
+  L: "#e4e7ed", R: "#f0524a", G: "#5fcf6a", B: "#4f8ff7",
+  Ha: "#ff6fa8", OIII: "#35cfd4", SII: "#c65cd6",
+};
+const ALIASES = [
   // A slot that passes the whole visible band reads as luminance.
-  ["#e4e7ed", ["l", "lum", "luminance", "clear", "open", "empty", "none",
-               "uv", "uvir", "uvircut", "ircut"]],
-  ["#f0524a", ["r", "red"]],
-  ["#5fcf6a", ["g", "green"]],
-  ["#4f8ff7", ["b", "blue"]],
-  ["#ff6fa8", ["h", "ha", "halpha", "hα"]],
-  ["#35cfd4", ["o", "oiii", "o3"]],
-  ["#b565f0", ["s", "sii", "s2"]],
+  ["L", ["l", "lum", "lumi", "luminance", "luminence", "clear", "open", "empty",
+         "none", "uv"]],
+  ["R", ["r", "red"]],
+  ["G", ["g", "grn", "green"]],
+  ["B", ["b", "blu", "blue"]],
+  ["Ha", ["h", "ha", "halpha", "hα"]],
+  ["OIII", ["o", "oiii", "o3"]],
+  ["SII", ["s", "sii", "s2"]],
 ];
-const NAMED_COLOURS = new Map(
-  NAMED_FILTERS.flatMap(([colour, keys]) => keys.map((key) => [key, colour])));
+const PASSBAND_OF = new Map(
+  ALIASES.flatMap(([band, keys]) => keys.map((key) => [key, band])));
 
-// Any other filter. Seven, as the largest wheels hold, chosen for perceptual
-// distance from each other and the named hues on the card's background. The
-// order spreads hue first, since a thin line shows hue more than lightness:
-// a wheel's first few slots are the ones that must not look alike.
+// A slot is as often named for its maker as for its passband.
+const MAKERS = /\b(astrodon|astronomik|antlia|baader|chroma|idas|optolong|zwo)\b/g;
+
+// Case, a bandwidth or size, a maker and punctuation do not change the
+// passband: "Ha 3nm", "H-alpha", "Chroma Ha 5nm" and "HA" are one filter.
+function filterKey(name) {
+  return String(name).toLowerCase()
+    .replace(/\(.*?\)/g, "")
+    .replace(/\d+([.,]\d+)?\s*(nm|mm)\b|\d+([.,]\d+)?\s*"/g, "")
+    .replace(MAKERS, "")
+    .replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+// The passband a name reads as, or null. A bare trailing number is read as a
+// bandwidth only where what is left is a passband — "Ha7", Astronomik's "L-2" —
+// so it never turns a dual-band name into one.
+function passband(name) {
+  const key = filterKey(name);
+  return PASSBAND_OF.get(key) ?? PASSBAND_OF.get(key.replace(/\d+$/, ""))
+    ?? (/uvir|iruv|ircut|irblock/.test(key) ? "L" : null);
+}
+
+// Any other filter. Seven: a common wheel rarely holds more that match no
+// passband. Chosen for perceptual distance from each other and the passband
+// hues on the card's background, with and without a colour-vision deficiency,
+// and ordered most distinct first, since a wheel's first slots are the ones
+// that must not look alike.
 const OTHER_COLOURS = [
-  "#f4bc25", "#94d1f9", "#dba5e9", "#d8f425", "#f1a29d", "#f48525", "#e9c5a5",
+  "#94d1f9", "#f48525", "#e9c5a5", "#d8f425", "#f4bc25", "#dba5e9", "#f1a29d",
 ];
 
 // A light with no filter name among named ones, which no chip uses.
 const NO_FILTER = "#8a909c";
-
-// Case, a bandwidth and punctuation do not change the passband: "Ha 3nm",
-// "H-alpha" and "HA" are one filter.
-function filterKey(name) {
-  return String(name).toLowerCase()
-    .replace(/\d+([.,]\d+)?\s*nm\b/g, "")
-    .replace(/[^a-z0-9α]/g, "");
-}
 
 // FNV-1a: stable across browsers and sessions.
 function nameHash(text) {
@@ -69,27 +89,42 @@ function nameHash(text) {
 }
 
 // A wheel's names are whatever its owner typed — "HaOiii", "LPro" — so most
-// match nothing above. Its slot list is the stable set: each slot a named
-// passband does not claim takes the next colour in slot order, so no two share
-// one while there are colours to spare, and a colour changes only when the
-// wheel is reconfigured.
+// match no passband. Its slot list is the stable set: the first slot for each
+// passband takes that passband's hue, and every other slot, a "Clear" beside
+// an "L" included, takes the next colour in slot order, so no two chips look
+// alike while colours remain. A colour follows the slot, not the glass in it,
+// and changes only when the wheel is reconfigured.
 function wheelColours(slots) {
   const colours = new Map();
+  const claimed = new Set();
+  let next = 0;
   for (const slot of slots) {
-    if (!colours.has(slot) && !NAMED_COLOURS.has(filterKey(slot))) {
-      colours.set(slot, OTHER_COLOURS[colours.size % OTHER_COLOURS.length]);
+    if (colours.has(slot)) continue;
+    const band = passband(slot);
+    if (band !== null && !claimed.has(band)) {
+      claimed.add(band);
+      colours.set(slot, PASSBANDS[band]);
+    } else {
+      colours.set(slot, OTHER_COLOURS[next++ % OTHER_COLOURS.length]);
     }
   }
   return colours;
 }
 
 // A name the wheel does not list — a slot renamed since the light was taken —
-// falls back to a hash of the name alone, which no other filter can move.
+// takes its passband's hue, or else a colour hashed from its key that steps
+// past those the wheel's slots use, so that only the wheel can move it.
 function filterColour(name, wheel) {
   if (name === null) return NO_FILTER;
-  const key = filterKey(name);
-  return NAMED_COLOURS.get(key) ?? wheel.get(name)
-    ?? OTHER_COLOURS[nameHash(key) % OTHER_COLOURS.length];
+  if (wheel.has(name)) return wheel.get(name);
+  const band = passband(name);
+  if (band !== null) return PASSBANDS[band];
+  const used = new Set(wheel.values());
+  let slot = nameHash(filterKey(name)) % OTHER_COLOURS.length;
+  for (let step = 0; step < OTHER_COLOURS.length && used.has(OTHER_COLOURS[slot]); step++) {
+    slot = (slot + 1) % OTHER_COLOURS.length;
+  }
+  return OTHER_COLOURS[slot];
 }
 
 const STYLE = `
@@ -306,15 +341,20 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const hasData = this._hfr.some(v => v !== null);
 
-    const filterEntries = Object.entries(byFilter);
+    const slots = this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options") ?? [];
+    const wheel = wheelColours(slots);
+    // In wheel order, as an imager reads a wheel; names it does not list last.
+    const slotOf = (name) => (slots.includes(name) ? slots.indexOf(name) : slots.length);
+    const filterEntries = Object.entries(byFilter).sort(([a], [b]) => slotOf(a) - slotOf(b));
     const chipless = filterEntries.length === 0;
-    const wheel = wheelColours(
-      this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options") ?? []);
     // N.I.N.A. names a filter only while a wheel is connected, so a night with
-    // no chips is usually a one-shot-colour camera: its lights have nothing to
-    // be told apart from, and null leaves each to the chart's own colour.
+    // no chips and no named light is usually a one-shot-colour camera: its
+    // lights have nothing to be told apart from, and null leaves each to the
+    // chart's own colour. The series has a say as well as the chips, so a
+    // breakdown that goes missing cannot recolour a wheel's dropout.
+    const ownColours = chipless && this._filters.every((name) => name === null);
     const lightColours = this._filters.map((name) =>
-      (name === null && chipless ? null : filterColour(name, wheel)));
+      (ownColours ? null : filterColour(name, wheel)));
     const filterChipsHtml = filterEntries.map(([name, row]) => {
       const colour = filterColour(name, wheel);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
@@ -481,10 +521,10 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // An unnamed light beside named ones is grey, and hollow and dashed too,
-    // since an L dot drawn at 60% is much the same grey.
+    // An unnamed light beside named ones is grey, and hollow too, since an L
+    // dot drawn at 60% is much the same grey.
     const colourOf = (i) => colours[i] ?? fillColour;
-    const flagged = (i) => this._filters[i] === null && colours[i] !== null;
+    const hollow = (i) => colours[i] === NO_FILTER;
 
     // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
@@ -497,10 +537,7 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.lineTo(xOf(i), y1);
       ctx.strokeStyle = col;
       ctx.lineWidth = 1.8;
-      const dashed = flagged(i);
-      if (dashed) ctx.setLineDash([3, 3]);
       ctx.stroke();
-      if (dashed) ctx.setLineDash([]);
     }
 
     // Average line
@@ -531,7 +568,7 @@ class NinaFrameStatsCard extends HTMLElement {
       const col = colourOf(i);
       ctx.beginPath();
       ctx.arc(xOf(i), y, isLast ? 3.5 : 2, 0, Math.PI * 2);
-      if (flagged(i)) {
+      if (hollow(i)) {
         ctx.strokeStyle = col;
         ctx.lineWidth = 1.2;
         ctx.stroke();

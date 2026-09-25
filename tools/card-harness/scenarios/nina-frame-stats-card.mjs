@@ -35,8 +35,9 @@ const WHEEL = "select.n_i_n_a_filter_wheel_filter";
 // null takes the name away. Only labels change: each light, breakdown row and
 // the last-filter reading keeps what the integration published, re-sorted by
 // name as it sorts them, and a filter named null loses its row as a light
-// with no filter has none. The wheel's slots are renamed with them unless
-// `wheel` is false; a slot whose lights lost their name keeps it.
+// with no filter has none. The wheel's slots and its current filter are
+// renamed with them unless `wheel` is false; a slot whose lights lost their
+// name keeps it.
 function relabelled(dump, names, { wheel = true } = {}) {
   const states = dump[NIGHT].states;
   const label = (name) => (name in names ? names[name] : name);
@@ -53,7 +54,8 @@ function relabelled(dump, names, { wheel = true } = {}) {
     .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
     .override(AVG_HFR, states[AVG_HFR].state, { ...states[AVG_HFR].attributes, by_filter: byFilter })
     .override(FILTER, label(states[FILTER].state) ?? "unknown", states[FILTER].attributes)
-    .override(WHEEL, states[WHEEL].state, { ...states[WHEEL].attributes, options: slots });
+    .override(WHEEL, wheel ? label(states[WHEEL].state) ?? states[WHEEL].state : states[WHEEL].state,
+      { ...states[WHEEL].attributes, options: slots });
 }
 
 // No `draw` hook: the three sparklines are painted from the frame the render
@@ -99,15 +101,27 @@ export const scenarios = {
   },
 
   // Names the wheel does not list, as renaming a slot mid-session leaves the
-  // lights taken before it: each takes a colour hashed from its name.
+  // lights taken before it: each takes a colour hashed from its name, past
+  // the ones the wheel's slots use.
   off_wheel: {
     hass: (dump) =>
       relabelled(dump, { B: "L-eNhance", L: "L-eXtreme" }, { wheel: false }).build(),
   },
 
+  // A second luminance slot, a Clear beside the L: the first takes L's hue and
+  // the Clear the first spare colour, so the two chips differ.
+  second_luminance: { hass: (dump) => relabelled(dump, { B: "Clear" }).build() },
+
   // Every R light with no filter name, as a wheel that dropped out for them
-  // leaves them: nine lights over two targets, grey, hollow and dashed.
+  // leaves them: nine lights over two targets, grey and hollow.
   unfiltered: { hass: (dump) => relabelled(dump, { R: null }).build() },
+
+  // The same night with the average-HFR sensor disabled, so no breakdown and
+  // no chips. The named lights still say it is no one-shot-colour night: the
+  // unnamed ones stay grey rather than taking a chart's colour.
+  unfiltered_no_breakdown: {
+    hass: (dump) => relabelled(dump, { R: null }).without("session_avg_hfr").build(),
+  },
 
   // No light with a filter name, as a one-shot-colour camera with no wheel
   // reports them: no chips, and each chart in its own colour.
