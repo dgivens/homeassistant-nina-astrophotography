@@ -331,7 +331,15 @@ class NinaImagePanelCard extends HTMLElement {
     if (!this._rendered) {
       this._buildDOM();
       this._rendered = true;
-      this._loadImage(0);
+    }
+
+    // On the first render, and whenever a new config or a registry change
+    // points the card at another entity — which may be another rig's. Past a
+    // load still in flight: that one is for the old entity.
+    const imageEntity = this._entityId();
+    if (imageEntity !== this._imageEntity) {
+      this._imageEntity = imageEntity;
+      this._loadImage(0, this._loading);
     }
 
     // Keyed on the attribute's contents, not on `nina_image_save`: the bus
