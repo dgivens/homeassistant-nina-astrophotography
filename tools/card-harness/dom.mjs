@@ -59,6 +59,84 @@ function recorder(log) {
 }
 
 /**
+ * An element a card writes to rather than re-rendering: the image panel builds
+ * its markup once and then sets text, classes, `src` and children on the nodes
+ * it holds, so its output lives here and not in the shadow root's markup.
+ */
+function element(tag) {
+  const classes = new Set();
+  let markup = "";
+  return {
+    tag,
+    textContent: "",
+    style: {},
+    dataset: {},
+    children: [],
+    get innerHTML() {
+      return markup;
+    },
+    // Replacing the markup drops the children, which is how a card clears a
+    // list it is about to rebuild.
+    set innerHTML(value) {
+      markup = value;
+      this.children.length = 0;
+    },
+    get className() {
+      return [...classes].join(" ");
+    },
+    set className(value) {
+      classes.clear();
+      for (const name of String(value).split(/\s+/)) if (name) classes.add(name);
+    },
+    classList: {
+      add: (...names) => names.forEach((name) => classes.add(name)),
+      remove: (...names) => names.forEach((name) => classes.delete(name)),
+      toggle(name, force = !classes.has(name)) {
+        if (force) classes.add(name);
+        else classes.delete(name);
+        return force;
+      },
+      contains: (name) => classes.has(name),
+    },
+    appendChild(child) {
+      this.children.push(child);
+      return child;
+    },
+    // A single class selector, which is all a card asks of it.
+    querySelectorAll(selector) {
+      const name = selector.replace(/^\./, "");
+      const found = [];
+      const walk = (node) =>
+        node.children.forEach((child) => {
+          if (child.classList.contains(name)) found.push(child);
+          walk(child);
+        });
+      walk(this);
+      return found;
+    },
+    addEventListener() {},
+  };
+}
+
+/** One node and its children, with only the fields the card set. */
+function describe(node, id, depth = 0) {
+  const fields = [
+    id ? `#${id}` : `<${node.tag}>`,
+    node.className && `class="${node.className}"`,
+    Object.keys(node.style).length && `style=${JSON.stringify(node.style)}`,
+    Object.keys(node.dataset).length && `data=${JSON.stringify(node.dataset)}`,
+    node.src && `src=${node.src}`,
+    node.alt && `alt="${node.alt}"`,
+    node.textContent !== "" && `text="${node.textContent}"`,
+    node.innerHTML && `html=${node.innerHTML.replace(/\s+/g, " ").trim()}`,
+  ].filter(Boolean);
+  return [
+    `${"  ".repeat(depth)}${fields.join(" ")}`,
+    ...node.children.map((child) => describe(child, null, depth + 1)),
+  ].join("\n");
+}
+
+/**
  * Install the stubs and return what the runner needs back.
  *
  * `Math.random` and `Date.now` are pinned: the sky map twinkles its stars and
@@ -69,7 +147,7 @@ function recorder(log) {
  * @param {number} [options.width]   the canvas size a card reads off the layout
  * @param {number} [options.dpr]     `window.devicePixelRatio`
  * @returns {{log: string[], element: () => Function, html: () => string,
- *            frame: () => void}}
+ *            nodes: () => string, frame: () => void}}
  */
 export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   const log = [];
@@ -101,9 +179,7 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     getElementById(id) {
       const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       if (new RegExp(`<canvas[^>]*\\sid="${escaped}"`).test(html)) return canvas;
-      if (!nodes.has(id)) {
-        nodes.set(id, { textContent: "", innerHTML: "", style: {}, addEventListener() {} });
-      }
+      if (!nodes.has(id)) nodes.set(id, element("div"));
       return nodes.get(id);
     },
     querySelector: () => null,
@@ -123,7 +199,14 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     },
   };
   globalThis.window = { devicePixelRatio: dpr, customCards: [] };
-  globalThis.document = { createElement: () => ({ style: {}, addEventListener() {} }) };
+  globalThis.document = { createElement: element };
+  // There are no image bytes to serve, so every load fails — which is what the
+  // browser page shows too, since nothing there answers the image proxy.
+  globalThis.Image = class {
+    set src(value) {
+      queueMicrotask(() => this.onerror?.());
+    }
+  };
   // Held rather than run: node fires no frames, so the runner decides when the
   // ones a render queued go off. Kept as a list against its handles, and not as
   // one slot: a render that queues two frames would otherwise record only the
@@ -151,5 +234,11 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     for (const callback of pending) callback();
   };
 
-  return { log, element: () => defined, html: () => html, frame };
+  return {
+    log,
+    element: () => defined,
+    html: () => html,
+    nodes: () => [...nodes].map(([id, node]) => describe(node, id)).join("\n"),
+    frame,
+  };
 }

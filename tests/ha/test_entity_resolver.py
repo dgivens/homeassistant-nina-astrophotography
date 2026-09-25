@@ -125,6 +125,7 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
         ("sensor", "star_fwhm"): "channel is NaN on this station",
     },
     "nina-frame-stats-card.js": {},
+    "nina-image-panel-card.js": {},
 }
 
 RESOLVING = resolving_cards()

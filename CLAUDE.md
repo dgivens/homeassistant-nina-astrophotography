@@ -86,13 +86,12 @@ custom_components/nina_astrophotography/
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
   www/                6 Lovelace cards, plus `nina-entity-resolver.js`, which
-                      is not one. A converted card resolves its entity ids from
-                      the registry by `translation_key` and keeps the configured
-                      instance prefix only as a per-entity fallback; the rest
-                      still template the prefix. `frontend.py` serves them and
-                      self-registers each as a Lovelace resource — nothing for a
-                      user to copy into `/config/www/`. Render them with
-                      `tools/card-harness/`
+                      is not one. Every card resolves its entity ids from the
+                      registry by `translation_key` and keeps the configured
+                      instance prefix only as a per-entity fallback.
+                      `frontend.py` serves them and self-registers each as a
+                      Lovelace resource — nothing for a user to copy into
+                      `/config/www/`. Render them with `tools/card-harness/`
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
@@ -282,8 +281,9 @@ Traps when changing a card:
 - A card's `_s`/`_f`/`_state` fallback applies only when the entity is
   **missing**, not when it reads `unavailable` or `unknown` — so a down driver
   renders as the literal text `unavailable`, and `_f` turns it into `0`.
-  `nina-observatory-card`'s `shown()` is the pattern, and autofocus and frame
-  stats follow it; image-panel (`_f(id, fallback = 0)`) still gets it wrong.
+  `nina-observatory-card`'s `shown()` is the pattern, and every card now
+  follows it. The image panel's `_f` reads are safe only because it prints
+  each one solely above zero.
 - `tests/unit/test_cards.py`'s `LITERAL` matches a **backticked**
   `<domain>.<word>`, so prose like `` `select.filter` `` in a card comment fails
   the hardcoded-id test. Reword the comment; the test is right.
