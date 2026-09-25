@@ -315,7 +315,6 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   set hass(hass) {
-    const first = !this._hass;
     this._hass = hass;
 
     // The frontend replaces `hass.entities` only when the registry itself
@@ -357,17 +356,29 @@ class NinaImagePanelCard extends HTMLElement {
     this._updateStatsRow();
     this._updateHeaderBadge();
 
-    // Subscribe to nina_image_save HA event for auto-refresh
-    if (first && this._config.refresh_on_save && hass.connection) {
-      this._unsubHassEvent = hass.connection.subscribeEvents(
-        (event) => {
-          if (!this._fromThisRig(event?.data ?? {})) return;
-          this._currentIndex = 0;
-          this._loadImage(0, true);
-        },
-        "nina_image_save"
-      );
-    }
+    this._subscribe();
+  }
+
+  // Lovelace can detach and reattach a card without recreating it, as when
+  // masonry re-lays its columns out, and a detached card has unsubscribed.
+  connectedCallback() {
+    this._detached = false;
+    if (this._hass) this._subscribe();
+  }
+
+  // Refresh on `nina_image_save`, once per attachment. Not while detached,
+  // which a card can be and still be handed `hass`.
+  _subscribe() {
+    if (this._detached || this._unsubHassEvent || !this._config.refresh_on_save
+        || !this._hass.connection) return;
+    this._unsubHassEvent = this._hass.connection.subscribeEvents(
+      (event) => {
+        if (!this._fromThisRig(event?.data ?? {})) return;
+        this._currentIndex = 0;
+        this._loadImage(0, true);
+      },
+      "nina_image_save"
+    );
   }
 
   // Every configured rig fires `nina_image_save`, so a two-rig dashboard would
@@ -380,6 +391,7 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._detached = true;
     // `subscribeEvents` resolves to the unsubscribe function, so a card
     // removed before it resolves must await the promise to unsubscribe at all.
     Promise.resolve(this._unsubHassEvent)
