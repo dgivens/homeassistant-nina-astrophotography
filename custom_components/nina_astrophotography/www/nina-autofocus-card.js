@@ -13,20 +13,10 @@
  *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
 
+import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
-
-// The fallback path, not the primary one: entity ids normally come from the
-// registry (`_eid`), and the prefix is what an id is built from when a
-// particular entity cannot be resolved. It is the instance name from the config
-// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
-// instance, or for the second rig.
-//
-// Repeated in each card rather than imported: it is one literal, and `www/` is
-// served whole from the integration (`frontend.py`), so a card that needs real
-// shared code imports it instead — see `nina-entity-resolver.js`.
-const DEFAULT_PREFIX = "n_i_n_a";
 
 // How far the focuser temperature may drift from the run's before the card
 // says so. There is no right answer to publish here — it belongs to the
@@ -840,6 +830,20 @@ class NinaAutofocusCard extends HTMLElement {
   }
 
   getCardSize() { return 7; }
+
+  static getConfigForm() {
+    return configForm([
+      {
+        name: "temperature_delta",
+        label: "Refocus temperature change",
+        helper: "Flag the focuser temperature once it moves this far from the last run's, "
+          + "in the unit it is shown in. Match your sequence's refocus trigger.",
+        default: DEFAULT_TEMPERATURE_DELTA,
+        // No unit: the sensor states it compares are in Home Assistant's unit system.
+        selector: { number: { min: 0.1, max: 10, step: "any", mode: "box" } },
+      },
+    ]);
+  }
 
   static getStubConfig() { return {}; }
 }

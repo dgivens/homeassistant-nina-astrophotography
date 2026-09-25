@@ -10,6 +10,7 @@
  *   prefix: n_i_n_a     # fallback only, for the entities that cannot resolve
  */
 
+import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
@@ -276,17 +277,6 @@ const STYLE = `
 `;
 
 // ─── Card class ──────────────────────────────────────────────────────────────
-
-// The fallback path, not the primary one: entity ids normally come from the
-// registry (`_eid`), and the prefix is what an id is built from when a
-// particular entity cannot be resolved. It is the instance name from the config
-// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
-// instance, or for the second rig.
-//
-// Repeated in each card rather than imported: it is one literal, and `www/` is
-// served whole from the integration (`frontend.py`), so a card that needs real
-// shared code imports it instead — see `nina-entity-resolver.js`.
-const DEFAULT_PREFIX = "n_i_n_a";
 
 class NinaObservatoryCard extends HTMLElement {
   constructor() {
@@ -592,9 +582,7 @@ class NinaObservatoryCard extends HTMLElement {
 
   getCardSize() { return 8; }
 
-  static getConfigElement() {
-    return document.createElement("nina-observatory-card-editor");
-  }
+  static getConfigForm() { return configForm(); }
 
   static getStubConfig() {
     return {};

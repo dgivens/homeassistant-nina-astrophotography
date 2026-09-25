@@ -36,9 +36,13 @@
  *   strip_count: 6          # number of thumbnails in the recent strip (default 6)
  */
 
+import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "3.0.0";
+
+const DEFAULT_QUALITY = 85;
+const DEFAULT_STRIP_COUNT = 6;
 
 // Signed just before use, not cached: a fresh signature each call is what
 // naturally busts the browser's cache across reloads of the same index.
@@ -271,17 +275,6 @@ const STYLE = `
   }
 `;
 
-// The fallback path, not the primary one: entity ids normally come from the
-// registry (`_eid`), and the prefix is what an id is built from when a
-// particular entity cannot be resolved. It is the instance name from the config
-// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
-// instance, or for the second rig.
-//
-// Repeated in each card rather than imported: it is one literal, and `www/` is
-// served whole from the integration (`frontend.py`), so a card that needs real
-// shared code imports it instead — see `nina-entity-resolver.js`.
-const DEFAULT_PREFIX = "n_i_n_a";
-
 class NinaImagePanelCard extends HTMLElement {
   constructor() {
     super();
@@ -302,10 +295,10 @@ class NinaImagePanelCard extends HTMLElement {
       refresh_on_save: config.refresh_on_save ?? true,
       show_strip: config.show_strip ?? true,
       show_histogram: config.show_histogram ?? true,
-      quality: config.quality ?? 85,
+      quality: config.quality ?? DEFAULT_QUALITY,
       stretch: config.stretch ?? true,
-      strip_count: config.strip_count ?? 6,
-      prefix: config.prefix ?? DEFAULT_PREFIX,
+      strip_count: config.strip_count ?? DEFAULT_STRIP_COUNT,
+      prefix: config.prefix || DEFAULT_PREFIX,
       device_id: config.device_id,
     };
     // A new config may name a different rig: make the next `set hass` re-resolve.
@@ -876,6 +869,47 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   getCardSize() { return 7; }
+
+  static getConfigForm() {
+    const toggle = { default: true, selector: { boolean: {} } };
+    return configForm([
+      {
+        name: "refresh_on_save",
+        label: "Refresh on save",
+        helper: "Load each frame as N.I.N.A. saves it. Off keeps the frame shown until "
+          + "you pick one from the strip.",
+        ...toggle,
+      },
+      {
+        name: "stretch",
+        label: "Auto-stretch",
+        helper: "Let N.I.N.A. prepare the preview with its own image settings. Off shows "
+          + "the linear frame, which looks almost black.",
+        ...toggle,
+      },
+      {
+        name: "show_histogram",
+        label: "Show ADU range",
+        helper: "Min, mean and max ADU of the frame on screen.",
+        ...toggle,
+      },
+      { name: "show_strip", label: "Show recent frames", ...toggle },
+      {
+        name: "strip_count",
+        label: "Number of recent frames",
+        helper: "Up to 20, the frames the integration keeps.",
+        default: DEFAULT_STRIP_COUNT,
+        selector: { number: { min: 1, max: 20, mode: "box" } },
+      },
+      {
+        name: "quality",
+        label: "JPEG quality",
+        helper: "The main frame only; thumbnails are fixed at 40.",
+        default: DEFAULT_QUALITY,
+        selector: { number: { min: 1, max: 100, mode: "box" } },
+      },
+    ]);
+  }
 
   static getStubConfig() {
     return {};

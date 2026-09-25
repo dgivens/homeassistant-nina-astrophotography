@@ -16,6 +16,7 @@ itself, against a live registry.
 from functools import cache
 import json
 from pathlib import Path
+import re
 
 import pytest
 import yaml
@@ -153,6 +154,52 @@ def test_no_card_asks_for_the_stretch_by_the_wrong_name(card: Path) -> None:
 def test_no_card_puts_the_image_index_in_the_query_string(card: Path) -> None:
     """/image is not a route — the index is a path segment, /image/{index}."""
     assert "/image?" not in card.read_text(encoding="utf-8")
+
+
+ELEMENTS = [
+    card
+    for card in CARDS
+    if "customElements.define(" in card.read_text(encoding="utf-8")
+]
+assert len(ELEMENTS) == 6, [card.name for card in ELEMENTS]
+
+# `this._config.<key>`, `config.<key>` or its `cfg` alias, but not `hass.config`
+# or the `nina-card-config.js` import.
+CONFIG_READ = re.compile(r"(?:this\._config|(?<![\w.-])(?:config|cfg))\??\.([a-z_]+)")
+FORM_FIELD = re.compile(r'\bname: "([a-z_]+)"')
+# The method on one line, or its body up to the class-level closing brace.
+FORM_METHOD = re.compile(
+    r"static getConfigForm\(\) \{(?:[^\n]*\}$|.*?\n  \}$)", re.DOTALL | re.MULTILINE
+)
+SHARED_FIELDS = set(
+    FORM_FIELD.findall((WWW_DIR / "nina-card-config.js").read_text(encoding="utf-8"))
+)
+
+
+def _form_fields(card: Path) -> set[str]:
+    """The fields a card's visual editor offers: its own plus the shared ones."""
+    form = FORM_METHOD.search(card.read_text(encoding="utf-8"))
+    assert form, f"{card.name} has no getConfigForm()"
+    shared = SHARED_FIELDS if "configForm(" in form[0] else set()
+    return set(FORM_FIELD.findall(form[0])) | shared
+
+
+@pytest.mark.parametrize("card", ELEMENTS, ids=lambda p: p.name)
+def test_the_visual_editor_offers_exactly_the_options_the_card_reads(
+    card: Path,
+) -> None:
+    """An option the form lacks can only be set in YAML, and a field the card
+    never reads saves a key that does nothing.
+    """
+    read = set(CONFIG_READ.findall(card.read_text(encoding="utf-8")))
+
+    assert _form_fields(card) == read
+
+
+@pytest.mark.parametrize("card", ELEMENTS, ids=lambda p: p.name)
+def test_no_card_hides_its_form_behind_an_editor_element(card: Path) -> None:
+    """Home Assistant prefers `getConfigElement()`, so defining it hides the form."""
+    assert "getConfigElement" not in card.read_text(encoding="utf-8")
 
 
 def test_the_documented_action_fields_are_the_translated_ones() -> None:
