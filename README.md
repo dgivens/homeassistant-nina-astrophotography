@@ -670,15 +670,15 @@ device_id: 0123…         # which rig, once two are configured — its buttons 
 prefix: n_i_n_a          # fallback only, for the entities that cannot resolve
 ```
 
-`nina-observatory-card` and `nina-sky-map-card` read the device and entity
-registries, so they survive you renaming a device or Home Assistant generating
-ids under a different area — neither of which a `prefix:` can. They fall back to
-building an id from `prefix:` for the handful of entities that have nothing to
-resolve on: the guider on/off switch, which takes its device's own name, and
-anything shipped disabled, which Home Assistant leaves out of the registry a
-dashboard sees.
+`nina-observatory-card`, `nina-sky-map-card` and `nina-autofocus-card` read the
+device and entity registries, so they survive you renaming a device or Home
+Assistant generating ids under a different area — neither of which a `prefix:`
+can. They fall back to building an id from `prefix:` for the handful of entities
+that have nothing to resolve on: the guider on/off switch, which takes its
+device's own name, and anything shipped disabled, which Home Assistant leaves
+out of the registry a dashboard sees.
 
-**The other four cards are still prefix-only**, so they need `prefix:` whenever
+**The other three cards are still prefix-only**, so they need `prefix:` whenever
 your entity ids don't start with `n_i_n_a` — which is what `N.I.N.A.` slugifies
 to, and the default. Copy yours from any entity id.
 
@@ -713,9 +713,9 @@ What does need your attention:
   `imaging_stall_alert.yaml` is new. Re-import them and rebuild the
   automations. The old ones referenced entities 2.0 does not create, so they
   were inert either way.
-- **Four of the six Lovelace cards need `prefix:`** — `nina-observatory-card`
-  and `nina-sky-map-card` resolve their entities from the registry instead. See
-  [Lovelace cards](#lovelace-cards).
+- **Three of the six Lovelace cards need `prefix:`** — `nina-observatory-card`,
+  `nina-sky-map-card` and `nina-autofocus-card` resolve their entities from the
+  registry instead. See [Lovelace cards](#lovelace-cards).
 - **`switch.<instance>_flat_panel_light` is gone** — the `light` entity survives.
   Its old registry row lingers as unavailable until you delete it.
 - **The poll interval is capped at 60 s**; an entry storing more keeps its rate
@@ -740,5 +740,5 @@ What does need your attention:
 | An action failed | The message carries N.I.N.A.'s own refusal. The HTTP status is almost always 200, so the real reason is in the body — and in `Settings → System → Logs`. |
 | An action says several instances are configured | Add a device target to say which rig you mean. |
 | A card is blank | Set `prefix:` to your instance's slug — the default `n_i_n_a` only matches the default instance name. |
-| One device's entities carry a different prefix than the rest, and its card readings are blank | Home Assistant's default entity id includes the area, and area membership is read at the moment an entity is first created. If you place the hub in an area after some equipment has already connected, only equipment that connects *afterwards* picks it up — so an existing device stays unprefixed while a newly-arriving one is not. `nina-observatory-card` and `nina-sky-map-card` are immune — they resolve ids from the registry rather than assuming a prefix. The other four do assume one `prefix:` per rig, so on those the mismatched device reads blank until you reset its entity ids (**Settings → Devices → that device → each entity → ⋮ → Rename entity ID → reset**) now that its device area is correct. |
+| One device's entities carry a different prefix than the rest, and its card readings are blank | Home Assistant's default entity id includes the area, and area membership is read at the moment an entity is first created. If you place the hub in an area after some equipment has already connected, only equipment that connects *afterwards* picks it up — so an existing device stays unprefixed while a newly-arriving one is not. `nina-observatory-card`, `nina-sky-map-card` and `nina-autofocus-card` are immune — they resolve ids from the registry rather than assuming a prefix. The other three do assume one `prefix:` per rig, so on those the mismatched device reads blank until you reset its entity ids (**Settings → Devices → that device → each entity → ⋮ → Rename entity ID → reset**) now that its device area is correct. |
 | `Last Image HFR` does not change during a flat run | Correct. The last-image sensors report the last **light** frame, so a calibration run leaves them where they were rather than blanking your imaging readouts. They read `unknown` only when the session has no lights at all. |

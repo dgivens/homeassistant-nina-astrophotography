@@ -5,18 +5,23 @@
  * and where the focuser was actually left.
  *
  * Ships with the integration and registers itself as a dashboard resource —
- * nothing to copy or add under Resources. Add card:
+ * nothing to copy or add under Resources. One rig needs no configuration at
+ * all: the card finds its own focuser in the registry.
  *   type: custom:nina-autofocus-card
- *   prefix: n_i_n_a        # the slugified instance name your entities carry
+ *   device_id: abc123      # which rig, for two or more; any one of its devices
  *   temperature_delta: 2   # °C of drift since the run worth flagging
+ *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
+
+import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
 
-// 2.0 entity ids carry the instance name, so the card is told the prefix
-// rather than guessing it: it is the instance name from the config flow,
-// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
-// renamed instance, or for the second rig.
+// The fallback path, not the primary one: entity ids normally come from the
+// registry (`_eid`), and the prefix is what an id is built from when a
+// particular entity cannot be resolved. It is the instance name from the config
+// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
+// instance, or for the second rig.
 //
 // Repeated in each card rather than imported: it is one literal, and `www/` is
 // served whole from the integration (`frontend.py`), so a card that needs real
@@ -221,6 +226,9 @@ class NinaAutofocusCard extends HTMLElement {
     this._temperatureDelta = Number.isFinite(delta) && delta > 0
       ? delta : DEFAULT_TEMPERATURE_DELTA;
     this._signature = null;
+    // A new config may name a different rig: make the next `set hass` re-resolve.
+    this._resolved = {};
+    this._resolvedFrom = null;
   }
 
   connectedCallback() {
@@ -238,7 +246,27 @@ class NinaAutofocusCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // The frontend replaces `hass.entities` only when the registry itself
+    // changes, so this walks it on a rename, not on every state tick.
+    // `hass.devices` needs no second memo key: every device change that alters
+    // the map arrives with an entity-registry change too.
+    if (hass.entities !== this._resolvedFrom) {
+      this._resolvedFrom = hass.entities;
+      this._resolved = resolveEntities(hass, this._config.device_id);
+    }
     this._render();
+  }
+
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
+  //
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key, and on this card it usually is not: the focuser
+  // device supplies the leading "focuser", which the autofocus keys do not
+  // carry. Most reads below therefore pass one.
+  _eid(domain, key, slug = key) {
+    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
 
   _state(id, fallback = null) {
@@ -262,8 +290,7 @@ class NinaAutofocusCard extends HTMLElement {
   }
 
   _read() {
-    const prefix = this._prefix;
-    const run = `sensor.${prefix}_focuser_last_autofocus`;
+    const run = this._eid("sensor", "autofocus_last_run", "focuser_last_autofocus");
     const curve = this._list(run, "curve");
     const fits = this._list(run, "fits");
     const minima = this._list(run, "minima");
@@ -293,15 +320,16 @@ class NinaAutofocusCard extends HTMLElement {
       null,
     );
 
-    const temperature = this._number(`sensor.${prefix}_focuser_temperature`);
-    const at = this._number(`sensor.${prefix}_focuser_autofocus_temperature`);
+    const temperature = this._number(this._eid("sensor", "focuser_temperature"));
+    const at = this._number(
+      this._eid("sensor", "autofocus_temperature", "focuser_autofocus_temperature"));
 
     // The verdict, from the entity that makes it. `reason` separates a run
     // that hung — which wrote no report, so the curve below belongs to an
     // earlier run — from one that finished and was rejected on its fit. The
     // R² is the one the judgement used, so the card cannot contradict the
     // sensor it is quoting.
-    const verdict = `binary_sensor.${prefix}_focuser_autofocus_failed`;
+    const verdict = this._eid("binary_sensor", "autofocus_failed", "focuser_autofocus_failed");
     const judged = this._attr(verdict, "r_squared");
     const threshold = this._attr(verdict, "r_squared_threshold");
 
@@ -317,8 +345,9 @@ class NinaAutofocusCard extends HTMLElement {
       reason: this._attr(verdict, "reason"),
       judged: Number.isFinite(judged) ? judged : null,
       threshold: Number.isFinite(threshold) ? threshold : null,
-      position: this._number(`sensor.${prefix}_focuser_autofocus_position`),
-      hfr: this._number(`sensor.${prefix}_focuser_autofocus_hfr`),
+      position: this._number(
+        this._eid("sensor", "autofocus_position", "focuser_autofocus_position")),
+      hfr: this._number(this._eid("sensor", "autofocus_hfr", "focuser_autofocus_hfr")),
       fittedHfr: whole && isHfr
         ? fitted.reduce((total, value) => total + value, 0) / fitted.length
         : null,
@@ -327,18 +356,25 @@ class NinaAutofocusCard extends HTMLElement {
       // sensor is only a fallback for a report that carried no fits at all —
       // R² comes off `RSquares` whether or not the equation string parsed —
       // and it ships disabled, so on a stock install `fits` is the only source.
-      worstSquare: worst ? worst.r_squared : this._number(`sensor.${prefix}_focuser_autofocus_r2`),
+      // Disabled also means Home Assistant leaves it out of the registry a
+      // dashboard sees, so this read has nothing to resolve on and takes the
+      // prefix path.
+      worstSquare: worst ? worst.r_squared : this._number(
+        this._eid("sensor", "autofocus_r_squared", "focuser_autofocus_r2")),
       worstFit: worst ? pretty(worst.name) : null,
-      startPosition: this._number(`sensor.${prefix}_focuser_autofocus_starting_position`),
-      startHfr: this._number(`sensor.${prefix}_focuser_autofocus_starting_hfr`),
-      filter: this._state(`sensor.${prefix}_focuser_autofocus_filter`),
-      duration: this._number(`sensor.${prefix}_focuser_autofocus_duration`),
+      startPosition: this._number(
+        this._eid("sensor", "autofocus_starting_position", "focuser_autofocus_starting_position")),
+      startHfr: this._number(
+        this._eid("sensor", "autofocus_starting_hfr", "focuser_autofocus_starting_hfr")),
+      filter: this._state(this._eid("sensor", "autofocus_filter", "focuser_autofocus_filter")),
+      duration: this._number(
+        this._eid("sensor", "autofocus_duration", "focuser_autofocus_duration")),
       temperature: at,
       nowTemperature: temperature,
-      // `number.` and not `sensor.`: the focuser position exists as both, and
-      // the sensor is the diagnostic one, disabled by default. The observatory
-      // card reads the same `number.` for the same reason.
-      nowPosition: this._number(`number.${prefix}_focuser_position`),
+      // The number domain and not the sensor one: the focuser position exists
+      // as both, and the sensor is the diagnostic one, disabled by default.
+      // The observatory card reads the same number for the same reason.
+      nowPosition: this._number(this._eid("number", "focuser_position")),
       drift: Number.isFinite(at) && Number.isFinite(temperature)
         ? temperature - at : null,
     };
