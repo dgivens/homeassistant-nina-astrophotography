@@ -38,6 +38,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
+import { quantityIn } from "./nina-units.js";
 
 const VERSION = "3.0.0";
 
@@ -398,6 +399,8 @@ class NinaImagePanelCard extends HTMLElement {
     return e ? e.state : fallback;
   }
   _f(id, fallback = 0) { return parseFloat(this._s(id)) || fallback; }
+  // A duration in `unit`, whichever unit the sensor is shown in; 0 for none.
+  _duration(id, unit) { return quantityIn(this._hass, id, unit) || 0; }
 
   // The resolved entity id for a `translation_key`, falling back to a prefixed
   // `slug` when there is nothing to resolve: an entity with no translation key,
@@ -793,7 +796,7 @@ class NinaImagePanelCard extends HTMLElement {
     const hfr  = this._f(this._eid("sensor", "last_image_hfr"));
     const stars = this._s(this._eid("sensor", "last_image_star_count"), "—");
     const adu   = this._f(this._entityId());
-    const exp   = this._f(this._eid("sensor", "last_image_exposure"));
+    const exp   = this._duration(this._eid("sensor", "last_image_exposure"), "s");
 
     set("st-hfr",   hfr  > 0 ? `${hfr.toFixed(2)} px`   : "—");
     set("st-stars", shown(stars));
@@ -817,7 +820,7 @@ class NinaImagePanelCard extends HTMLElement {
     // Lights, not frames: the count sensor's state includes the calibration
     // frames, and the integration time beside it is lights only.
     const count   = shown(this._attr(this._eid("sensor", "session_image_count"), "light_count"));
-    const intTime = this._f(this._eid("sensor", "session_integration_time"));
+    const intTime = this._duration(this._eid("sensor", "session_integration_time"), "h");
     const exposing = this._s(
       this._eid("binary_sensor", "camera_is_exposing", "camera_exposing")) === "on";
     // A disconnected camera makes its entities unavailable rather than

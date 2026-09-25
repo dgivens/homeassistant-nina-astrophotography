@@ -15,6 +15,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
+import { displayed, inUnit, interval, quantity } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -202,6 +203,7 @@ class NinaWeatherCard extends HTMLElement {
     return isNaN(v) ? fb : v;
   }
   _on(id) { return this._s(id) === "on"; }
+  _q(id) { return quantity(this._hass, id); }
 
   _render() {
     if (!this._hass) return;
@@ -226,23 +228,33 @@ class NinaWeatherCard extends HTMLElement {
     const source = this._s(this._eid("sensor", "weather_source"));
     const wxConnected = source !== null && source !== "unavailable"
       && source !== "unknown";
-    const temp    = this._f(this._eid("sensor", "temperature", "weather_temperature"));
+    // Every channel Home Assistant can convert is read with its unit: it is
+    // printed in that unit, and converted only to meet a threshold here, which
+    // is in the unit the integration publishes.
+    const temp    = this._q(this._eid("sensor", "temperature", "weather_temperature"));
     const humid   = this._f(this._eid("sensor", "humidity", "weather_humidity"));
-    const dewPt   = this._f(this._eid("sensor", "dew_point", "weather_dew_point"));
-    const windSpd = this._f(this._eid("sensor", "wind_speed", "weather_wind_speed"));
+    const dewPt   = this._q(this._eid("sensor", "dew_point", "weather_dew_point"));
+    const windSpd = this._q(this._eid("sensor", "wind_speed", "weather_wind_speed"));
     const windDir = this._f(this._eid("sensor", "wind_direction", "weather_wind_direction"));
-    const windGst = this._f(this._eid("sensor", "wind_gust", "weather_wind_gust"));
-    const press   = this._f(this._eid("sensor", "pressure", "weather_pressure"));
+    const windGst = this._q(this._eid("sensor", "wind_gust", "weather_wind_gust"));
+    const press   = this._q(this._eid("sensor", "pressure", "weather_pressure"));
     const cloud   = this._f(this._eid("sensor", "cloud_cover", "weather_cloud_cover"));
-    const rain    = this._f(this._eid("sensor", "rain_rate", "weather_rain_rate"));
+    const rain    = this._q(this._eid("sensor", "rain_rate", "weather_rain_rate"));
     const skyQ    = this._f(this._eid("sensor", "sky_quality", "weather_sky_quality"));
-    const skyB    = this._f(this._eid("sensor", "sky_brightness", "weather_sky_brightness"));
-    const skyT    = this._f(this._eid("sensor", "sky_temperature", "weather_sky_temperature"));
+    const skyB    = this._q(this._eid("sensor", "sky_brightness", "weather_sky_brightness"));
+    const skyT    = this._q(this._eid("sensor", "sky_temperature", "weather_sky_temperature"));
     const seeing  = this._f(this._eid("sensor", "star_fwhm", "weather_star_fwhm"));
     const wxName  = wxConnected ? source : "Weather station";
 
-    // Dew threat: temp within 3°C of dew point
-    const dewThreat = temp !== null && dewPt !== null && (temp - dewPt) < 3;
+    const tempC  = inUnit(temp, "°C");
+    const dewC   = inUnit(dewPt, "°C");
+    const windMs = inUnit(windSpd, "m/s");
+
+    // Dew threat: the air within 3 °C of its dew point.
+    const dewMargin = tempC !== null && dewC !== null ? tempC - dewC : null;
+    const dewThreat = dewMargin !== null && dewMargin < 3;
+    const windColor = windMs !== null && windMs > 12 ? "var(--danger)"
+      : windMs !== null && windMs > 8 ? "var(--warn)" : "var(--text)";
 
     // Safety banner content
     // UNSAFE is tested first, and deliberately not behind the connectivity
@@ -291,6 +303,11 @@ class NinaWeatherCard extends HTMLElement {
         <div class="val">${valStr}<span class="unit">${unit}</span></div>
       </div>`;
     };
+    // A cell for a quantity: its own precision and unit, and none of either
+    // when there is no reading.
+    const qcell = (icon, label, q, decimals, ...flags) =>
+      cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
+    const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
     const html = `
       <style>${STYLE}</style>
@@ -325,17 +342,17 @@ class NinaWeatherCard extends HTMLElement {
 
           ${dewThreat ? `
             <div class="dew-alert">
-              ⚠ Dew alert — temperature (${temp?.toFixed(1)}°C) within ${(temp - dewPt).toFixed(1)}°C of dew point (${dewPt?.toFixed(1)}°C)
+              ⚠ Dew alert — temperature (${withUnit(temp, 1)}) within ${interval(dewMargin, "°C", temp.unit)?.toFixed(1)} ${temp.unit} of dew point (${withUnit(dewPt, 1)})
             </div>
           ` : ""}
 
           <!-- Temperature & humidity -->
           <div class="section-title">Atmosphere</div>
           <div class="weather-grid">
-            ${cell("🌡", "Temperature", temp?.toFixed(1) ?? null, "°C", temp !== null && temp > 25, temp !== null && temp < -10)}
+            ${qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > 25, tempC !== null && tempC < -10)}
             ${cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > 85, humid !== null && humid > 95)}
-            ${cell("🌫", "Dew Point", dewPt?.toFixed(1) ?? null, "°C", dewThreat, false)}
-            ${cell("📊", "Pressure", press?.toFixed(0) ?? null, "hPa", false, false, press === null)}
+            ${qcell("🌫", "Dew Point", dewPt, 1, dewThreat, false)}
+            ${qcell("📊", "Pressure", press, 1, false, false, press === null)}
           </div>
 
           <!-- Wind -->
@@ -347,13 +364,13 @@ class NinaWeatherCard extends HTMLElement {
             <div class="wind-info">
               <div class="wind-row">
                 <span class="lbl">Speed</span>
-                <span style="font-weight:700;color:${windSpd !== null && windSpd > 12 ? "var(--danger)" : windSpd !== null && windSpd > 8 ? "var(--warn)" : "var(--text)"}">
-                  ${windSpd !== null ? windSpd.toFixed(1) + " m/s" : "—"}
+                <span style="font-weight:700;color:${windColor}">
+                  ${withUnit(windSpd, 1)}
                 </span>
               </div>
               <div class="wind-row">
                 <span class="lbl">Gust</span>
-                <span>${windGst !== null ? windGst.toFixed(1) + " m/s" : "—"}</span>
+                <span>${withUnit(windGst, 1)}</span>
               </div>
               <div class="wind-row">
                 <span class="lbl">Direction</span>
@@ -366,8 +383,8 @@ class NinaWeatherCard extends HTMLElement {
           <div class="section-title">Sky conditions</div>
           <div class="weather-grid">
             ${cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > 60, cloud !== null && cloud > 85)}
-            ${cell("🌧", "Rain rate", rain !== null ? rain.toFixed(2) : null, "mm/h", false, rain !== null && rain > 0)}
-            ${cell("🌡", "Sky temp", skyT?.toFixed(1) ?? null, "°C", false, false, skyT === null)}
+            ${qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0)}
+            ${qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null)}
             ${cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > 3, seeing !== null && seeing > 5, seeing === null)}
           </div>
 
@@ -392,7 +409,7 @@ class NinaWeatherCard extends HTMLElement {
 
           <!-- Sky brightness -->
           ${skyB !== null ? `
-            ${cell("✨", "Sky brightness", skyB?.toFixed(2) ?? null, "lux", false, false, skyB === null)}
+            ${qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null)}
           ` : ""}
 
         </div>
@@ -404,10 +421,11 @@ class NinaWeatherCard extends HTMLElement {
 
     // Draw wind rose after render
     if (wxConnected && windDir !== null) {
-      requestAnimationFrame(() => this._drawWindRose(windDir, windSpd));
+      requestAnimationFrame(() => this._drawWindRose(windDir, windMs));
     }
   }
 
+  // `speed` in m/s, whatever unit the sensor is shown in.
   _drawWindRose(dir, speed) {
     const canvas = this.shadowRoot.getElementById("wind-rose-canvas");
     if (!canvas) return;

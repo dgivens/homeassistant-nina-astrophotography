@@ -70,6 +70,20 @@ export class Rig {
     return this;
   }
 
+  /**
+   * One reading in another unit, as picking a display unit for the entity
+   * shows it: the same quantity, at `factor` of `unit` to the unit it had. Not
+   * an invented reading, so its scenario must draw what the original does.
+   */
+  displayedIn(entityId, unit, factor) {
+    const row = this._states[entityId];
+    if (!row) throw new Error(`${entityId} is not in the dump — nothing to convert`);
+    return this.override(entityId, parseFloat(row.state) * factor, {
+      ...row.attributes,
+      unit_of_measurement: unit,
+    });
+  }
+
   build() {
     const hass = { states: this._states, config: this._config };
     if (this._entities) {

@@ -22,6 +22,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
+import { quantityIn } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -267,6 +268,11 @@ class NinaSkyMapCard extends HTMLElement {
     return parseFloat(this._s(id, fallback)) || fallback;
   }
   _on(id) { return this._s(id) === "on"; }
+  // Time to the flip in minutes, whatever unit the sensor is shown in; 999, as
+  // `_f` has it, for none.
+  _flipMinutes(id) {
+    return quantityIn(this._hass, id, "min") || 999;
+  }
 
   // A device that is disconnected makes its entities unavailable rather than
   // publishing an off state, so availability is what "connected" reads from.
@@ -372,7 +378,7 @@ class NinaSkyMapCard extends HTMLElement {
     // hub, and a sequence outlives a driver dropping out.
     const targetId = this._eid("sensor", "sequence_target");
     const target = this._available(targetId) ? this._s(targetId, "") : "";
-    const ttf = this._f(this._eid("sensor", "mount_time_to_meridian_flip"), 999);
+    const ttf = this._flipMinutes(this._eid("sensor", "mount_time_to_meridian_flip"));
 
     const sub = this.shadowRoot?.getElementById("hdr-sub");
     if (sub) {
@@ -515,7 +521,7 @@ class NinaSkyMapCard extends HTMLElement {
     // (Max - Min) from the profile, published by the sensor: the reading at
     // which N.I.N.A. actually flips is not zero, and not the same on two rigs.
     const flipId = this._eid("sensor", "mount_time_to_meridian_flip");
-    const ttf = this._f(flipId, 999);
+    const ttf = this._flipMinutes(flipId);
     const firesAt = parseFloat(
       this._hass?.states?.[flipId]?.attributes?.flip_fires_at_minutes) || 0;
     const meridianColor = ttf < 15 + firesAt && ttf > 0
@@ -646,7 +652,7 @@ class NinaSkyMapCard extends HTMLElement {
     ctx.restore();  // end clip
 
     // ── Meridian flip warning label outside clip ───────────────────────
-    if (ttf < 15 && ttf > 0) {
+    if (ttf < 15 + firesAt && ttf > 0) {
       ctx.font      = `bold ${10 * dpr}px sans-serif`;
       ctx.fillStyle = "rgba(244,162,97,0.9)";
       ctx.textAlign = "center";

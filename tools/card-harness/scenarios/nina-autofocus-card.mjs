@@ -64,6 +64,21 @@ export const scenarios = {
     config: { temperature_delta: 0.1 },
   },
 
+  // The same flag on a US customary instance, where Home Assistant shows both
+  // temperatures in °F: every label names that unit, and the threshold is
+  // printed converted to it.
+  drifted_us_customary: {
+    hass: (dump) => rig(dump, "site_configured_us_customary").build(),
+    config: { temperature_delta: 0.1 },
+  },
+
+  // The threshold is °C on any instance: 0.4 °F of drift is 0.2 °C, short of
+  // 0.3, so nothing is flagged.
+  held_us_customary: {
+    hass: (dump) => rig(dump, "site_configured_us_customary").build(),
+    config: { temperature_delta: 0.3 },
+  },
+
   // No focuser ever observed, so nothing resolves and no id has a state —
   // the empty card, which is what a fresh install shows.
   no_run: { hass: (dump) => rig(dump, "equipment_disconnected").build() },

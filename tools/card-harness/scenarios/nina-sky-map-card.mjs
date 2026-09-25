@@ -8,6 +8,7 @@
 import { rig } from "../hass.mjs";
 
 const draw = (card) => card._drawFrame();
+const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
 
 export const scenarios = {
   // Every id resolved, and the rig reporting where it is.
@@ -32,6 +33,21 @@ export const scenarios = {
   no_latitude: {
     hass: (dump) =>
       rig(dump, "site_configured").without("site_latitude").home(undefined).build(),
+    draw,
+  },
+
+  // The time to the flip shown in hours, which must draw what `tracking` does.
+  flip_in_hours: {
+    hass: (dump) =>
+      rig(dump, "site_configured").displayedIn(FLIP, "h", 1 / 60).build(),
+    draw,
+  },
+
+  // Twenty minutes out, inside the warning window of a profile whose flip can
+  // fire ten minutes before the countdown ends: the canvas warns. The reading is
+  // invented — the corpus never caught a mount this close to its flip.
+  flip_soon: {
+    hass: (dump) => rig(dump, "site_configured").override(FLIP, 20).build(),
     draw,
   },
 

@@ -937,6 +937,9 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
         device_class=SensorDeviceClass.PRECIPITATION_INTENSITY,
         native_unit_of_measurement=UnitOfVolumetricFlux.MILLIMETERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
+        # Core's default for the class is whole mm/h, which prints light rain
+        # as 0.
+        suggested_display_precision=2,
     ),
     _weather(
         "sky_brightness",

@@ -18,6 +18,7 @@
 import { rig } from "../hass.mjs";
 
 const UP = "site_configured";
+const US = "site_configured_us_customary";
 const SAFETY = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 const TEMPERATURE = "sensor.n_i_n_a_weather_temperature";
 const HUMIDITY = "sensor.n_i_n_a_weather_humidity";
@@ -70,6 +71,19 @@ export const scenarios = {
   dew: {
     hass: (dump) =>
       rig(dump, UP).override(TEMPERATURE, 22.0).override(HUMIDITY, 91.0).build(),
+  },
+
+  // The station on a US customary instance: Home Assistant's own °F, mph, inHg
+  // and in/h, each printed in its own unit at its own precision.
+  us_customary: { hass: (dump) => rig(dump, US).build() },
+
+  // A dew alert only °C can see. 23.0 °C over the 20.5 °C dew point is a
+  // 2.5 °C margin, inside the 3 °C threshold — but 4.5 °F, which a threshold
+  // read in °F would pass. Invented as `dew` is, as a self-consistent pair:
+  // 73.4 °F is 23.0 °C, and 20.5 °C of dew point at 23.0 °C is 85.8%.
+  dew_us_customary: {
+    hass: (dump) =>
+      rig(dump, US).override(TEMPERATURE, 73.4).override(HUMIDITY, 85.8).build(),
   },
 
   // No station and no monitor, which is what a fresh install shows: the

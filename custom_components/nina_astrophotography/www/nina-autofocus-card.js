@@ -15,6 +15,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
+import { interval, inUnit, quantity, quantityIn } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -310,9 +311,15 @@ class NinaAutofocusCard extends HTMLElement {
       null,
     );
 
-    const temperature = this._number(this._eid("sensor", "focuser_temperature"));
-    const at = this._number(
+    // Printed in the unit the focuser's reading is shown in — the two can
+    // differ, since a display unit is picked per entity — and compared in °C,
+    // the unit of `temperature_delta` and of N.I.N.A.'s own refocus trigger.
+    const now = quantity(this._hass, this._eid("sensor", "focuser_temperature"));
+    const then = quantity(this._hass,
       this._eid("sensor", "autofocus_temperature", "focuser_autofocus_temperature"));
+    const unit = now?.unit ?? then?.unit ?? null;
+    const temperature = inUnit(now, unit);
+    const at = inUnit(then, unit);
 
     // The verdict, from the entity that makes it. `reason` separates a run
     // that hung — which wrote no report, so the curve below belongs to an
@@ -357,16 +364,18 @@ class NinaAutofocusCard extends HTMLElement {
       startHfr: this._number(
         this._eid("sensor", "autofocus_starting_hfr", "focuser_autofocus_starting_hfr")),
       filter: this._state(this._eid("sensor", "autofocus_filter", "focuser_autofocus_filter")),
-      duration: this._number(
-        this._eid("sensor", "autofocus_duration", "focuser_autofocus_duration")),
+      duration: quantityIn(this._hass,
+        this._eid("sensor", "autofocus_duration", "focuser_autofocus_duration"), "s"),
       temperature: at,
       nowTemperature: temperature,
+      degrees: unit ?? "",
       // The number domain and not the sensor one: the focuser position exists
       // as both, and the sensor is the diagnostic one, disabled by default.
       // The observatory card reads the same number for the same reason.
       nowPosition: this._number(this._eid("number", "focuser_position")),
       drift: Number.isFinite(at) && Number.isFinite(temperature)
         ? temperature - at : null,
+      driftC: now && then ? inUnit(now, "°C") - inUnit(then, "°C") : null,
     };
   }
 
@@ -416,7 +425,7 @@ class NinaAutofocusCard extends HTMLElement {
     return [
       when,
       shown(run.filter) === "—" ? null : `${safe(run.filter)} filter`,
-      Number.isFinite(run.temperature) ? `${fixed(run.temperature, 1)} °C` : null,
+      Number.isFinite(run.temperature) ? `${fixed(run.temperature, 1)} ${run.degrees}` : null,
     ].filter(Boolean).join(" · ") || "No run reported";
   }
 
@@ -434,8 +443,8 @@ class NinaAutofocusCard extends HTMLElement {
       ? run.position - run.startPosition : null;
     const away = Number.isFinite(run.nowPosition) && Number.isFinite(run.position)
       ? run.nowPosition - run.position : null;
-    const drifted = Number.isFinite(run.drift)
-      && Math.abs(run.drift) >= this._temperatureDelta;
+    const drifted = Number.isFinite(run.driftC)
+      && Math.abs(run.driftC) >= this._temperatureDelta;
     const blind = run.curve.filter((point) => !Number.isFinite(point.value)).length;
     // Positive means the sweep improved focus. Both readings are measured
     // exposures, so they are comparable; the fitted value is not.
@@ -517,9 +526,9 @@ class NinaAutofocusCard extends HTMLElement {
             <div class="stat-box ${drifted ? "drifted" : ""}">
               <div class="label">Temperature since</div>
               <div class="value">${run.drift === null ? "—"
-                : `${run.drift >= 0 ? "+" : "−"}${fixed(Math.abs(run.drift), 1)}`} <span class="unit">°C</span></div>
-              <div class="sub">${fixed(run.temperature, 1)} → ${fixed(run.nowTemperature, 1)} °C${
-                drifted ? ` · past ${fixed(this._temperatureDelta, 1)} °C` : ""}</div>
+                : `${run.drift >= 0 ? "+" : "−"}${fixed(Math.abs(run.drift), 1)}`} <span class="unit">${run.degrees}</span></div>
+              <div class="sub">${fixed(run.temperature, 1)} → ${fixed(run.nowTemperature, 1)} ${run.degrees}${
+                drifted ? ` · past ${fixed(interval(this._temperatureDelta, "°C", run.degrees), 1)} ${run.degrees}` : ""}</div>
             </div>` : ""}
           ${away !== null ? `
             <div class="stat-box">
@@ -836,11 +845,11 @@ class NinaAutofocusCard extends HTMLElement {
       {
         name: "temperature_delta",
         label: "Refocus temperature change",
-        helper: "Flag the focuser temperature once it moves this far from the last run's, "
-          + "in the unit it is shown in. Match your sequence's refocus trigger.",
+        helper: "Flag the focuser temperature once it moves this far from the last run's. "
+          + "In °C, whatever unit it is shown in, as N.I.N.A.'s own refocus trigger is: "
+          + "match your sequence's.",
         default: DEFAULT_TEMPERATURE_DELTA,
-        // No unit: the sensor states it compares are in Home Assistant's unit system.
-        selector: { number: { min: 0.1, max: 10, step: "any", mode: "box" } },
+        selector: { number: { min: 0.1, max: 10, step: "any", mode: "box", unit_of_measurement: "°C" } },
       },
     ]);
   }
