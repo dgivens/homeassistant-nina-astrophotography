@@ -293,7 +293,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   rose, OIII cyan and SII violet, whatever the wheel calls them (`Lum`, `Red`,
   `Ha 3nm`, `OIII`), with `Clear` and `UV/IR Cut` as L. Any other filter —
   `HaOiii`, `LPro`, whatever its owner typed — takes a colour by its slot in
-  the filter wheel: up to six such slots never share one, and a colour changes
+  the filter wheel: up to seven such slots never share one, and a colour changes
   only when the wheel is reconfigured. A night with no filter names — a
   one-shot-colour camera with no wheel — draws each chart in its own colour;
   beside named filters, a light with no name is a hollow grey point on a

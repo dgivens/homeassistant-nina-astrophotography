@@ -42,9 +42,12 @@ const NAMED_FILTERS = [
 const NAMED_COLOURS = new Map(
   NAMED_FILTERS.flatMap(([colour, keys]) => keys.map((key) => [key, colour])));
 
-// Any other filter. Each sits in a gap between the named hues.
+// Any other filter. Seven, as the largest wheels hold, chosen for perceptual
+// distance from each other and the named hues on the card's background. The
+// order spreads hue first, since a thin line shows hue more than lightness:
+// a wheel's first few slots are the ones that must not look alike.
 const OTHER_COLOURS = [
-  "#ff9447", "#f2e35c", "#b5e05a", "#6fe3a8", "#8a86ff", "#eb7ff0",
+  "#f4bc25", "#94d1f9", "#dba5e9", "#d8f425", "#f1a29d", "#f48525", "#e9c5a5",
 ];
 
 // A light N.I.N.A. names no filter for, beside lights it does: a wheel that
