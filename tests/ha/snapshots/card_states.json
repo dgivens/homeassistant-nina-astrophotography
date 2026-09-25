@@ -1,12 +1,1914 @@
 {
+ "dawn_flats": {
+  "devices": {
+   "camera": {
+    "id": "camera",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_camera"
+     ]
+    ],
+    "name": "N.I.N.A. Camera",
+    "via_device_id": "hub"
+   },
+   "filter_wheel": {
+    "id": "filter_wheel",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_filter_wheel"
+     ]
+    ],
+    "name": "N.I.N.A. Filter Wheel",
+    "via_device_id": "hub"
+   },
+   "flat_device": {
+    "id": "flat_device",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_flat_device"
+     ]
+    ],
+    "name": "N.I.N.A. Flat Panel",
+    "via_device_id": "hub"
+   },
+   "focuser": {
+    "id": "focuser",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_focuser"
+     ]
+    ],
+    "name": "N.I.N.A. Focuser",
+    "via_device_id": "hub"
+   },
+   "hub": {
+    "id": "hub",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
+     ]
+    ],
+    "name": "N.I.N.A.",
+    "via_device_id": null
+   },
+   "mount": {
+    "id": "mount",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_mount"
+     ]
+    ],
+    "name": "N.I.N.A. Mount",
+    "via_device_id": "hub"
+   },
+   "rotator": {
+    "id": "rotator",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_rotator"
+     ]
+    ],
+    "name": "N.I.N.A. Rotator",
+    "via_device_id": "hub"
+   },
+   "safety_monitor": {
+    "id": "safety_monitor",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_safety_monitor"
+     ]
+    ],
+    "name": "N.I.N.A. Safety Monitor",
+    "via_device_id": "hub"
+   },
+   "switch_device": {
+    "id": "switch_device",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_switch_device"
+     ]
+    ],
+    "name": "N.I.N.A. Switch",
+    "via_device_id": "hub"
+   },
+   "weather": {
+    "id": "weather",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_weather"
+     ]
+    ],
+    "name": "N.I.N.A. Weather",
+    "via_device_id": "hub"
+   }
+  },
+  "entities": {
+   "binary_sensor.n_i_n_a_camera_exposing": {
+    "device_id": "camera",
+    "entity_id": "binary_sensor.n_i_n_a_camera_exposing",
+    "translation_key": "camera_is_exposing"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_failed",
+    "translation_key": "autofocus_failed"
+   },
+   "binary_sensor.n_i_n_a_imaging": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_imaging",
+    "translation_key": "imaging"
+   },
+   "binary_sensor.n_i_n_a_mount_at_home": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_at_home",
+    "translation_key": "mount_at_home"
+   },
+   "binary_sensor.n_i_n_a_mount_at_park": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_at_park",
+    "translation_key": "mount_at_park"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_connected": {
+    "device_id": "safety_monitor",
+    "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
+    "translation_key": "safety_monitor_connected"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_unsafe": {
+    "device_id": "safety_monitor",
+    "entity_id": "binary_sensor.n_i_n_a_safety_monitor_unsafe",
+    "translation_key": "safety_unsafe"
+   },
+   "binary_sensor.n_i_n_a_scheduler_waiting": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_scheduler_waiting",
+    "translation_key": "scheduler_waiting"
+   },
+   "binary_sensor.n_i_n_a_sequencer_running": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_sequencer_running",
+    "translation_key": "sequencer_running"
+   },
+   "button.n_i_n_a_camera_abort_exposure": {
+    "device_id": "camera",
+    "entity_id": "button.n_i_n_a_camera_abort_exposure",
+    "translation_key": "camera_abort_exposure"
+   },
+   "button.n_i_n_a_focuser_auto_focus": {
+    "device_id": "focuser",
+    "entity_id": "button.n_i_n_a_focuser_auto_focus",
+    "translation_key": "focuser_auto_focus"
+   },
+   "button.n_i_n_a_mount_find_home": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_find_home",
+    "translation_key": "mount_find_home"
+   },
+   "button.n_i_n_a_mount_park": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_park",
+    "translation_key": "mount_park"
+   },
+   "button.n_i_n_a_mount_unpark": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_unpark",
+    "translation_key": "mount_unpark"
+   },
+   "button.n_i_n_a_sequence_start": {
+    "device_id": "hub",
+    "entity_id": "button.n_i_n_a_sequence_start",
+    "translation_key": "sequence_start"
+   },
+   "button.n_i_n_a_sequence_stop": {
+    "device_id": "hub",
+    "entity_id": "button.n_i_n_a_sequence_stop",
+    "translation_key": "sequence_stop"
+   },
+   "event.n_i_n_a_error": {
+    "device_id": "hub",
+    "entity_id": "event.n_i_n_a_error",
+    "translation_key": "nina_error"
+   },
+   "image.n_i_n_a_last_frame": {
+    "device_id": "hub",
+    "entity_id": "image.n_i_n_a_last_frame",
+    "translation_key": "last_frame"
+   },
+   "image.n_i_n_a_livestack": {
+    "device_id": "hub",
+    "entity_id": "image.n_i_n_a_livestack",
+    "translation_key": "livestack"
+   },
+   "light.n_i_n_a_flat_panel_light": {
+    "device_id": "flat_device",
+    "entity_id": "light.n_i_n_a_flat_panel_light",
+    "translation_key": "flat_panel_light"
+   },
+   "number.n_i_n_a_camera_target_temperature": {
+    "device_id": "camera",
+    "entity_id": "number.n_i_n_a_camera_target_temperature",
+    "translation_key": "camera_target_temperature"
+   },
+   "number.n_i_n_a_flat_panel_brightness": {
+    "device_id": "flat_device",
+    "entity_id": "number.n_i_n_a_flat_panel_brightness",
+    "translation_key": "flat_panel_brightness"
+   },
+   "number.n_i_n_a_focuser_position": {
+    "device_id": "focuser",
+    "entity_id": "number.n_i_n_a_focuser_position",
+    "translation_key": "focuser_position"
+   },
+   "number.n_i_n_a_rotator_position": {
+    "device_id": "rotator",
+    "entity_id": "number.n_i_n_a_rotator_position",
+    "translation_key": "rotator_position"
+   },
+   "select.n_i_n_a_filter_wheel_filter": {
+    "device_id": "filter_wheel",
+    "entity_id": "select.n_i_n_a_filter_wheel_filter",
+    "translation_key": "filter"
+   },
+   "select.n_i_n_a_mount_tracking_rate": {
+    "device_id": "mount",
+    "entity_id": "select.n_i_n_a_mount_tracking_rate",
+    "translation_key": "mount_tracking_rate"
+   },
+   "sensor.n_i_n_a_camera_cooler_power": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_cooler_power",
+    "translation_key": "camera_cooler_power"
+   },
+   "sensor.n_i_n_a_camera_gain": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_gain",
+    "translation_key": "camera_gain"
+   },
+   "sensor.n_i_n_a_camera_offset": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_offset",
+    "translation_key": "camera_offset"
+   },
+   "sensor.n_i_n_a_camera_state": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_state",
+    "translation_key": "camera_state"
+   },
+   "sensor.n_i_n_a_camera_temperature": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_temperature",
+    "translation_key": "camera_temperature"
+   },
+   "sensor.n_i_n_a_flat_panel_cover_state": {
+    "device_id": "flat_device",
+    "entity_id": "sensor.n_i_n_a_flat_panel_cover_state",
+    "translation_key": "flat_panel_cover_state"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_duration": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_duration",
+    "translation_key": "autofocus_duration"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_filter": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_filter",
+    "translation_key": "autofocus_filter"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_hfr": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_hfr",
+    "translation_key": "autofocus_hfr"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_position": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_position",
+    "translation_key": "autofocus_position"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_hfr": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_starting_hfr",
+    "translation_key": "autofocus_starting_hfr"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_position": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_starting_position",
+    "translation_key": "autofocus_starting_position"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_temperature": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_temperature",
+    "translation_key": "autofocus_temperature"
+   },
+   "sensor.n_i_n_a_focuser_last_autofocus": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_last_autofocus",
+    "translation_key": "autofocus_last_run"
+   },
+   "sensor.n_i_n_a_focuser_temperature": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_temperature",
+    "translation_key": "focuser_temperature"
+   },
+   "sensor.n_i_n_a_last_frame_at": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_frame_at",
+    "translation_key": "last_frame_at"
+   },
+   "sensor.n_i_n_a_last_image_exposure": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_exposure",
+    "translation_key": "last_image_exposure"
+   },
+   "sensor.n_i_n_a_last_image_filter": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_filter",
+    "translation_key": "last_image_filter"
+   },
+   "sensor.n_i_n_a_last_image_hfr": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_hfr",
+    "translation_key": "last_image_hfr"
+   },
+   "sensor.n_i_n_a_last_image_mean_adu": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_mean_adu",
+    "translation_key": "last_image_mean_adu"
+   },
+   "sensor.n_i_n_a_last_image_rms": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_rms",
+    "translation_key": "last_image_rms"
+   },
+   "sensor.n_i_n_a_last_image_star_count": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_star_count",
+    "translation_key": "last_image_star_count"
+   },
+   "sensor.n_i_n_a_last_image_target": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_target",
+    "translation_key": "last_image_target"
+   },
+   "sensor.n_i_n_a_mount_altitude": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_altitude",
+    "translation_key": "mount_altitude"
+   },
+   "sensor.n_i_n_a_mount_azimuth": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_azimuth",
+    "translation_key": "mount_azimuth"
+   },
+   "sensor.n_i_n_a_mount_declination": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_declination",
+    "translation_key": "mount_declination"
+   },
+   "sensor.n_i_n_a_mount_right_ascension": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_right_ascension",
+    "translation_key": "mount_right_ascension"
+   },
+   "sensor.n_i_n_a_mount_side_of_pier": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_side_of_pier",
+    "translation_key": "mount_side_of_pier"
+   },
+   "sensor.n_i_n_a_mount_sidereal_time": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_sidereal_time",
+    "translation_key": "mount_sidereal_time"
+   },
+   "sensor.n_i_n_a_mount_time_to_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_time_to_meridian_flip",
+    "translation_key": "mount_time_to_meridian_flip"
+   },
+   "sensor.n_i_n_a_sequence_target": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_sequence_target",
+    "translation_key": "sequence_target"
+   },
+   "sensor.n_i_n_a_session_avg_hfr": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_avg_hfr",
+    "translation_key": "session_avg_hfr"
+   },
+   "sensor.n_i_n_a_session_avg_stars": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_avg_stars",
+    "translation_key": "session_avg_stars"
+   },
+   "sensor.n_i_n_a_session_best_hfr": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_best_hfr",
+    "translation_key": "session_best_hfr"
+   },
+   "sensor.n_i_n_a_session_image_count": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_image_count",
+    "translation_key": "session_image_count"
+   },
+   "sensor.n_i_n_a_session_integration_time": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_integration_time",
+    "translation_key": "session_integration_time"
+   },
+   "sensor.n_i_n_a_session_worst_hfr": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_worst_hfr",
+    "translation_key": "session_worst_hfr"
+   },
+   "sensor.n_i_n_a_site_latitude": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_site_latitude",
+    "translation_key": "site_latitude"
+   },
+   "sensor.n_i_n_a_wait_ends_at": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_wait_ends_at",
+    "translation_key": "wait_ends_at"
+   },
+   "sensor.n_i_n_a_weather_dew_point": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_dew_point",
+    "translation_key": "dew_point"
+   },
+   "sensor.n_i_n_a_weather_humidity": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_humidity",
+    "translation_key": "humidity"
+   },
+   "sensor.n_i_n_a_weather_pressure": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_pressure",
+    "translation_key": "pressure"
+   },
+   "sensor.n_i_n_a_weather_rain_rate": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_rain_rate",
+    "translation_key": "rain_rate"
+   },
+   "sensor.n_i_n_a_weather_sky_brightness": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_sky_brightness",
+    "translation_key": "sky_brightness"
+   },
+   "sensor.n_i_n_a_weather_sky_temperature": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_sky_temperature",
+    "translation_key": "sky_temperature"
+   },
+   "sensor.n_i_n_a_weather_source": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_weather_source",
+    "translation_key": "weather_source"
+   },
+   "sensor.n_i_n_a_weather_temperature": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_temperature",
+    "translation_key": "temperature"
+   },
+   "sensor.n_i_n_a_weather_wind_direction": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_wind_direction",
+    "translation_key": "wind_direction"
+   },
+   "sensor.n_i_n_a_weather_wind_gust": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_wind_gust",
+    "translation_key": "wind_gust"
+   },
+   "sensor.n_i_n_a_weather_wind_speed": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_wind_speed",
+    "translation_key": "wind_speed"
+   },
+   "switch.n_i_n_a_camera_cooler": {
+    "device_id": "camera",
+    "entity_id": "switch.n_i_n_a_camera_cooler",
+    "translation_key": "camera_cooler"
+   },
+   "switch.n_i_n_a_camera_dew_heater": {
+    "device_id": "camera",
+    "entity_id": "switch.n_i_n_a_camera_dew_heater",
+    "translation_key": "camera_dew_heater"
+   },
+   "switch.n_i_n_a_flat_panel_cover": {
+    "device_id": "flat_device",
+    "entity_id": "switch.n_i_n_a_flat_panel_cover",
+    "translation_key": "flat_panel_cover"
+   },
+   "switch.n_i_n_a_livestack": {
+    "device_id": "hub",
+    "entity_id": "switch.n_i_n_a_livestack",
+    "translation_key": "livestack"
+   },
+   "switch.n_i_n_a_switch_flat_panel": {
+    "device_id": "switch_device",
+    "entity_id": "switch.n_i_n_a_switch_flat_panel",
+    "translation_key": null
+   },
+   "switch.n_i_n_a_switch_ota": {
+    "device_id": "switch_device",
+    "entity_id": "switch.n_i_n_a_switch_ota",
+    "translation_key": null
+   }
+  },
+  "states": {
+   "binary_sensor.n_i_n_a_camera_exposing": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Exposing"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
+    "attributes": {
+     "device_class": "problem",
+     "friendly_name": "N.I.N.A. Focuser Autofocus failed",
+     "r_squared": null,
+     "r_squared_threshold": null,
+     "reason": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_imaging": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Imaging"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_at_home": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount At home"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_mount_at_park": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_connected": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Safety Monitor Connected"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_unsafe": {
+    "attributes": {
+     "device_class": "safety",
+     "friendly_name": "N.I.N.A. Safety Monitor Unsafe"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_scheduler_waiting": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Scheduler waiting"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_sequencer_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Sequencer running"
+    },
+    "state": "off"
+   },
+   "button.n_i_n_a_camera_abort_exposure": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Abort exposure"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_focuser_auto_focus": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Auto focus"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_find_home": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Find home"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_park": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Park"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_unpark": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Unpark"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_sequence_start": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence start"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_sequence_stop": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence stop"
+    },
+    "state": "unknown"
+   },
+   "event.n_i_n_a_error": {
+    "attributes": {
+     "event_type": null,
+     "event_types": [
+      "platesolve_failed",
+      "camera_download_timeout",
+      "autofocus_timeout"
+     ],
+     "friendly_name": "N.I.N.A. Error"
+    },
+    "state": "unknown"
+   },
+   "image.n_i_n_a_last_frame": {
+    "attributes": {
+     "access_token": "<per run>",
+     "entity_picture": "<per run>",
+     "friendly_name": "N.I.N.A. Last frame"
+    },
+    "state": "2026-09-04T06:26:34.145219-05:00"
+   },
+   "image.n_i_n_a_livestack": {
+    "attributes": {
+     "access_token": "<per run>",
+     "entity_picture": "<per run>",
+     "filter": "S",
+     "friendly_name": "N.I.N.A. Livestack",
+     "target": "NGC 281"
+    },
+    "state": "2026-09-04T04:25:58.503025-05:00"
+   },
+   "light.n_i_n_a_flat_panel_light": {
+    "attributes": {
+     "brightness": null,
+     "color_mode": null,
+     "friendly_name": "N.I.N.A. Flat Panel Light",
+     "supported_color_modes": [
+      "brightness"
+     ],
+     "supported_features": 0
+    },
+    "state": "off"
+   },
+   "number.n_i_n_a_camera_target_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Camera Target temperature",
+     "max": 50,
+     "min": -50,
+     "mode": "box",
+     "step": 0.5,
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "20.0"
+   },
+   "number.n_i_n_a_flat_panel_brightness": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Flat Panel Brightness",
+     "max": 4096.0,
+     "min": 0.0,
+     "mode": "slider",
+     "step": 1
+    },
+    "state": "0.0"
+   },
+   "number.n_i_n_a_focuser_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Position",
+     "max": 200000,
+     "min": 0,
+     "mode": "box",
+     "step": 1,
+     "unit_of_measurement": "steps"
+    },
+    "state": "2332"
+   },
+   "number.n_i_n_a_rotator_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Position",
+     "max": 360,
+     "min": 0,
+     "mode": "box",
+     "step": 0.01,
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "334.67316"
+   },
+   "select.n_i_n_a_filter_wheel_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Filter Wheel Filter",
+     "options": [
+      "L",
+      "R",
+      "G",
+      "B",
+      "H",
+      "O",
+      "S"
+     ]
+    },
+    "state": "R"
+   },
+   "select.n_i_n_a_mount_tracking_rate": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Tracking rate",
+     "options": [
+      "Sidereal",
+      "Lunar",
+      "Solar",
+      "Stopped"
+     ]
+    },
+    "state": "Stopped"
+   },
+   "sensor.n_i_n_a_camera_cooler_power": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Cooler power",
+     "state_class": "measurement",
+     "unit_of_measurement": "%"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_camera_gain": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Gain",
+     "state_class": "measurement"
+    },
+    "state": "100"
+   },
+   "sensor.n_i_n_a_camera_offset": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Offset",
+     "state_class": "measurement"
+    },
+    "state": "50"
+   },
+   "sensor.n_i_n_a_camera_state": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera State"
+    },
+    "state": "Idle"
+   },
+   "sensor.n_i_n_a_camera_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Camera Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "32.0"
+   },
+   "sensor.n_i_n_a_flat_panel_cover_state": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Flat Panel Cover state"
+    },
+    "state": "Closed"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_duration": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Focuser Autofocus duration",
+     "state_class": "measurement",
+     "unit_of_measurement": "s"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus filter"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus position",
+     "state_class": "measurement",
+     "unit_of_measurement": "steps"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus starting HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus starting position",
+     "state_class": "measurement",
+     "unit_of_measurement": "steps"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Focuser Autofocus temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_last_autofocus": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Focuser Last autofocus"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_focuser_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Focuser Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "27.9"
+   },
+   "sensor.n_i_n_a_last_frame_at": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Last frame at"
+    },
+    "state": "2026-09-04T11:26:34+00:00"
+   },
+   "sensor.n_i_n_a_last_image_exposure": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Last image exposure",
+     "state_class": "measurement",
+     "unit_of_measurement": "s"
+    },
+    "state": "600.0"
+   },
+   "sensor.n_i_n_a_last_image_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image filter"
+    },
+    "state": "S"
+   },
+   "sensor.n_i_n_a_last_image_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image HFR",
+     "recent_lights": [
+      {
+       "date": "2026-09-03T21:26:56.658159-05:00",
+       "exposure": 600.0,
+       "filter": "O",
+       "hfr": 1.4287312385175786,
+       "mean": 525.547224000569,
+       "stars": 4847,
+       "target": "Lobster & Bubble"
+      },
+      {
+       "date": "2026-09-03T21:33:29.059775-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.7013972198869864,
+       "mean": 801.3449311059233,
+       "stars": 12594,
+       "target": "Wizard Nebula"
+      },
+      {
+       "date": "2026-09-03T21:38:45.231547-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.7774957255189483,
+       "mean": 792.538065514298,
+       "stars": 12278,
+       "target": "Wizard Nebula"
+      },
+      {
+       "date": "2026-09-03T21:44:18.907906-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.8911813042358785,
+       "mean": 785.0345862783371,
+       "stars": 11788,
+       "target": "Wizard Nebula"
+      },
+      {
+       "date": "2026-09-03T21:54:30.985150-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.4801701907077551,
+       "mean": 771.2575947674903,
+       "stars": 11750,
+       "target": "Wizard Nebula"
+      },
+      {
+       "date": "2026-09-03T22:00:04.587815-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.4827834278430945,
+       "mean": 768.1140644699791,
+       "stars": 12003,
+       "target": "Wizard Nebula"
+      },
+      {
+       "date": "2026-09-03T22:05:20.744139-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.4977043823029241,
+       "mean": 1036.2140051866406,
+       "stars": 6174,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:08:37.659299-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.4897567791449964,
+       "mean": 1028.5769539739306,
+       "stars": 6148,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:14:11.181980-05:00",
+       "exposure": 300.0,
+       "filter": "B",
+       "hfr": 1.5127610050034666,
+       "mean": 733.7569938089001,
+       "stars": 3761,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:19:28.114716-05:00",
+       "exposure": 300.0,
+       "filter": "B",
+       "hfr": 1.4920380841597314,
+       "mean": 729.5857542229605,
+       "stars": 3794,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:23:04.844661-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.525112117642561,
+       "mean": 1029.626640256683,
+       "stars": 6408,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:26:19.615253-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.5496147396450335,
+       "mean": 1029.456959598719,
+       "stars": 6615,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:32:03.423395-05:00",
+       "exposure": 300.0,
+       "filter": "B",
+       "hfr": 1.4598080230116257,
+       "mean": 726.314761374981,
+       "stars": 4060,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:37:19.528503-05:00",
+       "exposure": 300.0,
+       "filter": "B",
+       "hfr": 1.4704588830342908,
+       "mean": 724.8957571786957,
+       "stars": 4230,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:40:56.793169-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.6417261289403506,
+       "mean": 1030.4278147934542,
+       "stars": 6816,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:48:33.119012-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.5079865954026603,
+       "mean": 1019.6780208363995,
+       "stars": 6548,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:54:28.300479-05:00",
+       "exposure": 300.0,
+       "filter": "B",
+       "hfr": 1.6255561003236236,
+       "mean": 726.9481671682831,
+       "stars": 3957,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T22:59:44.229912-05:00",
+       "exposure": 300.0,
+       "filter": "B",
+       "hfr": 1.5968104827760683,
+       "mean": 727.9487950320348,
+       "stars": 3796,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:03:20.144612-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.4819969730012468,
+       "mean": 1030.663469474983,
+       "stars": 6276,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:06:35.427429-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.4865543469065734,
+       "mean": 1026.7353855149356,
+       "stars": 6357,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:12:28.542049-05:00",
+       "exposure": 300.0,
+       "filter": "B",
+       "hfr": 1.5333216343652618,
+       "mean": 725.8770664467036,
+       "stars": 3936,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:16:03.267318-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.5027673509169204,
+       "mean": 1031.3623193521544,
+       "stars": 6542,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:19:17.280400-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.506467822010592,
+       "mean": 1034.0881388941013,
+       "stars": 6562,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:22:53.390855-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.5205542686539038,
+       "mean": 1036.8393967678853,
+       "stars": 6633,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:26:08.344397-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.5032223302696406,
+       "mean": 1035.4679018741936,
+       "stars": 6580,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:29:31.872543-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.5164829288685995,
+       "mean": 1035.8347499169083,
+       "stars": 6614,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:32:46.564581-05:00",
+       "exposure": 180.0,
+       "filter": "L",
+       "hfr": 1.5441758679169437,
+       "mean": 1038.9288739063168,
+       "stars": 6736,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:38:22.424520-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.500943775605248,
+       "mean": 710.5743705801949,
+       "stars": 5119,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:43:39.628551-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.515065354808976,
+       "mean": 712.8277270948926,
+       "stars": 5295,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:49:13.017911-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.5390213057877216,
+       "mean": 713.6667390269868,
+       "stars": 5358,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-03T23:58:54.723430-05:00",
+       "exposure": 300.0,
+       "filter": "R",
+       "hfr": 1.469360161473101,
+       "mean": 718.4551208877263,
+       "stars": 4799,
+       "target": "Dark Shark Nebula"
+      },
+      {
+       "date": "2026-09-04T00:11:02.479370-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4879714884712043,
+       "mean": 524.0029992739439,
+       "stars": 5880,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T00:21:17.922021-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.5046228174836611,
+       "mean": 528.8062754794178,
+       "stars": 5505,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T00:31:51.092978-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.5194240793577305,
+       "mean": 534.1819763933654,
+       "stars": 5274,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T00:42:06.762676-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.525784767378304,
+       "mean": 538.2210569067926,
+       "stars": 5038,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T00:52:39.072088-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.5219324820383204,
+       "mean": 541.4867347206279,
+       "stars": 4765,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T01:02:54.898106-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.5327020065168409,
+       "mean": 543.42758935733,
+       "stars": 4702,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T01:17:50.241934-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4525867335896483,
+       "mean": 545.0458319842426,
+       "stars": 4132,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T01:28:06.016195-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4431592637693726,
+       "mean": 545.8051988513719,
+       "stars": 4019,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T01:38:38.253466-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4349362588038816,
+       "mean": 545.6360500494258,
+       "stars": 3972,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T01:48:55.454223-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4368966916927637,
+       "mean": 545.886599612259,
+       "stars": 3886,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T01:59:26.762980-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4387331686627034,
+       "mean": 546.7955797962628,
+       "stars": 3808,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T02:09:41.378667-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4358612143243517,
+       "mean": 546.7804444548692,
+       "stars": 3758,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T02:24:30.455426-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4431177726242659,
+       "mean": 547.0275154716176,
+       "stars": 3896,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T02:34:48.378431-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4545141938846564,
+       "mean": 547.3086148103791,
+       "stars": 4005,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T02:45:17.938318-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.462737541620279,
+       "mean": 547.8899740254046,
+       "stars": 3993,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T02:55:33.995737-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4774146328732825,
+       "mean": 547.3009908764675,
+       "stars": 4143,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T03:06:06.396866-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4983375210460097,
+       "mean": 547.1878245866263,
+       "stars": 4327,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T03:16:21.877470-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.5291442183845172,
+       "mean": 547.923081133089,
+       "stars": 4453,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T03:31:42.635455-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.5275410873303297,
+       "mean": 548.1816649527083,
+       "stars": 4561,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T03:41:57.083912-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.5017368522768233,
+       "mean": 548.0636847852616,
+       "stars": 4439,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T03:52:30.956608-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4768412745965063,
+       "mean": 547.9329035099661,
+       "stars": 4389,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T04:05:11.417013-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4458624754457572,
+       "mean": 548.18020199414,
+       "stars": 4014,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T04:15:44.280864-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.460498636371034,
+       "mean": 548.4207762959243,
+       "stars": 4266,
+       "target": "NGC 281"
+      },
+      {
+       "date": "2026-09-04T04:25:57.425424-05:00",
+       "exposure": 600.0,
+       "filter": "S",
+       "hfr": 1.4544567960330983,
+       "mean": 548.592163745272,
+       "stars": 4158,
+       "target": "NGC 281"
+      }
+     ],
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "1.4544567960331"
+   },
+   "sensor.n_i_n_a_last_image_mean_adu": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image mean ADU",
+     "recent_frames": [
+      {
+       "date": "2026-09-04T06:26:34.145219-05:00",
+       "filename": "frame_0121.fits",
+       "filter": "L",
+       "max": 65535.0,
+       "mean": 33139.77322701119,
+       "median": 33144.0,
+       "min": 28054.0
+      },
+      {
+       "date": "2026-09-04T06:26:32.257521-05:00",
+       "filename": "frame_0120.fits",
+       "filter": "L",
+       "max": 65535.0,
+       "mean": 33136.72612864469,
+       "median": 33141.0,
+       "min": 27401.0
+      },
+      {
+       "date": "2026-09-04T06:26:30.428267-05:00",
+       "filename": "frame_0119.fits",
+       "filter": "L",
+       "max": 65535.0,
+       "mean": 33134.46885413294,
+       "median": 33139.0,
+       "min": 27620.0
+      },
+      {
+       "date": "2026-09-04T06:26:28.554259-05:00",
+       "filename": "frame_0118.fits",
+       "filter": "L",
+       "max": 65535.0,
+       "mean": 33132.47513752293,
+       "median": 33137.0,
+       "min": 27514.0
+      },
+      {
+       "date": "2026-09-04T06:26:26.657674-05:00",
+       "filename": "frame_0117.fits",
+       "filter": "L",
+       "max": 65535.0,
+       "mean": 33128.813903744216,
+       "median": 33134.0,
+       "min": 27739.0
+      },
+      {
+       "date": "2026-09-04T06:26:24.838047-05:00",
+       "filename": "frame_0116.fits",
+       "filter": "L",
+       "max": 65535.0,
+       "mean": 33122.14724711908,
+       "median": 33127.0,
+       "min": 27852.0
+      },
+      {
+       "date": "2026-09-04T06:26:22.843054-05:00",
+       "filename": "frame_0115.fits",
+       "filter": "L",
+       "max": 65535.0,
+       "mean": 33106.56110618233,
+       "median": 33112.0,
+       "min": 28319.0
+      },
+      {
+       "date": "2026-09-04T06:26:07.152409-05:00",
+       "filename": "frame_0114.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31251.80126931806,
+       "median": 31252.0,
+       "min": 26883.0
+      },
+      {
+       "date": "2026-09-04T06:26:05.272602-05:00",
+       "filename": "frame_0113.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31250.759212066634,
+       "median": 31250.0,
+       "min": 26204.0
+      },
+      {
+       "date": "2026-09-04T06:26:03.523786-05:00",
+       "filename": "frame_0112.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31248.568404034886,
+       "median": 31248.0,
+       "min": 26806.0
+      },
+      {
+       "date": "2026-09-04T06:26:01.819304-05:00",
+       "filename": "frame_0111.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31246.764194388947,
+       "median": 31246.0,
+       "min": 25918.0
+      },
+      {
+       "date": "2026-09-04T06:25:59.816500-05:00",
+       "filename": "frame_0110.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31245.069841659675,
+       "median": 31245.0,
+       "min": 26108.0
+      },
+      {
+       "date": "2026-09-04T06:25:57.946369-05:00",
+       "filename": "frame_0109.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31242.84260902186,
+       "median": 31243.0,
+       "min": 26454.0
+      },
+      {
+       "date": "2026-09-04T06:25:56.116962-05:00",
+       "filename": "frame_0108.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31239.722647645714,
+       "median": 31239.0,
+       "min": 26588.0
+      },
+      {
+       "date": "2026-09-04T06:25:54.418979-05:00",
+       "filename": "frame_0107.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31237.70447991633,
+       "median": 31237.0,
+       "min": 26391.0
+      },
+      {
+       "date": "2026-09-04T06:25:52.625048-05:00",
+       "filename": "frame_0106.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31233.870876649875,
+       "median": 31234.0,
+       "min": 26220.0
+      },
+      {
+       "date": "2026-09-04T06:25:50.770308-05:00",
+       "filename": "frame_0105.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31230.675533795336,
+       "median": 31230.0,
+       "min": 26750.0
+      },
+      {
+       "date": "2026-09-04T06:25:48.836340-05:00",
+       "filename": "frame_0104.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31226.847422439547,
+       "median": 31227.0,
+       "min": 26078.0
+      },
+      {
+       "date": "2026-09-04T06:25:46.666178-05:00",
+       "filename": "frame_0103.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31222.141947338856,
+       "median": 31222.0,
+       "min": 26472.0
+      },
+      {
+       "date": "2026-09-04T06:25:44.734388-05:00",
+       "filename": "frame_0102.fits",
+       "filter": "G",
+       "max": 65535.0,
+       "mean": 31216.514792817994,
+       "median": 31216.0,
+       "min": 26118.0
+      }
+     ],
+     "state_class": "measurement"
+    },
+    "state": "548.592163745272"
+   },
+   "sensor.n_i_n_a_last_image_rms": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image RMS",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "0.39"
+   },
+   "sensor.n_i_n_a_last_image_star_count": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image star count",
+     "state_class": "measurement"
+    },
+    "state": "4158"
+   },
+   "sensor.n_i_n_a_last_image_target": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image target"
+    },
+    "state": "NGC 281"
+   },
+   "sensor.n_i_n_a_mount_altitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Altitude",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "31.5477777777778"
+   },
+   "sensor.n_i_n_a_mount_azimuth": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Azimuth",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_mount_declination": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Declination",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "90.0"
+   },
+   "sensor.n_i_n_a_mount_right_ascension": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Right ascension",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "11.4761111111111"
+   },
+   "sensor.n_i_n_a_mount_side_of_pier": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Side of pier"
+    },
+    "state": "REDACTED"
+   },
+   "sensor.n_i_n_a_mount_sidereal_time": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Sidereal time",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "5.47611111111111"
+   },
+   "sensor.n_i_n_a_mount_time_to_meridian_flip": {
+    "attributes": {
+     "device_class": "duration",
+     "flip_fires_at_minutes": null,
+     "friendly_name": "N.I.N.A. Mount Time to meridian flip",
+     "state_class": "measurement",
+     "unit_of_measurement": "min"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_sequence_target": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence target"
+    },
+    "state": "NGC 281"
+   },
+   "sensor.n_i_n_a_session_avg_hfr": {
+    "attributes": {
+     "by_filter": {
+      "B": {
+       "count": 7,
+       "hfr_mean": 1.527,
+       "integration_hours": 0.58
+      },
+      "L": {
+       "count": 14,
+       "hfr_mean": 1.52,
+       "integration_hours": 0.7
+      },
+      "O": {
+       "count": 1,
+       "hfr_mean": 1.429,
+       "integration_hours": 0.17
+      },
+      "R": {
+       "count": 9,
+       "hfr_mean": 1.595,
+       "integration_hours": 0.75
+      },
+      "S": {
+       "count": 24,
+       "hfr_mean": 1.478,
+       "integration_hours": 4.0
+      }
+     },
+     "by_target": {
+      "Dark Shark Nebula": {
+       "count": 25,
+       "hfr_mean": 1.52,
+       "integration_hours": 1.62
+      },
+      "Lobster & Bubble": {
+       "count": 1,
+       "hfr_mean": 1.429,
+       "integration_hours": 0.17
+      },
+      "NGC 281": {
+       "count": 24,
+       "hfr_mean": 1.478,
+       "integration_hours": 4.0
+      },
+      "Wizard Nebula": {
+       "count": 5,
+       "hfr_mean": 1.667,
+       "integration_hours": 0.42
+      }
+     },
+     "friendly_name": "N.I.N.A. Session avg HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "1.51305164587741"
+   },
+   "sensor.n_i_n_a_session_avg_stars": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session avg stars",
+     "state_class": "measurement"
+    },
+    "state": "5631.94545454545"
+   },
+   "sensor.n_i_n_a_session_best_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session best HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "1.42873123851758"
+   },
+   "sensor.n_i_n_a_session_image_count": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session image count",
+     "light_count": 55,
+     "state_class": "measurement"
+    },
+    "state": "122"
+   },
+   "sensor.n_i_n_a_session_integration_time": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Session integration time",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "6.2"
+   },
+   "sensor.n_i_n_a_session_worst_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session worst HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "1.89118130423588"
+   },
+   "sensor.n_i_n_a_site_latitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Site latitude",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_wait_ends_at": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Wait ends at"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_weather_dew_point": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Dew point",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "21.5"
+   },
+   "sensor.n_i_n_a_weather_humidity": {
+    "attributes": {
+     "device_class": "humidity",
+     "friendly_name": "N.I.N.A. Weather Humidity",
+     "state_class": "measurement",
+     "unit_of_measurement": "%"
+    },
+    "state": "75.0"
+   },
+   "sensor.n_i_n_a_weather_pressure": {
+    "attributes": {
+     "device_class": "atmospheric_pressure",
+     "friendly_name": "N.I.N.A. Weather Pressure",
+     "state_class": "measurement",
+     "unit_of_measurement": "hPa"
+    },
+    "state": "960.9"
+   },
+   "sensor.n_i_n_a_weather_rain_rate": {
+    "attributes": {
+     "device_class": "precipitation_intensity",
+     "friendly_name": "N.I.N.A. Weather Rain rate",
+     "state_class": "measurement",
+     "unit_of_measurement": "mm/h"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_weather_sky_brightness": {
+    "attributes": {
+     "device_class": "illuminance",
+     "friendly_name": "N.I.N.A. Weather Sky brightness",
+     "state_class": "measurement",
+     "unit_of_measurement": "lx"
+    },
+    "state": "5692.0"
+   },
+   "sensor.n_i_n_a_weather_sky_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Sky temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "10.8"
+   },
+   "sensor.n_i_n_a_weather_source": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Weather source"
+    },
+    "state": "Safety Monitor"
+   },
+   "sensor.n_i_n_a_weather_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "26.3"
+   },
+   "sensor.n_i_n_a_weather_wind_direction": {
+    "attributes": {
+     "device_class": "wind_direction",
+     "friendly_name": "N.I.N.A. Weather Wind direction",
+     "state_class": "measurement_angle",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "154.0"
+   },
+   "sensor.n_i_n_a_weather_wind_gust": {
+    "attributes": {
+     "device_class": "wind_speed",
+     "friendly_name": "N.I.N.A. Weather Wind gust",
+     "state_class": "measurement",
+     "unit_of_measurement": "km/h"
+    },
+    "state": "6.84"
+   },
+   "sensor.n_i_n_a_weather_wind_speed": {
+    "attributes": {
+     "device_class": "wind_speed",
+     "friendly_name": "N.I.N.A. Weather Wind speed",
+     "state_class": "measurement",
+     "unit_of_measurement": "km/h"
+    },
+    "state": "4.32"
+   },
+   "switch.n_i_n_a_camera_cooler": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Cooler"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_camera_dew_heater": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Dew heater"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_flat_panel_cover": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Flat Panel Cover"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_livestack": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Livestack"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_switch_flat_panel": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch Flat Panel"
+    },
+    "state": "on"
+   },
+   "switch.n_i_n_a_switch_ota": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch OTA"
+    },
+    "state": "on"
+   }
+  }
+ },
  "equipment_disconnected": {
   "devices": {
    "hub": {
     "id": "hub",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
      ]
     ],
     "name": "N.I.N.A.",
@@ -348,8 +2250,8 @@
     "id": "camera",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_camera",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_camera"
      ]
     ],
     "name": "N.I.N.A. Camera",
@@ -359,8 +2261,8 @@
     "id": "filter_wheel",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_filter_wheel",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_filter_wheel"
      ]
     ],
     "name": "N.I.N.A. Filter Wheel",
@@ -370,8 +2272,8 @@
     "id": "focuser",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_focuser",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_focuser"
      ]
     ],
     "name": "N.I.N.A. Focuser",
@@ -381,8 +2283,8 @@
     "id": "guider",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_guider",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_guider"
      ]
     ],
     "name": "N.I.N.A. Guider",
@@ -392,8 +2294,8 @@
     "id": "hub",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
      ]
     ],
     "name": "N.I.N.A.",
@@ -403,8 +2305,8 @@
     "id": "mount",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_mount",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_mount"
      ]
     ],
     "name": "N.I.N.A. Mount",
@@ -414,8 +2316,8 @@
     "id": "rotator",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_rotator",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_rotator"
      ]
     ],
     "name": "N.I.N.A. Rotator",
@@ -425,8 +2327,8 @@
     "id": "safety_monitor",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_safety_monitor",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_safety_monitor"
      ]
     ],
     "name": "N.I.N.A. Safety Monitor",
@@ -436,8 +2338,8 @@
     "id": "switch_device",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_switch_device",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_switch_device"
      ]
     ],
     "name": "N.I.N.A. Switch",
@@ -447,8 +2349,8 @@
     "id": "weather",
     "identifiers": [
      [
-      "01JTESTENTRY0000000000000_weather",
-      "nina_astrophotography"
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_weather"
      ]
     ],
     "name": "N.I.N.A. Weather",

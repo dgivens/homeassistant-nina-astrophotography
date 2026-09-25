@@ -282,8 +282,8 @@ Traps when changing a card:
 - A card's `_s`/`_f`/`_state` fallback applies only when the entity is
   **missing**, not when it reads `unavailable` or `unknown` — so a down driver
   renders as the literal text `unavailable`, and `_f` turns it into `0`.
-  `nina-observatory-card`'s `shown()` is the pattern, and autofocus now follows
-  it; image-panel (`_f(id, fallback = 0)`) and frame-stats still get it wrong.
+  `nina-observatory-card`'s `shown()` is the pattern, and autofocus and frame
+  stats follow it; image-panel (`_f(id, fallback = 0)`) still gets it wrong.
 - `tests/unit/test_cards.py`'s `LITERAL` matches a **backticked**
   `<domain>.<word>`, so prose like `` `select.filter` `` in a card comment fails
   the hardcoded-id test. Reword the comment; the test is right.

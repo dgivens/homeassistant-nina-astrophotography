@@ -5,10 +5,14 @@
  * so they survive a page reload.
  *
  * Ships with the integration and registers itself as a dashboard resource —
- * nothing to copy or add under Resources. Add card:
+ * nothing to copy or add under Resources. One rig needs no configuration at
+ * all: the card finds its own session sensors in the registry.
  *   type: custom:nina-frame-stats-card
- *   prefix: n_i_n_a   # the slugified instance name your entities carry
+ *   device_id: abc123      # which rig, for two or more; any one of its devices
+ *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
+
+import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
 
@@ -94,10 +98,11 @@ const STYLE = `
   .no-data .icon { font-size: 2rem; margin-bottom: 8px; }
 `;
 
-// 2.0 entity ids carry the instance name, so the card is told the prefix
-// rather than guessing it: it is the instance name from the config flow,
-// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
-// renamed instance, or for the second rig.
+// The fallback path, not the primary one: entity ids normally come from the
+// registry (`_eid`), and the prefix is what an id is built from when a
+// particular entity cannot be resolved. It is the instance name from the config
+// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
+// instance, or for the second rig.
 //
 // Repeated in each card rather than imported: it is one literal, and `www/` is
 // served whole from the integration (`frontend.py`), so a card that needs real
@@ -128,12 +133,34 @@ class NinaFrameStatsCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._prefix = this._config.prefix || DEFAULT_PREFIX;
+    // A new config may name a different rig: make the next `set hass` re-resolve.
+    this._resolved = {};
+    this._resolvedFrom = null;
   }
 
   set hass(hass) {
     this._hass = hass;
+    // The frontend replaces `hass.entities` only when the registry itself
+    // changes, so this walks it on a rename, not on every state tick.
+    // `hass.devices` needs no second memo key: every device change that alters
+    // the map arrives with an entity-registry change too.
+    if (hass.entities !== this._resolvedFrom) {
+      this._resolvedFrom = hass.entities;
+      this._resolved = resolveEntities(hass, this._config.device_id);
+    }
     this._updateData();
     this._render();
+  }
+
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
+  //
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key. On this card it always is: every read is a hub
+  // sensor, and the hub adds nothing past the instance name.
+  _eid(domain, key, slug = key) {
+    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
 
   _state(id, fallback = null) {
@@ -151,7 +178,7 @@ class NinaFrameStatsCard extends HTMLElement {
   // keeps it. An unavailable entity carries no attributes at all, so one
   // failed poll keeps the last series rather than blanking the charts.
   _updateData() {
-    const entity = this._hass?.states[`sensor.${this._prefix}_last_image_hfr`];
+    const entity = this._hass?.states[this._eid("sensor", "last_image_hfr")];
     if (entity?.state === "unavailable") return;
     const lights = entity?.attributes.recent_lights ?? [];
     this._hfr = lights.map((light) => light.hfr ?? null);
@@ -176,19 +203,26 @@ class NinaFrameStatsCard extends HTMLElement {
   _render() {
     const h = this._hass;
     if (!h) return;
-    const prefix = this._prefix;
 
-    const frameCount   = this._state(`sensor.${prefix}_session_image_count`, "0");
-    const integration  = this._state(`sensor.${prefix}_session_integration_time`, "—");
-    const lastHfr      = this._state(`sensor.${prefix}_last_image_hfr`, "—");
-    const lastStars    = this._state(`sensor.${prefix}_last_image_star_count`, "—");
-    const lastFilter   = this._state(`sensor.${prefix}_last_image_filter`, "—");
-    const lastExposure = this._state(`sensor.${prefix}_last_image_exposure`, "—");
-    const sessionAvgHfr = this._state(`sensor.${prefix}_session_avg_hfr`, "—");
-    const sessionBestHfr = this._state(`sensor.${prefix}_session_best_hfr`, "—");
+    // `_state`'s fallback covers a missing entity only; `shown` covers one
+    // that exists and reads `unknown` or `unavailable`, which would otherwise
+    // print as the word.
+    //
+    // Lights, not frames: the count sensor's state includes the flats, and
+    // everything beside it — the integration, the HFR figures, the chips — is
+    // lights only.
+    const lightCount   = shown(this._attr(this._eid("sensor", "session_image_count"), "light_count"));
+    const integration  = shown(this._state(this._eid("sensor", "session_integration_time")));
+    const lastHfr      = this._state(this._eid("sensor", "last_image_hfr"), "—");
+    const lastStars    = shown(this._state(this._eid("sensor", "last_image_star_count")));
+    const lastFilter   = shown(this._state(this._eid("sensor", "last_image_filter")));
+    const lastExposure = this._state(this._eid("sensor", "last_image_exposure"), "—");
+    const avgHfrId = this._eid("sensor", "session_avg_hfr");
+    const sessionAvgHfr = this._state(avgHfrId, "—");
+    const sessionBestHfr = this._state(this._eid("sensor", "session_best_hfr"), "—");
     // The session breakdown rides on the average-HFR sensor, one row per
     // filter: {count, integration_hours, hfr_mean}.
-    const byFilter = this._attr(`sensor.${prefix}_session_avg_hfr`, "by_filter", {}) || {};
+    const byFilter = this._attr(avgHfrId, "by_filter", {}) || {};
 
     // The last five frames against the five before them, in the newest
     // frame's filter only: filters differ by tenths of a pixel, so an LRGB or
@@ -215,10 +249,19 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const hasData = this._hfr.some(v => v !== null);
 
-    // Build filter chip HTML
+    // One colour per filter, shared by the chips and the sparklines, so the
+    // chips are the charts' legend: the session's filters in the chips' order,
+    // then any the series holds that the breakdown does not.
+    this._colours = new Map();
+    for (const name of [...Object.keys(byFilter), ...this._filters]) {
+      if (name !== null && !this._colours.has(name)) {
+        this._colours.set(name, FILTER_COLOURS[this._colours.size % FILTER_COLOURS.length]);
+      }
+    }
+
     const filterEntries = Object.entries(byFilter);
-    const filterChipsHtml = filterEntries.map(([name, row], i) => {
-      const colour = FILTER_COLOURS[i % FILTER_COLOURS.length];
+    const filterChipsHtml = filterEntries.map(([name, row]) => {
+      const colour = this._colours.get(name);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${name}: ${row?.count ?? 0}</span>
@@ -232,15 +275,15 @@ class NinaFrameStatsCard extends HTMLElement {
           <span style="font-size:1.3rem">📊</span>
           <div>
             <div class="title">Frame Statistics</div>
-            <div class="subtitle">${frameCount} frames · ${integration} h · ${lastFilter}</div>
+            <div class="subtitle">${lightCount} lights · ${integration} h · ${lastFilter}</div>
           </div>
         </div>
         <div class="body">
           ${!hasData ? `
             <div class="no-data">
               <div class="icon">🔭</div>
-              <div>Waiting for frames…</div>
-              <div style="font-size:0.72rem;margin-top:4px">Statistics will appear once N.I.N.A. saves an image</div>
+              <div>Waiting for lights…</div>
+              <div style="font-size:0.72rem;margin-top:4px">Statistics will appear once N.I.N.A. saves a light frame</div>
             </div>
           ` : `
             <!-- KPI row -->
@@ -252,7 +295,7 @@ class NinaFrameStatsCard extends HTMLElement {
               </div>
               <div class="stat-box">
                 <div class="label">Stars</div>
-                <div class="value">${shown(lastStars)}</div>
+                <div class="value">${lastStars}</div>
                 <div class="sub">Last frame</div>
               </div>
               <div class="stat-box">
@@ -272,7 +315,7 @@ class NinaFrameStatsCard extends HTMLElement {
               <div class="stat-box">
                 <div class="label">Session avg / best</div>
                 <div class="value" style="font-size:0.85rem">${parseFloat(sessionAvgHfr) ? parseFloat(sessionAvgHfr).toFixed(2) : "—"} / ${parseFloat(sessionBestHfr) ? parseFloat(sessionBestHfr).toFixed(2) : "—"} <span style="font-size:0.65rem;color:var(--muted)">px</span></div>
-                <div class="sub">${frameCount} frames total</div>
+                <div class="sub">${lightCount} lights</div>
               </div>
             </div>
 
@@ -310,14 +353,14 @@ class NinaFrameStatsCard extends HTMLElement {
 
     if (hasData) {
       requestAnimationFrame(() => {
-        this._drawSparkline("hfr-chart", this._hfr, this._filters, "#7b8de8", true);
-        this._drawSparkline("stars-chart", this._stars, this._filters, "#5bcfcf", false);
-        this._drawSparkline("adu-chart", this._adu, this._filters, "#f4a261", false);
+        this._drawSparkline("hfr-chart", this._hfr, "#7b8de8", true);
+        this._drawSparkline("stars-chart", this._stars, "#5bcfcf", false);
+        this._drawSparkline("adu-chart", this._adu, "#f4a261", false);
       });
     }
   }
 
-  _drawSparkline(canvasId, data, filters, defaultColor, showAvgLine) {
+  _drawSparkline(canvasId, data, defaultColor, showAvgLine) {
     const canvas = this.shadowRoot.getElementById(canvasId);
     if (!canvas) return;
 
@@ -383,18 +426,17 @@ class NinaFrameStatsCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Main line, coloured by filter. The name list is built once: it was
-    // rebuilt twice per segment, and a null filter — which a calibration frame
-    // pushes — used to index straight into a real filter's colour.
-    const names = [...new Set(filters.filter((name) => name !== null))];
+    // A frame with no filter — a rig without a wheel — takes the chart's own
+    // colour. It has no chip; in a night that mixes the two, that colour can
+    // coincide with the first few filters' chips.
+    const colourOf = (i) => this._colours.get(this._filters[i]) ?? defaultColor;
+
+    // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
       const y0 = yOf(data[i - 1]);
       const y1 = yOf(data[i]);
       if (y0 === null || y1 === null) continue;
-      const named = names.indexOf(filters[i]);
-      const col = named >= 0
-        ? FILTER_COLOURS[named % FILTER_COLOURS.length]
-        : defaultColor;
+      const col = colourOf(i);
       ctx.beginPath();
       ctx.moveTo(xOf(i - 1), y0);
       ctx.lineTo(xOf(i), y1);
@@ -428,9 +470,7 @@ class NinaFrameStatsCard extends HTMLElement {
       const y = yOf(data[i]);
       if (y === null) continue;
       const isLast = i === data.length - 1;
-      const col = filters.length > 0
-        ? FILTER_COLOURS[[...new Set(filters)].indexOf(filters[i]) % FILTER_COLOURS.length]
-        : defaultColor;
+      const col = colourOf(i);
       ctx.beginPath();
       ctx.arc(xOf(i), y, isLast ? 3.5 : 2, 0, Math.PI * 2);
       ctx.fillStyle = isLast ? col : col + "99";
