@@ -234,8 +234,11 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     for (const callback of pending) callback();
   };
 
-  const described = () =>
-    [...nodes].map(([id, node]) => describe(node, id)).join("\n");
-
-  return { log, element: () => defined, html: () => html, nodes: described, frame };
+  return {
+    log,
+    element: () => defined,
+    html: () => html,
+    nodes: () => [...nodes].map(([id, node]) => describe(node, id)).join("\n"),
+    frame,
+  };
 }

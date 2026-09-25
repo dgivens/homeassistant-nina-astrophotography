@@ -53,15 +53,20 @@ function slug(name) {
 
 // Home Assistant publishes "unknown" for no reading and "unavailable" for a
 // device that is not connected. Neither is a number to print.
-function shown(value) {
+function missing(value) {
   return value === null || value === undefined || value === ""
-    || value === "unknown" || value === "unavailable" ? "—" : value;
+    || value === "unknown" || value === "unavailable";
 }
 
-// The same test for a reading that is left out rather than dashed: a pill or a
-// header part that has nothing to say is not drawn at all.
+// A reading to print, dashed when there is none.
+function shown(value) {
+  return missing(value) ? "—" : value;
+}
+
+// A reading that is left out rather than dashed: a pill or a header part that
+// has nothing to say is not drawn at all.
 function known(value) {
-  return shown(value) === "—" ? null : value;
+  return missing(value) ? null : value;
 }
 
 // .NET writes NaN as the string "NaN", and an absent field is undefined.
@@ -346,21 +351,24 @@ class NinaImagePanelCard extends HTMLElement {
 
     // Subscribe to nina_image_save HA event for auto-refresh
     if (first && this._config.refresh_on_save && hass.connection) {
-      // Every configured rig fires this event, so a two-rig dashboard would
-      // otherwise refresh both panels off whichever rig saved a frame. The
-      // entry id is exact; the instance name is what is left when the rig did
-      // not resolve, and it matches only while `prefix:` is its slug.
       this._unsubHassEvent = hass.connection.subscribeEvents(
         (event) => {
-          const { entry_id: entryId, instance } = event?.data ?? {};
-          if (this._entryId ? entryId !== this._entryId
-              : instance && slug(instance) !== this._config.prefix) return;
+          if (!this._fromThisRig(event?.data ?? {})) return;
           this._currentIndex = 0;
           this._loadImage(0, true);
         },
         "nina_image_save"
       );
     }
+  }
+
+  // Every configured rig fires `nina_image_save`, so a two-rig dashboard would
+  // otherwise refresh both panels off whichever rig saved a frame. The entry id
+  // is exact; the instance name is what is left when the rig did not resolve,
+  // and it matches only while `prefix:` is its slug.
+  _fromThisRig({ entry_id: entryId, instance }) {
+    if (this._entryId) return entryId === this._entryId;
+    return !instance || slug(instance) === this._config.prefix;
   }
 
   disconnectedCallback() {
