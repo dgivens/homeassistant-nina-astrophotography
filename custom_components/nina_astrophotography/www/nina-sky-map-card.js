@@ -652,7 +652,7 @@ class NinaSkyMapCard extends HTMLElement {
     ctx.restore();  // end clip
 
     // ── Meridian flip warning label outside clip ───────────────────────
-    if (ttf < 15 && ttf > 0) {
+    if (ttf < 15 + firesAt && ttf > 0) {
       ctx.font      = `bold ${10 * dpr}px sans-serif`;
       ctx.fillStyle = "rgba(244,162,97,0.9)";
       ctx.textAlign = "center";

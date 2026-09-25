@@ -43,6 +43,14 @@ export const scenarios = {
     draw,
   },
 
+  // Twenty minutes out, inside the warning window of a profile whose flip can
+  // fire ten minutes before the countdown ends: the canvas warns. The reading is
+  // invented — the corpus never caught a mount this close to its flip.
+  flip_soon: {
+    hass: (dump) => rig(dump, "site_configured").override(FLIP, 20).build(),
+    draw,
+  },
+
   // The drivers down: no stars, no pointing, and the disconnected chip.
   mount_down: { hass: (dump) => rig(dump, "equipment_disconnected").build(), draw },
 };

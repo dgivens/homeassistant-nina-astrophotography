@@ -34,7 +34,8 @@ const UNITS = {
   "in/s": scaled("speed", 0.0254),
   "mm/s": scaled("speed", 0.001),
   "m/min": scaled("speed", 1 / 60),
-  // Core rounds to a whole force on the way in, so the way out is approximate.
+  // Core rounds to a whole force on the way in, so the way out is approximate:
+  // force 6 reads back as 12.3 m/s, though it spans 10.8 to 13.8.
   "Beaufort": {
     family: "speed",
     toBase: (force) => 0.836 * force ** 1.5,
@@ -82,7 +83,8 @@ export function convert(value, from, to) {
 
 /**
  * A difference between two readings, converted: a 3 °C margin is 5.4 °F, not
- * the 37.4 °F that converting it as a temperature gives.
+ * the 37.4 °F that converting it as a temperature gives. Meaningless on the
+ * Beaufort scale, which is not linear.
  */
 export function interval(delta, from, to) {
   const moved = convert(delta, from, to);
