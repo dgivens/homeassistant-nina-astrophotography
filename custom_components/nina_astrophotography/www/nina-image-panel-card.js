@@ -775,7 +775,7 @@ class NinaImagePanelCard extends HTMLElement {
     }
     if (hfr > 0) {
       const cls = hfr > 3 ? "warn" : "";
-      pills.push(`<span class="stat-pill ${cls}"><span class="dot"></span>HFR ${hfr.toFixed(2)}"</span>`);
+      pills.push(`<span class="stat-pill ${cls}"><span class="dot"></span>HFR ${hfr.toFixed(2)} px</span>`);
     }
     if (stars && stars !== "null" && parseInt(stars) > 0) {
       pills.push(`<span class="stat-pill"><span class="dot"></span>${stars} ★</span>`);
