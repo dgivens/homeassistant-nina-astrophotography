@@ -6,9 +6,9 @@
  * safe verdict — so the atmosphere cells, the wind rose and the banner all
  * render off captured data. `equipment_disconnected` has no weather device and
  * no monitor; its one weather entity is the hub's source, reading `unknown`,
- * which is what drives the not-connected panel. `nina_unreachable` is the
- * first rig once N.I.N.A. stops answering, where that same source reads
- * `unavailable`.
+ * which is what drives the not-connected panel. `nina_unreachable` is
+ * `site_configured` once N.I.N.A. stops answering, where that same source
+ * reads `unavailable`.
  *
  * Three channels this source reports as `"NaN"` have no entity anywhere in the
  * corpus: cloud cover, sky quality and star FWHM. Their cells therefore render
@@ -22,6 +22,7 @@ import { rig } from "../hass.mjs";
 const UP = "site_configured";
 const US = "site_configured_us_customary";
 const SAFETY = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
+const LINK = "binary_sensor.n_i_n_a_safety_monitor_connected";
 const TEMPERATURE = "sensor.n_i_n_a_weather_temperature";
 const HUMIDITY = "sensor.n_i_n_a_weather_humidity";
 
@@ -39,11 +40,12 @@ export const scenarios = {
   // the point is the id the card builds unaided.
   templated: { hass: (dump) => rig(dump, UP).unresolvable().build() },
 
-  // The pulsing banner. The verdict is invented: the monitor has reported safe
-  // in every capture, and a rig that is imaging by definition has not tripped
-  // it. Nothing else moves, so the conditions beneath still read as the benign
-  // ones that were captured — this scenario is for the banner, not for a night
-  // that would actually have closed the roof.
+  // The pulsing banner. The verdict is invented for this rig: `site_configured`
+  // is imaging, so its monitor has not tripped; the one capture reporting
+  // unsafe is `dawn_flats`, at dawn. Nothing else moves, so the conditions
+  // beneath still read as the benign ones that were captured — this scenario
+  // is for the banner, not for a night that would actually have closed the
+  // roof.
   unsafe: { hass: (dump) => rig(dump, UP).override(SAFETY, "on").build() },
 
   // The same verdict with the monitor's connectivity entity gone, which is what
@@ -75,10 +77,10 @@ export const scenarios = {
       rig(dump, UP).override(TEMPERATURE, 22.0).override(HUMIDITY, 91.0).build(),
   },
 
-  // Fog: the air down at its 20.5 °C dew point, so no margin is left to print.
-  // Invented as `dew` is, as a self-consistent pair: air at its dew point is
-  // saturated, 100%.
-  fog: {
+  // Air at its dew point under the captured clear sky; dew forming, no fog
+  // layer; safety verdict left as captured. Invented as `dew` is, as a
+  // self-consistent pair: air at its 20.5 °C dew point is saturated, 100%.
+  at_dew_point: {
     hass: (dump) =>
       rig(dump, UP).override(TEMPERATURE, 20.5).override(HUMIDITY, 100.0).build(),
   },
@@ -104,4 +106,16 @@ export const scenarios = {
   // entity unavailable, the hub's source included. Must not read as the
   // unconfigured rig above, nor advise connecting anything.
   unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+
+  // A live station with the monitor not yet seen since Home Assistant
+  // restarted. Fabricated: both monitor rows are Home Assistant's restored
+  // placeholder — `unavailable`, marked `restored` — over their own captured
+  // attributes. Must read as a monitor not connected, above live weather.
+  restored_monitor: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(LINK, "unavailable", { ...dump[UP].states[LINK].attributes, restored: true })
+        .override(SAFETY, "unavailable", { ...dump[UP].states[SAFETY].attributes, restored: true })
+        .build(),
+  },
 };

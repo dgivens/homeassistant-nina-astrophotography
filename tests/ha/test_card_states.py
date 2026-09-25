@@ -14,7 +14,7 @@ Regenerating is part of the snapshot commit, the same as `entity_ids.txt`.
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -32,10 +32,18 @@ SNAPSHOTS = Path(__file__).parent / "snapshots"
 DUMP = SNAPSHOTS / "card_states.json"
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 
-# Each dump: the rig state it is set up at, the conftest fixture that sets its
-# clock — `None` to leave the real one running — Home Assistant's unit system,
-# and the state the rig then moves to, if any.
-#
+
+class Dump(NamedTuple):
+    """How one dump is set up."""
+
+    rig_state: str
+    # The conftest fixture that sets the clock; `None` leaves the real one.
+    clock: str | None
+    units: UnitSystem
+    # A state the rig moves to after setup, for one setup cannot reach.
+    moved_to: str | None = None
+
+
 # `site_configured` rather than the `imaging_guiding` it derives from: it is the
 # same rig with every endpoint captured and the guider up, plus the observing
 # site, so it is a superset and a card that wants no site drops one entity.
@@ -55,17 +63,14 @@ DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 # entity as Home Assistant shows a coordinator that has lost its rig. Set up
 # first and then moved, because an entry that cannot reach N.I.N.A. at setup
 # creates no entity to dump.
-DUMPS: dict[str, tuple[str, str | None, UnitSystem, str | None]] = {
-    "site_configured": ("site_configured", None, METRIC_SYSTEM, None),
-    "equipment_disconnected": ("equipment_disconnected", None, METRIC_SYSTEM, None),
-    "dawn_flats": ("dawn_flats", "inside_the_dawn_session", METRIC_SYSTEM, None),
-    "site_configured_us_customary": (
-        "site_configured",
-        None,
-        US_CUSTOMARY_SYSTEM,
-        None,
+DUMPS: dict[str, Dump] = {
+    "site_configured": Dump("site_configured", None, METRIC_SYSTEM),
+    "equipment_disconnected": Dump("equipment_disconnected", None, METRIC_SYSTEM),
+    "dawn_flats": Dump("dawn_flats", "inside_the_dawn_session", METRIC_SYSTEM),
+    "site_configured_us_customary": Dump("site_configured", None, US_CUSTOMARY_SYSTEM),
+    "nina_unreachable": Dump(
+        "site_configured", None, METRIC_SYSTEM, moved_to="nina_unreachable"
     ),
-    "nina_unreachable": ("site_configured", None, METRIC_SYSTEM, "nina_unreachable"),
 }
 
 # Home Assistant mints these per run, so they are the one thing here that is not
@@ -164,11 +169,7 @@ def _hass_for_a_card(hass: HomeAssistant, entry) -> dict:
     }
 
 
-@pytest.mark.parametrize(
-    ("dump", "rig_state", "clock", "units", "then"),
-    [(name, *setup) for name, setup in DUMPS.items()],
-    ids=DUMPS,
-)
+@pytest.mark.parametrize(("dump", "setup"), DUMPS.items(), ids=DUMPS)
 async def test_the_card_harness_dump_is_current(
     hass: HomeAssistant,
     config_entry,
@@ -176,22 +177,19 @@ async def test_the_card_harness_dump_is_current(
     set_up_at,
     request: pytest.FixtureRequest,
     dump: str,
-    rig_state: str,
-    clock: str | None,
-    units: UnitSystem,
-    then: str | None,
+    setup: Dump,
 ) -> None:
     """One dump per run, merged into the committed file.
 
     Parametrized rather than looped because each state needs its own `hass`:
     a tier-polled endpoint latches at setup and will not be advanced on to.
     """
-    if clock:
-        request.getfixturevalue(clock)
-    hass.config.units = units
-    await set_up_at(hass, config_entry, rig, rig_state)
-    if then:
-        rig.goto(then)
+    if setup.clock:
+        request.getfixturevalue(setup.clock)
+    hass.config.units = setup.units
+    await set_up_at(hass, config_entry, rig, setup.rig_state)
+    if setup.moved_to:
+        rig.goto(setup.moved_to)
         await config_entry.runtime_data.coordinator.async_refresh()
         await hass.async_block_till_done()
 

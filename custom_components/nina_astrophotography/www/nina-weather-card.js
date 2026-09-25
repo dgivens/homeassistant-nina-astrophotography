@@ -65,6 +65,10 @@ const STYLE = `
   .safety-banner.unknown {
     background: rgba(255,255,255,0.04);
   }
+  .safety-banner.unreachable {
+    background: rgba(244,162,97,0.10);
+    border-bottom-color: rgba(244,162,97,0.30);
+  }
   @keyframes pulse-unsafe {
     0%,100%{ background: rgba(231,111,81,0.14); }
     50%    { background: rgba(231,111,81,0.22); }
@@ -75,6 +79,7 @@ const STYLE = `
   .safety-text .safe   { color: var(--success); }
   .safety-text .unsafe { color: var(--danger); }
   .safety-text .unknown{ color: var(--muted); }
+  .safety-text .unreachable { color: var(--warn); }
 
   /* ── Grid ── */
   .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
@@ -202,15 +207,14 @@ class NinaWeatherCard extends HTMLElement {
     const v = parseFloat(this._s(id));
     return isNaN(v) ? fb : v;
   }
-  _on(id) { return this._s(id) === "on"; }
   _q(id) { return quantity(this._hass, id); }
 
   _render() {
     if (!this._hass) return;
 
     // Safety monitor
-    const safetyLink = this._s(this._eid("binary_sensor", "safety_monitor_connected"));
-    const safetyConnected = safetyLink === "on";
+    const safetyLinkRow = this._hass.states?.[this._eid("binary_sensor", "safety_monitor_connected")];
+    const safetyConnected = safetyLinkRow?.state === "on";
     // The SAFETY device class is on = problem, so the entity is named for the
     // problem: it reads `on` when conditions are UNSAFE.
     //
@@ -227,11 +231,18 @@ class NinaWeatherCard extends HTMLElement {
     // because the name is that same state and printing `unavailable` as the
     // station's name is worse than printing nothing.
     const source = this._s(this._eid("sensor", "weather_source"));
-    // Only a lost link to N.I.N.A. makes either of these unavailable: the
-    // source hangs off the hub, which has no driver of its own to lose, and
-    // the monitor's connectivity stays available while the monitor is down.
-    // A station or monitor that is merely down reads `unknown` or `off`.
-    const unreachable = source === "unavailable" || safetyLink === "unavailable";
+    // A lost link to N.I.N.A. makes both of these unavailable: the source
+    // hangs off the hub, which has no driver of its own to lose, and the
+    // monitor's connectivity stays available while the monitor is down. A
+    // station or monitor that is merely down reads `unknown` or `off`.
+    //
+    // The exception is a row Home Assistant restored from the registry: until
+    // the rig reports a device, its rows are `unavailable` placeholders marked
+    // `restored`, so a monitor not yet seen since a restart is not a lost link.
+    // The source is created on every successful setup, so it is restored only
+    // when the entry failed to load — and then N.I.N.A. is unreachable.
+    const unreachable = source === "unavailable"
+      || (safetyLinkRow?.state === "unavailable" && !safetyLinkRow.attributes?.restored);
     const wxConnected = source !== null && !unreachable && source !== "unknown";
     // Every channel Home Assistant can convert is read with its unit: it is
     // printed in that unit, and converted only to meet a threshold here, which
@@ -266,33 +277,42 @@ class NinaWeatherCard extends HTMLElement {
     // read: that entity is diagnostic, so a user may disable it, and a disabled
     // entity has no state to read. Ordered the other way, hiding a diagnostic
     // would turn a monitor screaming UNSAFE into a grey "not connected".
-    let safetyIcon, safetyLabelCls, safetyLabel, safetyDetail, bannerCls;
+    let safetyIcon, safetyLabelCls, safetyLabel, safetyDetail;
     if (isUnsafe) {
       safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
       safetyLabel = "UNSAFE — conditions exceeded";
       safetyDetail = "Automated abort should be triggered if configured";
-      bannerCls = "safety-banner unsafe";
     } else if (unreachable) {
-      safetyIcon = "🔘"; safetyLabelCls = "unknown";
+      safetyIcon = "📡"; safetyLabelCls = "unreachable";
       safetyLabel = "N.I.N.A. unreachable";
-      safetyDetail = "Safety state unknown until Home Assistant reaches N.I.N.A. again";
-      bannerCls = "safety-banner unknown";
+      safetyDetail = "Safety state unknown — Home Assistant automations cannot see the monitor or command the rig";
     } else if (!safetyConnected) {
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor not connected";
       safetyDetail = "Connect a safety monitor in N.I.N.A. to enable automated abort";
-      bannerCls = "safety-banner unknown";
     } else if (!isSafe) {
       // Connected, but no reading yet — not the same thing as safe.
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor has no reading";
       safetyDetail = "The monitor is connected but has not reported yet";
-      bannerCls = "safety-banner unknown";
     } else {
       safetyIcon = "✅"; safetyLabelCls = "safe";
       safetyLabel = "Conditions safe";
       safetyDetail = "Safety monitor reports all conditions within limits";
-      bannerCls = "safety-banner safe";
+    }
+
+    let wxStatus, noReadings, noReadingsHint;
+    if (wxConnected) {
+      wxStatus = "Connected · N.I.N.A. weather station";
+    } else if (unreachable) {
+      wxStatus = "N.I.N.A. unreachable · weather station";
+      noReadings = "No weather readings";
+      noReadingsHint = "Home Assistant has no link to N.I.N.A.; readings resume when it returns.";
+    } else {
+      wxStatus = "Not connected · N.I.N.A. weather station";
+      noReadings = "No weather station connected";
+      noReadingsHint = `Connect an ASCOM ObservingConditions or weather driver in N.I.N.A.<br>
+              Compatible: OpenWeatherMap, Pegasus UPB, AAG CloudWatcher, ASCOM Alpaca, and others.`;
     }
 
     // Sky quality: Bortle-ish mapping (mag/arcsec²)
@@ -319,6 +339,13 @@ class NinaWeatherCard extends HTMLElement {
       cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
     const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
+    // The margin as printed: one that rounds to nothing reads as "at".
+    const shownMargin = dewThreat ? interval(dewMargin, "°C", temp.unit)?.toFixed(1) : null;
+    const atDewPoint = dewThreat && (dewMargin <= 0 || Number(shownMargin) === 0);
+    const dewWhere = atDewPoint
+      ? `air at its dew point (${withUnit(dewPt, 1)}); dew is forming`
+      : `temperature (${withUnit(temp, 1)}) within ${shownMargin} ${temp?.unit} of dew point (${withUnit(dewPt, 1)})`;
+
     const html = `
       <style>${STYLE}</style>
       <ha-card>
@@ -328,12 +355,12 @@ class NinaWeatherCard extends HTMLElement {
           </svg>
           <div>
             <div class="title">${wxName}</div>
-            <div class="sub">${wxConnected ? "Connected" : unreachable ? "Unreachable" : "Not connected"} · N.I.N.A. weather station</div>
+            <div class="sub">${wxStatus}</div>
           </div>
         </div>
 
         <!-- Safety banner -->
-        <div class="${bannerCls}">
+        <div class="safety-banner ${safetyLabelCls}">
           <div class="safety-icon">${safetyIcon}</div>
           <div class="safety-text">
             <div class="label ${safetyLabelCls}">${safetyLabel}</div>
@@ -341,23 +368,17 @@ class NinaWeatherCard extends HTMLElement {
           </div>
         </div>
 
-        ${unreachable ? `
+        ${!wxConnected ? `
           <div class="not-connected">
-            <div>No weather readings</div>
-            <div class="hint">Home Assistant cannot reach N.I.N.A.; readings return with the link.</div>
-          </div>
-        ` : !wxConnected ? `
-          <div class="not-connected">
-            <div>No weather station connected</div>
-            <div class="hint">Connect an ASCOM ObservingConditions or weather driver in N.I.N.A.<br>
-              Compatible: OpenWeatherMap, Pegasus UPB, AAG CloudWatcher, ASCOM Alpaca, and others.</div>
+            <div>${noReadings}</div>
+            <div class="hint">${noReadingsHint}</div>
           </div>
         ` : `
         <div class="body">
 
           ${dewThreat ? `
             <div class="dew-alert">
-              ⚠ Dew alert — temperature (${withUnit(temp, 1)}) ${dewMargin <= 0 ? "at or below" : `within ${interval(dewMargin, "°C", temp.unit)?.toFixed(1)} ${temp.unit} of`} dew point (${withUnit(dewPt, 1)})
+              ⚠ Dew alert — ${dewWhere}
             </div>
           ` : ""}
 
@@ -401,7 +422,7 @@ class NinaWeatherCard extends HTMLElement {
             ${qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null)}
             ${qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null)}
             ${cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > 3, seeing !== null && seeing > 5, seeing === null)}
-            ${skyB !== null ? qcell("✨", "Sky brightness", skyB, 2) : ""}
+            ${qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null)}
           </div>
 
           <!-- Sky quality -->
