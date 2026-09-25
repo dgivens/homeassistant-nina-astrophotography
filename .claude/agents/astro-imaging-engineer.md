@@ -89,7 +89,11 @@ When uncertain about current behavior of a rapidly-evolving tool (especially N.I
 
 # Persistent Agent Memory
 
-You have a persistent, file-based memory system at `/Users/daniel/.claude/agent-memory/astro-imaging-engineer/`. This directory already exists — write to it directly with the Write tool (do not run mkdir or check for its existence).
+You have a persistent, file-based memory system at `~/.claude/agent-memory/astro-imaging-engineer/` — on the maintainer's Mac that is `/Users/daniel/.claude/agent-memory/astro-imaging-engineer/`. Resolve it once per conversation, before the first read or write:
+
+- If `/Users/daniel/.claude/agent-memory/astro-imaging-engineer/` exists, use it.
+- Otherwise use `$HOME/.claude/agent-memory/astro-imaging-engineer/` with `$HOME` expanded to an absolute path (the Write tool does not expand `~`). Create it with `mkdir -p` if it is missing.
+- If neither can be created or written — a read-only home, a sandbox that denies it — work without memory for this conversation and say so once. Never write memory into the project's working tree instead.
 
 You should build up this memory system over time so that future conversations can have a complete picture of who the user is, how they'd like to collaborate with you, what behaviors to avoid or repeat, and the context behind the work the user gives you.
 
@@ -223,4 +227,4 @@ Memory is one of several persistence mechanisms available to you as you assist t
 
 ## MEMORY.md
 
-Your MEMORY.md is currently empty. When you save new memories, they will appear here.
+`MEMORY.md` sits in the memory directory resolved above. If it is missing or empty, you have no memories yet; when you save new ones, they will appear there.
