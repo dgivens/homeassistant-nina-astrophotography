@@ -58,6 +58,12 @@ function shown(value) {
     || value === "unknown" || value === "unavailable" ? "—" : value;
 }
 
+// The same test for a reading that is left out rather than dashed: a pill or a
+// header part that has nothing to say is not drawn at all.
+function known(value) {
+  return shown(value) === "—" ? null : value;
+}
+
 // .NET writes NaN as the string "NaN", and an absent field is undefined.
 function finite(value) {
   const number = typeof value === "number" ? value : parseFloat(value);
@@ -727,10 +733,13 @@ class NinaImagePanelCard extends HTMLElement {
     if (!overlay) return;
 
     const hfr    = this._f(this._eid("sensor", "last_image_hfr"));
-    const stars  = this._s(this._eid("sensor", "last_image_star_count"));
-    const filter = this._s(this._eid("sensor", "last_image_filter"));
-    const rms    = this._s(this._eid("sensor", "last_image_rms"));
-    const target = this._s(this._eid("sensor", "last_image_target"));
+    // `_s`'s fallback covers a missing entity only; `known` covers one that
+    // exists and reads `unknown` or `unavailable`, which would otherwise be
+    // drawn as a pill spelling the word.
+    const stars  = known(this._s(this._eid("sensor", "last_image_star_count")));
+    const filter = known(this._s(this._eid("sensor", "last_image_filter")));
+    const rms    = known(this._s(this._eid("sensor", "last_image_rms")));
+    const target = known(this._s(this._eid("sensor", "last_image_target")));
 
     const pills = [];
     if (filter && filter !== "null") {
@@ -783,7 +792,7 @@ class NinaImagePanelCard extends HTMLElement {
     const expBar = this.shadowRoot?.getElementById("exposing-bar");
     if (!badge) return;
 
-    const count   = this._s(this._eid("sensor", "session_image_count"), "0");
+    const count   = shown(this._s(this._eid("sensor", "session_image_count"), "0"));
     const intTime = this._f(this._eid("sensor", "session_integration_time"));
     const exposing = this._s(
       this._eid("binary_sensor", "camera_is_exposing", "camera_exposing")) === "on";
@@ -791,8 +800,8 @@ class NinaImagePanelCard extends HTMLElement {
     // publishing an off state.
     const cameraState = this._s(this._eid("sensor", "camera_state"));
     const connected = cameraState !== null && cameraState !== "unavailable";
-    const target = this._s(this._eid("sensor", "last_image_target"), "");
-    const filter = this._s(this._eid("sensor", "last_image_filter"), "");
+    const target = known(this._s(this._eid("sensor", "last_image_target")));
+    const filter = known(this._s(this._eid("sensor", "last_image_filter")));
     const index  = this._currentIndex;
 
     if (!connected) {
