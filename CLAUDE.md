@@ -282,8 +282,8 @@ Traps when changing a card:
   **missing**, not when it reads `unavailable` or `unknown` — so a down driver
   renders as the literal text `unavailable`, and `_f` turns it into `0`.
   `nina-observatory-card`'s `shown()` is the pattern, and every card now
-  follows it. The image panel's `_f` reads are safe only because each is shown
-  solely above zero.
+  follows it. The image panel's `_f` reads are safe only because it prints
+  each one solely above zero.
 - `tests/unit/test_cards.py`'s `LITERAL` matches a **backticked**
   `<domain>.<word>`, so prose like `` `select.filter` `` in a card comment fails
   the hardcoded-id test. Reword the comment; the test is right.

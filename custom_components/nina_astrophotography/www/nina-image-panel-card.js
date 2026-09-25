@@ -670,16 +670,17 @@ class NinaImagePanelCard extends HTMLElement {
     const canvas = this.shadowRoot?.getElementById("hist-canvas");
     if (!canvas) return;
 
-    // Min, Max and Median come from `recent_frames`; the sensor's own state
-    // is the mean alone, the one an operator watches for a saturated flat.
+    // All of it from the frame on screen, out of `recent_frames`. The mean-ADU
+    // sensor is no fallback: it holds the newest light's, and the frame on
+    // screen may be a flat.
     const frame = this._frame();
-    const mean = finite(frame.mean) ?? this._f(this._entityId());
+    const mean = finite(frame.mean);
     const min = finite(frame.min);
     const max = finite(frame.max);
     const median = finite(frame.median) ?? mean;
 
     const rangeEl = this.shadowRoot?.getElementById("hist-range");
-    if (min === null || max === null) {
+    if (mean === null || min === null || max === null) {
       if (rangeEl) rangeEl.textContent = "—";
       return;
     }
