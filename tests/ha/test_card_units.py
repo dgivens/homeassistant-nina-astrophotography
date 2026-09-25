@@ -7,10 +7,7 @@ sensors in has to come back to that unit as core would convert it.
 table would only prove itself right.
 """
 
-import json
 from pathlib import Path
-import shutil
-import subprocess
 
 from homeassistant.components.sensor.const import DEVICE_CLASS_UNITS, UNIT_CONVERTERS
 from homeassistant.const import UnitOfTemperature
@@ -21,12 +18,11 @@ from custom_components.nina_astrophotography.sensor import (
     DESCRIPTIONS,
     WEATHER_CHANNELS,
 )
+from helpers import needs_node, run_node
 
 DRIVER = Path(__file__).parent / "convert_units.mjs"
 
-pytestmark = pytest.mark.skipif(
-    shutil.which("node") is None, reason="needs node to run the shipped card module"
-)
+pytestmark = needs_node
 
 VALUES = (0.5, 3.0, 250.75)
 
@@ -43,20 +39,11 @@ CONVERTIBLE = sorted(
 )
 
 
-def _run(cases: list[list[str | float | None]], tmp_path: Path) -> list[float | None]:
-    payload = tmp_path / "cases.json"
-    payload.write_text(json.dumps(cases), encoding="utf-8")
-    return json.loads(
-        subprocess.run(
-            ["node", str(DRIVER), str(payload)],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-    )
+def _run(cases: list[list[str | float | None]]) -> list[float | None]:
+    return run_node(DRIVER, cases)
 
 
-def test_every_unit_core_can_show_converts_back_as_core_does(tmp_path: Path) -> None:
+def test_every_unit_core_can_show_converts_back_as_core_does() -> None:
     cases = [
         (device_class, value, str(unit), native)
         for device_class, native in CONVERTIBLE
@@ -64,8 +51,7 @@ def test_every_unit_core_can_show_converts_back_as_core_does(tmp_path: Path) -> 
         for value in VALUES
     ]
     converted = _run(
-        [["convert", value, unit, native] for _, value, unit, native in cases],
-        tmp_path,
+        [["convert", value, unit, native] for _, value, unit, native in cases]
     )
 
     assert converted == [
@@ -74,12 +60,9 @@ def test_every_unit_core_can_show_converts_back_as_core_does(tmp_path: Path) -> 
     ]
 
 
-def test_a_temperature_difference_converts_as_an_interval(tmp_path: Path) -> None:
+def test_a_temperature_difference_converts_as_an_interval() -> None:
     units = sorted(UnitOfTemperature, key=str)
-    shown = _run(
-        [["interval", 3.0, UnitOfTemperature.CELSIUS, unit] for unit in units],
-        tmp_path,
-    )
+    shown = _run([["interval", 3.0, UnitOfTemperature.CELSIUS, unit] for unit in units])
 
     assert shown == [
         pytest.approx(
@@ -89,9 +72,9 @@ def test_a_temperature_difference_converts_as_an_interval(tmp_path: Path) -> Non
     ]
 
 
-def test_units_that_measure_different_things_do_not_convert(tmp_path: Path) -> None:
+def test_units_that_measure_different_things_do_not_convert() -> None:
     cases: list[list[str | float | None]] = [
         ["convert", 3.0, "m/s", "mm/h"],
         ["convert", 3.0, "°C", "s"],
     ]
-    assert _run(cases, tmp_path) == [None] * len(cases)
+    assert _run(cases) == [None] * len(cases)

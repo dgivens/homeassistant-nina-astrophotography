@@ -10,10 +10,7 @@ filter are core's rather than this file's — which is what lets these tests pin
 the claim that a disabled entity can never resolve.
 """
 
-import json
 from pathlib import Path
-import shutil
-import subprocess
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -23,12 +20,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from cards import INSTANCE, lookups, resolving_cards
 from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
+from helpers import needs_node, run_node
 
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
-
-pytestmark = pytest.mark.skipif(
-    shutil.which("node") is None, reason="needs node to run the shipped card module"
-)
 
 
 async def _snapshot(hass: HomeAssistant, hass_ws_client) -> dict:
@@ -61,21 +55,12 @@ async def _snapshot(hass: HomeAssistant, hass_ws_client) -> dict:
 
 
 async def _resolve(
-    hass: HomeAssistant, snapshot: dict, tmp_path: Path, device_id: str | None = None
+    hass: HomeAssistant, snapshot: dict, device_id: str | None = None
 ) -> dict[str, str]:
     """`resolveEntities(hass, device_id)`, as the shipped module computes it."""
-
-    def _run() -> str:
-        payload = tmp_path / "registries.json"
-        payload.write_text(json.dumps(snapshot), encoding="utf-8")
-        return subprocess.run(
-            ["node", str(DRIVER), str(payload), device_id or ""],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-
-    return json.loads(await hass.async_add_executor_job(_run))
+    return await hass.async_add_executor_job(
+        run_node, DRIVER, snapshot, device_id or ""
+    )
 
 
 def _templated(domain: str, suffix: str, instance: str = INSTANCE) -> str:
@@ -138,6 +123,7 @@ def test_every_resolving_card_is_accounted_for() -> None:
     assert {card.name for card in RESOLVING} == set(CANNOT_RESOLVE)
 
 
+@needs_node
 @pytest.mark.parametrize("card", RESOLVING, ids=lambda p: p.name)
 async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     hass: HomeAssistant,
@@ -145,7 +131,6 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     nina_responses,
     rig,
     hass_ws_client,
-    tmp_path: Path,
     card: Path,
 ) -> None:
     """On a rig carrying the ids the committed list records, every resolved
@@ -157,7 +142,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     """
     await _set_up_guiding(hass, config_entry, rig)
 
-    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client), tmp_path)
+    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
     wrong = {
         f"{domain}.{key}": (resolved[f"{domain}.{key}"], _templated(domain, suffix))
@@ -169,6 +154,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     assert not wrong, f"resolved to a different entity than it templated: {wrong}"
 
 
+@needs_node
 @pytest.mark.parametrize("card", RESOLVING, ids=lambda p: p.name)
 async def test_only_the_entities_that_cannot_resolve_fall_back(
     hass: HomeAssistant,
@@ -176,7 +162,6 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
     nina_responses,
     rig,
     hass_ws_client,
-    tmp_path: Path,
     card: Path,
 ) -> None:
     """The companion to the test above, which would pass just as well if
@@ -187,7 +172,7 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
     """
     await _set_up_guiding(hass, config_entry, rig)
 
-    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client), tmp_path)
+    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
     fell_back = {
         (domain, key)
@@ -216,8 +201,9 @@ async def test_a_disabled_entity_is_absent_from_what_the_frontend_sees(
     assert progress not in snapshot["entities"]
 
 
+@needs_node
 async def test_two_rigs_resolve_nothing_until_one_is_named(
-    hass: HomeAssistant, config_entry, nina_responses, hass_ws_client, tmp_path: Path
+    hass: HomeAssistant, config_entry, nina_responses, hass_ws_client
 ) -> None:
     """Discovery is only unambiguous for one rig. Guessing between two would
     give a dashboard the wrong rig's readings, so the map is empty instead and
@@ -236,13 +222,14 @@ async def test_two_rigs_resolve_nothing_until_one_is_named(
     assert await hass.config_entries.async_setup(second.entry_id)
     await hass.async_block_till_done()
 
-    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client), tmp_path)
+    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
     assert resolved == {}
 
 
+@needs_node
 async def test_naming_a_child_device_resolves_its_whole_rig(
-    hass: HomeAssistant, config_entry, nina_responses, hass_ws_client, tmp_path: Path
+    hass: HomeAssistant, config_entry, nina_responses, hass_ws_client
 ) -> None:
     """`device_id` may name any one of a rig's devices, not just its hub — a
     device selector makes a child the likelier pick. Resolution has to cover the
@@ -268,7 +255,7 @@ async def test_naming_a_child_device_resolves_its_whole_rig(
     assert camera is not None
     snapshot = await _snapshot(hass, hass_ws_client)
 
-    resolved = await _resolve(hass, snapshot, tmp_path, device_id=camera.id)
+    resolved = await _resolve(hass, snapshot, device_id=camera.id)
 
     rig = {config_entry.entry_id} | {
         device.id
@@ -282,8 +269,9 @@ async def test_naming_a_child_device_resolves_its_whole_rig(
     assert "sensor.sequence_target" in resolved
 
 
+@needs_node
 async def test_renaming_a_device_does_not_break_resolution(
-    hass: HomeAssistant, loaded_entry, hass_ws_client, tmp_path: Path
+    hass: HomeAssistant, loaded_entry, hass_ws_client
 ) -> None:
     """A renamed entity id is what a prefix-built lookup cannot survive. The
     `translation_key` the resolver keys on is untouched by the rename.
@@ -294,6 +282,6 @@ async def test_renaming_a_device_does_not_break_resolution(
     )
     await hass.async_block_till_done()
 
-    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client), tmp_path)
+    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
     assert resolved["sensor.mount_right_ascension"] == renamed.entity_id
