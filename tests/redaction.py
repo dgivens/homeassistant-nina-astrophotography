@@ -126,6 +126,12 @@ PROFILE_ALLOWLIST: tuple[str, ...] = (
     "FocuserSettings.RSquaredThreshold",
     "MeridianFlipSettings",
     "CameraSettings.PixelSize",
+    # The observing site, which is where the rig is rather than where Home
+    # Assistant is — the two differ for a hosted rig. Named field by field
+    # because the section also holds `HorizonFilePath`.
+    "AstrometrySettings.Latitude",
+    "AstrometrySettings.Longitude",
+    "AstrometrySettings.Elevation",
 )
 
 

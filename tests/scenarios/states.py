@@ -161,6 +161,18 @@ def _with_readings(state: State, device: str, **readings: Any) -> State:
     return _replace_device(state, device, {**block, **readings})
 
 
+def _with_site(state: State, **settings: float) -> State:
+    """A copy of `state` whose profile reports an observing site.
+
+    `AstrometrySettings` is newer in the capture allowlist than the corpus is
+    (§8.3), so no committed projection carries a site and the mapper reads none.
+    A re-capture replaces this in place.
+    """
+    envelope = state["/profile/show?active=true"]
+    response = {**envelope["Response"], "AstrometrySettings": settings}
+    return {**state, "/profile/show?active=true": {**envelope, "Response": response}}
+
+
 def _dimmable(channel: dict) -> dict:
     """A captured binary channel widened to a 0-100 range.
 
@@ -490,6 +502,11 @@ STATES: dict[str, State] = {
             "imaging_guiding_last_af.json", r_squared=0.42
         ),
     },
+    # The observing site N.I.N.A. is configured for, which is what a sky chart
+    # is projected from. Synthetic in `AstrometrySettings` alone.
+    "site_configured": _with_site(
+        _IMAGING_GUIDING, Latitude=31.5478, Longitude=-110.2977, Elevation=1509
+    ),
     "guider_lost_lock": _with_readings(_IMAGING_GUIDING, "Guider", State="LostLock"),
     "guider_stopped": _with_readings(_IMAGING_GUIDING, "Guider", State="Stopped"),
     # A camera with no cooling, which reports the setpoint as "NaN" and so

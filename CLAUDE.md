@@ -37,6 +37,10 @@ collection; always name the suite.
 "recursive dependency involving fixture 'caplog'" — which reads like a broken
 test rather than a bad flag.
 
+**The Bash sandbox blocks all network.** `scripts/capture_fixtures.py` and any
+other rig request need `dangerouslyDisableSandbox` — and then Tailscale up, or
+the host times out rather than refusing.
+
 Dependencies and pytest config live in `pyproject.toml`; there is no
 `requirements*.txt` and no `pytest.ini`. Groups: `test` (lean, HA-free),
 `test-ha` (`pytest-homeassistant-custom-component`, pinned — add with
@@ -81,10 +85,14 @@ custom_components/nina_astrophotography/
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
-  www/                6 Lovelace cards; each builds its entity ids from a
-                      configured instance prefix. `frontend.py` serves them
-                      and self-registers each as a Lovelace resource —
-                      nothing for a user to copy into `/config/www/`
+  www/                6 Lovelace cards, plus `nina-entity-resolver.js`, which
+                      is not one. A converted card resolves its entity ids from
+                      the registry by `translation_key` and keeps the configured
+                      instance prefix only as a per-entity fallback; the rest
+                      still template the prefix. `frontend.py` serves them and
+                      self-registers each as a Lovelace resource — nothing for a
+                      user to copy into `/config/www/`. Render them with
+                      `tools/card-harness/`
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
@@ -132,7 +140,13 @@ disk proves nothing.
 
 - `main` — the shipping line, at 1.4.5 until 2.0 merges
 - `v2` — the 2.0 integration branch. Stack PRs only when one builds on
-  another's diff (stack #17); independent fixes are plain PRs onto `v2`. **Every `gh stack` command needs `GH_REPO=<your fork>` and
+  another's diff (stack #17); independent fixes are plain PRs onto `v2`.
+  **Create one with `gh stack init --base v2 <bottom> <top>`, then `gh stack
+  submit --auto --remote origin`** — `gh pr create --base <branch>` chains the
+  bases but GitHub tracks no stack, so a bottom-up merge strands the upper PR on
+  a deleted branch. Adopting already-open PRs after the fact is safe and edits
+  neither; `--remote` is a flag on `submit`, not on `init`.
+  **Every `gh stack` command needs `GH_REPO=<your fork>` and
   `--remote origin`**: it auto-detects `upstream` and will try to create
   duplicate PRs there. `gh repo set-default` covers `gh pr`, not `gh stack`.
   One branch per task, `v2-<phase><NN>-<slug>`; each phase ends with a
@@ -207,6 +221,49 @@ stores under `__snapshots__/`, PHACC winning under `snapshots/`, so an unpinned
 corpus recorded on one host is invisible on the next: every read misses, and the
 same snapshots are reported both "does not exist" and "unused". Keep the
 conftest fixture, which outranks both plugins.
+
+### The Lovelace cards: neither suite renders one
+
+Both suites read the cards **as text** — `tests/unit/test_cards.py` checks the
+entity names they use, and `tests/ha/test_entity_resolver.py` runs only
+`nina-entity-resolver.js`, under node. Nothing below `setConfig`/`set hass`
+executes in CI: the shadow DOM, the canvases, and every branch deciding what to
+draw are reached by no test. Do not report a card change as verified on a green
+suite; say which of the two things below you actually ran.
+
+`tools/card-harness/` (its README has the commands) is how you reach them:
+
+- **`ops.mjs`** — runs a card under node against a stub DOM and a canvas that
+  logs every call. Record before a change and after; an unmoved log says the
+  change was a refactor, and the diff is what it altered. Use it on **every**
+  card refactor — it is what proves an entity-resolution conversion changed no
+  drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
+  twinkle stars and pulse the meridian.
+- **`render.html`** — the cards side by side in a real browser, over
+  `python3 -m http.server` from the repo root (`file://` refuses their ES
+  imports). Screenshot it with the Playwright MCP tools and **look at it**: this
+  is the only check that covers layout, fonts and the canvas for real. Playwright
+  can only write under the repo, so it lands in the git-ignored
+  `.playwright-mcp/`; the page title carries an error count, and the console
+  usually holds one 404 for `favicon.ico`, which is nothing.
+
+Both drive `tests/ha/snapshots/card_states.json` — the whole `hass` a card is
+handed (`states`, `entities`, `devices`), regenerated by
+`tests/ha/test_card_states.py` with the other snapshots, in its own commit.
+**Scenarios subtract from that rig; they do not invent readings.** Hand-written
+card data has the same defect as a hand-written fixture: it encodes what you
+assumed, so the card only proves itself right.
+
+Two traps when changing a card:
+
+- A card's `_s`/`_f`/`_state` fallback applies only when the entity is
+  **missing**, not when it reads `unavailable` or `unknown` — so a down driver
+  renders as the literal text `unavailable`, and `_f` turns it into `0`.
+  `nina-observatory-card`'s `shown()` is the pattern; image-panel, frame-stats
+  and autofocus still get it wrong.
+- `tests/unit/test_cards.py`'s `LITERAL` matches a **backticked**
+  `<domain>.<word>`, so prose like `` `select.filter` `` in a card comment fails
+  the hardcoded-id test. Reword the comment; the test is right.
 
 ### Keep tests tightly scoped
 
@@ -288,9 +345,12 @@ not a regression.
 
 `/profile/show` is captured as an **allowlist projection** — only
 `TelescopeSettings.FocalLength`, `FocuserSettings.{AutoFocusTimeoutSeconds,
-RSquaredThreshold}`, `MeridianFlipSettings.*` and `CameraSettings.PixelSize`.
-Never denylist it: its secret surface is too large to redact confidently, and it
-held a live `WeatherUndergroundAPIKey` on a trial capture.
+RSquaredThreshold}`, `MeridianFlipSettings.*`, `CameraSettings.PixelSize` and
+`AstrometrySettings.{Latitude,Longitude,Elevation}` (field by field: the section
+also holds `HorizonFilePath`). Never denylist it: its secret surface is too large
+to redact confidently, and it held a live `WeatherUndergroundAPIKey` on a trial
+capture. The committed corpus predates the astrometry fields, so no profile
+fixture carries a site until a re-capture.
 
 The corpus needs **states**, not one snapshot — imaging, dawn flats (calibration
 sentinels), before the first sub, equipment disconnected, sequence complete,

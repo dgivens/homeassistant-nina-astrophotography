@@ -426,6 +426,21 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         kind=None,
         value=_weather_source,
     ),
+    NinaSensorDescription(
+        key="site_latitude",
+        translation_key="site_latitude",
+        native_unit_of_measurement=DEGREE,
+        suggested_display_precision=4,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        # Enabled, unlike most diagnostics: `nina-sky-map-card` projects the
+        # star field from it, and a disabled entity is absent from the registry
+        # payload a dashboard receives, so a card can never resolve one.
+        #
+        # No `state_class`: the site does not move, and long-term statistics
+        # over a constant are just rows.
+        kind=None,
+        value=lambda data: data.profile.site_latitude,
+    ),
 )
 
 

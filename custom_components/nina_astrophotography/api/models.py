@@ -658,3 +658,14 @@ class ProfileSettings:
     min_minutes_after_meridian: float | None
     max_minutes_after_meridian: float | None
     use_side_of_pier: bool | None
+    site_latitude: float | None
+    """Degrees north. Where the RIG is, which for a hosted rig is not where Home
+    Assistant is — and a sky chart drawn at the wrong latitude is the wrong sky.
+
+    N.I.N.A.'s own configured site rather than the mount's `SiteLatitude`: this
+    is readable with the mount disconnected, and some drivers report 0.
+    """
+    site_longitude: float | None
+    """Degrees east."""
+    site_elevation: float | None
+    """Metres."""

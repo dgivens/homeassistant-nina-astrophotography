@@ -178,6 +178,14 @@ def test_profile_projection_keeps_only_the_allowlist() -> None:
             "UseSideOfPier": True,
         },
         "WeatherSettings": {"WeatherUndergroundAPIKey": "live"},
+        # The site is kept and the path beside it is not, which is why this
+        # section is allowlisted field by field rather than whole.
+        "AstrometrySettings": {
+            "Latitude": 31.5478,
+            "Longitude": -110.2977,
+            "Elevation": 1509,
+            "HorizonFilePath": "C:\\Users\\rig\\horizon.hrz",
+        },
     }
     assert project(profile, PROFILE_ALLOWLIST) == {
         "TelescopeSettings": {"FocalLength": 500},
@@ -187,5 +195,10 @@ def test_profile_projection_keeps_only_the_allowlist() -> None:
             "MinutesAfterMeridian": 5,
             "MaxMinutesAfterMeridian": 15,
             "UseSideOfPier": True,
+        },
+        "AstrometrySettings": {
+            "Latitude": 31.5478,
+            "Longitude": -110.2977,
+            "Elevation": 1509,
         },
     }

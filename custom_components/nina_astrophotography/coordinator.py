@@ -112,6 +112,9 @@ _NO_PROFILE = ProfileSettings(
     min_minutes_after_meridian=None,
     max_minutes_after_meridian=None,
     use_side_of_pier=None,
+    site_latitude=None,
+    site_longitude=None,
+    site_elevation=None,
 )
 
 

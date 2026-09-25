@@ -353,6 +353,9 @@
       "session_worst_hfr": {
         "name": "Session worst HFR"
       },
+      "site_latitude": {
+        "name": "Site latitude"
+      },
       "sky_brightness": {
         "name": "Sky brightness"
       },

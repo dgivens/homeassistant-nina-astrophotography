@@ -44,6 +44,15 @@ INVOCATION = re.compile(r"\._eid\(")
 INSTANCE = "n_i_n_a"
 
 
+def resolving_cards() -> list[Path]:
+    """The cards that name entities through the registry rather than a prefix."""
+    return [
+        card
+        for card in sorted(WWW_DIR.glob("*.js"))
+        if INVOCATION.search(card.read_text(encoding="utf-8"))
+    ]
+
+
 def lookups(card: Path) -> list[tuple[str, str, str]]:
     """Every registry lookup in one card as `(domain, key, suffix)`.
 

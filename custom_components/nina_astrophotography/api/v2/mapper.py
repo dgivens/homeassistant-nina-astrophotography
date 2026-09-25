@@ -941,4 +941,7 @@ def map_profile(wire: dict) -> ProfileSettings:
             wire, "MeridianFlipSettings", "MaxMinutesAfterMeridian"
         ),
         use_side_of_pier=_flag(wire, "MeridianFlipSettings", "UseSideOfPier"),
+        site_latitude=_number(wire, "AstrometrySettings", "Latitude"),
+        site_longitude=_number(wire, "AstrometrySettings", "Longitude"),
+        site_elevation=_number(wire, "AstrometrySettings", "Elevation"),
     )
