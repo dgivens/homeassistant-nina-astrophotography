@@ -14,8 +14,6 @@ Regenerating is part of the snapshot commit, the same as `entity_ids.txt`.
 
 import json
 from pathlib import Path
-import shutil
-import subprocess
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -28,6 +26,7 @@ from homeassistant.util.unit_system import (
 import pytest
 
 from custom_components.nina_astrophotography.const import DOMAIN
+from helpers import needs_node, run_node
 
 SNAPSHOTS = Path(__file__).parent / "snapshots"
 DUMP = SNAPSHOTS / "card_states.json"
@@ -195,26 +194,15 @@ async def test_the_card_harness_dump_is_current(
     pytest.fail(f"card_states.json regenerated for {dump} — review and commit it")
 
 
-@pytest.mark.skipif(
-    shutil.which("node") is None, reason="needs node to run the shipped card module"
-)
+@needs_node
 @pytest.mark.parametrize("dump", DUMPS)
-def test_every_keyed_entity_in_the_dump_resolves(dump: str, tmp_path: Path) -> None:
+def test_every_keyed_entity_in_the_dump_resolves(dump: str) -> None:
     """The harness checks a conversion by rendering a card off resolved ids and
     again off templated ones. A dump whose registry resolved nothing would make
     both the fallback, and that comparison would pass while proving nothing.
     """
     state = json.loads(DUMP.read_text(encoding="utf-8"))[dump]
-    payload = tmp_path / "hass.json"
-    payload.write_text(json.dumps(state), encoding="utf-8")
-    resolved = json.loads(
-        subprocess.run(
-            ["node", str(DRIVER), str(payload)],
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout
-    )
+    resolved = run_node(DRIVER, state)
     assert sorted(resolved.values()) == sorted(
         entity_id
         for entity_id, row in state["entities"].items()

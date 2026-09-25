@@ -4,18 +4,30 @@
 to raise; the first fragment found in the URL wins, so register the more
 specific fragment first. `default` covers everything else.
 
+`run_node` runs a shipped card module under node, through a driver script that
+reads its input from a JSON file and prints its result as JSON.
+
 Imports neither Home Assistant nor the integration at runtime, so both suites
 can use it.
 """
 
 import json
 from pathlib import Path
+import shutil
+import subprocess
+import tempfile
 from typing import TYPE_CHECKING, Any
+
+import pytest
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
+
+needs_node = pytest.mark.skipif(
+    shutil.which("node") is None, reason="needs node to run the shipped card module"
+)
 
 
 class FakeResponse:
@@ -135,3 +147,18 @@ def state_of(hass: HomeAssistant, entity_id: str) -> State:
     state = hass.states.get(entity_id)
     assert state is not None, f"{entity_id} has no state"
     return state
+
+
+def run_node(driver: Path, payload: Any, *args: str) -> Any:
+    """`node driver <payload.json> *args`, its stdout parsed as JSON."""
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "payload.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return json.loads(
+            subprocess.run(
+                ["node", str(driver), str(path), *args],
+                capture_output=True,
+                text=True,
+                check=True,
+            ).stdout
+        )
