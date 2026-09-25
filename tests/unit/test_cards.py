@@ -6,41 +6,40 @@ rather than going through the integration, so a renamed entity or a corrected
 path leaves them behind — which is how the image-history endpoint stayed broken
 in `nina-image-panel-card.js` for a release after it was fixed everywhere else.
 
-Source checks: there is no JavaScript test harness here, and adding one to pin
-a handful of string literals would cost more than it returns.
+Source checks only: these read the card files as text. A card names an entity
+either by templating its configured prefix onto a suffix, or by asking the
+registry for a `translation_key` (`_eid`); both are checked here against the
+committed entity list. `tests/ha/test_entity_resolver.py` covers the resolver
+itself, against a live registry.
 """
 
 from functools import cache
 import json
 from pathlib import Path
-import re
 
 import pytest
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
-WWW_DIR = ROOT / "custom_components" / "nina_astrophotography" / "www"
+from cards import (
+    COMPONENT,
+    INSTANCE,
+    INVOCATION,
+    LITERAL,
+    RESOLVED,
+    ROOT,
+    TEMPLATED,
+    WWW_DIR,
+    lookups,
+)
+
 CARDS = sorted(WWW_DIR.glob("*.js"))
 assert CARDS, "no cards found"
 
-DOMAINS = (
-    "sensor",
-    "binary_sensor",
-    "switch",
-    "light",
-    "number",
-    "select",
-    "button",
-    "image",
-    "event",
-)
-# A card builds its ids from the instance prefix it is configured with:
-# `sensor.${prefix}_mount_altitude`.
-TEMPLATED = re.compile(rf"(?:{'|'.join(DOMAINS)})\.\$\{{[\w.]+\}}_([a-z0-9_]+)\b")
-LITERAL = re.compile(rf"([\"'`])(?:{'|'.join(DOMAINS)})\.[a-z][a-z0-9_]*\1")
-
-# The instance name the registry snapshot was taken under, slugified.
-INSTANCE = "n_i_n_a"
+# Lookups that name an entity with no `translation_key` and so can only ever
+# take the prefix fallback. The guider switch is the guider device's one
+# function, so it takes that device's name (`name=None`) and has no key of its
+# own; the entity id is still what the suffix says.
+UNRESOLVABLE = {("switch", "guider")}
 
 # Entities the reference rig cannot produce, so the snapshot cannot carry them
 # (docs/2.0-renames.md): every dome entity, since nobody involved has the
@@ -85,6 +84,53 @@ def test_no_card_reads_an_entity_that_2_0_does_not_create(card: Path) -> None:
     unknown = {suffix for suffix in named if not _known(suffix)}
 
     assert not unknown, f"{card.name} reads removed entities: {sorted(unknown)}"
+
+
+@cache
+def _translation_keys(domain: str) -> frozenset[str]:
+    """Every `translation_key` this domain has a name for.
+
+    `en.json` rather than the descriptor tables: the weather channels come from
+    a factory that passes `translation_key=key`, so the tables hold no literal
+    for any of them. A key missing here has no name and no entity; a name no
+    descriptor uses is caught by the suffix half of the assertion instead.
+
+    Switch-device channels are absent either way — they take driver-supplied
+    names at runtime, so a card cannot resolve one.
+    """
+    names = json.loads(
+        (COMPONENT / "translations" / "en.json").read_text(encoding="utf-8")
+    )
+    return frozenset(names["entity"].get(domain, {}))
+
+
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
+def test_every_registry_lookup_is_one_this_suite_can_read(card: Path) -> None:
+    """A lookup built from anything but literals is checked by nothing: the
+    test below can only read the calls this regex matches.
+    """
+    source = card.read_text(encoding="utf-8")
+
+    assert len(RESOLVED.findall(source)) == len(INVOCATION.findall(source))
+
+
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
+def test_every_registry_lookup_names_a_real_key_and_a_real_entity(card: Path) -> None:
+    """Both halves of a lookup have to hold, and neither reports itself.
+
+    A wrong key resolves nothing and falls back to the prefix; a wrong suffix
+    makes that fallback name an entity which does not exist. Either way the card
+    reads blank with no error. They are easy to get out of step: the suffix is
+    the device name plus the entity name, and the key is neither.
+    """
+    wrong = []
+    for domain, key, suffix in lookups(card):
+        if key not in _translation_keys(domain) and (domain, key) not in UNRESOLVABLE:
+            wrong.append(f"{domain}.{key} is not a translation key")
+        if not _known(suffix):
+            wrong.append(f"{domain}.{INSTANCE}_{suffix} is not an entity")
+
+    assert not wrong, f"{card.name}: {wrong}"
 
 
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)

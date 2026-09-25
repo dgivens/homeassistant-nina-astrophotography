@@ -32,6 +32,12 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+      # `test_entity_resolver.py` runs a shipped Lovelace module under node.
+      # Pinned rather than left to the runner image, because those tests skip
+      # when node is missing — a green run over nothing.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - run: uv sync --group test-ha
       # No -n auto: pytest-socket is active under PHACC and the push path
       # creates tasks outside the test's control.

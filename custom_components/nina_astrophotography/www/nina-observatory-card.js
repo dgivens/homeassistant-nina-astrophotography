@@ -3,11 +3,14 @@
  * A custom Lovelace card providing a full astrophotography session dashboard.
  *
  * Ships with the integration and registers itself as a dashboard resource —
- * nothing to copy or add under Resources. Add the card to a dashboard:
+ * nothing to copy or add under Resources. One rig needs no configuration at
+ * all: the card finds its own equipment in the registry.
  *   type: custom:nina-observatory-card
- *   prefix: n_i_n_a     # the slugified instance name your entities carry
- *   device_id: abc123   # the rig the buttons act on; needed for two rigs
+ *   device_id: abc123   # which rig, for two or more; any one of its devices
+ *   prefix: n_i_n_a     # fallback only, for the entities that cannot resolve
  */
+
+import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
 
@@ -274,13 +277,15 @@ const STYLE = `
 
 // ─── Card class ──────────────────────────────────────────────────────────────
 
-// 2.0 entity ids carry the instance name, so the card is told the prefix
-// rather than guessing it: it is the instance name from the config flow,
-// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
-// renamed instance, or for the second rig.
+// The fallback path, not the primary one: entity ids normally come from the
+// registry (`_eid`), and the prefix is what an id is built from when a
+// particular entity cannot be resolved. It is the instance name from the config
+// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
+// instance, or for the second rig.
 //
-// Repeated in each card on purpose: the cards are copied into `www/` one file
-// at a time, and a shared module would break a card whose neighbour was missed.
+// Repeated in each card rather than imported: it is one literal, and `www/` is
+// served whole from the integration (`frontend.py`), so a card that needs real
+// shared code imports it instead — see `nina-entity-resolver.js`.
 const DEFAULT_PREFIX = "n_i_n_a";
 
 class NinaObservatoryCard extends HTMLElement {
@@ -292,11 +297,33 @@ class NinaObservatoryCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._prefix = this._config.prefix || DEFAULT_PREFIX;
+    // A new config may name a different rig: make the next `set hass` re-resolve.
+    this._resolved = {};
+    this._resolvedFrom = null;
   }
 
   set hass(hass) {
     this._hass = hass;
+    // The frontend replaces `hass.entities` only when the registry itself
+    // changes, so this walks it on a rename, not on every state tick.
+    // `hass.devices` needs no second memo key: every device change that alters
+    // the map arrives with an entity-registry change too.
+    if (hass.entities !== this._resolvedFrom) {
+      this._resolvedFrom = hass.entities;
+      this._resolved = resolveEntities(hass, this._config.device_id);
+    }
     this._render();
+  }
+
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
+  //
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key. The select keyed `filter` lives on the Filter
+  // Wheel device; `guider_rms_dec` is named "RMS declination".
+  _eid(domain, key, slug = key) {
+    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
 
   _callService(domain, service, data = {}) {
@@ -310,65 +337,70 @@ class NinaObservatoryCard extends HTMLElement {
   _render() {
     const h = this._hass;
     if (!h) return;
-    const prefix = this._prefix;
 
     // The sequencer and the camera answer different questions: a rig waiting
     // out a target's start window is running and taking nothing.
-    const seqRunning  = isOn(h, `binary_sensor.${prefix}_sequencer_running`);
-    const imaging     = isOn(h, `binary_sensor.${prefix}_imaging`);
-    const camConnected = available(h, `sensor.${prefix}_camera_state`);
-    const mntConnected = available(h, `sensor.${prefix}_mount_right_ascension`);
-    const focConnected = available(h, `number.${prefix}_focuser_position`);
-    const fwConnected  = available(h, `select.${prefix}_filter_wheel_filter`);
-    const gdrConnected = available(h, `sensor.${prefix}_guider_status`);
-    // The shutter-status sensor ships disabled, so the dome is probed on an
-    // entity that does not: without this the dome section never renders.
-    const domeConnected = available(h, `binary_sensor.${prefix}_dome_at_park`);
+    const seqRunning  = isOn(h, this._eid("binary_sensor", "sequencer_running"));
+    const imaging     = isOn(h, this._eid("binary_sensor", "imaging"));
+    const camConnected = available(h, this._eid("sensor", "camera_state"));
+    const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
+    const focConnected = available(h, this._eid("number", "focuser_position"));
+    const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
+    const gdrConnected = available(h, this._eid("sensor", "guider_status"));
+    // Every dome entity ships disabled (§5.3.1: spec-derived, no hardware to
+    // verify against) and a disabled entity has no state object, so the dome
+    // section stays hidden until a dome owner enables them — issue #93, whose
+    // fix is to probe the dome *device*. Resolution cannot help: disabled
+    // entities are absent from the registry payload.
+    const domeConnected = available(h, this._eid("binary_sensor", "dome_at_park"));
 
-    const guiding      = isOn(h, `switch.${prefix}_guider`);
-    const cooling      = isOn(h, `switch.${prefix}_camera_cooler`);
-    const parked       = isOn(h, `binary_sensor.${prefix}_mount_at_park`);
-    const tracking     = isTracking(h, `select.${prefix}_mount_tracking_rate`);
+    // No `translation_key`: the switch takes the guider device's own name, so
+    // it has nothing to resolve on and stays on the prefix path.
+    const guiding      = isOn(h, this._eid("switch", "guider"));
+    const cooling      = isOn(h, this._eid("switch", "camera_cooler"));
+    const parked       = isOn(h, this._eid("binary_sensor", "mount_at_park"));
+    const tracking     = isTracking(h, this._eid("select", "mount_tracking_rate"));
     // The shutter reports its own state; `Open` is the only one that is open.
-    // The sensor ships disabled, so this reads false unless it is enabled.
-    const domeOpen     = state(h, `sensor.${prefix}_dome_shutter_status`) === "Open";
+    // Disabled as well, so this reads false until enabled — see above.
+    const domeOpen     = state(h, this._eid("sensor", "dome_shutter_status")) === "Open";
 
-    const target       = state(h, `sensor.${prefix}_sequence_target`, "No target");
+    const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
     // would claim a count the rig never published, so the bar is omitted.
-    const progress     = parseFloat(state(h, `sensor.${prefix}_sequence_progress`, ""));
-    const frameCount   = state(h, `sensor.${prefix}_session_image_count`, "0");
+    const progress     = parseFloat(state(h, this._eid("sensor", "sequence_progress"), ""));
+    const frameCount   = state(h, this._eid("sensor", "session_image_count"), "0");
 
-    const camTemp      = numState(h, `sensor.${prefix}_camera_temperature`);
-    const camTargTemp  = numState(h, `number.${prefix}_camera_target_temperature`);
-    const coolerPwr    = numState(h, `sensor.${prefix}_camera_cooler_power`, 0);
-    const camGain      = shown(state(h, `sensor.${prefix}_camera_gain`));
-    const camFilter    = shown(state(h, `select.${prefix}_filter_wheel_filter`));
+    const camTemp      = numState(h, this._eid("sensor", "camera_temperature"));
+    const camTargTemp  = numState(h, this._eid("number", "camera_target_temperature"));
+    const coolerPwr    = numState(h, this._eid("sensor", "camera_cooler_power"), 0);
+    const camGain      = shown(state(h, this._eid("sensor", "camera_gain")));
+    const camFilter    = shown(state(h, this._eid("select", "filter", "filter_wheel_filter")));
 
-    const mntRa        = numState(h, `sensor.${prefix}_mount_right_ascension`, 4);
-    const mntDec       = numState(h, `sensor.${prefix}_mount_declination`, 3);
-    const mntAlt       = numState(h, `sensor.${prefix}_mount_altitude`, 1);
-    const mntAz        = numState(h, `sensor.${prefix}_mount_azimuth`, 1);
+    const mntRa        = numState(h, this._eid("sensor", "mount_right_ascension"), 4);
+    const mntDec       = numState(h, this._eid("sensor", "mount_declination"), 3);
+    const mntAlt       = numState(h, this._eid("sensor", "mount_altitude"), 1);
+    const mntAz        = numState(h, this._eid("sensor", "mount_azimuth"), 1);
     // The flip fires when the reading reaches (Max - Min), not zero, and both
     // bounds are per-profile — so the warning window is added to the offset
     // the sensor publishes rather than to a bare number.
-    const ttf          = parseFloat(state(h, `sensor.${prefix}_mount_time_to_meridian_flip`, ""));
-    const flipFiresAt  = parseFloat(
-      attr(h, `sensor.${prefix}_mount_time_to_meridian_flip`, "flip_fires_at_minutes", "")) || 0;
+    const flipId       = this._eid("sensor", "mount_time_to_meridian_flip");
+    const ttf          = parseFloat(state(h, flipId, ""));
+    const flipFiresAt  = parseFloat(attr(h, flipId, "flip_fires_at_minutes", "")) || 0;
 
-    const focPos       = shown(state(h, `number.${prefix}_focuser_position`));
-    const focTemp      = numState(h, `sensor.${prefix}_focuser_temperature`);
+    const focPos       = shown(state(h, this._eid("number", "focuser_position")));
+    const focTemp      = numState(h, this._eid("sensor", "focuser_temperature"));
 
     // NaN rather than 0 when there is no reading: a missing RMS rendered as
     // 0.00" is indistinguishable from perfect guiding.
-    const rmsTotal     = parseFloat(state(h, `sensor.${prefix}_guider_rms_total`, ""));
-    const rmsRa        = parseFloat(state(h, `sensor.${prefix}_guider_rms_ra`, ""));
-    const rmsDec       = parseFloat(state(h, `sensor.${prefix}_guider_rms_declination`, ""));
+    const rmsTotal     = parseFloat(state(h, this._eid("sensor", "guider_rms_total"), ""));
+    const rmsRa        = parseFloat(state(h, this._eid("sensor", "guider_rms_ra"), ""));
+    const rmsDec       = parseFloat(
+      state(h, this._eid("sensor", "guider_rms_dec", "guider_rms_declination"), ""));
     const guided       = Number.isFinite(rmsTotal);
 
-    const hfr          = numState(h, `sensor.${prefix}_last_image_hfr`, 2);
-    const stars        = shown(state(h, `sensor.${prefix}_last_image_star_count`));
-    const meanAdu      = shown(state(h, `sensor.${prefix}_last_image_mean_adu`));
+    const hfr          = numState(h, this._eid("sensor", "last_image_hfr"), 2);
+    const stars        = shown(state(h, this._eid("sensor", "last_image_star_count")));
+    const meanAdu      = shown(state(h, this._eid("sensor", "last_image_mean_adu")));
 
     // RMS bar widths (max = 4 arcsec = 100%)
     const rmsMax = 4;

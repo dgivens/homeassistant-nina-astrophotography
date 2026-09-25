@@ -99,8 +99,9 @@ const STYLE = `
 // slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
 // renamed instance, or for the second rig.
 //
-// Repeated in each card on purpose: the cards are copied into `www/` one file
-// at a time, and a shared module would break a card whose neighbour was missed.
+// Repeated in each card rather than imported: it is one literal, and `www/` is
+// served whole from the integration (`frontend.py`), so a card that needs real
+// shared code imports it instead — see `nina-entity-resolver.js`.
 const DEFAULT_PREFIX = "n_i_n_a";
 
 // Below 3% of the rolling mean the trend is noise. Relative, not absolute:
