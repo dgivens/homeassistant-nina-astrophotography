@@ -191,7 +191,8 @@ triggers:
     id: monitor_lost
   # N.I.N.A. itself unreachable — a crashed imaging PC, a dropped tunnel. Every
   # entity goes unavailable and no command can reach the rig, so there is
-  # nothing to abort WITH; this arm only tells someone.
+  # nothing to abort WITH; this arm only tells someone. A restored registry row
+  # reads `unavailable` too, which the conditions below tell apart.
   - trigger: state
     entity_id: !input safety_connected
     to: "unavailable"
@@ -209,6 +210,21 @@ conditions:
       {% set entry = config_entry_id(safety_unsafe) %}
       {% set rig = device_attr(nina_rig, 'config_entries') %}
       {{ entry is none or rig is not iterable or entry in rig | list }}
+  # A monitor the rig has not reported since the entry last loaded has no live
+  # entity, only a restored registry row — `unavailable`, `restored: true` —
+  # while N.I.N.A. answers — after a restart or reload with the monitor
+  # disconnected, or removed for good. Restored under a LOADED entry is that
+  # row; restored under an entry that failed to load is the rig unreachable.
+  # Up here, not inside the action's `if`: a failing condition in a branch
+  # ends only the branch, and the run would go on to park the mount.
+  - alias: "An unreachable rig is not a monitor this load has not seen"
+    condition: template
+    value_template: >
+      {% set entry = config_entry_id(trigger.entity_id) %}
+      {{ trigger.id != 'rig_unreachable'
+         or not trigger.to_state.attributes.get('restored', false)
+         or entry is none
+         or config_entry_attr(entry, 'state') != 'loaded' }}
 
 actions:
   - variables:
