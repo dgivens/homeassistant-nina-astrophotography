@@ -14,7 +14,8 @@
  * and a 122-frame session of 55 lights, with the dawn flats after them. All
  * twenty `recent_frames` are those flats, so the strip's six thumbnails are
  * flats and so is the frame the histogram describes, while the pills and the
- * stats row are the newest light's.
+ * stats row are the newest light's — so each thumbnail is tagged FLAT, and the
+ * pills and stats row are dimmed behind "Last light".
  *
  * `site_configured` is dumped on a later day than its night, so it has image
  * history but no session: a strip, no last-light readings, and the camera
@@ -60,6 +61,13 @@ export const scenarios = {
         .displayedIn("sensor.n_i_n_a_last_image_exposure", "min", 1 / 60)
         .displayedIn("sensor.n_i_n_a_session_integration_time", "min", 60)
         .build(),
+  },
+
+  // No strip and no histogram, which must still mark the pills over a flat:
+  // the frame on screen is read from the attribute, not from the strip.
+  bare: {
+    hass: (dump) => rig(dump, NIGHT).build(),
+    config: { show_strip: false, show_histogram: false },
   },
 
   // Exposing, with frames in the history but no light this session.
