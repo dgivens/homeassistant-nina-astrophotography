@@ -80,6 +80,13 @@ function finite(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+// A browser draws an image with no src, or a failed one, as its alt text and a
+// broken-image icon. Hidden, it is not announced either. Call before `src`.
+function hideUntilLoaded(img) {
+  img.style.visibility = "hidden";
+  img.onload = () => { img.style.visibility = ""; };
+}
+
 const STYLE = `
   :host {
     --bg:      var(--ha-card-background, var(--card-background-color, #12121e));
@@ -535,6 +542,8 @@ class NinaImagePanelCard extends HTMLElement {
       </ha-card>
     `;
 
+    hideUntilLoaded(this.shadowRoot.getElementById("main-img"));
+
     // Image click → fullscreen
     this.shadowRoot.getElementById("img-wrap").addEventListener("click", () => {
       if (this._hasImage) this._openModal().catch(() => {});
@@ -607,13 +616,13 @@ class NinaImagePanelCard extends HTMLElement {
   // ── Strip loading ─────────────────────────────────────────────────────
 
   async _loadStrip() {
-    const strip = this.shadowRoot?.getElementById("strip");
-    if (!strip) return;
-
     const count = this._config.strip_count;
     const recentFrames = this._recentFrames();
     this._historyMeta = recentFrames.slice(0, count);
     if (this._config.show_histogram) this._drawHistogram();
+
+    const strip = this.shadowRoot?.getElementById("strip");
+    if (!strip) return;
 
     // Bounded to what actually exists: `strip_count` thumbnails would each
     // cost a sign + proxy round trip for an index N.I.N.A. cannot serve. A
@@ -630,15 +639,13 @@ class NinaImagePanelCard extends HTMLElement {
 
       const img = document.createElement("img");
       img.alt = `Frame -${i}`;
-      // Hidden until it loads: a browser draws an image with no src, or a
-      // failed one, as its alt text. Hidden, it is not announced either.
-      img.style.visibility = "hidden";
-      img.onload = () => { img.style.visibility = ""; };
-      img.onerror = () => { thumb.style.opacity = "0.3"; };
+      const dim = () => { thumb.style.opacity = "0.3"; };
+      hideUntilLoaded(img);
+      img.onerror = dim;
       thumb.appendChild(img);
       this._signedUrl(this._imagePath(i, true))
         .then((url) => { img.src = url; })
-        .catch(() => { thumb.style.opacity = "0.3"; });
+        .catch(dim);
 
       // Filter label from the recent-frames metadata
       const filterName = this._historyMeta[i]?.filter ?? "";
@@ -679,30 +686,24 @@ class NinaImagePanelCard extends HTMLElement {
     const max = finite(frame.max);
     const median = finite(frame.median) ?? mean;
 
-    // The canvas keeps whatever it last drew, so a frame with no curve of its
-    // own must wipe the previous frame's.
-    const clear = () => canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-
-    const rangeEl = this.shadowRoot?.getElementById("hist-range");
-    if (mean === null || min === null || max === null) {
-      if (rangeEl) rangeEl.textContent = "—";
-      clear();
-      return;
-    }
-    if (rangeEl && max > 0) {
-      rangeEl.textContent = `${Math.round(min)} – ${Math.round(max)} (mean ${Math.round(mean)})`;
-    }
-
-    if (!max || max <= min) {
-      clear();
-      return;
-    }
-
+    // Sizing the canvas wipes it, so a frame with no curve leaves it empty.
     const W = canvas.offsetWidth || 300;
     const H = canvas.offsetHeight || 28;
     const dpr = window.devicePixelRatio || 1;
     canvas.width  = W * dpr;
     canvas.height = H * dpr;
+
+    const rangeEl = this.shadowRoot?.getElementById("hist-range");
+    if (mean === null || min === null || max === null || max <= 0) {
+      if (rangeEl) rangeEl.textContent = "—";
+      return;
+    }
+    if (rangeEl) {
+      rangeEl.textContent = `${Math.round(min)} – ${Math.round(max)} (mean ${Math.round(mean)})`;
+    }
+
+    if (max <= min) return;
+
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
 
@@ -876,6 +877,7 @@ class NinaImagePanelCard extends HTMLElement {
     const modalImg = this.shadowRoot?.getElementById("modal-img");
     if (!modal || !modalImg) return;
     // Full-quality version for the modal, signed fresh for this viewing.
+    hideUntilLoaded(modalImg);
     modalImg.src = await this._signedUrl(this._imagePath(this._currentIndex));
     modal.classList.add("open");
   }
