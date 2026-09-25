@@ -83,9 +83,13 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
 {
   hass: (dump) => rig(dump, "site_configured").without("site_latitude").build(),
   config: { prefix: "n_i_n_a" },   // optional, straight to setConfig
-  draw: (card) => card._drawFrame(),  // only for cards that draw on a frame
+  draw: (card) => card._drawFrame(),  // optional, see below
 }
 ```
 
-`draw` exists because a card that paints a canvas does it on an animation frame,
-which never fires under node.
+A card paints its canvas on an animation frame, which node never fires, so
+`ops.mjs` runs the ones the render queued. `draw` replaces that for a card the
+queued frames do not cover, which today is only the sky map: it paints from a
+loop started in `connectedCallback`, and nothing here attaches the element. A
+hook also *suppresses* the queued frames, so a card that stops queueing one
+still draws under its hook and the diff says nothing — prefer no hook.

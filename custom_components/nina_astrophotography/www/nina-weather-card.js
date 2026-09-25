@@ -6,8 +6,14 @@
  * connected in N.I.N.A. (OpenWeatherMap, Pegasus UPB, AAG CloudWatcher, etc.)
  *
  * Ships with the integration and registers itself as a dashboard resource —
- * nothing to copy or add under Resources. Add card:  type: custom:nina-weather-card
+ * nothing to copy or add under Resources. One rig needs no configuration at
+ * all: the card finds its own station in the registry.
+ *   type: custom:nina-weather-card
+ *   device_id: abc123      # which rig, for two or more; any one of its devices
+ *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
+
+import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
 
@@ -146,10 +152,11 @@ function degToCompass(deg) {
   return DEG_LABELS[Math.round(deg / 22.5) % 16];
 }
 
-// 2.0 entity ids carry the instance name, so the card is told the prefix
-// rather than guessing it: it is the instance name from the config flow,
-// slugified — `N.I.N.A.` by default. Set `prefix:` in the card config for a
-// renamed instance, or for the second rig.
+// The fallback path, not the primary one: entity ids normally come from the
+// registry (`_eid`), and the prefix is what an id is built from when a
+// particular entity cannot be resolved. It is the instance name from the config
+// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
+// instance, or for the second rig.
 //
 // Repeated in each card rather than imported: it is one literal, and `www/` is
 // served whole from the integration (`frontend.py`), so a card that needs real
@@ -165,11 +172,35 @@ class NinaWeatherCard extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
     this._prefix = this._config.prefix || DEFAULT_PREFIX;
+    // A new config may name a different rig: make the next `set hass` re-resolve.
+    this._resolved = {};
+    this._resolvedFrom = null;
   }
 
   set hass(hass) {
     this._hass = hass;
+    // The frontend replaces `hass.entities` only when the registry itself
+    // changes, so this walks it on a rename, not on every state tick.
+    // `hass.devices` needs no second memo key: every device change that alters
+    // the map arrives with an entity-registry change too.
+    if (hass.entities !== this._resolvedFrom) {
+      this._resolvedFrom = hass.entities;
+      this._resolved = resolveEntities(hass, this._config.device_id);
+    }
     this._render();
+  }
+
+  // The resolved entity id for a `translation_key`, falling back to a prefixed
+  // `slug` when there is nothing to resolve: an entity with no translation key,
+  // a disabled one, or a rig the resolver cannot identify.
+  //
+  // `slug` is the entity-id suffix — the device name plus the entity name — so
+  // it is not always the key, and on this card it almost never is: the weather
+  // device supplies the leading "weather" that the channel keys do not carry,
+  // and the monitor supplies "safety monitor". The source is the exception —
+  // it hangs off the hub, because it says which station is feeding the rest.
+  _eid(domain, key, slug = key) {
+    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
 
   _s(id, fb = null) {
@@ -184,17 +215,17 @@ class NinaWeatherCard extends HTMLElement {
 
   _render() {
     if (!this._hass) return;
-    const prefix = this._prefix;
 
     // Safety monitor
-    const safetyConnected = this._on(`binary_sensor.${prefix}_safety_monitor_connected`);
+    const safetyConnected = this._on(this._eid("binary_sensor", "safety_monitor_connected"));
     // The SAFETY device class is on = problem, so the entity is named for the
     // problem: it reads `on` when conditions are UNSAFE.
     //
     // Three states, not two. `unknown` is what the monitor reports before it
     // has a reading, and rendering that as "safe" is the trap this entity is
     // named to avoid — at the worst possible moment.
-    const unsafeState = this._s(`binary_sensor.${prefix}_safety_monitor_unsafe`);
+    const unsafeState = this._s(
+      this._eid("binary_sensor", "safety_unsafe", "safety_monitor_unsafe"));
     const isUnsafe = unsafeState === "on";
     const isSafe   = safetyConnected && unsafeState === "off";
 
@@ -202,50 +233,54 @@ class NinaWeatherCard extends HTMLElement {
     // disconnected device makes its entities unavailable instead. One read,
     // because the name is that same state and printing `unavailable` as the
     // station's name is worse than printing nothing.
-    const source = this._s(`sensor.${prefix}_weather_source`);
+    const source = this._s(this._eid("sensor", "weather_source"));
     const wxConnected = source !== null && source !== "unavailable"
       && source !== "unknown";
-    const temp    = this._f(`sensor.${prefix}_weather_temperature`);
-    const humid   = this._f(`sensor.${prefix}_weather_humidity`);
-    const dewPt   = this._f(`sensor.${prefix}_weather_dew_point`);
-    const windSpd = this._f(`sensor.${prefix}_weather_wind_speed`);
-    const windDir = this._f(`sensor.${prefix}_weather_wind_direction`);
-    const windGst = this._f(`sensor.${prefix}_weather_wind_gust`);
-    const press   = this._f(`sensor.${prefix}_weather_pressure`);
-    const cloud   = this._f(`sensor.${prefix}_weather_cloud_cover`);
-    const rain    = this._f(`sensor.${prefix}_weather_rain_rate`);
-    const skyQ    = this._f(`sensor.${prefix}_weather_sky_quality`);
-    const skyB    = this._f(`sensor.${prefix}_weather_sky_brightness`);
-    const skyT    = this._f(`sensor.${prefix}_weather_sky_temperature`);
-    const seeing  = this._f(`sensor.${prefix}_weather_star_fwhm`);
+    const temp    = this._f(this._eid("sensor", "temperature", "weather_temperature"));
+    const humid   = this._f(this._eid("sensor", "humidity", "weather_humidity"));
+    const dewPt   = this._f(this._eid("sensor", "dew_point", "weather_dew_point"));
+    const windSpd = this._f(this._eid("sensor", "wind_speed", "weather_wind_speed"));
+    const windDir = this._f(this._eid("sensor", "wind_direction", "weather_wind_direction"));
+    const windGst = this._f(this._eid("sensor", "wind_gust", "weather_wind_gust"));
+    const press   = this._f(this._eid("sensor", "pressure", "weather_pressure"));
+    const cloud   = this._f(this._eid("sensor", "cloud_cover", "weather_cloud_cover"));
+    const rain    = this._f(this._eid("sensor", "rain_rate", "weather_rain_rate"));
+    const skyQ    = this._f(this._eid("sensor", "sky_quality", "weather_sky_quality"));
+    const skyB    = this._f(this._eid("sensor", "sky_brightness", "weather_sky_brightness"));
+    const skyT    = this._f(this._eid("sensor", "sky_temperature", "weather_sky_temperature"));
+    const seeing  = this._f(this._eid("sensor", "star_fwhm", "weather_star_fwhm"));
     const wxName  = wxConnected ? source : "Weather station";
 
     // Dew threat: temp within 3°C of dew point
     const dewThreat = temp !== null && dewPt !== null && (temp - dewPt) < 3;
 
     // Safety banner content
+    // UNSAFE is tested first, and deliberately not behind the connectivity
+    // read: that entity is diagnostic, so a user may disable it, and a disabled
+    // entity has no state to read. Ordered the other way, hiding a diagnostic
+    // would turn a monitor screaming UNSAFE into a grey "not connected".
     let safetyIcon, safetyLabelCls, safetyLabel, safetyDetail, bannerCls;
-    if (!safetyConnected) {
+    if (isUnsafe) {
+      safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
+      safetyLabel = "UNSAFE — conditions exceeded";
+      safetyDetail = "Automated abort should be triggered if configured";
+      bannerCls = "safety-banner unsafe";
+    } else if (!safetyConnected) {
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor not connected";
       safetyDetail = "Connect a safety monitor in N.I.N.A. to enable automated abort";
       bannerCls = "safety-banner unknown";
-    } else if (!isUnsafe && !isSafe) {
+    } else if (!isSafe) {
       // Connected, but no reading yet — not the same thing as safe.
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor has no reading";
       safetyDetail = "The monitor is connected but has not reported yet";
       bannerCls = "safety-banner unknown";
-    } else if (isSafe) {
+    } else {
       safetyIcon = "✅"; safetyLabelCls = "safe";
       safetyLabel = "Conditions safe";
       safetyDetail = "Safety monitor reports all conditions within limits";
       bannerCls = "safety-banner safe";
-    } else {
-      safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
-      safetyLabel = "UNSAFE — conditions exceeded";
-      safetyDetail = "Automated abort should be triggered if configured";
-      bannerCls = "safety-banner unsafe";
     }
 
     // Sky quality: Bortle-ish mapping (mag/arcsec²)
