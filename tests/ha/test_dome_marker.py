@@ -8,7 +8,6 @@ The mapper half, which touches `api/v2/mapper.py` and nothing else, is
 
 import importlib
 
-from homeassistant.const import EntityCategory
 import pytest
 
 PLATFORMS = ("binary_sensor", "sensor", "number", "switch", "button")
@@ -32,13 +31,15 @@ def test_every_dome_descriptor_is_marked_unverified(module_name: str) -> None:
 
 
 @pytest.mark.parametrize("module_name", PLATFORMS, ids=PLATFORMS)
-def test_every_dome_entity_ships_diagnostic_and_disabled(module_name: str) -> None:
-    """Asserted on the descriptors: no capture observes a dome, so there is no
+def test_every_dome_entity_ships_primary_and_disabled(module_name: str) -> None:
+    """Untested is said by disabled and unverified, not by a category: the
+    controls sit with the readings that confirm them, as the mount's do.
+
+    Asserted on the descriptors: no capture observes a dome, so there is no
     registry row to read it off.
     """
     assert [
         d.key
         for d in _dome(module_name)
-        if d.entity_category is not EntityCategory.DIAGNOSTIC
-        or d.entity_registry_enabled_default
+        if d.entity_category is not None or d.entity_registry_enabled_default
     ] == []

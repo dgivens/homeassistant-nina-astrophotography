@@ -134,13 +134,13 @@ async def test_every_button_lands_on_the_device_its_entity_id_names(
     ]
 
 
-async def test_clearing_the_guider_calibration_ships_diagnostic(
+async def test_clearing_the_guider_calibration_ships_config(
     hass: HomeAssistant, loaded_entry, advance, entity_registry
 ) -> None:
-    """A remedy for a guider that will not lock, not a nightly control."""
+    """It resets part of the guider's setup, not a nightly control."""
     await advance("imaging_guiding")
     entry = entity_registry.async_get(CLEAR_CALIBRATION)
-    assert entry.entity_category is EntityCategory.DIAGNOSTIC
+    assert entry.entity_category is EntityCategory.CONFIG
 
 
 @pytest.mark.parametrize(
@@ -173,23 +173,3 @@ async def test_the_cut_buttons_are_not_registered(
     """
     await advance("imaging_guiding")
     assert _registered(entity_registry, loaded_entry, suffix) is None
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
-    assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []
-
-
-def test_every_dome_button_ships_diagnostic_and_disabled() -> None:
-    """Asserted on the descriptors: no capture observes a dome, so there is no
-    registry row to read it off.
-    """
-    assert [
-        d.key
-        for d in DESCRIPTIONS
-        if d.kind == "dome"
-        and (
-            d.entity_category is not EntityCategory.DIAGNOSTIC
-            or d.entity_registry_enabled_default
-        )
-    ] == []

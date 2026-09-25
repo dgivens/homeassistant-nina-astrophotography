@@ -226,7 +226,6 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
     NinaSwitchDescription(
         key="dome_following",
         translation_key="dome_following",
-        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,

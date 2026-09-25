@@ -752,7 +752,6 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         native_unit_of_measurement="arcsec",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        entity_category=EntityCategory.DIAGNOSTIC,
         kind="guider",
         value=read_field("guider", "rms_ra"),
     ),
@@ -762,7 +761,6 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         native_unit_of_measurement="arcsec",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
-        entity_category=EntityCategory.DIAGNOSTIC,
         kind="guider",
         value=read_field("guider", "rms_dec"),
     ),
@@ -831,7 +829,6 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
     NinaSensorDescription(
         key="dome_shutter_status",
         translation_key="dome_shutter_status",
-        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="dome",
         verified=False,
