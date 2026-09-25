@@ -13,20 +13,10 @@
  *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
 
+import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
-
-// The fallback path, not the primary one: entity ids normally come from the
-// registry (`_eid`), and the prefix is what an id is built from when a
-// particular entity cannot be resolved. It is the instance name from the config
-// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
-// instance, or for the second rig.
-//
-// Repeated in each card rather than imported: it is one literal, and `www/` is
-// served whole from the integration (`frontend.py`), so a card that needs real
-// shared code imports it instead — see `nina-entity-resolver.js`.
-const DEFAULT_PREFIX = "n_i_n_a";
 
 // How far the focuser temperature may drift from the run's before the card
 // says so. There is no right answer to publish here — it belongs to the
@@ -840,6 +830,18 @@ class NinaAutofocusCard extends HTMLElement {
   }
 
   getCardSize() { return 7; }
+
+  static getConfigForm() {
+    return configForm([
+      {
+        name: "temperature_delta",
+        label: "Temperature drift worth flagging",
+        helper: "How far the focuser temperature may move from the last run's before the card marks it.",
+        default: DEFAULT_TEMPERATURE_DELTA,
+        selector: { number: { min: 0.1, step: 0.1, mode: "box", unit_of_measurement: "°C" } },
+      },
+    ]);
+  }
 
   static getStubConfig() { return {}; }
 }

@@ -85,10 +85,13 @@ custom_components/nina_astrophotography/
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
-  www/                6 Lovelace cards, plus `nina-entity-resolver.js`, which
-                      is not one. Every card resolves its entity ids from the
-                      registry by `translation_key` and keeps the configured
-                      instance prefix only as a per-entity fallback.
+  www/                6 Lovelace cards, plus two modules they import, which
+                      are not cards: `nina-entity-resolver.js` and
+                      `nina-card-config.js` (the prefix and the visual
+                      editor's `getConfigForm()` schema). Every card resolves
+                      its entity ids from the registry by `translation_key`
+                      and keeps the configured instance prefix only as a
+                      per-entity fallback.
                       `frontend.py` serves them and self-registers each as a
                       Lovelace resource — nothing for a user to copy into
                       `/config/www/`. Render them with `tools/card-harness/`
@@ -245,8 +248,8 @@ suite; say which of the two things below you actually ran.
   card refactor — it is what proves an entity-resolution conversion changed no
   drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
   twinkle stars and pulse the meridian. A card pulled out of git imports
-  `./nina-entity-resolver.js` relatively, so copy that file beside the copy or
-  the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs` finds the dump relative to
+  `./nina-entity-resolver.js` and `./nina-card-config.js` relatively, so copy
+  both beside the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs` finds the dump relative to
   its own path, so run the shipped one.
 - **`render.html`** — the cards side by side in a real browser, over
   `python3 -m http.server` from the repo root (`file://` refuses their ES
@@ -293,6 +296,12 @@ Traps when changing a card:
   expression around it instead. A converted card also needs a `CANNOT_RESOLVE`
   entry in `tests/ha/test_entity_resolver.py` — an empty one if all of it
   resolves.
+- **A new config option needs a field in the card's `getConfigForm()`.**
+  `test_the_visual_editor_offers_exactly_the_options_the_card_reads` compares
+  the two by text. Give it a `default` there, which the form only displays, and
+  apply that default in `setConfig` with `??`, not by spreading the config over
+  a defaults object: a field cleared in the editor comes back present but
+  `undefined`, which a spread keeps.
 
 ### Keep tests tightly scoped
 

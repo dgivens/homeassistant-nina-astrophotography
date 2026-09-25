@@ -14,11 +14,13 @@
  * all: the card finds its own equipment in the registry.
  *   type: custom:nina-sky-map-card
  *   trail_length: 60    # how many historical positions to keep (default 60)
+ *   map_size: 320       # the map's width and height in px (default 320)
  *   device_id: abc123   # which rig, for two or more; any one of its devices
  *   latitude: 38.5      # deprecated: the rig reports its own site latitude
  *   prefix: n_i_n_a     # fallback only, for the entities that cannot resolve
  */
 
+import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "2.0.0";
@@ -192,17 +194,6 @@ const STYLE = `
 `;
 
 /* ── Card class ──────────────────────────────────────────────────────── */
-// The fallback path, not the primary one: entity ids normally come from the
-// registry (`_eid`), and the prefix is what an id is built from when a
-// particular entity cannot be resolved. It is the instance name from the config
-// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
-// instance, or for the second rig.
-//
-// Repeated in each card rather than imported: it is one literal, and `www/` is
-// served whole from the integration (`frontend.py`), so a card that needs real
-// shared code imports it instead — see `nina-entity-resolver.js`.
-const DEFAULT_PREFIX = "n_i_n_a";
-
 class NinaSkyMapCard extends HTMLElement {
   constructor() {
     super();
@@ -215,10 +206,12 @@ class NinaSkyMapCard extends HTMLElement {
   }
 
   setConfig(config) {
+    // Not spread over the defaults: a field cleared in the visual editor comes
+    // back present but `undefined`, which a spread would keep.
     this._config = {
-      trail_length: 60,
-      map_size: 320,
       ...config,
+      trail_length: config.trail_length ?? 60,
+      map_size: config.map_size ?? 320,
     };
     this._prefix = this._config.prefix || DEFAULT_PREFIX;
     // A new config may name a different rig: make the next `set hass` re-resolve.
@@ -677,6 +670,30 @@ class NinaSkyMapCard extends HTMLElement {
     ctx.ellipse(0, 0, R * 0.92, R * 0.18, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
+  }
+
+  static getConfigForm() {
+    return configForm([
+      {
+        name: "trail_length",
+        label: "Trail length",
+        helper: "How many past pointing positions to draw.",
+        default: 60,
+        selector: { number: { min: 0, mode: "box" } },
+      },
+      {
+        name: "map_size",
+        label: "Map size",
+        default: 320,
+        selector: { number: { min: 1, mode: "box", unit_of_measurement: "px" } },
+      },
+      {
+        name: "latitude",
+        label: "Latitude override",
+        helper: "Leave empty to use the site N.I.N.A. is configured for, then Home Assistant's location.",
+        selector: { number: { min: -90, max: 90, step: "any", mode: "box", unit_of_measurement: "°" } },
+      },
+    ]);
   }
 }
 

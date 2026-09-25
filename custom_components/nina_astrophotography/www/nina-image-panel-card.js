@@ -36,6 +36,7 @@
  *   strip_count: 6          # number of thumbnails in the recent strip (default 6)
  */
 
+import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { resolveEntities } from "./nina-entity-resolver.js";
 
 const VERSION = "3.0.0";
@@ -270,17 +271,6 @@ const STYLE = `
     display: flex; align-items: center; justify-content: center;
   }
 `;
-
-// The fallback path, not the primary one: entity ids normally come from the
-// registry (`_eid`), and the prefix is what an id is built from when a
-// particular entity cannot be resolved. It is the instance name from the config
-// flow, slugified — `N.I.N.A.` by default. Set `prefix:` for a renamed
-// instance, or for the second rig.
-//
-// Repeated in each card rather than imported: it is one literal, and `www/` is
-// served whole from the integration (`frontend.py`), so a card that needs real
-// shared code imports it instead — see `nina-entity-resolver.js`.
-const DEFAULT_PREFIX = "n_i_n_a";
 
 class NinaImagePanelCard extends HTMLElement {
   constructor() {
@@ -876,6 +866,38 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   getCardSize() { return 7; }
+
+  static getConfigForm() {
+    const toggle = { default: true, selector: { boolean: {} } };
+    return configForm([
+      {
+        name: "refresh_on_save",
+        label: "Refresh on save",
+        helper: "Load each frame as N.I.N.A. saves it.",
+        ...toggle,
+      },
+      {
+        name: "stretch",
+        label: "Auto-stretch",
+        helper: "Ask N.I.N.A. for a stretched preview rather than the linear frame.",
+        ...toggle,
+      },
+      { name: "show_histogram", label: "Show histogram", ...toggle },
+      { name: "show_strip", label: "Show recent frames", ...toggle },
+      {
+        name: "strip_count",
+        label: "Recent frames",
+        default: 6,
+        selector: { number: { min: 1, mode: "box" } },
+      },
+      {
+        name: "quality",
+        label: "JPEG quality",
+        default: 85,
+        selector: { number: { min: 1, max: 100, mode: "box" } },
+      },
+    ]);
+  }
 
   static getStubConfig() {
     return {};
