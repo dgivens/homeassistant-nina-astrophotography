@@ -259,9 +259,9 @@ class NinaWeatherCard extends HTMLElement {
     const skyB    = this._q(this._eid("sensor", "sky_brightness", "weather_sky_brightness"));
     const skyT    = this._q(this._eid("sensor", "sky_temperature", "weather_sky_temperature"));
     const seeing  = this._f(this._eid("sensor", "star_fwhm", "weather_star_fwhm"));
-    // A station is connected when it names itself or any channel has a
-    // reading: a down station makes its channels unavailable, and a restored
-    // row is always unavailable, so neither can pass for one.
+    // A station is connected when it names itself or any channel read above
+    // has a reading: a down station makes its channels unavailable, and a
+    // restored row is always unavailable, so neither can pass for one.
     const wxConnected = !unreachable && (sourceLive || [
       temp, humid, dewPt, windSpd, windDir, windGst, press, cloud, rain, skyQ, skyB, skyT, seeing,
     ].some((reading) => reading !== null));
@@ -347,11 +347,13 @@ class NinaWeatherCard extends HTMLElement {
     // The margin as printed: one that rounds to nothing reads as "at", and so
     // do two readings printed alike, whatever their unrounded margin.
     const shownMargin = dewThreat ? interval(dewMargin, "°C", temp.unit)?.toFixed(1) : null;
-    const atDewPoint = dewThreat && (dewMargin <= 0 || Number(shownMargin) === 0
-      || withUnit(temp, 1) === withUnit(dewPt, 1));
+    const tempShown = withUnit(temp, 1);
+    const dewShown = withUnit(dewPt, 1);
+    const atDewPoint = dewThreat
+      && (dewMargin <= 0 || Number(shownMargin) === 0 || tempShown === dewShown);
     const dewWhere = atDewPoint
-      ? `air at its dew point (${withUnit(dewPt, 1)}); dew is forming`
-      : `temperature (${withUnit(temp, 1)}) within ${shownMargin} ${temp?.unit} of dew point (${withUnit(dewPt, 1)})`;
+      ? `air at its dew point (${dewShown}); dew is forming`
+      : `temperature (${tempShown}) within ${shownMargin} ${temp?.unit} of dew point (${dewShown})`;
 
     const html = `
       <style>${STYLE}</style>
