@@ -92,7 +92,8 @@ export const scenarios = {
 
   // A one-shot-colour rig's wheel of dual-band and broadband filters, named as
   // its owner typed them. Only UV reads as a passband (L); the other four take
-  // the first four spare colours in slot order, so no two share one.
+  // spares in slot order, those that could pass for the wheel's G or H last,
+  // so no two share one.
   dual_band: {
     hass: (dump) =>
       relabelled(dump, {
@@ -101,8 +102,8 @@ export const scenarios = {
   },
 
   // Names the wheel does not list, as renaming a slot mid-session leaves the
-  // lights taken before it: each takes a colour hashed from its name, past
-  // the ones the wheel's slots use.
+  // lights taken before it: each takes a spare in name order, the least like
+  // the wheel's own passbands first.
   off_wheel: {
     hass: (dump) =>
       relabelled(dump, { B: "L-eNhance", L: "L-eXtreme" }, { wheel: false }).build(),

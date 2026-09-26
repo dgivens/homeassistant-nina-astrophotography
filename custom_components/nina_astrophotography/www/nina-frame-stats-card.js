@@ -34,9 +34,7 @@ const PASSBANDS = {
   Ha: "#ff6fa8", OIII: "#35cfd4", SII: "#c65cd6",
 };
 const ALIASES = [
-  // A slot that passes the whole visible band reads as luminance.
-  ["L", ["l", "lum", "lumi", "luminance", "luminence", "clear", "open", "empty",
-         "none", "uv"]],
+  ["L", ["l", "lum", "lumi", "luminance", "luminence"]],
   ["R", ["r", "red"]],
   ["G", ["g", "grn", "green"]],
   ["B", ["b", "blu", "blue"]],
@@ -47,39 +45,80 @@ const ALIASES = [
 const PASSBAND_OF = new Map(
   ALIASES.flatMap(([band, keys]) => keys.map((key) => [key, band])));
 
+// A slot that passes the whole visible band reads as luminance, but only
+// stands in for one: where the wheel also holds an L, the L keeps its hue.
+const STAND_INS = new Set(["clear", "open", "empty", "none", "uv"]);
+const UV_IR_CUT = /uvir|iruv|ircut|irblock/;
+
 // A slot is as often named for its maker as for its passband.
 const MAKERS = /\b(astrodon|astronomik|antlia|baader|chroma|idas|optolong|zwo)\b/g;
 
-// Case, a bandwidth or size, a maker and punctuation do not change the
+// Case, a bandwidth or size, a note, a maker and punctuation do not change the
 // passband: "Ha 3nm", "H-alpha", "Chroma Ha 5nm" and "HA" are one filter.
-function filterKey(name) {
+function stripped(name) {
   return String(name).toLowerCase()
     .replace(/\(.*?\)/g, "")
     .replace(/\d+([.,]\d+)?\s*(nm|mm)\b|\d+([.,]\d+)?\s*"/g, "")
-    .replace(MAKERS, "")
-    .replace(/[^\p{L}\p{N}]/gu, "");
+    .replace(MAKERS, "");
 }
 
-// The passband a name reads as, or null. A bare trailing number is read as a
-// bandwidth only where what is left is a passband — "Ha7", Astronomik's "L-2" —
-// so it never turns a dual-band name into one.
+function filterKey(name) {
+  return stripped(name).replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+// A bare trailing number is read as a bandwidth only where what is left is a
+// passband — "Ha7", Astronomik's "L-2" — so it never turns a dual-band name
+// into one.
+function lookup(key) {
+  const bare = key.replace(/\d+$/, "");
+  if (PASSBAND_OF.has(key)) return { band: PASSBAND_OF.get(key), standIn: false };
+  if (PASSBAND_OF.has(bare)) return { band: PASSBAND_OF.get(bare), standIn: false };
+  if (STAND_INS.has(key) || STAND_INS.has(bare) || UV_IR_CUT.test(key)) {
+    return { band: "L", standIn: true };
+  }
+  return null;
+}
+
+// The passband a name reads as, as `{band, standIn}`, or null. A name whose
+// last word is its only passband word reads as that one — "Deep-Sky R",
+// "Astrodon E-Series B", "Antlia 3nm Pro Ha" — but "L Pro" or "Ha OIII" do not.
 function passband(name) {
-  const key = filterKey(name);
-  return PASSBAND_OF.get(key) ?? PASSBAND_OF.get(key.replace(/\d+$/, ""))
-    ?? (/uvir|iruv|ircut|irblock/.test(key) ? "L" : null);
+  const whole = lookup(filterKey(name));
+  if (whole !== null) return whole;
+  const words = stripped(name).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const found = words.map(lookup);
+  const last = found[found.length - 1];
+  return last && found.filter(Boolean).length === 1 ? last : null;
 }
 
 // Any other filter. Eight, so that an 8-position wheel of filters matching no
 // passband still draws every slot apart. Chosen for perceptual distance from
 // each other and the passband hues on the card's background, weighing hue and
 // saturation over lightness since a thin line shows those most, with and
-// without a colour-vision deficiency; pastels near L's white are excluded.
-// Ordered most distinct first: a wheel's first slots are the ones that must
-// not look alike.
+// without a colour-vision deficiency, and none pale enough to pass for L's
+// white. Ordered most distinct first.
 const OTHER_COLOURS = [
-  "#ff6a00", "#e1da89", "#0db9f2", "#daff24",
-  "#24ffc8", "#da886c", "#9c6bff", "#ff00bf",
+  "#daff24", "#ff00bf", "#24ffc8", "#da886c",
+  "#0db9f2", "#ff6a00", "#e1da89", "#9c6bff",
 ];
+
+// The passband hues each spare could pass for on a thin line: CIEDE2000 below
+// 12 in normal vision, or below 7 under a colour-vision deficiency. On a wheel
+// that already draws some of them, a spare goes back by how many.
+const TWINS = new Map([
+  ["#ff00bf", [PASSBANDS.Ha, PASSBANDS.OIII, PASSBANDS.SII]],
+  ["#24ffc8", [PASSBANDS.OIII]],
+  ["#da886c", [PASSBANDS.R, PASSBANDS.G, PASSBANDS.Ha]],
+  ["#0db9f2", [PASSBANDS.B, PASSBANDS.OIII, PASSBANDS.SII]],
+  ["#ff6a00", [PASSBANDS.R]],
+  ["#e1da89", [PASSBANDS.G]],
+  ["#9c6bff", [PASSBANDS.B, PASSBANDS.SII]],
+]);
+
+function spares(drawn) {
+  const twins = (colour) => (TWINS.get(colour) ?? []).filter((hue) => drawn.has(hue)).length;
+  return [...OTHER_COLOURS].sort((a, b) => twins(a) - twins(b));
+}
 
 // A light with no filter name among named ones, which no chip uses.
 const NO_FILTER = "#8a909c";
@@ -92,42 +131,58 @@ function nameHash(text) {
 }
 
 // A wheel's names are whatever its owner typed — "HaOiii", "LPro" — so most
-// match no passband. Its slot list is the stable set: the first slot for each
-// passband takes that passband's hue, and every other slot, a "Clear" beside
-// an "L" included, takes the next colour in slot order, so no two chips look
-// alike while colours remain. A colour follows the slot, not the glass in it,
-// and changes only when the wheel is reconfigured.
+// match no passband. Its slot list is the stable set. A slot named for a
+// passband takes that passband's hue, then a stand-in such as "Clear" takes
+// L's if no slot is named L; every other slot, a second slot for a passband
+// included, takes the next spare in slot order, so no two chips look alike
+// while spares remain. A colour follows the slot, not the glass in it, and
+// once Home Assistant has seen the wheel it changes only when the wheel is
+// reconfigured.
 function wheelColours(slots) {
   const colours = new Map();
-  const claimed = new Set();
-  let next = 0;
-  for (const slot of slots) {
-    if (colours.has(slot)) continue;
-    const band = passband(slot);
-    if (band !== null && !claimed.has(band)) {
-      claimed.add(band);
-      colours.set(slot, PASSBANDS[band]);
-    } else {
-      colours.set(slot, OTHER_COLOURS[next++ % OTHER_COLOURS.length]);
+  const unique = [...new Set(slots)];
+  for (const standIns of [false, true]) {
+    for (const slot of unique) {
+      const match = passband(slot);
+      const hue = match && PASSBANDS[match.band];
+      if (match?.standIn === standIns && !colours.has(slot)
+          && ![...colours.values()].includes(hue)) {
+        colours.set(slot, hue);
+      }
     }
+  }
+  const order = spares(new Set(colours.values()));
+  let next = 0;
+  for (const slot of unique) {
+    if (!colours.has(slot)) colours.set(slot, order[next++ % order.length]);
   }
   return colours;
 }
 
-// A name the wheel does not list — a slot renamed since the light was taken —
-// takes its passband's hue, or else a colour hashed from its key that steps
-// past those the wheel's slots use, so that only the wheel can move it.
-function filterColour(name, wheel) {
-  if (name === null) return NO_FILTER;
-  if (wheel.has(name)) return wheel.get(name);
-  const band = passband(name);
-  if (band !== null) return PASSBANDS[band];
-  const used = new Set(wheel.values());
-  let slot = nameHash(filterKey(name)) % OTHER_COLOURS.length;
-  for (let step = 0; step < OTHER_COLOURS.length && used.has(OTHER_COLOURS[slot]); step++) {
-    slot = (slot + 1) % OTHER_COLOURS.length;
+// Every name's colour: the wheel's slots, then any name the wheel does not
+// list — a slot renamed since the light was taken — which takes its
+// passband's hue, or else a spare the wheel neither uses nor draws a near
+// twin of, in name order. Those names change only with the wheel, so the order
+// is as stable as the wheel. With no wheel to read, each name is hashed
+// instead: a night's names then grow as it goes, and an order would move them.
+function filterColours(slots, names) {
+  const colours = wheelColours(slots);
+  const drawn = new Set(colours.values());
+  const free = spares(drawn).filter((c) => !drawn.has(c));
+  const unlisted = [...new Set(names)].filter((n) => n !== null && !colours.has(n)).sort();
+  let next = 0;
+  for (const name of unlisted) {
+    const match = passband(name);
+    if (match !== null) {
+      colours.set(name, PASSBANDS[match.band]);
+    } else if (slots.length && free.length) {
+      colours.set(name, free[next++ % free.length]);
+    } else {
+      const key = filterKey(name) || String(name).toLowerCase();
+      colours.set(name, OTHER_COLOURS[nameHash(key) % OTHER_COLOURS.length]);
+    }
   }
-  return OTHER_COLOURS[slot];
+  return colours;
 }
 
 const STYLE = `
@@ -345,7 +400,7 @@ class NinaFrameStatsCard extends HTMLElement {
     const hasData = this._hfr.some(v => v !== null);
 
     const slots = this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options") ?? [];
-    const wheel = wheelColours(slots);
+    const colours = filterColours(slots, [...Object.keys(byFilter), ...this._filters]);
     // In wheel order, as an imager reads a wheel; names it does not list last.
     const slotOf = (name) => (slots.includes(name) ? slots.indexOf(name) : slots.length);
     const filterEntries = Object.entries(byFilter).sort(([a], [b]) => slotOf(a) - slotOf(b));
@@ -357,9 +412,9 @@ class NinaFrameStatsCard extends HTMLElement {
     // breakdown that goes missing cannot recolour a wheel's dropout.
     const ownColours = chipless && this._filters.every((name) => name === null);
     const lightColours = this._filters.map((name) =>
-      (ownColours ? null : filterColour(name, wheel)));
+      (ownColours ? null : name === null ? NO_FILTER : colours.get(name)));
     const filterChipsHtml = filterEntries.map(([name, row]) => {
-      const colour = filterColour(name, wheel);
+      const colour = colours.get(name);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${name}: ${row?.count ?? 0}</span>
