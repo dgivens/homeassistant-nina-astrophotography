@@ -118,6 +118,7 @@ def _entity(named: dict[str, str], row: er.RegistryEntry) -> dict:
     entity = {
         "entity_id": row.entity_id,
         "device_id": _link(named, row.device_id),
+        "platform": row.platform,
         "translation_key": row.translation_key,
     }
     if (precision := json.loads(row.display_json_repr or b"{}").get("dp")) is not None:
