@@ -412,7 +412,7 @@ class NinaObservatoryCard extends HTMLElement {
     // entities are absent from the registry payload.
     const domeParkId   = this._eid("binary_sensor", "dome_at_park");
     const domeConnected = available(h, domeParkId);
-    // Enabled at all: a lost link must not hide Close Dome.
+    // Any row, even `unavailable`: Close Dome must survive a lost link.
     const domeEnabled  = !!h.states[domeParkId];
 
     // No `translation_key`: the switch takes the guider device's own name, so
@@ -472,7 +472,7 @@ class NinaObservatoryCard extends HTMLElement {
 
     const [status, dot] = unreachable ? ["Unreachable", "dot-warn"]
       : seqRunning ? ["Session active", "dot-on"] : ["Standby", "dot-off"];
-    // Gated on the row it prints, not the chip's probe.
+    // The park row, not the RA probe, which a user may disable.
     const mountStatus = !available(h, parkedId) ? ""
       : parked ? " · Parked" : tracking ? " · Tracking" : " · Idle";
 
