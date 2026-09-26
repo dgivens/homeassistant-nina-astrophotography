@@ -106,6 +106,13 @@ for (const { type, data } of scenario.events?.(dump) ?? []) {
   await new Promise((resolve) => setTimeout(resolve));
 }
 
+// Later states, handed over in turn; the output is what the last one left.
+for (const next of scenario.after?.(dump) ?? []) {
+  log.push("hass");
+  instance.hass = next;
+  await new Promise((resolve) => setTimeout(resolve));
+}
+
 if (flags.includes("--html")) {
   console.log("--- html ---");
   console.log(html().replace(/\s+/g, " ").trim());
@@ -114,3 +121,5 @@ if (flags.includes("--html")) {
   console.log("--- canvas ---");
 }
 console.log(log.join("\n"));
+// Don't wait on a timer the card left pending.
+process.exit(0);
