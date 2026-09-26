@@ -25,6 +25,8 @@ const SAFETY = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 const LINK = "binary_sensor.n_i_n_a_safety_monitor_connected";
 const TEMPERATURE = "sensor.n_i_n_a_weather_temperature";
 const HUMIDITY = "sensor.n_i_n_a_weather_humidity";
+const DEW_POINT = "sensor.n_i_n_a_weather_dew_point";
+const SOURCE = "sensor.n_i_n_a_weather_source";
 
 // No `draw` hook: the wind rose is painted from the frame the render queues,
 // which the runner fires. `_drawWindRose` takes the direction and the speed as
@@ -85,6 +87,19 @@ export const scenarios = {
       rig(dump, UP).override(TEMPERATURE, 20.5).override(HUMIDITY, 100.0).build(),
   },
 
+  // Air and dew point that print alike, 20.5 °C, over a margin that prints
+  // 0.1 °C: 20.54 °C over 20.46 °C. Must read as at the dew point, not as
+  // "within 0.1 °C" of an identical number. All three invented, as a
+  // self-consistent triple: 20.46 °C of dew point at 20.54 °C is 99.5%.
+  printed_at_dew_point: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(TEMPERATURE, 20.54)
+        .override(DEW_POINT, 20.46)
+        .override(HUMIDITY, 99.5)
+        .build(),
+  },
+
   // The station on a US customary instance: Home Assistant's own °F, mph, inHg
   // and in/h, each printed in its own unit at its own precision.
   us_customary: { hass: (dump) => rig(dump, US).build() },
@@ -98,6 +113,27 @@ export const scenarios = {
       rig(dump, US).override(TEMPERATURE, 73.4).override(HUMIDITY, 85.8).build(),
   },
 
+  // The station of `station` with its diagnostic source disabled — no
+  // registry row and no state. The channels still say a station is feeding
+  // them, so every reading renders; only the name falls back.
+  unsourced: { hass: (dump) => rig(dump, UP).without("weather_source").build() },
+
+  // `unsourced` on a poll where every channel came back `"NaN"`: each reads
+  // `unknown`, which an available channel only does while its station is
+  // connected. Must still read as connected, with every cell empty.
+  // Fabricated: no capture has a station reporting nothing at all.
+  unsourced_unread: {
+    hass: (dump) => {
+      const station = rig(dump, UP).without("weather_source");
+      for (const id of Object.keys(dump[UP].states)) {
+        if (id.startsWith("sensor.n_i_n_a_weather_") && id !== SOURCE) {
+          station.override(id, "unknown");
+        }
+      }
+      return station.build();
+    },
+  },
+
   // No station and no monitor, which is what a fresh install shows: the
   // not-connected panel in place of the whole body, under a grey banner.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
@@ -106,6 +142,16 @@ export const scenarios = {
   // entity unavailable, the hub's source included. Must not read as the
   // unconfigured rig above, nor advise connecting anything.
   unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+
+  // `unreachable` with both diagnostic lost-link signals disabled: the source
+  // and the monitor's connectivity. The hub's sequencer is the one left, and
+  // it still tells this from an unconfigured rig.
+  unreachable_undiagnosed: {
+    hass: (dump) =>
+      rig(dump, "nina_unreachable")
+        .without("weather_source", "safety_monitor_connected")
+        .build(),
+  },
 
   // A live station with the monitor not yet seen since Home Assistant
   // restarted. Fabricated: both monitor rows are Home Assistant's restored

@@ -226,41 +226,66 @@ class NinaWeatherCard extends HTMLElement {
     const isUnsafe = unsafeState === "on";
     const isSafe   = safetyConnected && unsafeState === "off";
 
-    // Weather. The source has no connectivity entity of its own — a
-    // disconnected device makes its entities unavailable instead. One read,
-    // because the name is that same state and printing `unavailable` as the
-    // station's name is worse than printing nothing.
+    // Weather. The source names the station, and nothing else here depends on
+    // it existing: it is diagnostic, so a user may disable it, and a disabled
+    // entity has no state to read.
     const source = this._s(this._eid("sensor", "weather_source"));
-    // A lost link to N.I.N.A. makes both of these unavailable: the source
-    // hangs off the hub, which has no driver of its own to lose, and the
-    // monitor's connectivity stays available while the monitor is down. A
-    // station or monitor that is merely down reads `unknown` or `off`.
+    const sourceLive = source !== null && source !== "unknown" && source !== "unavailable";
+    // A lost link to N.I.N.A. makes all three of these unavailable: the source
+    // and the sequencer hang off the hub, which has no driver of its own to
+    // lose, and the monitor's connectivity stays available while the monitor
+    // is down. A station or monitor that is merely down reads `unknown` or
+    // `off`. Three, because a user may disable any one of them.
     //
     // The exception is a row Home Assistant restored from the registry: until
     // the rig reports a device, its rows are `unavailable` placeholders marked
     // `restored`, so a monitor not yet seen since a restart is not a lost link.
-    // The source is created on every successful setup, so it is restored only
-    // when the entry failed to load — and then N.I.N.A. is unreachable.
-    const unreachable = source === "unavailable"
+    // The hub's rows are created on every successful setup, so they are
+    // restored only when the entry failed to load — and then N.I.N.A. is
+    // unreachable.
+    const sequencer = this._s(this._eid("binary_sensor", "sequencer_running"));
+    const unreachable = source === "unavailable" || sequencer === "unavailable"
       || (safetyLinkRow?.state === "unavailable" && !safetyLinkRow.attributes?.restored);
-    const wxConnected = source !== null && !unreachable && source !== "unknown";
+    const channels = {
+      temp: this._eid("sensor", "temperature", "weather_temperature"),
+      humid: this._eid("sensor", "humidity", "weather_humidity"),
+      dewPt: this._eid("sensor", "dew_point", "weather_dew_point"),
+      windSpd: this._eid("sensor", "wind_speed", "weather_wind_speed"),
+      windDir: this._eid("sensor", "wind_direction", "weather_wind_direction"),
+      windGst: this._eid("sensor", "wind_gust", "weather_wind_gust"),
+      press: this._eid("sensor", "pressure", "weather_pressure"),
+      cloud: this._eid("sensor", "cloud_cover", "weather_cloud_cover"),
+      rain: this._eid("sensor", "rain_rate", "weather_rain_rate"),
+      skyQ: this._eid("sensor", "sky_quality", "weather_sky_quality"),
+      skyB: this._eid("sensor", "sky_brightness", "weather_sky_brightness"),
+      skyT: this._eid("sensor", "sky_temperature", "weather_sky_temperature"),
+      seeing: this._eid("sensor", "star_fwhm", "weather_star_fwhm"),
+    };
+    // A station is connected when it names itself or any channel is available.
+    // A channel is available only while the station is connected and feeding
+    // it, so `unknown` there is a reading missing this poll, not a station
+    // gone; a restored row is always `unavailable`, so it cannot pass for one.
+    const wxConnected = !unreachable && (sourceLive || Object.values(channels).some((id) => {
+      const state = this._s(id);
+      return state !== null && state !== "unavailable";
+    }));
+    const wxName  = wxConnected && sourceLive ? source : "Weather station";
     // Every channel Home Assistant can convert is read with its unit: it is
     // printed in that unit, and converted only to meet a threshold here, which
     // is in the unit the integration publishes.
-    const temp    = this._q(this._eid("sensor", "temperature", "weather_temperature"));
-    const humid   = this._f(this._eid("sensor", "humidity", "weather_humidity"));
-    const dewPt   = this._q(this._eid("sensor", "dew_point", "weather_dew_point"));
-    const windSpd = this._q(this._eid("sensor", "wind_speed", "weather_wind_speed"));
-    const windDir = this._f(this._eid("sensor", "wind_direction", "weather_wind_direction"));
-    const windGst = this._q(this._eid("sensor", "wind_gust", "weather_wind_gust"));
-    const press   = this._q(this._eid("sensor", "pressure", "weather_pressure"));
-    const cloud   = this._f(this._eid("sensor", "cloud_cover", "weather_cloud_cover"));
-    const rain    = this._q(this._eid("sensor", "rain_rate", "weather_rain_rate"));
-    const skyQ    = this._f(this._eid("sensor", "sky_quality", "weather_sky_quality"));
-    const skyB    = this._q(this._eid("sensor", "sky_brightness", "weather_sky_brightness"));
-    const skyT    = this._q(this._eid("sensor", "sky_temperature", "weather_sky_temperature"));
-    const seeing  = this._f(this._eid("sensor", "star_fwhm", "weather_star_fwhm"));
-    const wxName  = wxConnected ? source : "Weather station";
+    const temp    = this._q(channels.temp);
+    const humid   = this._f(channels.humid);
+    const dewPt   = this._q(channels.dewPt);
+    const windSpd = this._q(channels.windSpd);
+    const windDir = this._f(channels.windDir);
+    const windGst = this._q(channels.windGst);
+    const press   = this._q(channels.press);
+    const cloud   = this._f(channels.cloud);
+    const rain    = this._q(channels.rain);
+    const skyQ    = this._f(channels.skyQ);
+    const skyB    = this._q(channels.skyB);
+    const skyT    = this._q(channels.skyT);
+    const seeing  = this._f(channels.seeing);
 
     const tempC  = inUnit(temp, "°C");
     const dewC   = inUnit(dewPt, "°C");
@@ -339,12 +364,22 @@ class NinaWeatherCard extends HTMLElement {
       cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
     const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
-    // The margin as printed: one that rounds to nothing reads as "at".
-    const shownMargin = dewThreat ? interval(dewMargin, "°C", temp.unit)?.toFixed(1) : null;
-    const atDewPoint = dewThreat && (dewMargin <= 0 || Number(shownMargin) === 0);
+    // The margin as the reader can check it: the difference of the two numbers
+    // printed beside it, at their precision, so 20.54 over 20.46 °C, both shown
+    // as 20.5, reads as "at" rather than "within 0.1". Readings printed in two
+    // units or at two precisions have no such difference, so theirs is the
+    // true one. One that rounds to nothing is "at".
+    const places = temp?.precision ?? 1;
+    const shownMargin = !dewThreat ? null
+      : temp.unit === dewPt.unit && places === (dewPt.precision ?? 1)
+        ? (Number(displayed(temp, 1)) - Number(displayed(dewPt, 1))).toFixed(places)
+        : interval(dewMargin, "°C", temp.unit)?.toFixed(1);
+    const atDewPoint = dewThreat && (dewMargin <= 0 || Number(shownMargin) <= 0);
+    const tempShown = withUnit(temp, 1);
+    const dewShown = withUnit(dewPt, 1);
     const dewWhere = atDewPoint
-      ? `air at its dew point (${withUnit(dewPt, 1)}); dew is forming`
-      : `temperature (${withUnit(temp, 1)}) within ${shownMargin} ${temp?.unit} of dew point (${withUnit(dewPt, 1)})`;
+      ? `air at its dew point (${dewShown}); dew is forming`
+      : `temperature (${tempShown}) within ${shownMargin} ${temp?.unit} of dew point (${dewShown})`;
 
     const html = `
       <style>${STYLE}</style>
