@@ -1,9 +1,7 @@
-"""`LinkGrace` in `www/nina-entity-resolver.js`, under a fake clock.
+"""`LinkGrace` in `www/nina-entity-resolver.js`, run under node on a fake clock.
 
-The module runs in a browser, so `link_grace.mjs` runs the shipped file under
-node. Each case is a script of `hold(since)` calls; the result is, per call,
-`[held, armed]`: whether the card keeps its last view, and the delay of the
-redraw it armed.
+Each case is a script of `hold(since)` calls; each call yields `[held, armed]`:
+whether the card keeps its view, and the delay of the redraw it armed.
 """
 
 from pathlib import Path
@@ -25,9 +23,7 @@ def _lost(since: int, at: int = T) -> dict:
 
 
 CASES = {
-    # Nothing live on screen to keep: a fresh load shows the lost link at once.
     "a fresh card holds nothing": ([_lost(T - 10_000)], [RENDERED]),
-    # One missed poll: keep the view, and redraw when the grace runs out.
     "a live card holds a blip": (
         [LIVE, _lost(T - 10_000)],
         [RENDERED, [True, GRACE - 10_000]],
@@ -36,7 +32,6 @@ CASES = {
         [LIVE, _lost(T - 45_000)],
         [RENDERED, RENDERED],
     ),
-    # The redraw at expiry shows the lost link, and it stays shown.
     "the lost link stays once the grace has run out": (
         [
             LIVE,
@@ -46,12 +41,11 @@ CASES = {
         ],
         [RENDERED, [True, GRACE - 10_000], RENDERED, RENDERED],
     ),
-    # A new config may name another rig: what is on screen is not its view.
     "a reset card holds nothing": (
         [LIVE, {"at": T, "reset": True}, _lost(T - 10_000)],
         [RENDERED, RENDERED],
     ),
-    # Home Assistant's clock five minutes ahead of the browser's.
+    # Home Assistant's clock five minutes ahead.
     "a browser clock behind holds no longer than the grace": (
         [LIVE, _lost(T + 300_000)],
         [RENDERED, [True, GRACE]],

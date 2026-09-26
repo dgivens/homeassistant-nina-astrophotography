@@ -77,19 +77,15 @@ export function resolveEntities(hass, configuredDeviceId) {
 }
 
 /**
- * The hub's own entity ids, the rows `linkLostSince` reads; `null` when the rig
- * cannot be identified, as `resolveEntities` would resolve nothing.
+ * This integration's entity ids on the hub, for `linkLostSince`; `null` when
+ * the rig cannot be identified.
  *
- * The hub has no driver of its own to lose, so no hub entity overrides
- * `available`: its rows read `unavailable` only when the coordinator's poll
- * fails, and a rig with every driver down still reports `off` and `0` there.
- * Every enabled row, so a user disabling any few of them cannot blind the
- * check; a disabled one is absent from `hass.entities`. Only this
- * integration's: a helper linked to the hub, such as a template sensor, can
- * read `unavailable` for reasons of its own.
+ * No hub entity overrides `available`, so these go `unavailable` only when the
+ * coordinator fails: a rig with every driver down still reports `off` and `0`.
+ * All of them, so disabling a few cannot blind the check. Other integrations'
+ * helpers linked to the hub are left out; they go unavailable on their own.
  *
- * A walk of the whole registry, so a card memoises it as it does
- * `resolveEntities`.
+ * Walks the whole registry: memoise it as `resolveEntities` is.
  *
  * @param {object} hass the Home Assistant object a card is handed
  * @param {string} [configuredDeviceId] only consulted for two or more rigs
@@ -104,22 +100,17 @@ export function hubEntityIds(hass, configuredDeviceId) {
 }
 
 /**
- * When N.I.N.A. stopped answering, in epoch ms, or `null` while it answers,
- * read off rows that go `unavailable` only with the link: `hubEntityIds`, or a
- * card's own prefix-templated hub ids when the rig cannot be identified.
+ * When N.I.N.A. stopped answering (epoch ms), or `null` while it answers: the
+ * earliest `last_changed` of the rows that count.
  *
- * A row Home Assistant restored from the registry counts only when every row
- * is one, which is an entry that failed to load — N.I.N.A. unreachable. A
- * restored row beside live ones is an entity not created this run: one created
- * on first sight, like the live stack before a stack exists, or an orphan no
- * entity claims any more. Either reads `unavailable` until it is, and its
- * `last_changed` is Home Assistant's start, not the moment a link went down.
- *
- * Since the earliest `last_changed` among the rows that count; a row without
- * one is taken as lost long since.
+ * A restored row counts only when every row is restored — an entry that failed
+ * to load. Beside live rows it is an entity not created this run (first-sight,
+ * like the live stack, or an orphan): `unavailable` regardless of the link,
+ * and changed at Home Assistant's start.
  *
  * @param {object} hass the Home Assistant object a card is handed
- * @param {string[]} ids the rows to read
+ * @param {string[]} ids rows that go `unavailable` only with the link:
+ *   `hubEntityIds`, or a card's templated hub ids when that is `null`
  * @returns {number|null}
  */
 export function linkLostSince(hass, ids) {
@@ -133,26 +124,20 @@ export function linkLostSince(hass, ids) {
   return Math.min(...lost.map((row) => Date.parse(row.last_changed) || 0));
 }
 
-// A single failed poll makes every entity unavailable for one ten-second
-// interval, and on a remote link that is routine while the rig images on.
+// One failed poll makes every entity unavailable; on a remote link that is
+// routine while the rig images on.
 export const LINK_GRACE_MS = 30_000;
 
 /**
- * Hold a card's last live view through a lost link's grace period.
+ * Keeps a card's last live view through a failed poll, which would otherwise
+ * draw every reading `unavailable`.
  *
- * Every reading is `unavailable` for the length of a failed poll, which would
- * draw the rig as stopped. A card asks `hold(since)` before it renders: `true`
- * means keep what is on screen, and `onExpire` fires once the grace period
- * runs out so the card can render the lost link. A card with nothing live on
- * screen — a fresh load, or a new config — holds nothing and shows the lost
- * link at once.
+ * A card calls `hold(since)` before rendering: `true` means keep what is on
+ * screen, and `onExpire` fires when the grace period ends. Nothing is held
+ * without a live view to keep (a fresh load, a new config).
  *
- * A detached card's timer is left to run: it renders once into a card no one
- * sees, which is then current if it is attached again.
- *
- * The wait is capped at the grace period: `since` is Home Assistant's clock and
- * `Date.now()` the browser's, and a browser running behind would otherwise
- * hold for as long as it lags.
+ * The wait is capped at LINK_GRACE_MS: `since` is on Home Assistant's clock,
+ * `Date.now()` on the browser's. A detached card's timer is left to run.
  */
 export class LinkGrace {
   /** @param {function(): void} onExpire re-renders the card */
@@ -182,12 +167,12 @@ export class LinkGrace {
     return false;
   }
 
-  /** Whether the last `hold` kept the view, and its grace period still runs. */
+  /** Whether a hold is in progress. */
   get holding() {
     return this._timer !== null;
   }
 
-  /** Nothing on screen is live any more: a new config names another rig. */
+  /** Forget the live view, as a new config must. */
   reset() {
     this._clear();
     this._live = false;

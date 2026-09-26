@@ -85,10 +85,9 @@ export class Rig {
   }
 
   /**
-   * Replace a row with Home Assistant's restored placeholder — `unavailable`,
-   * marked `restored`, over the row's own attributes — as core leaves one for a
-   * registry row no entity has claimed since the restart. Fabricated, but core's
-   * own shape rather than an invented reading.
+   * Replace a row with core's placeholder for a registry row no entity has
+   * claimed since the restart: `unavailable`, marked `restored`, over its own
+   * attributes. Core's shape, not an invented reading.
    */
   restored(entityId) {
     const row = this._states[entityId];
@@ -127,24 +126,18 @@ export function rig(dump, rigState) {
   return new Rig(state);
 }
 
-// A hub row none of the cards reads, standing in for an orphan: a registry row
-// no entity claims, which reads `unavailable` for ever.
+// A hub row no card reads, standing in for an orphaned registry row.
 const ORPHAN = "sensor.n_i_n_a_wait_ends_at";
 
 /**
- * The lost-link scenarios every card that tells one carries, around the live
- * `site_configured` rig:
+ * Lost-link scenarios around the live `site_configured` rig, for every card
+ * that shows one:
  *
- * - `unreachable` — N.I.N.A. not answering, seen by a card with nothing live
- *   to keep.
- * - `blip` — live, then one missed poll: must still draw the live rig.
- * - `lost` — live, then a link down past the grace period: `unreachable`.
- * - `unreachable_templated` — `unreachable` with no registry, where the card's
- *   own templated hub ids are what is left to tell it by.
+ * - `unreachable` — no live view to keep.
+ * - `blip` — live, then one missed poll: must draw the live rig.
+ * - `lost` — live, then down past the grace period: must draw `unreachable`.
+ * - `unreachable_templated` — no registry, so the card's templated ids.
  * - `orphaned_row` — live beside an orphaned hub row: must draw the live rig.
- *
- * `Date.now()` is pinned in `ops.mjs`, so `blip` and `lost` are fixed
- * distances into the grace period.
  */
 export function linkScenarios() {
   const downFor = (ms) => ({

@@ -64,8 +64,7 @@
           // then asks this server for its frames, which it does not have.
           hass.callWS = async ({ path }) => ({ path });
           element.hass = hass;
-          // Later states, as `ops.mjs` hands them over. The clock here is not
-          // pinned, so a grace period a scenario starts runs out for real.
+          // As in `ops.mjs`, but on a real clock: a grace period runs out.
           for (const next of scenario.after?.(dump) ?? []) {
             await new Promise((resolve) => setTimeout(resolve));
             element.hass = { ...next, callWS: hass.callWS };

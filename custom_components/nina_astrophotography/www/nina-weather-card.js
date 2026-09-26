@@ -186,9 +186,8 @@ class NinaWeatherCard extends HTMLElement {
     if (hass.entities !== this._resolvedFrom) {
       this._resolvedFrom = hass.entities;
       this._resolved = resolveEntities(hass, this._config.device_id);
-      // The monitor's connectivity is a second witness from a child device:
-      // it stays available while the monitor is down, so it goes
-      // `unavailable` only with the link.
+      // The monitor's connectivity stays available while the monitor is down,
+      // so it too goes `unavailable` only with the link.
       this._linkRows = [
         ...(hubEntityIds(hass, this._config.device_id) ?? [
           this._eid("sensor", "weather_source"),
@@ -245,8 +244,6 @@ class NinaWeatherCard extends HTMLElement {
     // entity has no state to read.
     const source = this._s(this._eid("sensor", "weather_source"));
     const sourceLive = source !== null && source !== "unknown" && source !== "unavailable";
-    // A lost link reads as no station and no monitor, so keep the last live
-    // view through the grace period rather than draw one.
     const lostSince = linkLostSince(this._hass, this._linkRows);
     if (this._grace.hold(lostSince)) return;
     const unreachable = lostSince !== null;

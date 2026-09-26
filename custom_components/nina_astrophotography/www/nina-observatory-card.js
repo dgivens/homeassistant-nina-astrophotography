@@ -391,8 +391,6 @@ class NinaObservatoryCard extends HTMLElement {
     const frameCountId = this._eid("sensor", "session_image_count");
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
-    // A lost link reads as a stopped rig, so keep the last live view through
-    // the grace period rather than draw one.
     const lostSince = linkLostSince(h, this._linkRows);
     if (this._grace.hold(lostSince)) return;
     const unreachable = lostSince !== null;

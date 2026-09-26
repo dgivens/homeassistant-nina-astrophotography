@@ -77,8 +77,7 @@ export const scenarios = {
   // unknown and the session totals zero.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
-  // The lost link, around the rig of `exposing`: the badge names the lost
-  // link, not the camera.
+  // The lost link: the badge names it, not the camera.
   ...linkScenarios(),
 
   // Two rigs saving. Resolved, the card reloads for its own rig's frame only:

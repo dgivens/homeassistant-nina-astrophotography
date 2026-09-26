@@ -365,8 +365,6 @@ class NinaImagePanelCard extends HTMLElement {
       this._rendered = true;
     }
 
-    // A lost link reads as a disconnected camera and an emptied strip, so
-    // keep the last live view through the grace period rather than draw one.
     const lostSince = linkLostSince(hass, this._linkRows);
     if (!this._grace.hold(lostSince)) {
       this._unreachable = lostSince !== null;
@@ -654,8 +652,7 @@ class NinaImagePanelCard extends HTMLElement {
       img.style.display = "block";
       if (this._config.show_histogram) this._drawHistogram();
       this._updateStripActive();
-      // Through a lost link's grace period the readings are `unavailable`:
-      // the ones on screen stay until the link returns or the period ends.
+      // Held: the readings are `unavailable`; keep the ones on screen.
       if (!this._grace.holding) {
         this._updateOverlay();
         this._updateStatsRow();
@@ -665,7 +662,7 @@ class NinaImagePanelCard extends HTMLElement {
       if (token !== this._loadToken) return;
       img.classList.remove("loading");
       spinner?.classList.remove("active");
-      // The lost link is likely why it failed; keep the frame on screen.
+      // Held: the lost link is the likely cause; keep the frame on screen.
       if (this._grace.holding) return;
       this._hasImage = false;
       // Show no-image state only if this is the latest frame (not a strip click)
@@ -946,8 +943,7 @@ class NinaImagePanelCard extends HTMLElement {
     const filter = known(this._s(this._eid("sensor", "last_image_filter")));
     const index  = this._currentIndex;
 
-    // Ahead of the camera: a lost link makes its entities unavailable too, and
-    // would read as a camera disconnected in N.I.N.A.
+    // Before the camera: a lost link makes it unavailable too.
     if (this._unreachable) {
       badge.textContent = "N.I.N.A. unreachable";
       badge.className   = "badge warn";

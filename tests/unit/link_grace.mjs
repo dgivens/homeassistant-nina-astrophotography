@@ -1,13 +1,9 @@
-// Run `LinkGrace` through a script of steps under a fake clock, for
+// Run `LinkGrace` through scripts of steps on a fake clock, for
 // `test_link_grace.py`.
 //
-// Node so that the module under test is the one a browser loads.
-//
-// Usage: node link_grace.mjs <scripts.json>, a script of steps per case name.
-//
-// Each step is `{"at": ms, "hold": since}` (since may be null) or
-// `{"at": ms, "reset": true}`. Prints, per case and per `hold`, whether it held
-// and the delay of the redraw it armed.
+// Usage: node link_grace.mjs <scripts.json>, a list of steps per case name.
+// A step is `{"at": ms, "hold": since}` or `{"at": ms, "reset": true}`. Prints,
+// per case, `[held, armed]` for each `hold`.
 import { readFile } from "node:fs/promises";
 
 import { LinkGrace } from "../../custom_components/nina_astrophotography/www/nina-entity-resolver.js";

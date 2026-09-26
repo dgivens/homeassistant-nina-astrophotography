@@ -7,8 +7,7 @@
 // Usage: node resolve_entities.mjs <payload.json> [device_id] [fn]
 //
 // `fn` is `resolveEntities` (the default) or `linkLostSince`, which reads the
-// rows a card would: the hub's, or the payload's `fallback` ids when the rig
-// cannot be identified.
+// hub's rows, or the payload's `fallback` ids when there is no hub.
 import { readFile } from "node:fs/promises";
 
 import {

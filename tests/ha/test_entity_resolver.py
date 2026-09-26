@@ -70,12 +70,10 @@ async def _resolve(
 async def _link_lost_since(
     hass: HomeAssistant, hass_ws_client, fallback: list[str] | None = None
 ) -> int | None:
-    """`linkLostSince(hass)`, as the shipped module computes it, in epoch ms.
+    """`linkLostSince` as a card computes it, in epoch ms.
 
-    The states carry only what it reads: the state, `last_changed`, and the
-    `restored` marker core puts on a registry row no live entity claims. With
-    `fallback`, the registries are withheld, as from a card that cannot
-    identify its rig, and the card's own ids passed instead.
+    With `fallback`, the registries are withheld and those ids read instead, as
+    by a card that cannot identify its rig.
     """
     snapshot = await _snapshot(hass, hass_ws_client)
     snapshot["states"] = {
@@ -95,7 +93,7 @@ async def _link_lost_since(
 
 
 async def _lose_the_link(advance, freezer: FrozenDateTimeFactory) -> int:
-    """N.I.N.A. stops answering a minute on; the failed poll's moment in ms."""
+    """N.I.N.A. stops answering a minute on; returns that moment in ms."""
     freezer.tick(60)
     await advance("nina_unreachable")
     return int(dt_util.utcnow().timestamp() * 1000)
@@ -113,9 +111,7 @@ def _hub_row(hass: HomeAssistant, entry, platform: str) -> er.RegistryEntry:
 
 
 def _orphan_a_hub_row(hass: HomeAssistant, entry) -> None:
-    """A registry row on the hub that no entity claims, under core's own
-    placeholder — what an entity dropped from the integration leaves behind.
-    """
+    """A hub registry row no entity claims, under core's placeholder."""
     _hub_row(hass, entry, DOMAIN).write_unavailable_state(hass)
 
 
@@ -353,9 +349,7 @@ async def test_a_rig_that_answers_has_not_lost_its_link(
     hass_ws_client,
     rig_state: str,
 ) -> None:
-    """Every driver down is not a lost link: the hub's rows stay available,
-    which is what lets the cards tell the two apart.
-    """
+    """Every driver down is not a lost link: the hub's rows stay available."""
     await set_up_at(hass, config_entry, rig, rig_state)
 
     assert await _link_lost_since(hass, hass_ws_client) is None
@@ -365,9 +359,7 @@ async def test_a_rig_that_answers_has_not_lost_its_link(
 async def test_a_failed_poll_loses_the_link_from_that_moment(
     hass: HomeAssistant, advance, hass_ws_client, freezer: FrozenDateTimeFactory
 ) -> None:
-    """The cards' grace period is measured from this, so it has to be the
-    moment the hub went unavailable rather than any earlier change.
-    """
+    """The cards' grace period runs from this, so it must be the failed poll."""
     failed_at = await _lose_the_link(advance, freezer)
 
     assert await _link_lost_since(hass, hass_ws_client) == failed_at
@@ -377,9 +369,7 @@ async def test_a_failed_poll_loses_the_link_from_that_moment(
 async def test_an_entry_that_is_not_loaded_has_lost_its_link(
     hass: HomeAssistant, loaded_entry, hass_ws_client
 ) -> None:
-    """With the entry down, every hub row is core's restored placeholder — the
-    same rows an entry that failed to load after a restart leaves.
-    """
+    """Every hub row restored, as an entry that failed to load leaves them."""
     assert await hass.config_entries.async_unload(loaded_entry.entry_id)
     await hass.async_block_till_done()
 
@@ -390,9 +380,7 @@ async def test_an_entry_that_is_not_loaded_has_lost_its_link(
 async def test_an_orphaned_hub_row_does_not_lose_the_link(
     hass: HomeAssistant, loaded_entry, hass_ws_client
 ) -> None:
-    """A restored row beside live ones reads `unavailable` for ever. Counting it
-    would show every dashboard a lost link while the rig answers.
-    """
+    """It reads `unavailable` for ever beside rows that answer."""
     _orphan_a_hub_row(hass, loaded_entry)
 
     assert await _link_lost_since(hass, hass_ws_client) is None
@@ -406,8 +394,8 @@ async def test_an_orphaned_hub_row_does_not_date_a_lost_link(
     hass_ws_client,
     freezer: FrozenDateTimeFactory,
 ) -> None:
-    """The orphan's `last_changed` is when core restored it. Dating the loss
-    from it would put a one-poll blip past the cards' grace period.
+    """It changed when core restored it: dating the loss from that would skip
+    the cards' grace period.
     """
     _orphan_a_hub_row(hass, loaded_entry)
 
@@ -420,8 +408,8 @@ async def test_an_orphaned_hub_row_does_not_date_a_lost_link(
 async def test_another_integration_s_row_on_the_hub_does_not_lose_the_link(
     hass: HomeAssistant, loaded_entry, hass_ws_client
 ) -> None:
-    """A helper may be linked to the hub, a template sensor for one, and read
-    `unavailable` for reasons of its own while the rig answers.
+    """A helper linked to the hub, such as a template sensor, can be
+    `unavailable` on its own.
     """
     helper = _hub_row(hass, loaded_entry, "template")
     hass.states.async_set(helper.entity_id, "unavailable")
@@ -438,9 +426,7 @@ async def test_an_unidentified_rig_is_read_through_the_card_s_own_ids(
     freezer: FrozenDateTimeFactory,
     lost: bool,
 ) -> None:
-    """Two rigs and no `device_id:` leave no hub to walk; a card's templated
-    hub ids are what is left to tell the lost link by.
-    """
+    """Two rigs and no `device_id:` leave no hub to walk."""
     failed_at = await _lose_the_link(advance, freezer) if lost else None
 
     assert (

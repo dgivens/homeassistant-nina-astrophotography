@@ -138,13 +138,11 @@ export const scenarios = {
   // not-connected panel in place of the whole body, under a grey banner.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
-  // The lost link, which must not read as the unconfigured rig above nor
-  // advise connecting anything.
+  // The lost link: must not read as the unconfigured rig above.
   ...linkScenarios(),
 
-  // `unreachable` with both diagnostic lost-link signals disabled: the source
-  // and the monitor's connectivity. The hub's other rows still tell this
-  // from an unconfigured rig.
+  // `unreachable` with the source and the monitor's connectivity disabled: the
+  // hub's other rows still tell it from an unconfigured rig.
   unreachable_undiagnosed: {
     hass: (dump) =>
       rig(dump, "nina_unreachable")
