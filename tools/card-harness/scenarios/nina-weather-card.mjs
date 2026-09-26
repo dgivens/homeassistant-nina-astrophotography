@@ -26,6 +26,7 @@ const LINK = "binary_sensor.n_i_n_a_safety_monitor_connected";
 const TEMPERATURE = "sensor.n_i_n_a_weather_temperature";
 const HUMIDITY = "sensor.n_i_n_a_weather_humidity";
 const DEW_POINT = "sensor.n_i_n_a_weather_dew_point";
+const SOURCE = "sensor.n_i_n_a_weather_source";
 
 // No `draw` hook: the wind rose is painted from the frame the render queues,
 // which the runner fires. `_drawWindRose` takes the direction and the speed as
@@ -117,6 +118,22 @@ export const scenarios = {
   // them, so every reading renders; only the name falls back.
   unsourced: { hass: (dump) => rig(dump, UP).without("weather_source").build() },
 
+  // `unsourced` on a poll where every channel came back `"NaN"`: each reads
+  // `unknown`, which an available channel only does while its station is
+  // connected. Must still read as connected, with every cell empty.
+  // Fabricated: no capture has a station reporting nothing at all.
+  unsourced_unread: {
+    hass: (dump) => {
+      const station = rig(dump, UP).without("weather_source");
+      for (const id of Object.keys(dump[UP].states)) {
+        if (id.startsWith("sensor.n_i_n_a_weather_") && id !== SOURCE) {
+          station.override(id, "unknown");
+        }
+      }
+      return station.build();
+    },
+  },
+
   // No station and no monitor, which is what a fresh install shows: the
   // not-connected panel in place of the whole body, under a grey banner.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
@@ -126,11 +143,14 @@ export const scenarios = {
   // unconfigured rig above, nor advise connecting anything.
   unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
 
-  // `unreachable` with the source disabled. The monitor's connectivity is the
-  // one lost-link signal left, and it still tells this from an unconfigured
-  // rig.
-  unreachable_unsourced: {
-    hass: (dump) => rig(dump, "nina_unreachable").without("weather_source").build(),
+  // `unreachable` with both diagnostic lost-link signals disabled: the source
+  // and the monitor's connectivity. The hub's sequencer is the one left, and
+  // it still tells this from an unconfigured rig.
+  unreachable_undiagnosed: {
+    hass: (dump) =>
+      rig(dump, "nina_unreachable")
+        .without("weather_source", "safety_monitor_connected")
+        .build(),
   },
 
   // A live station with the monitor not yet seen since Home Assistant
