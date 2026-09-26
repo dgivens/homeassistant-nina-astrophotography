@@ -24,6 +24,15 @@ const CONFIRM = {
   dome_close: "Close the dome?",
 };
 
+const UNREACHABLE_BANNER = `
+  <div class="session-banner unreachable">
+    <span class="icon">📡</span>
+    <div>
+      <div class="label">N.I.N.A. unreachable</div>
+      <div class="detail">Home Assistant has no link to N.I.N.A.; readings and controls resume when it returns.</div>
+    </div>
+  </div>`;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function state(hass, entity_id, fallback = "—") {
@@ -75,8 +84,8 @@ function measured(hass, entity_id, decimals = 1) {
   return { value: displayed(q, decimals) ?? "—", unit: q?.unit ?? "" };
 }
 
-function statusDot(on, cls = on ? "dot-on" : "dot-off") {
-  return `<span class="dot ${cls}"></span>`;
+function statusDot(on) {
+  return `<span class="dot ${on ? "dot-on" : "dot-off"}"></span>`;
 }
 
 // ─── Template ────────────────────────────────────────────────────────────────
@@ -155,19 +164,16 @@ const STYLE = `
   }
   .session-banner .frame-count { font-size: 0.75rem; color: var(--muted); text-align: right; }
 
-  /* ── Lost link banner, in the weather card's colours ── */
-  .unreachable-banner {
-    display: flex;
-    align-items: center;
+  /* The lost link, in the weather card's colours */
+  .session-banner.unreachable {
+    justify-content: flex-start;
     gap: 12px;
     background: rgba(244,162,97,0.10);
-    border: 1px solid rgba(244,162,97,0.30);
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-color: rgba(244,162,97,0.30);
   }
-  .unreachable-banner .icon { font-size: 1.5rem; flex-shrink: 0; }
-  .unreachable-banner .label { font-size: 1rem; font-weight: 700; color: var(--warn); }
-  .unreachable-banner .detail { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+  .session-banner .icon { font-size: 1.5rem; flex-shrink: 0; }
+  .session-banner .label { font-size: 1rem; font-weight: 700; color: var(--warn); }
+  .session-banner .detail { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
 
   /* ── Equipment status row ── */
   .equip-row {
@@ -353,20 +359,19 @@ class NinaObservatoryCard extends HTMLElement {
 
     // The sequencer and the camera answer different questions: a rig waiting
     // out a target's start window is running and taking nothing.
-    const seqRunning  = isOn(h, this._eid("binary_sensor", "sequencer_running"));
-    const imaging     = isOn(h, this._eid("binary_sensor", "imaging"));
+    const seqId       = this._eid("binary_sensor", "sequencer_running");
+    const imagingId   = this._eid("binary_sensor", "imaging");
     const frameCountId = this._eid("sensor", "session_image_count");
+    const seqRunning  = isOn(h, seqId);
+    const imaging     = isOn(h, imagingId);
     // A lost link to N.I.N.A. makes every entity unavailable, the hub's
     // included. The hub has no driver of its own to lose, so its rows read
     // `unavailable` only then: a rig with its equipment down still reports
     // `off` and `0` there. Three of them, because a user may disable any one.
     // A hub row is restored from the registry only when the entry failed to
     // load, which is N.I.N.A. unreachable too.
-    const unreachable = [
-      this._eid("binary_sensor", "sequencer_running"),
-      this._eid("binary_sensor", "imaging"),
-      frameCountId,
-    ].some((id) => state(h, id) === "unavailable");
+    const unreachable = [seqId, imagingId, frameCountId]
+      .some((id) => state(h, id) === "unavailable");
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
     const focConnected = available(h, this._eid("number", "focuser_position"));
@@ -433,8 +438,16 @@ class NinaObservatoryCard extends HTMLElement {
     const pct = (v) => Math.min((v / rmsMax) * 100, 100).toFixed(1);
     const rmsClass = (v) => v > 3 ? "danger" : v > 1.5 ? "warn" : "";
 
+    const [status, dot] = unreachable ? ["Unreachable", "dot-warn"]
+      : seqRunning ? ["Session active", "dot-on"] : ["Standby", "dot-off"];
+    // A mount that is not connected is neither parked, tracking nor idle.
+    const mountStatus = !mntConnected ? ""
+      : parked ? " · Parked" : tracking ? " · Tracking" : " · Idle";
+
     // Nothing a button sends can reach N.I.N.A. while the link is down.
     const off = unreachable ? ` disabled title="N.I.N.A. unreachable"` : "";
+    const btn = (id, label, cls = "") =>
+      `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"${off}>${label}</button>`;
 
     // Meridian flip warning
     const showFlipWarning =
@@ -448,22 +461,15 @@ class NinaObservatoryCard extends HTMLElement {
           <span class="nina-icon">🔭</span>
           <div>
             <div class="title">N.I.N.A. Observatory</div>
-            <div class="subtitle">Advanced API v2 · ${unreachable ? "Unreachable" : seqRunning ? "Session active" : "Standby"}</div>
+            <div class="subtitle">Advanced API v2 · ${status}</div>
           </div>
-          ${unreachable ? statusDot(false, "dot-warn") : statusDot(seqRunning)}
+          <span class="dot ${dot}"></span>
         </div>
 
         <div class="body">
 
           <!-- Session banner, or the lost link in its place -->
-          ${unreachable ? `
-          <div class="unreachable-banner">
-            <span class="icon">📡</span>
-            <div>
-              <div class="label">N.I.N.A. unreachable</div>
-              <div class="detail">Home Assistant has no link to N.I.N.A.; readings and controls resume when it returns.</div>
-            </div>
-          </div>` : `
+          ${unreachable ? UNREACHABLE_BANNER : `
           <div class="session-banner">
             <div>
               <div class="target">${seqRunning ? target : "—"}</div>
@@ -501,7 +507,7 @@ class NinaObservatoryCard extends HTMLElement {
             <div class="metric-grid">
               ${metric("Temp", camTemp.value, camTemp.unit)}
               ${metric("Setpoint", camTargTemp.value, camTargTemp.unit)}
-              ${metric("Cooler", coolerPwr === "—" ? coolerPwr : coolerPwr + "%", "")}
+              ${metric("Cooler", coolerPwr, "%")}
               ${metric("Gain", camGain, "")}
               ${metric("Filter", camFilter, "")}
             </div>
@@ -509,7 +515,7 @@ class NinaObservatoryCard extends HTMLElement {
 
           <!-- Mount section -->
           <div class="section">
-            <div class="section-title">Mount${mntConnected ? ` · ${parked ? "Parked" : tracking ? "Tracking" : "Idle"}` : ""}</div>
+            <div class="section-title">Mount${mountStatus}</div>
             <div class="metric-grid">
               ${metric("RA", mntRa, "h")}
               ${metric("Dec", mntDec, "°")}
@@ -558,7 +564,7 @@ class NinaObservatoryCard extends HTMLElement {
           <div class="section">
             <div class="section-title">Last Image</div>
             <div class="img-stats-row">
-              ${imgStat("HFR", hfr === "—" ? hfr : hfr + " px")}
+              ${imgStat("HFR", hfr, "px")}
               ${imgStat("Stars", stars)}
               ${imgStat("Mean ADU", meanAdu)}
             </div>
@@ -569,30 +575,24 @@ class NinaObservatoryCard extends HTMLElement {
             <div class="section-title">Controls</div>
             <div class="btn-row">
               ${seqRunning
-                ? `<button class="nina-btn danger" id="btn-stop"${off}>⏹ Stop Sequence</button>`
-                : `<button class="nina-btn success" id="btn-start"${off}>▶ Start Sequence</button>`
-              }
+                ? btn("btn-stop", "⏹ Stop Sequence", "danger")
+                : btn("btn-start", "▶ Start Sequence", "success")}
               ${parked
-                ? `<button class="nina-btn primary" id="btn-unpark"${off}>⬆ Unpark</button>`
-                : `<button class="nina-btn" id="btn-park"${off}>⏸ Park</button>`
-              }
-              <button class="nina-btn" id="btn-af"${off}>🔍 Auto Focus</button>
-              ${domeConnected
-                ? domeOpen
-                  ? `<button class="nina-btn" id="btn-dome-close"${off}>🔒 Close Dome</button>`
-                  : `<button class="nina-btn primary" id="btn-dome-open"${off}>🔓 Open Dome</button>`
-                : ""
-              }
+                ? btn("btn-unpark", "⬆ Unpark", "primary")
+                : btn("btn-park", "⏸ Park")}
+              ${btn("btn-af", "🔍 Auto Focus")}
+              ${!domeConnected ? ""
+                : domeOpen
+                  ? btn("btn-dome-close", "🔒 Close Dome")
+                  : btn("btn-dome-open", "🔓 Open Dome", "primary")}
             </div>
             <div class="btn-row">
               ${cooling
-                ? `<button class="nina-btn" id="btn-warm"${off}>🌡 Warm Camera</button>`
-                : `<button class="nina-btn primary" id="btn-cool"${off}>❄ Cool Camera</button>`
-              }
+                ? btn("btn-warm", "🌡 Warm Camera")
+                : btn("btn-cool", "❄ Cool Camera", "primary")}
               ${guiding
-                ? `<button class="nina-btn danger" id="btn-stop-guide"${off}>◼ Stop Guiding</button>`
-                : `<button class="nina-btn success" id="btn-start-guide"${off}>▶ Start Guiding</button>`
-              }
+                ? btn("btn-stop-guide", "◼ Stop Guiding", "danger")
+                : btn("btn-start-guide", "▶ Start Guiding", "success")}
             </div>
           </div>
 
@@ -652,10 +652,10 @@ function metric(label, value, unit) {
   </div>`;
 }
 
-function imgStat(label, value) {
+function imgStat(label, value, unit = "") {
   return `<div class="img-stat">
     <div class="label">${label}</div>
-    <div class="value">${value}</div>
+    <div class="value">${value}${value === "—" || !unit ? "" : ` ${unit}`}</div>
   </div>`;
 }
 
