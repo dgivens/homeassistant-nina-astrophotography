@@ -24,14 +24,10 @@ const CONFIRM = {
   dome_close: "Close the dome?",
 };
 
-const UNREACHABLE_BANNER = `
-  <div class="session-banner unreachable">
-    <span class="icon">📡</span>
-    <div>
-      <div class="label">N.I.N.A. unreachable</div>
-      <div class="detail">Home Assistant has no link to N.I.N.A.; readings and controls resume when it returns.</div>
-    </div>
-  </div>`;
+// A single failed poll makes every entity unavailable for one ten-second
+// interval, and on a remote link that is routine while the rig images on. The
+// card keeps what it last showed for this long before calling the link lost.
+const LINK_GRACE_MS = 30_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -82,6 +78,21 @@ function numState(hass, entity_id, decimals = 1, fallback = "—") {
 function measured(hass, entity_id, decimals = 1) {
   const q = quantity(hass, entity_id);
   return { value: displayed(q, decimals) ?? "—", unit: q?.unit ?? "" };
+}
+
+// No data does not mean the rig stopped, so the banner says it may not have.
+function unreachableBanner(since, dome) {
+  const time = since
+    ? ` since ${new Date(since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : "";
+  return `
+  <div class="session-banner unreachable">
+    <span class="icon">📡</span>
+    <div>
+      <div class="label">N.I.N.A. unreachable</div>
+      <div class="detail">No data from N.I.N.A.${time}; it may still be imaging. ${dome ? "Stop, park and close" : "Stop and park"} still send.</div>
+    </div>
+  </div>`;
 }
 
 function statusDot(on) {
@@ -319,6 +330,8 @@ class NinaObservatoryCard extends HTMLElement {
     // A new config may name a different rig: make the next `set hass` re-resolve.
     this._resolved = {};
     this._resolvedFrom = null;
+    // Nothing on screen is from this config to keep through a grace period.
+    this._live = false;
   }
 
   set hass(hass) {
@@ -332,6 +345,10 @@ class NinaObservatoryCard extends HTMLElement {
       this._resolved = resolveEntities(hass, this._config.device_id);
     }
     this._render();
+  }
+
+  disconnectedCallback() {
+    clearTimeout(this._graceTimer);
   }
 
   // The resolved entity id for a `translation_key`, falling back to a prefixed
@@ -370,8 +387,25 @@ class NinaObservatoryCard extends HTMLElement {
     // `off` and `0` there. Three of them, because a user may disable any one.
     // A hub row is restored from the registry only when the entry failed to
     // load, which is N.I.N.A. unreachable too.
-    const unreachable = [seqId, imagingId, frameCountId]
-      .some((id) => state(h, id) === "unavailable");
+    const lost = [seqId, imagingId, frameCountId]
+      .map((id) => h.states[id])
+      .filter((row) => row?.state === "unavailable");
+    // A row with no timestamp is taken as lost long since.
+    const lostSince = lost.length
+      ? Math.min(...lost.map((row) => Date.parse(row.last_changed) || 0))
+      : null;
+    clearTimeout(this._graceTimer);
+    if (lostSince !== null && this._live) {
+      // Every reading is `unavailable` now, which would draw the rig as
+      // stopped: keep the last live view until the grace period runs out.
+      const wait = lostSince + LINK_GRACE_MS - Date.now();
+      if (wait > 0) {
+        this._graceTimer = setTimeout(() => this._render(), wait);
+        return;
+      }
+    }
+    const unreachable = lostSince !== null;
+    this._live = !unreachable;
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
     const focConnected = available(h, this._eid("number", "focuser_position"));
@@ -382,13 +416,17 @@ class NinaObservatoryCard extends HTMLElement {
     // section stays hidden until a dome owner enables them — issue #93, whose
     // fix is to probe the dome *device*. Resolution cannot help: disabled
     // entities are absent from the registry payload.
-    const domeConnected = available(h, this._eid("binary_sensor", "dome_at_park"));
+    const domeParkId   = this._eid("binary_sensor", "dome_at_park");
+    const domeConnected = available(h, domeParkId);
+    // Enabled, whatever it reads: the dome close a lost link must not hide.
+    const domeEnabled  = !!h.states[domeParkId];
 
     // No `translation_key`: the switch takes the guider device's own name, so
     // it has nothing to resolve on and stays on the prefix path.
     const guiding      = isOn(h, this._eid("switch", "guider"));
     const cooling      = isOn(h, this._eid("switch", "camera_cooler"));
-    const parked       = isOn(h, this._eid("binary_sensor", "mount_at_park"));
+    const parkedId     = this._eid("binary_sensor", "mount_at_park");
+    const parked       = isOn(h, parkedId);
     const tracking     = isTracking(h, this._eid("select", "mount_tracking_rate"));
     // The shutter reports its own state; `Open` is the only one that is open.
     // Disabled as well, so this reads false until enabled — see above.
@@ -440,14 +478,50 @@ class NinaObservatoryCard extends HTMLElement {
 
     const [status, dot] = unreachable ? ["Unreachable", "dot-warn"]
       : seqRunning ? ["Session active", "dot-on"] : ["Standby", "dot-off"];
-    // A mount that is not connected is neither parked, tracking nor idle.
-    const mountStatus = !mntConnected ? ""
+    // Read off the row it prints: a mount with no park state is neither
+    // parked, tracking nor idle as far as this card can tell.
+    const mountStatus = !available(h, parkedId) ? ""
       : parked ? " · Parked" : tracking ? " · Tracking" : " · Idle";
 
-    // Nothing a button sends can reach N.I.N.A. while the link is down.
-    const off = unreachable ? ` disabled title="N.I.N.A. unreachable"` : "";
-    const btn = (id, label, cls = "") =>
-      `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"${off}>${label}</button>`;
+    const btn = (id, label, cls = "", off = false) =>
+      `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"`
+      + `${off ? ` disabled title="N.I.N.A. unreachable"` : ""}>${label}</button>`;
+    // With the link lost no state says which of a pair applies, so the card
+    // offers the commands that end activity, live: sent to a rig already
+    // stopped, parked or closed they do nothing, and a press that cannot reach
+    // N.I.N.A. fails with the action's own error. Those that start activity
+    // wait for the link.
+    const controls = unreachable ? [
+      [
+        btn("btn-stop", "⏹ Stop Sequence", "danger"),
+        btn("btn-park", "⏸ Park"),
+        domeEnabled ? btn("btn-dome-close", "🔒 Close Dome") : "",
+      ],
+      [
+        btn("btn-start", "▶ Start Sequence", "success", true),
+        btn("btn-af", "🔍 Auto Focus", "", true),
+        btn("btn-cool", "❄ Cool Camera", "primary", true),
+        btn("btn-start-guide", "▶ Start Guiding", "success", true),
+      ],
+    ] : [
+      [
+        seqRunning
+          ? btn("btn-stop", "⏹ Stop Sequence", "danger")
+          : btn("btn-start", "▶ Start Sequence", "success"),
+        parked ? btn("btn-unpark", "⬆ Unpark", "primary") : btn("btn-park", "⏸ Park"),
+        btn("btn-af", "🔍 Auto Focus"),
+        !domeConnected ? ""
+          : domeOpen
+            ? btn("btn-dome-close", "🔒 Close Dome")
+            : btn("btn-dome-open", "🔓 Open Dome", "primary"),
+      ],
+      [
+        cooling ? btn("btn-warm", "🌡 Warm Camera") : btn("btn-cool", "❄ Cool Camera", "primary"),
+        guiding
+          ? btn("btn-stop-guide", "◼ Stop Guiding", "danger")
+          : btn("btn-start-guide", "▶ Start Guiding", "success"),
+      ],
+    ];
 
     // Meridian flip warning
     const showFlipWarning =
@@ -469,7 +543,7 @@ class NinaObservatoryCard extends HTMLElement {
         <div class="body">
 
           <!-- Session banner, or the lost link in its place -->
-          ${unreachable ? UNREACHABLE_BANNER : `
+          ${unreachable ? unreachableBanner(lostSince, domeEnabled) : `
           <div class="session-banner">
             <div>
               <div class="target">${seqRunning ? target : "—"}</div>
@@ -484,7 +558,8 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>`}
 
-          <!-- Equipment chips -->
+          <!-- Equipment chips: with the link lost, none is known down -->
+          ${unreachable ? "" : `
           <div class="equip-row">
             ${chip("Camera", camConnected)}
             ${chip("Mount", mntConnected)}
@@ -492,7 +567,7 @@ class NinaObservatoryCard extends HTMLElement {
             ${chip("Filter Wheel", fwConnected)}
             ${chip("Guider", gdrConnected)}
             ${domeConnected ? chip("Dome", domeConnected) : ""}
-          </div>
+          </div>`}
 
           <!-- Flip warning -->
           ${showFlipWarning ? `
@@ -573,27 +648,7 @@ class NinaObservatoryCard extends HTMLElement {
           <!-- Controls -->
           <div class="section">
             <div class="section-title">Controls</div>
-            <div class="btn-row">
-              ${seqRunning
-                ? btn("btn-stop", "⏹ Stop Sequence", "danger")
-                : btn("btn-start", "▶ Start Sequence", "success")}
-              ${parked
-                ? btn("btn-unpark", "⬆ Unpark", "primary")
-                : btn("btn-park", "⏸ Park")}
-              ${btn("btn-af", "🔍 Auto Focus")}
-              ${!domeConnected ? ""
-                : domeOpen
-                  ? btn("btn-dome-close", "🔒 Close Dome")
-                  : btn("btn-dome-open", "🔓 Open Dome", "primary")}
-            </div>
-            <div class="btn-row">
-              ${cooling
-                ? btn("btn-warm", "🌡 Warm Camera")
-                : btn("btn-cool", "❄ Cool Camera", "primary")}
-              ${guiding
-                ? btn("btn-stop-guide", "◼ Stop Guiding", "danger")
-                : btn("btn-start-guide", "▶ Start Guiding", "success")}
-            </div>
+            ${controls.map((row) => `<div class="btn-row">${row.join("")}</div>`).join("")}
           </div>
 
         </div><!-- end body -->

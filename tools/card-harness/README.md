@@ -95,8 +95,17 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
   config: { prefix: "n_i_n_a" },   // optional, straight to setConfig
   draw: (card) => card._drawFrame(),  // optional, see below
   events: (dump) => [{ type: "nina_image_save", data: { … } }],  // optional
+  after: (dump) => [rig(dump, "nina_unreachable").build()],  // optional
 }
 ```
+
+`after` is later `hass` objects, handed to the card in turn once the first
+render has settled, for a card whose output depends on what it showed before —
+the observatory card keeps its last live view through a short loss of the link.
+Each is logged as `hass`, and the printed markup is what the last one left.
+`Rig.changedAt(date)` stamps every row's `last_changed`, which the dump does
+not carry; against it, `Date.now()` is pinned. `render.html` hands over only
+the first `hass`.
 
 `events` are bus events `ops.mjs` fires at whatever the card subscribed to,
 once the first render has settled; each is logged, so the lines after it are

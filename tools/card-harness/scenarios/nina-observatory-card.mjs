@@ -15,7 +15,8 @@ import { rig } from "../hass.mjs";
 const UP = "site_configured";
 const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
 
-// No `draw` hook: the card has no canvas.
+// No `draw` hook: the card has no canvas. `Date.now()` is pinned, so a
+// `changedAt` relative to it is a fixed distance into the grace period.
 
 export const scenarios = {
   // Every id resolved, and the equipment up.
@@ -35,9 +36,27 @@ export const scenarios = {
   // controls live. Must not read as the lost link below.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
-  // The rig of `station` after N.I.N.A. stops answering: the unreachable
-  // banner in place of the session, and every control disabled.
+  // The rig of `station` after N.I.N.A. stops answering, seen by a card with
+  // nothing live to keep: the banner in place of the session, the chips gone,
+  // the commands that end activity live and those that start it disabled.
   unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+
+  // `station`, then one missed poll: the card must still draw `station`.
+  blip: {
+    hass: (dump) => rig(dump, UP).build(),
+    after: (dump) => [
+      rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - 10_000)).build(),
+    ],
+  },
+
+  // `station`, then a link down for longer than the grace period: `unreachable`,
+  // with the time the link went down in the banner.
+  lost: {
+    hass: (dump) => rig(dump, UP).build(),
+    after: (dump) => [
+      rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - 45_000)).build(),
+    ],
+  },
 
   // `unreachable` with the sequencer's row disabled, which the card also reads
   // the session from. The hub's other rows still tell the lost link.
