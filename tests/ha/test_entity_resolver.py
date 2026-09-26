@@ -12,9 +12,11 @@ the claim that a disabled entity can never resolve.
 
 from pathlib import Path
 
+from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -28,9 +30,10 @@ DRIVER = Path(__file__).parent / "resolve_entities.mjs"
 async def _snapshot(hass: HomeAssistant, hass_ws_client) -> dict:
     """The registries as the frontend holds them, in `hass.entities`/`.devices`.
 
-    Only the three entity fields the resolver reads are expanded from core's
+    Only the four entity fields the resolver reads are expanded from core's
     compact keys, with the long names `frontend`'s `connection-mixin.ts` gives
-    them: `ei` -> `entity_id`, `di` -> `device_id`, `tk` -> `translation_key`.
+    them: `ei` -> `entity_id`, `di` -> `device_id`, `pl` -> `platform`,
+    `tk` -> `translation_key`.
     Devices are sent whole and keyed by id, so they need no expansion.
     """
     assert await async_setup_component(hass, "config", {})
@@ -46,6 +49,7 @@ async def _snapshot(hass: HomeAssistant, hass_ws_client) -> dict:
             entity["ei"]: {
                 "entity_id": entity["ei"],
                 "device_id": entity.get("di"),
+                "platform": entity.get("pl"),
                 "translation_key": entity.get("tk"),
             }
             for entity in entities
@@ -61,6 +65,58 @@ async def _resolve(
     return await hass.async_add_executor_job(
         run_node, DRIVER, snapshot, device_id or ""
     )
+
+
+async def _link_lost_since(
+    hass: HomeAssistant, hass_ws_client, fallback: list[str] | None = None
+) -> int | None:
+    """`linkLostSince(hass)`, as the shipped module computes it, in epoch ms.
+
+    The states carry only what it reads: the state, `last_changed`, and the
+    `restored` marker core puts on a registry row no live entity claims. With
+    `fallback`, the registries are withheld, as from a card that cannot
+    identify its rig, and the card's own ids passed instead.
+    """
+    snapshot = await _snapshot(hass, hass_ws_client)
+    snapshot["states"] = {
+        state.entity_id: {
+            "state": state.state,
+            "attributes": {"restored": bool(state.attributes.get("restored"))},
+            "last_changed": state.last_changed.isoformat(),
+        }
+        for state in hass.states.async_all()
+        if state.entity_id in snapshot["entities"]
+    }
+    if fallback is not None:
+        snapshot = {"states": snapshot["states"], "fallback": fallback}
+    return await hass.async_add_executor_job(
+        run_node, DRIVER, snapshot, "", "linkLostSince"
+    )
+
+
+async def _lose_the_link(advance, freezer: FrozenDateTimeFactory) -> int:
+    """N.I.N.A. stops answering a minute on; the failed poll's moment in ms."""
+    freezer.tick(60)
+    await advance("nina_unreachable")
+    return int(dt_util.utcnow().timestamp() * 1000)
+
+
+def _hub_row(hass: HomeAssistant, entry, platform: str) -> er.RegistryEntry:
+    """A registry row on the hub device, with no entity behind it."""
+    hub = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
+    )
+    assert hub is not None
+    return er.async_get(hass).async_get_or_create(
+        "sensor", platform, f"{entry.entry_id}_retired", device_id=hub.id
+    )
+
+
+def _orphan_a_hub_row(hass: HomeAssistant, entry) -> None:
+    """A registry row on the hub that no entity claims, under core's own
+    placeholder — what an entity dropped from the integration leaves behind.
+    """
+    _hub_row(hass, entry, DOMAIN).write_unavailable_state(hass)
 
 
 def _templated(domain: str, suffix: str, instance: str = INSTANCE) -> str:
@@ -285,3 +341,116 @@ async def test_renaming_a_device_does_not_break_resolution(
     resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
     assert resolved["sensor.mount_right_ascension"] == renamed.entity_id
+
+
+@needs_node
+@pytest.mark.parametrize("rig_state", ["site_configured", "equipment_disconnected"])
+async def test_a_rig_that_answers_has_not_lost_its_link(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    hass_ws_client,
+    rig_state: str,
+) -> None:
+    """Every driver down is not a lost link: the hub's rows stay available,
+    which is what lets the cards tell the two apart.
+    """
+    await set_up_at(hass, config_entry, rig, rig_state)
+
+    assert await _link_lost_since(hass, hass_ws_client) is None
+
+
+@needs_node
+async def test_a_failed_poll_loses_the_link_from_that_moment(
+    hass: HomeAssistant, advance, hass_ws_client, freezer: FrozenDateTimeFactory
+) -> None:
+    """The cards' grace period is measured from this, so it has to be the
+    moment the hub went unavailable rather than any earlier change.
+    """
+    failed_at = await _lose_the_link(advance, freezer)
+
+    assert await _link_lost_since(hass, hass_ws_client) == failed_at
+
+
+@needs_node
+async def test_an_entry_that_is_not_loaded_has_lost_its_link(
+    hass: HomeAssistant, loaded_entry, hass_ws_client
+) -> None:
+    """With the entry down, every hub row is core's restored placeholder — the
+    same rows an entry that failed to load after a restart leaves.
+    """
+    assert await hass.config_entries.async_unload(loaded_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert await _link_lost_since(hass, hass_ws_client) is not None
+
+
+@needs_node
+async def test_an_orphaned_hub_row_does_not_lose_the_link(
+    hass: HomeAssistant, loaded_entry, hass_ws_client
+) -> None:
+    """A restored row beside live ones reads `unavailable` for ever. Counting it
+    would show every dashboard a lost link while the rig answers.
+    """
+    _orphan_a_hub_row(hass, loaded_entry)
+
+    assert await _link_lost_since(hass, hass_ws_client) is None
+
+
+@needs_node
+async def test_an_orphaned_hub_row_does_not_date_a_lost_link(
+    hass: HomeAssistant,
+    loaded_entry,
+    advance,
+    hass_ws_client,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """The orphan's `last_changed` is when core restored it. Dating the loss
+    from it would put a one-poll blip past the cards' grace period.
+    """
+    _orphan_a_hub_row(hass, loaded_entry)
+
+    failed_at = await _lose_the_link(advance, freezer)
+
+    assert await _link_lost_since(hass, hass_ws_client) == failed_at
+
+
+@needs_node
+async def test_another_integration_s_row_on_the_hub_does_not_lose_the_link(
+    hass: HomeAssistant, loaded_entry, hass_ws_client
+) -> None:
+    """A helper may be linked to the hub, a template sensor for one, and read
+    `unavailable` for reasons of its own while the rig answers.
+    """
+    helper = _hub_row(hass, loaded_entry, "template")
+    hass.states.async_set(helper.entity_id, "unavailable")
+
+    assert await _link_lost_since(hass, hass_ws_client) is None
+
+
+@needs_node
+@pytest.mark.parametrize("lost", [False, True], ids=["answering", "lost"])
+async def test_an_unidentified_rig_is_read_through_the_card_s_own_ids(
+    hass: HomeAssistant,
+    advance,
+    hass_ws_client,
+    freezer: FrozenDateTimeFactory,
+    lost: bool,
+) -> None:
+    """Two rigs and no `device_id:` leave no hub to walk; a card's templated
+    hub ids are what is left to tell the lost link by.
+    """
+    failed_at = await _lose_the_link(advance, freezer) if lost else None
+
+    assert (
+        await _link_lost_since(
+            hass,
+            hass_ws_client,
+            fallback=[
+                _templated("binary_sensor", "sequencer_running"),
+                _templated("sensor", "session_image_count"),
+            ],
+        )
+        == failed_at
+    )

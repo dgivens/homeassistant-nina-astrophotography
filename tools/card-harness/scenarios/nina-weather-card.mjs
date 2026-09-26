@@ -17,7 +17,7 @@
  * inventing a channel, which is what `render.html` against a live rig is for.
  */
 
-import { rig } from "../hass.mjs";
+import { linkScenarios, rig } from "../hass.mjs";
 
 const UP = "site_configured";
 const US = "site_configured_us_customary";
@@ -138,14 +138,13 @@ export const scenarios = {
   // not-connected panel in place of the whole body, under a grey banner.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
-  // The station and monitor of `station`, after N.I.N.A. stops answering: every
-  // entity unavailable, the hub's source included. Must not read as the
-  // unconfigured rig above, nor advise connecting anything.
-  unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+  // The lost link, which must not read as the unconfigured rig above nor
+  // advise connecting anything.
+  ...linkScenarios(),
 
   // `unreachable` with both diagnostic lost-link signals disabled: the source
-  // and the monitor's connectivity. The hub's sequencer is the one left, and
-  // it still tells this from an unconfigured rig.
+  // and the monitor's connectivity. The hub's other rows still tell this
+  // from an unconfigured rig.
   unreachable_undiagnosed: {
     hass: (dump) =>
       rig(dump, "nina_unreachable")
@@ -154,14 +153,10 @@ export const scenarios = {
   },
 
   // A live station with the monitor not yet seen since Home Assistant
-  // restarted. Fabricated: both monitor rows are Home Assistant's restored
-  // placeholder — `unavailable`, marked `restored` — over their own captured
-  // attributes. Must read as a monitor not connected, above live weather.
+  // restarted: both monitor rows are Home Assistant's restored placeholder.
+  // Must read as a monitor not connected, above live weather.
   restored_monitor: {
     hass: (dump) =>
-      rig(dump, UP)
-        .override(LINK, "unavailable", { ...dump[UP].states[LINK].attributes, restored: true })
-        .override(SAFETY, "unavailable", { ...dump[UP].states[SAFETY].attributes, restored: true })
-        .build(),
+      rig(dump, UP).restored(LINK).restored(SAFETY).build(),
   },
 };

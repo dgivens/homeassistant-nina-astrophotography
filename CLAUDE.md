@@ -297,6 +297,11 @@ Traps when changing a card:
   `nina-observatory-card`'s `shown()` is the pattern, and every card now
   follows it. The image panel's `_f` reads are safe only because it prints
   each one solely above zero.
+- **A lost link to N.I.N.A. is `linkLostSince` over `hubEntityIds`, held
+  through a failed poll by `LinkGrace`** (`nina-entity-resolver.js`, whose
+  docstrings carry the rules) — never a card's own check of a few rows. Decide
+  it before the camera or the station: a lost link makes every reading
+  `unavailable`, which otherwise renders as equipment disconnected in N.I.N.A.
 - `tests/unit/test_cards.py`'s `LITERAL` matches a **backticked**
   `<domain>.<word>`, so prose like `` `select.filter` `` in a card comment fails
   the hardcoded-id test. Reword the comment; the test is right.

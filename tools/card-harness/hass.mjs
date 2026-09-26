@@ -84,6 +84,18 @@ export class Rig {
     });
   }
 
+  /**
+   * Replace a row with Home Assistant's restored placeholder — `unavailable`,
+   * marked `restored`, over the row's own attributes — as core leaves one for a
+   * registry row no entity has claimed since the restart. Fabricated, but core's
+   * own shape rather than an invented reading.
+   */
+  restored(entityId) {
+    const row = this._states[entityId];
+    if (!row) throw new Error(`${entityId} is not in the dump — nothing to restore`);
+    return this.override(entityId, "unavailable", { ...row.attributes, restored: true });
+  }
+
   /** Stamp every row's `last_changed`, which the dump does not carry. */
   changedAt(date) {
     const stamp = date.toISOString();
@@ -113,4 +125,41 @@ export function rig(dump, rigState) {
     throw new Error(`no rig state "${rigState}" — have: ${Object.keys(dump).join(", ")}`);
   }
   return new Rig(state);
+}
+
+// A hub row none of the cards reads, standing in for an orphan: a registry row
+// no entity claims, which reads `unavailable` for ever.
+const ORPHAN = "sensor.n_i_n_a_wait_ends_at";
+
+/**
+ * The lost-link scenarios every card that tells one carries, around the live
+ * `site_configured` rig:
+ *
+ * - `unreachable` — N.I.N.A. not answering, seen by a card with nothing live
+ *   to keep.
+ * - `blip` — live, then one missed poll: must still draw the live rig.
+ * - `lost` — live, then a link down past the grace period: `unreachable`.
+ * - `unreachable_templated` — `unreachable` with no registry, where the card's
+ *   own templated hub ids are what is left to tell it by.
+ * - `orphaned_row` — live beside an orphaned hub row: must draw the live rig.
+ *
+ * `Date.now()` is pinned in `ops.mjs`, so `blip` and `lost` are fixed
+ * distances into the grace period.
+ */
+export function linkScenarios() {
+  const downFor = (ms) => ({
+    hass: (dump) => rig(dump, "site_configured").build(),
+    after: (dump) => [
+      rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - ms)).build(),
+    ],
+  });
+  return {
+    unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+    blip: downFor(10_000),
+    lost: downFor(45_000),
+    unreachable_templated: {
+      hass: (dump) => rig(dump, "nina_unreachable").unresolvable().build(),
+    },
+    orphaned_row: { hass: (dump) => rig(dump, "site_configured").restored(ORPHAN).build() },
+  };
 }

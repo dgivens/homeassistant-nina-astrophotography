@@ -10,13 +10,12 @@
  * entity unavailable, the hub's included.
  */
 
-import { rig } from "../hass.mjs";
+import { linkScenarios, rig } from "../hass.mjs";
 
 const UP = "site_configured";
 const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
 
-// No `draw` hook: the card has no canvas. `Date.now()` is pinned, so
-// `changedAt` offsets are fixed.
+// No `draw` hook: the card has no canvas.
 
 export const scenarios = {
   // Every id resolved, and the equipment up.
@@ -44,24 +43,9 @@ export const scenarios = {
   // the guider switch, whose pair reads the guider's status instead.
   foreign_prefix: { hass: (dump) => rig(dump, UP).build(), config: { prefix: "observatory" } },
 
-  // `station` with the link lost and no live view to keep.
-  unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
-
-  // `station`, then one missed poll: must still draw `station`.
-  blip: {
-    hass: (dump) => rig(dump, UP).build(),
-    after: (dump) => [
-      rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - 10_000)).build(),
-    ],
-  },
-
-  // `station`, then a link down past the grace period.
-  lost: {
-    hass: (dump) => rig(dump, UP).build(),
-    after: (dump) => [
-      rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - 45_000)).build(),
-    ],
-  },
+  // The lost link: the banner in place of the session and the chips gone.
+  // `lost` puts the time the link went down in the banner.
+  ...linkScenarios(),
 
   // `unreachable` with the sequencer's row disabled.
   unreachable_without_sequencer: {
