@@ -35,6 +35,15 @@ export const scenarios = {
   // Every driver down, N.I.N.A. answering. Must not read as a lost link.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
+  // `station` with the guider and cooler switches disabled: the chips stay
+  // green, the cooler pair disables all the same, and the guider pair reads
+  // the guider's status instead.
+  switches_disabled: { hass: (dump) => rig(dump, UP).without("guider", "camera_cooler").build() },
+
+  // `station` under a prefix that matches no entity: everything resolves but
+  // the guider switch, whose pair reads the guider's status instead.
+  foreign_prefix: { hass: (dump) => rig(dump, UP).build(), config: { prefix: "observatory" } },
+
   // `station` with the link lost and no live view to keep.
   unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
 

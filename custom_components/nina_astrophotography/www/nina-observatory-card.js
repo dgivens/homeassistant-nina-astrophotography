@@ -56,9 +56,21 @@ function available(hass, entity_id) {
   return !!e && e.state !== "unavailable" && e.state !== "unknown";
 }
 
-// Tracking is one of the mount's own rates, and `Stopped` is one of them.
-function isTracking(hass, entity_id) {
-  return available(hass, entity_id) && state(hass, entity_id) !== "Stopped";
+// On, off, or null when there is no state to read: a device that is down, a
+// disabled row, a row Home Assistant has no value for.
+function onOff(hass, entity_id) {
+  return available(hass, entity_id) ? isOn(hass, entity_id) : null;
+}
+
+// `Stopped` is one of the mount's own tracking rates, and the one guider status
+// that is not guiding.
+function notStopped(hass, entity_id) {
+  return available(hass, entity_id) ? state(hass, entity_id) !== "Stopped" : null;
+}
+
+// Why a control is disabled when no state says which of its pair applies.
+function unread(value, device) {
+  return value === null ? `The card cannot read the ${device} state` : "";
 }
 
 // A reading Home Assistant has no value for is not a number to print.
@@ -404,7 +416,8 @@ class NinaObservatoryCard extends HTMLElement {
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
     const focConnected = available(h, this._eid("number", "focuser_position"));
     const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
-    const gdrConnected = available(h, this._eid("sensor", "guider_status"));
+    const gdrStatusId  = this._eid("sensor", "guider_status");
+    const gdrConnected = available(h, gdrStatusId);
     // Every dome entity ships disabled (§5.3.1: spec-derived, no hardware to
     // verify against) and a disabled entity has no state object, so the dome
     // section stays hidden until a dome owner enables them — issue #93, whose
@@ -415,13 +428,16 @@ class NinaObservatoryCard extends HTMLElement {
     // Any row, even `unavailable`: Close Dome must survive a lost link.
     const domeEnabled  = !!h.states[domeParkId];
 
-    // No `translation_key`: the switch takes the guider device's own name, so
-    // it has nothing to resolve on and stays on the prefix path.
-    const guiding      = isOn(h, this._eid("switch", "guider"));
-    const cooling      = isOn(h, this._eid("switch", "camera_cooler"));
+    // The guider switch has no `translation_key` and stays on the prefix path,
+    // so a prefix that does not match the instance loses it; the status sensor
+    // it is derived from resolves.
+    const guiding      = onOff(h, this._eid("switch", "guider")) ?? notStopped(h, gdrStatusId);
+    const cooling      = onOff(h, this._eid("switch", "camera_cooler"));
     const parkedId     = this._eid("binary_sensor", "mount_at_park");
+    // No state reads as unparked on purpose: Park is an emergency control, and
+    // a parked mount sent it again does nothing.
     const parked       = isOn(h, parkedId);
-    const tracking     = isTracking(h, this._eid("select", "mount_tracking_rate"));
+    const tracking     = notStopped(h, this._eid("select", "mount_tracking_rate"));
     // The shutter reports its own state; `Open` is the only one that is open.
     // Disabled as well, so this reads false until enabled — see above.
     const domeOpen     = state(h, this._eid("sensor", "dome_shutter_status")) === "Open";
@@ -476,9 +492,11 @@ class NinaObservatoryCard extends HTMLElement {
     const mountStatus = !available(h, parkedId) ? ""
       : parked ? " · Parked" : tracking ? " · Tracking" : " · Idle";
 
-    const btn = (id, label, cls = "", off = false) =>
+    // `off` is why the button is disabled, or empty for a live one.
+    const btn = (id, label, cls = "", off = "") =>
       `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"`
-      + `${off ? ` disabled title="N.I.N.A. unreachable"` : ""}>${label}</button>`;
+      + `${off ? ` disabled title="${off}"` : ""}>${label}</button>`;
+    const LOST = "N.I.N.A. unreachable";
     // With no state to pick either of a pair, the link-lost set is fixed:
     // commands that end activity stay live (harmless if already done; an
     // unreachable press fails with the action's error), the rest wait.
@@ -489,10 +507,10 @@ class NinaObservatoryCard extends HTMLElement {
         domeEnabled ? btn("btn-dome-close", "🔒 Close Dome") : "",
       ],
       [
-        btn("btn-start", "▶ Start Sequence", "success", true),
-        btn("btn-af", "🔍 Auto Focus", "", true),
-        btn("btn-cool", "❄ Cool Camera", "primary", true),
-        btn("btn-start-guide", "▶ Start Guiding", "success", true),
+        btn("btn-start", "▶ Start Sequence", "success", LOST),
+        btn("btn-af", "🔍 Auto Focus", "", LOST),
+        btn("btn-cool", "❄ Cool Camera", "primary", LOST),
+        btn("btn-start-guide", "▶ Start Guiding", "success", LOST),
       ],
     ] : [
       [
@@ -506,11 +524,15 @@ class NinaObservatoryCard extends HTMLElement {
             ? btn("btn-dome-close", "🔒 Close Dome")
             : btn("btn-dome-open", "🔓 Open Dome", "primary"),
       ],
+      // Neither cooling nor guiding is an emergency to end, so with no state
+      // to pick one of the pair, these wait for one.
       [
-        cooling ? btn("btn-warm", "🌡 Warm Camera") : btn("btn-cool", "❄ Cool Camera", "primary"),
+        cooling
+          ? btn("btn-warm", "🌡 Warm Camera")
+          : btn("btn-cool", "❄ Cool Camera", "primary", unread(cooling, "camera cooler")),
         guiding
           ? btn("btn-stop-guide", "◼ Stop Guiding", "danger")
-          : btn("btn-start-guide", "▶ Start Guiding", "success"),
+          : btn("btn-start-guide", "▶ Start Guiding", "success", unread(guiding, "guider")),
       ],
     ];
 
@@ -603,7 +625,7 @@ class NinaObservatoryCard extends HTMLElement {
           <!-- Guiding section -->
           ${gdrConnected ? `
             <div class="section">
-              <div class="section-title">Guiding · ${guiding ? "Active" : "Stopped"} · bars full scale 4"</div>
+              <div class="section-title">Guiding · ${guiding === null ? "" : guiding ? "Active · " : "Stopped · "}bars full scale 4"</div>
               <div class="guider-meter">
                 <div style="font-size:0.72rem;color:var(--muted);">
                   Total RMS: <strong style="color:var(--text)">${guided ? `${rmsTotal.toFixed(2)}"` : "—"}</strong>
