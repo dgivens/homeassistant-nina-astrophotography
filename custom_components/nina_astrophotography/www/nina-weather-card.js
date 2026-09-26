@@ -365,12 +365,14 @@ class NinaWeatherCard extends HTMLElement {
     const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
     // The margin as the reader can check it: the difference of the two numbers
-    // printed beside it, so 20.54 over 20.46 °C, both shown as 20.5, reads as
-    // "at" rather than "within 0.1". Readings in two units have no printed
-    // difference, so theirs is the true one. One that rounds to nothing is "at".
+    // printed beside it, at their precision, so 20.54 over 20.46 °C, both shown
+    // as 20.5, reads as "at" rather than "within 0.1". Readings printed in two
+    // units or at two precisions have no such difference, so theirs is the
+    // true one. One that rounds to nothing is "at".
+    const places = temp?.precision ?? 1;
     const shownMargin = !dewThreat ? null
-      : temp.unit === dewPt.unit
-        ? (Number(displayed(temp, 1)) - Number(displayed(dewPt, 1))).toFixed(1)
+      : temp.unit === dewPt.unit && places === (dewPt.precision ?? 1)
+        ? (Number(displayed(temp, 1)) - Number(displayed(dewPt, 1))).toFixed(places)
         : interval(dewMargin, "°C", temp.unit)?.toFixed(1);
     const atDewPoint = dewThreat && (dewMargin <= 0 || Number(shownMargin) <= 0);
     const tempShown = withUnit(temp, 1);
