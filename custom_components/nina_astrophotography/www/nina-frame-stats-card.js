@@ -69,13 +69,16 @@ function passband(name) {
     ?? (/uvir|iruv|ircut|irblock/.test(key) ? "L" : null);
 }
 
-// Any other filter. Seven: a common wheel rarely holds more that match no
-// passband. Chosen for perceptual distance from each other and the passband
-// hues on the card's background, with and without a colour-vision deficiency,
-// and ordered most distinct first, since a wheel's first slots are the ones
-// that must not look alike.
+// Any other filter. Eight, so that an 8-position wheel of filters matching no
+// passband still draws every slot apart. Chosen for perceptual distance from
+// each other and the passband hues on the card's background, weighing hue and
+// saturation over lightness since a thin line shows those most, with and
+// without a colour-vision deficiency; pastels near L's white are excluded.
+// Ordered most distinct first: a wheel's first slots are the ones that must
+// not look alike.
 const OTHER_COLOURS = [
-  "#94d1f9", "#f48525", "#e9c5a5", "#d8f425", "#f4bc25", "#dba5e9", "#f1a29d",
+  "#ff6a00", "#e1da89", "#0db9f2", "#daff24",
+  "#24ffc8", "#da886c", "#9c6bff", "#ff00bf",
 ];
 
 // A light with no filter name among named ones, which no chip uses.
