@@ -286,6 +286,23 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   reporting no setpoint is refused. After a warm-up the setpoint is the
   warm-up's final value, so switching on resumes there; set
   `number.<instance>_camera_target_temperature` to cool to a chosen value.
+- **The frame statistics card gives each filter the same colour every night.**
+  1.4.5 coloured the chips in the order the night first used each filter and
+  the lines in their order on screen, so R could take any colour, and a chip
+  and its line could disagree. L is neutral, R, G and B their own hues, Ha
+  rose, OIII cyan and SII violet, whatever the wheel calls them (`Lum`, `Red`,
+  `Ha 3nm`, `Ha7`, `Chroma OIII 3nm`, `L-2`, `Deep-Sky R`). `Clear`, `Empty`
+  and `UV/IR Cut` read as L on a wheel with no L of its own. Any other
+  filter — `HaOiii`, `LPro`, whatever its owner typed — takes a colour by its
+  slot in the filter wheel, as does a second slot for a passband already
+  taken: up to eight such slots, a whole 8-position wheel, never share one,
+  and a colour that could pass for a passband already on the wheel, with or
+  without a colour-vision deficiency, is used last. A colour follows the slot
+  rather than the glass in it and, once Home Assistant has seen the wheel,
+  changes only when the wheel is reconfigured. The chips run in wheel order.
+  A night with no filter names — a one-shot-colour camera with no wheel —
+  draws each chart in its own colour; beside named filters, a light with no
+  name is a hollow grey point.
 
 ### Fixed
 
