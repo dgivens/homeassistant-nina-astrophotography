@@ -5,6 +5,9 @@
  * mount two hours from its flip, and no session — it is dumped on a later day
  * than its night. `site_configured_us_customary` is the same rig on a US
  * customary instance, where Home Assistant shows every temperature in °F.
+ * `equipment_disconnected` has every driver down under a live hub, and
+ * `nina_unreachable` is `site_configured` once N.I.N.A. stops answering: every
+ * entity unavailable, the hub's included.
  */
 
 import { rig } from "../hass.mjs";
@@ -27,4 +30,18 @@ export const scenarios = {
 
   // The time to the flip shown in hours, which must render what `station` does.
   flip_in_hours: { hass: (dump) => rig(dump, UP).displayedIn(FLIP, "h", 1 / 60).build() },
+
+  // Every driver down, N.I.N.A. answering: grey chips, empty readings, and the
+  // controls live. Must not read as the lost link below.
+  disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
+
+  // The rig of `station` after N.I.N.A. stops answering: the unreachable
+  // banner in place of the session, and every control disabled.
+  unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+
+  // `unreachable` with the sequencer's row disabled, which the card also reads
+  // the session from. The hub's other rows still tell the lost link.
+  unreachable_without_sequencer: {
+    hass: (dump) => rig(dump, "nina_unreachable").without("sequencer_running").build(),
+  },
 };
