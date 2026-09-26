@@ -226,11 +226,11 @@ class NinaWeatherCard extends HTMLElement {
     const isUnsafe = unsafeState === "on";
     const isSafe   = safetyConnected && unsafeState === "off";
 
-    // Weather. The source has no connectivity entity of its own — a
-    // disconnected device makes its entities unavailable instead. One read,
-    // because the name is that same state and printing `unavailable` as the
-    // station's name is worse than printing nothing.
+    // Weather. The source names the station, and nothing else here depends on
+    // it existing: it is diagnostic, so a user may disable it, and a disabled
+    // entity has no state to read.
     const source = this._s(this._eid("sensor", "weather_source"));
+    const sourceLive = source !== null && source !== "unknown" && source !== "unavailable";
     // A lost link to N.I.N.A. makes both of these unavailable: the source
     // hangs off the hub, which has no driver of its own to lose, and the
     // monitor's connectivity stays available while the monitor is down. A
@@ -243,7 +243,6 @@ class NinaWeatherCard extends HTMLElement {
     // when the entry failed to load — and then N.I.N.A. is unreachable.
     const unreachable = source === "unavailable"
       || (safetyLinkRow?.state === "unavailable" && !safetyLinkRow.attributes?.restored);
-    const wxConnected = source !== null && !unreachable && source !== "unknown";
     // Every channel Home Assistant can convert is read with its unit: it is
     // printed in that unit, and converted only to meet a threshold here, which
     // is in the unit the integration publishes.
@@ -260,7 +259,13 @@ class NinaWeatherCard extends HTMLElement {
     const skyB    = this._q(this._eid("sensor", "sky_brightness", "weather_sky_brightness"));
     const skyT    = this._q(this._eid("sensor", "sky_temperature", "weather_sky_temperature"));
     const seeing  = this._f(this._eid("sensor", "star_fwhm", "weather_star_fwhm"));
-    const wxName  = wxConnected ? source : "Weather station";
+    // A station is connected when it names itself or any channel has a
+    // reading: a down station makes its channels unavailable, and a restored
+    // row is always unavailable, so neither can pass for one.
+    const wxConnected = !unreachable && (sourceLive || [
+      temp, humid, dewPt, windSpd, windDir, windGst, press, cloud, rain, skyQ, skyB, skyT, seeing,
+    ].some((reading) => reading !== null));
+    const wxName  = wxConnected && sourceLive ? source : "Weather station";
 
     const tempC  = inUnit(temp, "°C");
     const dewC   = inUnit(dewPt, "°C");
@@ -339,9 +344,11 @@ class NinaWeatherCard extends HTMLElement {
       cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
     const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
-    // The margin as printed: one that rounds to nothing reads as "at".
+    // The margin as printed: one that rounds to nothing reads as "at", and so
+    // do two readings printed alike, whatever their unrounded margin.
     const shownMargin = dewThreat ? interval(dewMargin, "°C", temp.unit)?.toFixed(1) : null;
-    const atDewPoint = dewThreat && (dewMargin <= 0 || Number(shownMargin) === 0);
+    const atDewPoint = dewThreat && (dewMargin <= 0 || Number(shownMargin) === 0
+      || withUnit(temp, 1) === withUnit(dewPt, 1));
     const dewWhere = atDewPoint
       ? `air at its dew point (${withUnit(dewPt, 1)}); dew is forming`
       : `temperature (${withUnit(temp, 1)}) within ${shownMargin} ${temp?.unit} of dew point (${withUnit(dewPt, 1)})`;
