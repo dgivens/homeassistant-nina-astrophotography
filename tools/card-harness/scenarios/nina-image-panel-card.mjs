@@ -25,7 +25,7 @@
  * `ops.mjs` fires their events.
  */
 
-import { rig } from "../hass.mjs";
+import { linkScenarios, rig } from "../hass.mjs";
 
 const NIGHT = "dawn_flats";
 
@@ -76,6 +76,9 @@ export const scenarios = {
   // The drivers down: no camera entities at all, the last-light readings
   // unknown and the session totals zero.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
+
+  // The lost link: the badge names it, not the camera.
+  ...linkScenarios(),
 
   // Two rigs saving. Resolved, the card reloads for its own rig's frame only:
   // one signed path, after the second event.

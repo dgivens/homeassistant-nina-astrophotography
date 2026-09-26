@@ -42,7 +42,9 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import { resolveEntities } from "./nina-entity-resolver.js";
+import {
+  LinkGrace, hubEntityIds, linkLostSince, resolveEntities,
+} from "./nina-entity-resolver.js";
 import { quantityIn } from "./nina-units.js";
 
 const VERSION = "3.0.0";
@@ -322,6 +324,7 @@ class NinaImagePanelCard extends HTMLElement {
     this._rendered = false;
     this._stripKey = null;
     this._unsubHassEvent = null;
+    this._grace = new LinkGrace(() => { this.hass = this._hass; });
   }
 
   setConfig(config) {
@@ -339,6 +342,7 @@ class NinaImagePanelCard extends HTMLElement {
     this._resolved = {};
     this._resolvedFrom = null;
     this._entryId = null;
+    this._grace.reset();
   }
 
   set hass(hass) {
@@ -352,6 +356,8 @@ class NinaImagePanelCard extends HTMLElement {
       this._resolvedFrom = hass.entities;
       this._resolved = resolveEntities(hass, this._config.device_id);
       this._entryId = this._rigEntryId(hass);
+      this._linkRows = hubEntityIds(hass, this._config.device_id)
+        ?? [this._entityId(), this._eid("sensor", "session_image_count")];
     }
 
     if (!this._rendered) {
@@ -359,6 +365,16 @@ class NinaImagePanelCard extends HTMLElement {
       this._rendered = true;
     }
 
+    const lostSince = linkLostSince(hass, this._linkRows);
+    if (!this._grace.hold(lostSince)) {
+      this._unreachable = lostSince !== null;
+      this._update();
+    }
+
+    this._subscribe();
+  }
+
+  _update() {
     // On the first render, and whenever a new config or a registry change
     // points the card at another entity — which may be another rig's. Past a
     // load still in flight: that one is for the old entity.
@@ -382,8 +398,6 @@ class NinaImagePanelCard extends HTMLElement {
     this._updateOverlay();
     this._updateStatsRow();
     this._updateHeaderBadge();
-
-    this._subscribe();
   }
 
   // Lovelace can detach and reattach a card without recreating it, as when
@@ -638,14 +652,19 @@ class NinaImagePanelCard extends HTMLElement {
       img.style.display = "block";
       if (this._config.show_histogram) this._drawHistogram();
       this._updateStripActive();
-      this._updateOverlay();
-      this._updateStatsRow();
-      this._updateHeaderBadge();
+      // Held: the readings are `unavailable`; keep the ones on screen.
+      if (!this._grace.holding) {
+        this._updateOverlay();
+        this._updateStatsRow();
+        this._updateHeaderBadge();
+      }
     } catch (err) {
       if (token !== this._loadToken) return;
-      this._hasImage = false;
       img.classList.remove("loading");
       spinner?.classList.remove("active");
+      // Held: the lost link is the likely cause; keep the frame on screen.
+      if (this._grace.holding) return;
+      this._hasImage = false;
       // Show no-image state only if this is the latest frame (not a strip click)
       if (index === 0) {
         img.style.display = "none";
@@ -924,7 +943,11 @@ class NinaImagePanelCard extends HTMLElement {
     const filter = known(this._s(this._eid("sensor", "last_image_filter")));
     const index  = this._currentIndex;
 
-    if (!connected) {
+    // Before the camera: a lost link makes it unavailable too.
+    if (this._unreachable) {
+      badge.textContent = "N.I.N.A. unreachable";
+      badge.className   = "badge warn";
+    } else if (!connected) {
       badge.textContent = "Disconnected";
       badge.className   = "badge warn";
     } else if (exposing) {

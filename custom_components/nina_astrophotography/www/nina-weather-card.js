@@ -14,7 +14,9 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import { resolveEntities } from "./nina-entity-resolver.js";
+import {
+  LinkGrace, hubEntityIds, linkLostSince, resolveEntities,
+} from "./nina-entity-resolver.js";
 import { displayed, inUnit, interval, quantity } from "./nina-units.js";
 
 const VERSION = "2.0.0";
@@ -163,6 +165,7 @@ class NinaWeatherCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._grace = new LinkGrace(() => this._render());
   }
 
   setConfig(config) {
@@ -171,6 +174,7 @@ class NinaWeatherCard extends HTMLElement {
     // A new config may name a different rig: make the next `set hass` re-resolve.
     this._resolved = {};
     this._resolvedFrom = null;
+    this._grace.reset();
   }
 
   set hass(hass) {
@@ -182,6 +186,15 @@ class NinaWeatherCard extends HTMLElement {
     if (hass.entities !== this._resolvedFrom) {
       this._resolvedFrom = hass.entities;
       this._resolved = resolveEntities(hass, this._config.device_id);
+      // The monitor's connectivity stays available while the monitor is down,
+      // so it too goes `unavailable` only with the link.
+      this._linkRows = [
+        ...(hubEntityIds(hass, this._config.device_id) ?? [
+          this._eid("sensor", "weather_source"),
+          this._eid("binary_sensor", "sequencer_running"),
+        ]),
+        this._eid("binary_sensor", "safety_monitor_connected"),
+      ];
     }
     this._render();
   }
@@ -231,21 +244,9 @@ class NinaWeatherCard extends HTMLElement {
     // entity has no state to read.
     const source = this._s(this._eid("sensor", "weather_source"));
     const sourceLive = source !== null && source !== "unknown" && source !== "unavailable";
-    // A lost link to N.I.N.A. makes all three of these unavailable: the source
-    // and the sequencer hang off the hub, which has no driver of its own to
-    // lose, and the monitor's connectivity stays available while the monitor
-    // is down. A station or monitor that is merely down reads `unknown` or
-    // `off`. Three, because a user may disable any one of them.
-    //
-    // The exception is a row Home Assistant restored from the registry: until
-    // the rig reports a device, its rows are `unavailable` placeholders marked
-    // `restored`, so a monitor not yet seen since a restart is not a lost link.
-    // The hub's rows are created on every successful setup, so they are
-    // restored only when the entry failed to load — and then N.I.N.A. is
-    // unreachable.
-    const sequencer = this._s(this._eid("binary_sensor", "sequencer_running"));
-    const unreachable = source === "unavailable" || sequencer === "unavailable"
-      || (safetyLinkRow?.state === "unavailable" && !safetyLinkRow.attributes?.restored);
+    const lostSince = linkLostSince(this._hass, this._linkRows);
+    if (this._grace.hold(lostSince)) return;
+    const unreachable = lostSince !== null;
     const channels = {
       temp: this._eid("sensor", "temperature", "weather_temperature"),
       humid: this._eid("sensor", "humidity", "weather_humidity"),

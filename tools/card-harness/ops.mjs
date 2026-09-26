@@ -109,7 +109,7 @@ for (const { type, data } of scenario.events?.(dump) ?? []) {
 // Later states, handed over in turn; the output is what the last one left.
 for (const next of scenario.after?.(dump) ?? []) {
   log.push("hass");
-  instance.hass = next;
+  instance.hass = { ...next, callWS: hass.callWS, connection: hass.connection };
   await new Promise((resolve) => setTimeout(resolve));
 }
 

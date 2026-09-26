@@ -11,7 +11,9 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import { resolveEntities } from "./nina-entity-resolver.js";
+import {
+  LinkGrace, hubEntityIds, linkLostSince, resolveEntities,
+} from "./nina-entity-resolver.js";
 import { displayed, quantity, quantityIn } from "./nina-units.js";
 
 const VERSION = "2.0.0";
@@ -23,10 +25,6 @@ const CONFIRM = {
   mount_park: "Park the mount? Imaging stops.",
   dome_close: "Close the dome?",
 };
-
-// One failed poll makes every entity unavailable while the rig images on, so
-// the last live view is kept this long before the link counts as lost.
-const LINK_GRACE_MS = 30_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -333,6 +331,7 @@ class NinaObservatoryCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._grace = new LinkGrace(() => this._render());
   }
 
   setConfig(config) {
@@ -341,7 +340,7 @@ class NinaObservatoryCard extends HTMLElement {
     // A new config may name a different rig: make the next `set hass` re-resolve.
     this._resolved = {};
     this._resolvedFrom = null;
-    this._live = false;
+    this._grace.reset();
   }
 
   set hass(hass) {
@@ -353,12 +352,13 @@ class NinaObservatoryCard extends HTMLElement {
     if (hass.entities !== this._resolvedFrom) {
       this._resolvedFrom = hass.entities;
       this._resolved = resolveEntities(hass, this._config.device_id);
+      this._linkRows = hubEntityIds(hass, this._config.device_id) ?? [
+        this._eid("binary_sensor", "sequencer_running"),
+        this._eid("binary_sensor", "imaging"),
+        this._eid("sensor", "session_image_count"),
+      ];
     }
     this._render();
-  }
-
-  disconnectedCallback() {
-    clearTimeout(this._graceTimer);
   }
 
   // The resolved entity id for a `translation_key`, falling back to a prefixed
@@ -391,27 +391,9 @@ class NinaObservatoryCard extends HTMLElement {
     const frameCountId = this._eid("sensor", "session_image_count");
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
-    // Hub rows have no driver to lose, so they read `unavailable` only when
-    // the link is down (or the entry failed to load). Three, as a user may
-    // disable any one.
-    const lost = [seqId, imagingId, frameCountId]
-      .map((id) => h.states[id])
-      .filter((row) => row?.state === "unavailable");
-    // No timestamp: lost long ago.
-    const lostSince = lost.length
-      ? Math.min(...lost.map((row) => Date.parse(row.last_changed) || 0))
-      : null;
-    clearTimeout(this._graceTimer);
-    if (lostSince !== null && this._live) {
-      // Every reading is `unavailable`, which would draw the rig as stopped.
-      const wait = lostSince + LINK_GRACE_MS - Date.now();
-      if (wait > 0) {
-        this._graceTimer = setTimeout(() => this._render(), wait);
-        return;
-      }
-    }
+    const lostSince = linkLostSince(h, this._linkRows);
+    if (this._grace.hold(lostSince)) return;
     const unreachable = lostSince !== null;
-    this._live = !unreachable;
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
     const focConnected = available(h, this._eid("number", "focuser_position"));

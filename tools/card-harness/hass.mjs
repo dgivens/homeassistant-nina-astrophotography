@@ -84,6 +84,17 @@ export class Rig {
     });
   }
 
+  /**
+   * Replace a row with core's placeholder for a registry row no entity has
+   * claimed since the restart: `unavailable`, marked `restored`, over its own
+   * attributes. Core's shape, not an invented reading.
+   */
+  restored(entityId) {
+    const row = this._states[entityId];
+    if (!row) throw new Error(`${entityId} is not in the dump — nothing to restore`);
+    return this.override(entityId, "unavailable", { ...row.attributes, restored: true });
+  }
+
   /** Stamp every row's `last_changed`, which the dump does not carry. */
   changedAt(date) {
     const stamp = date.toISOString();
@@ -113,4 +124,35 @@ export function rig(dump, rigState) {
     throw new Error(`no rig state "${rigState}" — have: ${Object.keys(dump).join(", ")}`);
   }
   return new Rig(state);
+}
+
+// A hub row no card reads, standing in for an orphaned registry row.
+const ORPHAN = "sensor.n_i_n_a_wait_ends_at";
+
+/**
+ * Lost-link scenarios around the live `site_configured` rig, for every card
+ * that shows one:
+ *
+ * - `unreachable` — no live view to keep.
+ * - `blip` — live, then one missed poll: must draw the live rig.
+ * - `lost` — live, then down past the grace period: must draw `unreachable`.
+ * - `unreachable_templated` — no registry, so the card's templated ids.
+ * - `orphaned_row` — live beside an orphaned hub row: must draw the live rig.
+ */
+export function linkScenarios() {
+  const downFor = (ms) => ({
+    hass: (dump) => rig(dump, "site_configured").build(),
+    after: (dump) => [
+      rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - ms)).build(),
+    ],
+  });
+  return {
+    unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+    blip: downFor(10_000),
+    lost: downFor(45_000),
+    unreachable_templated: {
+      hass: (dump) => rig(dump, "nina_unreachable").unresolvable().build(),
+    },
+    orphaned_row: { hass: (dump) => rig(dump, "site_configured").restored(ORPHAN).build() },
+  };
 }

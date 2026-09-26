@@ -100,10 +100,13 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
 ```
 
 `after` is later `hass` objects, handed over in turn after the first render —
-for a card whose output depends on what it showed before. Each is logged as
+for a card whose output depends on what it showed before, such as one holding
+its last live view through a failed poll (`LinkGrace`). Each is logged as
 `hass`; the markup printed is what the last left. `Rig.changedAt(date)` stamps
-`last_changed`, measured against the pinned `Date.now()`. `render.html` uses
-only the first `hass`.
+`last_changed`, measured against the pinned `Date.now()`; `Rig.restored(id)`
+swaps a row for core's restored placeholder; `linkScenarios()` is the shared
+set of lost-link scenarios. `render.html` hands `after` over on a real clock,
+so a `blip` shows the lost link twenty seconds in.
 
 `events` are bus events `ops.mjs` fires at whatever the card subscribed to,
 once the first render has settled; each is logged, so the lines after it are
