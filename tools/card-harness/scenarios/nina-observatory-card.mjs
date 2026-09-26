@@ -15,8 +15,8 @@ import { rig } from "../hass.mjs";
 const UP = "site_configured";
 const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
 
-// No `draw` hook: the card has no canvas. `Date.now()` is pinned, so a
-// `changedAt` relative to it is a fixed distance into the grace period.
+// No `draw` hook: the card has no canvas. `Date.now()` is pinned, so
+// `changedAt` offsets are fixed.
 
 export const scenarios = {
   // Every id resolved, and the equipment up.
@@ -32,16 +32,13 @@ export const scenarios = {
   // The time to the flip shown in hours, which must render what `station` does.
   flip_in_hours: { hass: (dump) => rig(dump, UP).displayedIn(FLIP, "h", 1 / 60).build() },
 
-  // Every driver down, N.I.N.A. answering: grey chips, empty readings, and the
-  // controls live. Must not read as the lost link below.
+  // Every driver down, N.I.N.A. answering. Must not read as a lost link.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
-  // The rig of `station` after N.I.N.A. stops answering, seen by a card with
-  // nothing live to keep: the banner in place of the session, the chips gone,
-  // the commands that end activity live and those that start it disabled.
+  // `station` with the link lost and no live view to keep.
   unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
 
-  // `station`, then one missed poll: the card must still draw `station`.
+  // `station`, then one missed poll: must still draw `station`.
   blip: {
     hass: (dump) => rig(dump, UP).build(),
     after: (dump) => [
@@ -49,8 +46,7 @@ export const scenarios = {
     ],
   },
 
-  // `station`, then a link down for longer than the grace period: `unreachable`,
-  // with the time the link went down in the banner.
+  // `station`, then a link down past the grace period.
   lost: {
     hass: (dump) => rig(dump, UP).build(),
     after: (dump) => [
@@ -58,8 +54,7 @@ export const scenarios = {
     ],
   },
 
-  // `unreachable` with the sequencer's row disabled, which the card also reads
-  // the session from. The hub's other rows still tell the lost link.
+  // `unreachable` with the sequencer's row disabled.
   unreachable_without_sequencer: {
     hass: (dump) => rig(dump, "nina_unreachable").without("sequencer_running").build(),
   },

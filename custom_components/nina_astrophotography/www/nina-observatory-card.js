@@ -24,9 +24,8 @@ const CONFIRM = {
   dome_close: "Close the dome?",
 };
 
-// A single failed poll makes every entity unavailable for one ten-second
-// interval, and on a remote link that is routine while the rig images on. The
-// card keeps what it last showed for this long before calling the link lost.
+// One failed poll makes every entity unavailable while the rig images on, so
+// the last live view is kept this long before the link counts as lost.
 const LINK_GRACE_MS = 30_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -80,7 +79,7 @@ function measured(hass, entity_id, decimals = 1) {
   return { value: displayed(q, decimals) ?? "—", unit: q?.unit ?? "" };
 }
 
-// No data does not mean the rig stopped, so the banner says it may not have.
+// No data is not a stopped rig.
 function unreachableBanner(since, dome) {
   const time = since
     ? ` since ${new Date(since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
@@ -330,7 +329,6 @@ class NinaObservatoryCard extends HTMLElement {
     // A new config may name a different rig: make the next `set hass` re-resolve.
     this._resolved = {};
     this._resolvedFrom = null;
-    // Nothing on screen is from this config to keep through a grace period.
     this._live = false;
   }
 
@@ -381,23 +379,19 @@ class NinaObservatoryCard extends HTMLElement {
     const frameCountId = this._eid("sensor", "session_image_count");
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
-    // A lost link to N.I.N.A. makes every entity unavailable, the hub's
-    // included. The hub has no driver of its own to lose, so its rows read
-    // `unavailable` only then: a rig with its equipment down still reports
-    // `off` and `0` there. Three of them, because a user may disable any one.
-    // A hub row is restored from the registry only when the entry failed to
-    // load, which is N.I.N.A. unreachable too.
+    // Hub rows have no driver to lose, so they read `unavailable` only when
+    // the link is down (or the entry failed to load). Three, as a user may
+    // disable any one.
     const lost = [seqId, imagingId, frameCountId]
       .map((id) => h.states[id])
       .filter((row) => row?.state === "unavailable");
-    // A row with no timestamp is taken as lost long since.
+    // No timestamp: lost long ago.
     const lostSince = lost.length
       ? Math.min(...lost.map((row) => Date.parse(row.last_changed) || 0))
       : null;
     clearTimeout(this._graceTimer);
     if (lostSince !== null && this._live) {
-      // Every reading is `unavailable` now, which would draw the rig as
-      // stopped: keep the last live view until the grace period runs out.
+      // Every reading is `unavailable`, which would draw the rig as stopped.
       const wait = lostSince + LINK_GRACE_MS - Date.now();
       if (wait > 0) {
         this._graceTimer = setTimeout(() => this._render(), wait);
@@ -418,7 +412,7 @@ class NinaObservatoryCard extends HTMLElement {
     // entities are absent from the registry payload.
     const domeParkId   = this._eid("binary_sensor", "dome_at_park");
     const domeConnected = available(h, domeParkId);
-    // Enabled, whatever it reads: the dome close a lost link must not hide.
+    // Enabled at all: a lost link must not hide Close Dome.
     const domeEnabled  = !!h.states[domeParkId];
 
     // No `translation_key`: the switch takes the guider device's own name, so
@@ -478,19 +472,16 @@ class NinaObservatoryCard extends HTMLElement {
 
     const [status, dot] = unreachable ? ["Unreachable", "dot-warn"]
       : seqRunning ? ["Session active", "dot-on"] : ["Standby", "dot-off"];
-    // Read off the row it prints: a mount with no park state is neither
-    // parked, tracking nor idle as far as this card can tell.
+    // Gated on the row it prints, not the chip's probe.
     const mountStatus = !available(h, parkedId) ? ""
       : parked ? " · Parked" : tracking ? " · Tracking" : " · Idle";
 
     const btn = (id, label, cls = "", off = false) =>
       `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"`
       + `${off ? ` disabled title="N.I.N.A. unreachable"` : ""}>${label}</button>`;
-    // With the link lost no state says which of a pair applies, so the card
-    // offers the commands that end activity, live: sent to a rig already
-    // stopped, parked or closed they do nothing, and a press that cannot reach
-    // N.I.N.A. fails with the action's own error. Those that start activity
-    // wait for the link.
+    // With no state to pick either of a pair, the link-lost set is fixed:
+    // commands that end activity stay live (harmless if already done; an
+    // unreachable press fails with the action's error), the rest wait.
     const controls = unreachable ? [
       [
         btn("btn-stop", "⏹ Stop Sequence", "danger"),
@@ -542,7 +533,7 @@ class NinaObservatoryCard extends HTMLElement {
 
         <div class="body">
 
-          <!-- Session banner, or the lost link in its place -->
+          <!-- Session banner -->
           ${unreachable ? unreachableBanner(lostSince, domeEnabled) : `
           <div class="session-banner">
             <div>
@@ -558,7 +549,7 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>`}
 
-          <!-- Equipment chips: with the link lost, none is known down -->
+          <!-- Equipment chips: unknown with the link lost -->
           ${unreachable ? "" : `
           <div class="equip-row">
             ${chip("Camera", camConnected)}

@@ -84,10 +84,7 @@ export class Rig {
     });
   }
 
-  /**
-   * Place the dump in time: every row's `last_changed`, which the dump does not
-   * carry, as Home Assistant stamps it on the transition into this state.
-   */
+  /** Stamp every row's `last_changed`, which the dump does not carry. */
   changedAt(date) {
     const stamp = date.toISOString();
     for (const [id, row] of Object.entries(this._states)) {
