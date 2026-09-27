@@ -23,7 +23,7 @@ uv run coverage combine && uv run coverage json
 uv run python scripts/coverage_floors.py
 
 uv run python scripts/check_fixtures.py tests/fixtures/*.json   # the redaction guard
-uv run --group dev --group test-ha pyright                      # custom_components/, scripts/, tests/
+uv run --group dev --group test-ha pyright                      # custom_components/, scripts/, tests/, tools/
 uv run --group dev ruff check --fix . && uv run --group dev ruff format .   # lint and format
 ```
 
@@ -59,7 +59,7 @@ fixture redaction, hassfest, HACS). Ruff lints and formats with Home Assistant
 core's rule set, minus the docstring rules that demand boilerplate or a
 one-line summary — see `[tool.ruff]`; the pre-commit hooks run both.
 Pyright's scope and rules are `[tool.pyright]` in `pyproject.toml`: it gates
-`custom_components/`, `scripts/` and `tests/`, and turns off
+`custom_components/`, `scripts/`, `tests/` and `tools/`, and turns off
 `reportIncompatibleVariableOverride`, which every override of a Home Assistant
 entity property trips.
 

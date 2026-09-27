@@ -378,7 +378,9 @@ def down() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser = argparse.ArgumentParser(
+        description="Upgrade a throwaway Home Assistant from one git ref to another."
+    )
     commands = parser.add_subparsers(dest="command", required=True)
     start = commands.add_parser("up", help="start Home Assistant and add the rig")
     start.add_argument("--ref", default="origin/main", help="git ref to install")

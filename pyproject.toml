@@ -277,7 +277,7 @@ convention = "google"
 property-decorators = ["propcache.api.cached_property"]
 
 [tool.pyright]
-include = ["custom_components", "scripts", "tests"]
+include = ["custom_components", "scripts", "tests", "tools"]
 # pytest's `pythonpath` puts tests/ first; the unit suite imports the
 # integration as the top-level `nina_astrophotography`, and the scripts and
 # their tests reach each other through sys.path inserts.
