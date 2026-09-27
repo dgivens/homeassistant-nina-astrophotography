@@ -29,6 +29,10 @@ uv run --group dev ruff check --fix . && uv run --group dev ruff format .   # li
 
 The `justfile` wraps all of these; `just ci` runs everything CI checks.
 
+`tools/upgrade-harness/` upgrades a throwaway Home Assistant in Docker from one
+git ref to another against a N.I.N.A. and holds the result to
+`docs/2.0-renames.md`; its README has the commands.
+
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
 collection; always name the suite.
 

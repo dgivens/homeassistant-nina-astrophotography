@@ -261,6 +261,8 @@ split-on-trailing-comma = false
 # Relative imports within the integration's subpackages.
 "custom_components/*/*/*" = ["TID252"]
 "scripts/*" = ["T20"]
+# A command-line tool run by hand, not a package.
+"tools/*/*.py" = ["T20", "INP001"]
 # tests/ is not a package: pytest's pythonpath imports these as `helpers`,
 # `redaction` and so on, and an __init__.py would change that.
 "tests/*.py" = ["INP001"]
