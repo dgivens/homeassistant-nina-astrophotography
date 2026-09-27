@@ -658,7 +658,7 @@ hand under Resources — the file, the entry, or both is fine, but leave the
 entry and its card competes with the integration's own copy to define the
 same custom element on every page load; whichever loses that race is the one
 that silently doesn't work. Each card logs `NINA-…-CARD vX.Y.Z` to the browser
-console on load — seeing `v1.4.5` there means a stale resource is still
+console on load — seeing `v1.0.0` there means a stale 1.4.5 resource is still
 winning. Hard-reload the dashboard after removing it.
 
 ```yaml
@@ -726,6 +726,19 @@ What does need your attention:
 - **The Lovelace cards need no configuration for one rig** — they resolve
   their entities from the registry. With two, give each card a `device_id:`.
   See [Lovelace cards](#lovelace-cards).
+- **Delete the `/local/nina-*.js` resources you added for 1.4.5's cards.** The
+  integration registers its own, and a stale one races it on every page load.
+- **Event payloads moved.** The names are unchanged, but an event's fields are
+  under `data` rather than `response`:
+  `trigger.event.data.response.IsSafe` becomes `trigger.event.data.data.IsSafe`.
+  See [Events](#events).
+- **Some entities are gone, and nothing replaces their rows.** An automation
+  pointing at one breaks silently:
+  `binary_sensor.<instance>_sequence_running` (use `_sequencer_running` or
+  `_imaging`), the equipment `*_connected` sensors (a disconnected device's
+  entities go `unavailable`; the safety monitor keeps its own), and the gain,
+  offset and binning `number`s (gain and offset are read-only `sensor`s now).
+  [`docs/2.0-renames.md`](docs/2.0-renames.md) lists every removal.
 - **`switch.<instance>_flat_panel_light` is gone** — the `light` entity survives.
   Its old registry row lingers as unavailable until you delete it.
 - **The poll interval is capped at 60 s**; an entry storing more keeps its rate
