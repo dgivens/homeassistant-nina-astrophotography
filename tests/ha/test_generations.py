@@ -56,16 +56,6 @@ async def test_a_restart_reseeds_the_new_generations_frames(
     assert _reseeds(rig) == 2  # setup, then the restart
 
 
-async def test_the_event_stream_follows_the_new_generation(
-    loaded_entry: MockConfigEntry, advance
-) -> None:
-    """An event tagged with the stale generation would be filtered out of the
-    fold the moment it arrived.
-    """
-    await advance("nina_restarted")
-    assert loaded_entry.runtime_data.events.generation == RESTART_GENERATION
-
-
 @pytest.mark.synthetic
 @pytest.mark.parametrize(("ticks", "reseeds"), [(1, 0), (2, 1), (5, 1)])
 async def test_a_count_mismatch_reseeds_once_it_persists_and_never_again(

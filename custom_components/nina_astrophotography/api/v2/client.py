@@ -59,6 +59,8 @@ _LOGGER = logging.getLogger(__name__)
 _TIMEOUT = aiohttp.ClientTimeout(total=10)
 _IMAGE_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
+REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
+
 # A quality makes `/image` answer JPEG rather than a far larger PNG.
 IMAGE_QUALITY = 85
 
@@ -221,29 +223,25 @@ class NinaClientV2:
         return int(await self._get("/image-history", {"count": "true"}) or 0)
 
     async def get_events(self, generation: str | None = None) -> list[NinaEvent]:
-        """The stored events, mapped. A malformed one is skipped, not raised.
+        """The newest `REPLAY_CAP` stored events, mapped. A malformed one is
+        skipped, not raised.
 
-        This feeds the setup replay, which runs inside
+        N.I.N.A.'s list is unbounded: no cap, eviction or pagination for the
+        life of the process. This feeds the setup replay, which runs inside
         `async_config_entry_first_refresh`, so anything escaping here fails the
         entry over one bad stored event — and the same widths guard `get_frames`
         and the socket's own dispatch.
         """
-        raw = await self._raw_event_history()
+        raw = await self._get("/event-history") or []
         if not isinstance(raw, list):
             return []
         events: list[NinaEvent] = []
-        for item in raw:
+        for item in raw[-REPLAY_CAP:]:
             try:
                 events.append(map_event(item, generation, rig_offset=self._rig_offset))
             except (AttributeError, KeyError, TypeError, ValueError) as exc:
                 _LOGGER.debug("Skipping unmappable event %s: %s", item, exc)
         return events
-
-    async def _raw_event_history(self) -> list[dict]:
-        """The stored events as sent. Package-private: the event socket replays
-        from it with its own generation bookkeeping.
-        """
-        return await self._get("/event-history") or []
 
     async def get_sequence(self) -> SequenceNode | None:
         return map_sequence(await self._get("/sequence/json"))

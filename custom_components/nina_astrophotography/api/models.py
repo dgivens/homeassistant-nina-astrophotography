@@ -274,6 +274,10 @@ class Frame:
     generation: str | None
     """The `/application-start` in force when the frame arrived."""
 
+    @property
+    def identity(self) -> tuple[datetime, str]:
+        return (self.date, self.filename)
+
 
 @dataclass(frozen=True, slots=True)
 class NinaEvent:

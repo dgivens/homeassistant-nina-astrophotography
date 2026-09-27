@@ -202,7 +202,6 @@ async def test_a_stack_that_starts_after_home_assistant_did_gets_its_entity(
             "Target": "NGC 281",
             "Filter": "S",
         },
-        entry.runtime_data.coordinator.generation,
     )
     await hass.async_block_till_done()
     assert hass.states.get("image.dome_livestack") is not None

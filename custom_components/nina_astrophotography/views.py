@@ -28,7 +28,7 @@ def _client_for_entity(hass: HomeAssistant, entity_id: str) -> NinaClientV2 | No
     entry = hass.config_entries.async_get_entry(entity_entry.config_entry_id)
     if entry is None or entry.state is not ConfigEntryState.LOADED:
         return None
-    return entry.runtime_data.client
+    return entry.runtime_data.coordinator.client
 
 
 def _bad_image_request() -> web.Response:

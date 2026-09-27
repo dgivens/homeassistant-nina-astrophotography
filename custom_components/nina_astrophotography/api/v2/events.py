@@ -7,9 +7,6 @@ no `Time`, while `/event-history` carries `Time` and no statistics — every
 stored copy is exactly `{Event, Time}`. Replay therefore fixes only the
 timestamp; it can never reconstruct a frame's measurements.
 
-`WebSocketV2.Events` on the N.I.N.A. side is an unbounded static list with no
-cap, eviction or pagination; it grows for the life of the process. Replay caps
-what it folds.
 """
 
 import asyncio
@@ -18,21 +15,16 @@ import contextlib
 from datetime import UTC, datetime, timedelta
 import json
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import aiohttp
 
 from ..models import NinaEvent
 from .mapper import map_event
 
-if TYPE_CHECKING:
-    from .client import NinaClientV2
-
 _LOGGER = logging.getLogger(__name__)
 
 WS_URL = "ws://{host}:{port}/v2/socket"
-
-REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
 
 _RECONNECT_DELAY = 5
 _MAX_RECONNECT_DELAY = 60
@@ -41,8 +33,8 @@ _MAX_RECONNECT_DELAY = 60
 class NinaEventStream:
     """The push half of the data flow: one socket, many model subscribers.
 
-    `generation` is set by the coordinator from `/application-start` and
-    stamped onto every dispatched event.
+    `generation` supplies the tag stamped onto every dispatched event: the
+    coordinator's, from `/application-start`.
     """
 
     def __init__(
@@ -51,11 +43,13 @@ class NinaEventStream:
         port: int,
         session: aiohttp.ClientSession,
         *,
+        generation: Callable[[], str | None] = lambda: None,
         rig_offset: Callable[[], timedelta | None] | None = None,
         on_connection: Callable[[bool], None] | None = None,
     ) -> None:
         self._url = WS_URL.format(host=host, port=port)
         self._session = session
+        self._generation = generation
         self._rig_offset = rig_offset
         self._on_connection = on_connection
         self._subscribers: list[Callable[[NinaEvent], None]] = []
@@ -63,7 +57,6 @@ class NinaEventStream:
         self._task: asyncio.Task | None = None
         self._running = False
         self.connected = False
-        self.generation: str | None = None
 
     # ── subscription ─────────────────────────────────────────────────────────
 
@@ -77,7 +70,7 @@ class NinaEventStream:
 
         return unsubscribe
 
-    def _dispatch(self, payload: Any, generation: str | None) -> None:
+    def _dispatch(self, payload: Any) -> None:
         """Map one event payload and hand the model to every subscriber."""
         if not isinstance(payload, dict) or not payload.get("Event"):
             # A "Send WebSocket Event" instruction puts a bare string in
@@ -91,7 +84,7 @@ class NinaEventStream:
             payload = {**payload, "Time": datetime.now(UTC).isoformat()}
         offset = self._rig_offset() if self._rig_offset is not None else None
         try:
-            event = map_event(payload, generation, rig_offset=offset)
+            event = map_event(payload, self._generation(), rig_offset=offset)
         except (KeyError, TypeError, ValueError) as exc:
             _LOGGER.debug("Skipping unmappable event %s: %s", payload, exc)
             return
@@ -100,19 +93,6 @@ class NinaEventStream:
                 callback(event)
             except Exception:
                 _LOGGER.exception("A N.I.N.A. event subscriber raised")
-
-    # ── replay ───────────────────────────────────────────────────────────────
-
-    async def replay(
-        self, client: NinaClientV2, generation: str | None
-    ) -> list[NinaEvent]:
-        """Fold `/event-history` at setup and on reconnect.
-
-        An empty history at setup is normal, not a failure: a restart resets
-        it. The server list is unbounded, so only the newest `REPLAY_CAP` are
-        folded.
-        """
-        return (await client.get_events(generation))[-REPLAY_CAP:]
 
     # ── connection ───────────────────────────────────────────────────────────
 
@@ -201,4 +181,4 @@ class NinaEventStream:
             return
         if not isinstance(envelope, dict) or not envelope.get("Success"):
             return
-        self._dispatch(envelope.get("Response"), self.generation)
+        self._dispatch(envelope.get("Response"))

@@ -67,8 +67,7 @@ async def test_a_pushed_event_says_which_rig_it_came_from(
 
     second = two_rigs.entries[1]
     second.runtime_data.events._dispatch(  # noqa: SLF001
-        nina_responses("live_image_save_push.json"),
-        second.runtime_data.coordinator.generation,
+        nina_responses("live_image_save_push.json")
     )
     await hass.async_block_till_done()
 

@@ -47,5 +47,5 @@ def test_the_dither_event_is_still_delivered() -> None:
     )
     seen: list[str] = []
     stream.subscribe(lambda event: seen.append(event.name))
-    stream._dispatch({"Event": "GUIDER-DITHER"}, None)
+    stream._dispatch({"Event": "GUIDER-DITHER"})
     assert seen == ["GUIDER-DITHER"]

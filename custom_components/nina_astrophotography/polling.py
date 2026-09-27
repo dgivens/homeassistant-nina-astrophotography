@@ -5,7 +5,6 @@ Nothing here clears anything: a N.I.N.A. restart is a generation change, which
 the fold filters on.
 """
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import time
@@ -149,38 +148,32 @@ class ReseedGuard:
 class TierSchedule:
     """Per-tier due times, checked inside the one 10 s tick."""
 
-    FAST = 10.0
     SEQUENCE_IMAGING = 30.0
     SEQUENCE_IDLE = 300.0
     FLOOR = 300.0
     SEQUENCE_DEBOUNCE = 30.0
 
-    def __init__(self, clock: Callable[[], float] | None = None) -> None:
-        # Resolved per call, so a test can patch `time.monotonic`.
-        self._clock = clock
+    def __init__(self) -> None:
         self._last: dict[str, float] = {}
         self._requested: float | None = None
         self.sequence_interval = self.SEQUENCE_IDLE
         self._pending: set[str] = set()
 
-    def _now(self) -> float:
-        return time.monotonic() if self._clock is None else self._clock()
-
     def _interval(self, tier: str) -> float:
         """The tier's interval; `KeyError` for an unknown tier."""
         if tier == "sequence":
             return self.sequence_interval
-        return {"fast": self.FAST, "floor": self.FLOOR}[tier]
+        return {"floor": self.FLOOR}[tier]
 
     def due(self, tier: str, now: float | None = None) -> bool:
         # First, so an unknown tier raises rather than reading as due.
         interval = self._interval(tier)
-        moment = self._now() if now is None else now
+        moment = time.monotonic() if now is None else now
         last = self._last.get(tier)
         return last is None or moment - last >= interval
 
     def mark(self, tier: str, now: float | None = None) -> None:
-        self._last[tier] = self._now() if now is None else now
+        self._last[tier] = time.monotonic() if now is None else now
 
     def set_imaging(self, imaging_now: bool) -> None:
         """Choose the sequence tier's cadence from the activity heuristic."""
@@ -203,7 +196,7 @@ class TierSchedule:
         When refused, `requeue` is held pending for a later tick rather than
         dropped.
         """
-        moment = self._now() if now is None else now
+        moment = time.monotonic() if now is None else now
         if (
             self._requested is not None
             and moment - self._requested < self.SEQUENCE_DEBOUNCE
