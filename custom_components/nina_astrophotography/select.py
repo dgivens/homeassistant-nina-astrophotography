@@ -1,18 +1,10 @@
-"""Selects: the options come from the wire, one per device.
+"""Selects, whose options are the device's own `TrackingModes` and
+`AvailableFilters`.
 
-**`TrackingModes` and `AvailableFilters` are per-device**, so both option lists
-are read off the model. A hardcoded list offers rates a mount does not have and
-filters a wheel does not carry.
-
-**The tracking index is the API's own enum, never the position in the options
-list.** `mode` is `0 Sidereal, 1 Lunar, 2 Solar, 3 King, 4 Stopped`, and a mount
-that offers no King — this one — reports four modes with `Stopped` at index 3.
-Indexing the list would start King tracking on a mount asked to stop. The
-spec spells the first mode `Siderial`; the wire spells it `Sidereal`, and the
-wire is what the options carry.
-
-Neither select confirms itself from the command response (§3.5): a filter change
-takes seconds, and the state is the next poll's reading.
+**The value sent is never the option's position in the list.** Tracking takes
+the API's enum (`0 Sidereal … 3 King, 4 Stopped`), and a mount without King
+lists `Stopped` fourth; a filter change takes the wheel's slot id. The spec
+spells `Siderial`; the options carry the wire's `Sidereal`.
 """
 
 from collections.abc import Awaitable, Callable
@@ -38,14 +30,7 @@ PARALLEL_UPDATES = 1
 class NinaSelectDescription(SelectEntityDescription):
     """A select, plus how to read its options, its current one, and set it.
 
-    `select` receives the option and the whole snapshot: the wire wants a
-    number, and neither the tracking enum nor the wheel's slot id is the
-    option's position in the list.
-
-    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
-    `unique_id_suffix` where the new `key` reads better than the old one. Home
-    Assistant keys the registry on `unique_id`, so changing it mints a fresh
-    entity and strands the old row as `unavailable`.
+    `select` gets the snapshot too, to map the option to the number sent.
     """
 
     choices: Callable[[NinaData], tuple[str, ...]]
@@ -54,8 +39,8 @@ class NinaSelectDescription(SelectEntityDescription):
     kind: str
     verified: bool = True
     unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`. `unique_id` is
-    `{entry_id}_{unique_id_suffix or key}`."""
+    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
+    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _options(kind: str, field: str) -> Callable[[NinaData], tuple[str, ...]]:
@@ -67,7 +52,7 @@ def _options(kind: str, field: str) -> Callable[[NinaData], tuple[str, ...]]:
 
 
 async def _set_tracking_mode(client: NinaClientV2, option: str, data: NinaData) -> None:
-    """`mode` is the API's enum value, which the option's position is not."""
+    """Send the API's enum value for the mode."""
     try:
         mode = TrackingMode[option.upper()]
     except KeyError:
@@ -80,12 +65,7 @@ async def _set_tracking_mode(client: NinaClientV2, option: str, data: NinaData) 
 
 
 async def _change_filter(client: NinaClientV2, option: str, data: NinaData) -> None:
-    """`filterId` is the wheel's own slot `Id`, not the option's position.
-
-    Every wheel in the corpus numbers its slots from zero in list order, so the
-    two agree here — but a wheel is free not to, and a wrong slot changes to
-    the wrong filter and answers `Success: true`, which costs the sub.
-    """
+    """Send the wheel's own slot `Id`, which need not follow list order."""
     wheel = data.snapshot.filter_wheel
     slot = None if wheel is None else wheel.filter_slots.get(option)
     if slot is None:
@@ -103,8 +83,6 @@ DESCRIPTIONS: tuple[NinaSelectDescription, ...] = (
         translation_key="mount_tracking_rate",
         unique_id_suffix="tracking_rate_select",
         kind="mount",
-        # The ACTUAL rate, not the last one commanded (§5.2.3). `Stopped` is one
-        # of the rates, which is why this replaces `binary_sensor.mount_tracking`.
         choices=_options("mount", "tracking_modes"),
         current=read_field("mount", "tracking_mode"),
         select=_set_tracking_mode,
@@ -146,8 +124,7 @@ class NinaSelect(NinaEntity, SelectEntity):
 
     @property
     def current_option(self) -> str | None:
-        # A reading outside the option list reads `unknown` rather than being
-        # offered as an option Home Assistant would then log a warning about.
+        # A reading outside the options reads `unknown`, which HA accepts.
         option = self.entity_description.current(self.coordinator.data)
         return option if option in self.options else None
 
@@ -171,12 +148,7 @@ async def async_setup_entry(
 
     @callback
     def _add_observed() -> None:
-        """Create the entities whose equipment the snapshot now carries.
-
-        Re-run on every publish, so equipment that connects hours after Home
-        Assistant started still gets its entities (Gold `dynamic-devices`); a
-        slot never returns to `None`, so nothing is ever removed here.
-        """
+        """Create the entities whose equipment has now been observed."""
         new = [
             NinaSelect(coordinator, entry, description)
             for description in DESCRIPTIONS

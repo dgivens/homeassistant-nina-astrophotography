@@ -1,34 +1,19 @@
 """Numbers: the settable equipment values, in the driver's own units.
 
-**Ranges are per-device and come from the model.** Flat panel brightness spans
-`MinBrightness`–`MaxBrightness` (4096 on this panel, 255 on an Alnitak) and the
-USB limit spans `USBLimitMin`–`USBLimitMax` (40–100 on this camera). A
-hardcoded range is not cosmetic here: out-of-range input is **silently clamped
-and answers `Success: true`**, so a range wider than the driver's turns a
-refusal into a value the user never asked for and never sees.
+**Ranges are the driver's own**, such as `MinBrightness`–`MaxBrightness`. They
+are the validation: `number.set_value` refuses a value outside them, and
+N.I.N.A. silently clamps one and answers `Success: true`. A driver reporting
+no usable range (`Min 0 / Max 0`) is refused here. Where no driver reports a
+range (the focuser, the cooling setpoint, and the geometric rotator and dome),
+the descriptor carries a constant.
 
-Where the driver reports no range at all — the focuser, which has no `MaxStep`
-on the wire, the camera's cooling setpoint, and the rotator and dome, whose
-ranges are geometry rather than hardware — the bound is a documented constant on
-the descriptor.
+**A switch device channel is a number when writable and wider than one step**,
+such as a dew heater at 0–100. Its range is the channel's own, and it reads
+`Value`, never `TargetValue`.
 
-**The declared range is the validation.** `number.set_value` refuses a value
-outside the entity's own `min`/`max` before it reaches the platform, so an
-honest per-device range is what stands between a typo and a value N.I.N.A.
-clamps to something else while answering `Success: true`. What Home Assistant
-cannot know is a driver reporting no usable range at all — `Min 0 / Max 0`,
-which every value is "inside" — and that refusal lives here.
-
-**A channel of the N.I.N.A. switch device belongs here when it is writable and
-its range spans more than one step** (§5.3.5) — a Pegasus dew heater at 0-100,
-where a mains outlet at 0-1 is a `switch` and a voltage gauge is a `sensor`. Its
-range is the channel's own, and it reads `Value`, never `TargetValue`, which is
-only what the channel was last asked for.
-
-**A number never confirms itself from the command response** (§3.5). The state
-is the next poll's reading; `flat_panel_brightness` in particular is raw driver
-units, not the `light`'s HA 0–255, and setting it does not toggle the light —
-brightness 0 is not off (§5.3.4).
+**The state is the next poll's reading**, never the command's response.
+`flat_panel_brightness` is in driver units, not the light's 0–255, and 0 is
+not off.
 """
 
 from collections.abc import Awaitable, Callable
@@ -56,10 +41,8 @@ from .entity import NinaChannelEntity, NinaEntity
 # One in-flight command per platform: these move hardware.
 PARALLEL_UPDATES = 1
 
-# The focuser reports no travel limit — no `MaxStep` or bound of any kind
-# reaches the wire — so the upper bound is a constant
-# wide enough for any focuser rather than a driver reading. N.I.N.A. clamps at
-# the driver's own MaxStep.
+# No `MaxStep` reaches the wire, so this is wide enough for any focuser;
+# N.I.N.A. clamps at the driver's own.
 _FOCUSER_MAX_STEP = 200_000
 
 
@@ -67,19 +50,10 @@ _FOCUSER_MAX_STEP = 200_000
 class NinaNumberDescription(NumberEntityDescription):
     """A number, plus how to read it, bound it and send it.
 
-    `kind` names the child device the entity hangs off (§5.1). `verified` is
-    False only for the dome, which cannot be validated against hardware — a test
-    asserts every dome descriptor carries the marker.
-
-    `bounds` is the driver's own range for this poll, and `None` from it means
-    the driver reports no usable range; the descriptor's own
-    `native_min_value`/`native_max_value` are the documented fallback, used
-    directly by the entities whose range is geometry rather than hardware.
-
-    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
-    `unique_id_suffix` where the new `key` reads better than the old one. Home
-    Assistant keys the registry on `unique_id`, so changing it mints a fresh
-    entity and strands the old row as `unavailable`.
+    `kind` names the child device. `verified` is False only for the dome,
+    which no hardware has validated. `bounds` reads the driver's range, `None`
+    when it reports none; without `bounds`, `native_min_value` and
+    `native_max_value` are the range.
     """
 
     value: Callable[[NinaData], float | None]
@@ -88,17 +62,15 @@ class NinaNumberDescription(NumberEntityDescription):
     bounds: Callable[[NinaData], tuple[float, float] | None] | None = None
     verified: bool = True
     unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`. `unique_id` is
-    `{entry_id}_{unique_id_suffix or key}`."""
+    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
+    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _driver_range(
     kind: str, low_field: str, high_field: str
 ) -> Callable[[NinaData], tuple[float, float] | None]:
-    """The driver's own range, or `None` when it reports none.
-
-    A disconnected flat panel reports `Min 0 / Max 0`, which is an empty range
-    rather than a permissive one: every value is "in range" of it.
+    """The driver's own range, or `None` when it reports none, as a
+    disconnected flat panel's `Min 0 / Max 0` does.
     """
 
     def bounds(data: NinaData) -> tuple[float, float] | None:
@@ -149,8 +121,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         native_step=0.5,
         mode=NumberMode.BOX,
         kind="camera",
-        # The ACTUAL setpoint, not the last one commanded (§5.2.3). There is no
-        # setpoint endpoint either: changing it is a cool-down to the new value.
+        # Setting it cools to the new value; there is no setpoint endpoint.
         value=read_field("camera", "target_temperature"),
         command=lambda client, value: client.set_target_temperature(value),
     ),
@@ -194,8 +165,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         value=read_field("rotator", "mechanical_position"),
         command=lambda client, value: client.move_rotator_mechanical(value),
     ),
-    # Spec-derived and untested against hardware (§5.3.1): a bare field read, a
-    # geometric range, and `verified=False`.
+    # From the spec alone; no hardware has validated it.
     NinaNumberDescription(
         key="dome_azimuth",
         translation_key="dome_azimuth",
@@ -271,9 +241,7 @@ class NinaNumber(NinaEntity, NumberEntity):
 class NinaNumberChannel(NinaChannelEntity, NumberEntity):
     """One writable, non-binary channel of the N.I.N.A. switch device.
 
-    The range is held from creation: it is capability metadata rather than a
-    reading, so it survives the device disconnecting, and the platform has
-    already proved both ends are present.
+    The range is held from creation, so it survives the device disconnecting.
     """
 
     _attr_mode = NumberMode.SLIDER
@@ -297,8 +265,7 @@ class NinaNumberChannel(NinaChannelEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         if self.channel is None:
-            # The API answers `Success: true` to a `set` for an index it does
-            # not have, so nothing downstream would report this.
+            # The API answers `Success: true` to a `set` for a missing index.
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="channel_gone",
@@ -323,12 +290,7 @@ async def async_setup_entry(
 
     @callback
     def _add_observed() -> None:
-        """Create the entities whose equipment the snapshot now carries.
-
-        Re-run on every publish, so equipment that connects hours after Home
-        Assistant started still gets its entities (Gold `dynamic-devices`); a
-        slot never returns to `None`, so nothing is ever removed here.
-        """
+        """Create the entities whose equipment has now been observed."""
         descriptions = [
             description
             for description in DESCRIPTIONS

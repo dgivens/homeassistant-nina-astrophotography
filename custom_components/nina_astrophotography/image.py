@@ -1,16 +1,11 @@
-"""Images: the last saved frame, and the accumulating livestack.
+"""Images: the last saved frame, and the livestack.
 
-Both routes answer HTTP 200 whatever happens — a rendered frame as `image/*`,
-a refusal as the JSON envelope — so the client separates them on content type
-and raises rather than handing the envelope back as image bytes. Nothing is
-cached here: serving the previous frame under a fresh timestamp is worse than
-serving nothing, because a dashboard cannot tell the two apart.
+Nothing is cached: the previous frame under a fresh timestamp would be
+indistinguishable from the new one.
 
 The timestamp is the state, and Home Assistant refetches only when it moves.
-`image.last_frame` takes it from the newest frame in the fold — never
-`utcnow()`, which reports the moment the integration loaded as the moment a
-frame was captured — and `image.livestack` from the `STACK-UPDATED` that named
-its target and filter.
+`image.last_frame` takes it from the newest frame in the fold, and
+`image.livestack` from the `STACK-UPDATED` naming its target and filter.
 """
 
 from collections.abc import Awaitable, Callable, Mapping
@@ -31,20 +26,16 @@ from .entity import NinaEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-# Reads only, and both entities fetch on demand rather than on a schedule.
 PARALLEL_UPDATES = 0
 
-# quality is what makes the route answer JPEG; omitted, it renders PNG, which is
-# several times the bytes for a stretched preview.
+# A quality makes the route answer JPEG rather than a far larger PNG.
 _QUALITY = 85
 
 
 async def _fetch_last_frame(client: NinaClientV2, _data: NinaData) -> bytes:
-    """`/image/{index}` counts OLDEST-first, so the newest frame is `count - 1`.
+    """`/image/{index}` counts oldest-first, so the newest frame is `count - 1`.
 
-    The count is read per call rather than taken from the fold, which can lag a
-    frame behind what N.I.N.A. holds right now; an off-by-one here silently
-    renders the wrong frame.
+    The count is read per call: the fold can lag a frame behind.
     """
     count = await client.get_image_history_count()
     return await client.get_image_bytes(count - 1, quality=_QUALITY)
@@ -62,10 +53,7 @@ async def _fetch_livestack(client: NinaClientV2, data: NinaData) -> bytes:
 class NinaImageDescription(ImageEntityDescription):
     """An image, plus where its bytes and its timestamp come from.
 
-    `observed` is the §5.2.2 first-sight rule. The last frame exists from the
-    start because its identity does not depend on the poll — with no frame
-    yet the timestamp is `None` and `async_image` never asks — while the
-    livestack pair is only knowable once a stack has reported one.
+    `observed` gates creation: the livestack waits for a stack to report.
     """
 
     stamp: Callable[[NinaData], datetime | None]
@@ -92,10 +80,8 @@ DESCRIPTIONS: tuple[NinaImageDescription, ...] = (
         stamp=lambda data: None if data.stack is None else data.stack.updated,
         fetch=_fetch_livestack,
         observed=lambda data: data.stack is not None,
-        # Which stack is on screen. On a mono rig the plugin holds one stack
-        # per filter and this entity follows whichever updated last, so
-        # without these a dashboard shows an Ha frame and then an SII one with
-        # nothing explaining the jump.
+        # Which stack is shown: a mono rig has one per filter, and this follows
+        # whichever updated last.
         attributes=lambda data: {
             "target": None if data.stack is None else data.stack.target,
             "filter": None if data.stack is None else data.stack.filter_name,
@@ -130,19 +116,12 @@ class NinaImage(NinaEntity, ImageEntity):
 
     @property
     def image_last_updated(self) -> datetime | None:
-        """The state. None reads as `unknown` — nothing has been captured."""
+        """The state; `None`, `unknown`, until something is captured."""
         return self.entity_description.stamp(self.coordinator.data)
 
     async def async_image(self) -> bytes | None:
-        """Fetch the bytes.
-
-        Two outcomes, and they must not look alike. A rig with nothing to
-        render answers `None` — no frame yet is not an error, and the timestamp
-        has already said so. Anything else is a real failure and is RAISED, so
-        the cause reaches the log: Home Assistant renders both as the same
-        "unable to get image", and a swallowed one leaves a fresh timestamp
-        beside a permanently blank card with nothing naming the route, the
-        envelope or the reason.
+        """Fetch the bytes: `None` when there is nothing to render, and a raise
+        for a real failure, so its cause reaches the log.
         """
         if self.image_last_updated is None:
             return None
@@ -151,9 +130,7 @@ class NinaImage(NinaEntity, ImageEntity):
                 self.coordinator.client, self.coordinator.data
             )
         except (NinaNoImageError, NinaCommandError) as exc:
-            # Nothing to render, or the handler declined — an empty history,
-            # an index it no longer holds, a stack the plugin has dropped. All
-            # ordinary, and not worth a traceback on a dashboard render.
+            # An empty history, an index no longer held, a dropped stack.
             _LOGGER.debug("N.I.N.A. has no image for %s: %s", self.entity_id, exc)
             return None
         except NinaError as exc:
@@ -172,11 +149,7 @@ async def async_setup_entry(
 
     @callback
     def _add_observed() -> None:
-        """Create the images whose source the snapshot now carries.
-
-        Re-run on every publish, so a stack that starts hours after Home
-        Assistant did still gets its entity (Gold `dynamic-devices`).
-        """
+        """Create the images whose source has now been observed."""
         descriptions = [
             description
             for description in DESCRIPTIONS

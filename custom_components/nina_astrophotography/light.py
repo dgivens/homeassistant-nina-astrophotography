@@ -1,20 +1,12 @@
 """Flat panel light.
 
-Brightness is per-device, not 0-255: this rig's panel reports MaxBrightness
-4096, others report 256 or 255 — which is how the 0-255 assumption survived.
-Scale between the driver's own MinBrightness and MaxBrightness in both
-directions.
+Brightness is scaled between the driver's own `MinBrightness` and
+`MaxBrightness` (4096 on some panels, 255 on others) and Home Assistant's 0–255.
 
-turn_on always sends a brightness. A bare set-light?on=true jumps to
-MaxBrightness, and a light that comes on at full output is a hazard in a shared
-observatory. Sending the brightness before the light is the design's anti-flash
-intent; whether this driver honours a brightness set while the light is off is
-unverified — confirming it needs an idle rig with the cover closed.
-
-Do not verify by readback: the API's commands are asynchronous and answer
-Success: true before the state changes. FLAT-LIGHT-TOGGLED carries an empty
-payload and FLAT-BRIGHTNESS-CHANGED fires repeatedly through a ramp with
-inconsistent Previous values — both are change hints, nothing more.
+`turn_on` always sends a brightness, before the light: a bare
+`set-light?on=true` jumps to `MaxBrightness`, a hazard in a shared
+observatory. Whether every driver honours a brightness set while the light is
+off is unverified.
 """
 
 from typing import Any
@@ -31,14 +23,13 @@ from .coordinator import NinaConfigEntry, NinaCoordinator
 from .device import observed
 from .entity import NinaEntity
 
-# One in-flight command per platform. Entity calls only; services are unaffected.
 PARALLEL_UPDATES = 1
 
 _HA_MAX = 255
 
 
 class NinaFlatLight(NinaEntity, LightEntity):
-    """The panel's light, gated on the panel having been observed (§5.2.2)."""
+    """The panel's light."""
 
     _attr_color_mode = ColorMode.BRIGHTNESS
     _attr_supported_color_modes = {ColorMode.BRIGHTNESS}
@@ -76,10 +67,8 @@ class NinaFlatLight(NinaEntity, LightEntity):
 
     @property
     def available(self) -> bool:
-        # The panel's own two conditions, on top of the base's levels 1 and 2.
-        # A cover-only panel and one whose driver reports no usable range are
-        # unavailable, never absent: the entity must not appear and disappear
-        # across restarts.
+        # A cover-only panel, or one reporting no usable range, is unavailable
+        # rather than absent, so the entity survives restarts.
         panel = self._panel
         return bool(
             super().available
@@ -103,11 +92,10 @@ class NinaFlatLight(NinaEntity, LightEntity):
         return round(fraction * _HA_MAX)
 
     def _to_driver(self, ha_brightness: int) -> int:
-        """Scale HA's 1-255 into driver units.
+        """Scale HA's 1-255 into driver units, refusing anything outside it.
 
-        Out-of-range input is silently clamped by N.I.N.A. and answers
-        Success: true, so refuse it here. Home Assistant's light schema clamps
-        first, which makes this a guard rather than a path.
+        N.I.N.A. would clamp it silently; HA's light schema clamps first, so
+        this is a guard.
         """
         if not 1 <= ha_brightness <= _HA_MAX:
             raise ServiceValidationError(
@@ -118,15 +106,11 @@ class NinaFlatLight(NinaEntity, LightEntity):
         return round(low + (ha_brightness / _HA_MAX) * self._span)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        # Never fall back to _HA_MAX. The panel's ordinary idle state is
-        # Brightness 0 / LightOn false, which scales to 0 — falsy — so
-        # `self.brightness or _HA_MAX` would send 255 -> 4096 and the panel
-        # would come on at full output on any dashboard tap or scene.
+        # Never fall back to full: an idle panel's brightness scales to 0.
         requested = int(kwargs.get(ATTR_BRIGHTNESS, self._last_on_brightness))
         driver_value = self._to_driver(requested)
         try:
-            # Brightness first, then the light: a bare set-light jumps to
-            # MaxBrightness, so this ordering is what prevents the flash.
+            # Brightness first: a bare set-light jumps to MaxBrightness.
             await self.coordinator.client.set_flat_brightness(driver_value)
             if not self.is_on:
                 await self.coordinator.client.set_flat_light(True)
@@ -156,11 +140,8 @@ async def async_setup_entry(
     def _add_observed() -> None:
         """Create the light once the panel has been observed.
 
-        Gate on observation, not on SupportsOnOff: a disconnected panel reports
-        Min 0 / Max 0 and SupportsOnOff false as its ordinary startup state, and
-        `available` carries that. Re-run on every publish: N.I.N.A. often
-        connects the panel only briefly, and long after Home Assistant started.
-        §5.2.2.
+        Not gated on `SupportsOnOff`, which a disconnected panel reports false;
+        `available` handles that.
         """
         nonlocal added
         if added or not observed(coordinator.data, "flat_device"):

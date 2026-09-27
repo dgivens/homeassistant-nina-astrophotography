@@ -1,20 +1,12 @@
 """Binary sensors.
 
-Ten `*_connected` sensors are gone: a disconnected device makes its entities
-unavailable, which is observable in automations (§5.2.1). The safety monitor is
-the exception — a disconnected safety monitor would make `safety_unsafe`
-unavailable, so a roof-close automation on `to: "off"` never fires, and
-`to: "unavailable"` cannot substitute because it conflates
-device-disconnected, N.I.N.A.-unreachable, HA-restarting and coordinator-failed.
+A disconnected device makes its entities unavailable, so equipment has no
+`*_connected` sensor — except the safety monitor. `unavailable` cannot tell a
+dropped monitor from N.I.N.A. unreachable or Home Assistant restarting, and a
+roof-close automation must act on the first.
 
-Read-only mirrors of a switch, number or select are gone too; the survivor's
-state is the ACTUAL value, not the last commanded one. `rotator_synced` stays
-because sky-PA `Position` is meaningful only when synced.
-
-**`safety_unsafe` is `on` when conditions are UNSAFE.** That is Home
-Assistant's `SAFETY` device class — `on` means problem — and it is what the
-shipped abort blueprint triggers on. An entity named for safety that reads `on`
-for safe is a trap every user hits exactly once, at the worst possible moment.
+**`safety_unsafe` is `on` when conditions are unsafe**, as Home Assistant's
+`SAFETY` device class means it.
 """
 
 from collections.abc import Callable, Mapping
@@ -34,7 +26,6 @@ from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .device import observed, read_field
 from .entity import NinaEntity
 
-# Read-only: nothing here commands the rig, so there is nothing to serialize.
 PARALLEL_UPDATES = 0
 
 
@@ -42,18 +33,10 @@ PARALLEL_UPDATES = 0
 class NinaBinarySensorDescription(BinarySensorEntityDescription):
     """A binary sensor, plus how to read it out of the snapshot.
 
-    `kind` names the child device the entity hangs off (§5.1); `None` puts it on
-    the hub. `verified` is False only for the dome, which cannot be validated
-    against hardware — a test asserts every dome descriptor carries the marker.
-    `survives_disconnect` drops §7.3's level 2 for the one entity whose job is
-    to report that its own device is down.
-
-    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
-    `unique_id_suffix` where the new `key` reads better than the old one. Home
-    Assistant keys the registry on `unique_id`, so changing it mints a fresh
-    entity and strands the old row as `unavailable` — a roof-close automation
-    pointing at the 1.4.5 safety entity would stop working on upgrade. Renaming
-    is the user's to do, never the upgrade's.
+    `kind` names the child device; `None` puts it on the hub. `verified` is
+    False only for the dome, which no hardware has validated.
+    `survives_disconnect` keeps an entity available while its device is down,
+    for the one whose job is to report that.
     """
 
     value: Callable[[NinaData], bool | None]
@@ -62,12 +45,12 @@ class NinaBinarySensorDescription(BinarySensorEntityDescription):
     verified: bool = True
     survives_disconnect: bool = False
     unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`. `unique_id` is
-    `{entry_id}_{unique_id_suffix or key}`."""
+    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
+    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _unsafe(data: NinaData) -> bool | None:
-    """`on` means UNSAFE, which is HA's `SAFETY` convention and the blueprint's."""
+    """`on` means unsafe."""
     monitor = data.snapshot.safety_monitor
     if monitor is None or monitor.is_safe is None:
         return None
@@ -75,24 +58,13 @@ def _unsafe(data: NinaData) -> bool | None:
 
 
 def _autofocus_reason(data: NinaData) -> str | None:
-    """Which of the two ways an autofocus fails this is, or `None` for neither.
+    """`"hung"`, `"rejected"`, or `None` if the last autofocus did neither.
 
-    They look nothing alike, and what to do about them differs.
-
-    A HUNG run is an absence — a start no finish answers, past the profile's
-    timeout — and the fold decides it (§4.4). It never writes a report, so
-    `/equipment/focuser/last-af` still holds the PREVIOUS run: anything read off
-    that report belongs to a different, probably good, run.
-
-    A REJECTED run finishes normally and is invisible in the event stream: the
-    report N.I.N.A. writes carries no verdict, so the only evidence is its R²
-    falling under the profile's `RSquaredThreshold`. That is the case that
-    costs a night, because the focuser stays where it was and the subs are soft
-    with nothing raised.
-
-    The report outlives the session, so it is believed only while it is newer
-    than the session start — otherwise a bad run from a previous night would
-    read as a problem the moment Home Assistant restarted.
+    A hung run is a start with no finish past the profile's timeout, decided
+    by the fold; it writes no report, so the report on hand is an earlier
+    run's. A rejected run finishes normally, and only its R² falling under
+    the profile's `RSquaredThreshold` shows it. A report older than the
+    session start is a previous night's and is ignored.
     """
     if data.session.autofocus.failed:
         return "hung"
@@ -112,18 +84,10 @@ def _autofocus_failed(data: NinaData) -> bool | None:
 
 
 def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
-    """What the verdict was made from, beside the verdict.
+    """Why the verdict was reached, and the R² and threshold it compared.
 
-    `on` alone cannot be acted on: a hung run wants the sequence looked at,
-    while a rejected one wants the focus range or the star detector looked at,
-    and only a hung run means the report on display is a different run's.
-
-    The R² is carried here rather than left to
-    `sensor.<instance>_focuser_autofocus_r2` — which is diagnostic and ships
-    disabled — because it is the value this judgement was actually made on.
-    A reader comparing some other R² against this threshold could contradict
-    the sensor it sits on: the run's R² is the worst of `RSquares`, which is
-    not quite the worst of the equations `fits` could be parsed from.
+    A hung run and a rejected one need different fixes. The R² sensor ships
+    disabled, so the value judged is carried here.
     """
     return {
         "reason": _autofocus_reason(data),
@@ -178,7 +142,6 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         translation_key="autofocus_failed",
         device_class=BinarySensorDeviceClass.PROBLEM,
         kind="focuser",
-        # Derived from the folded event set on read — there is no timer to leak.
         value=_autofocus_failed,
         attributes=_autofocus_verdict,
     ),
@@ -187,19 +150,15 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         translation_key="sequencer_running",
         device_class=BinarySensorDeviceClass.RUNNING,
         kind=None,
-        # The sequencer, not the camera: a rig waiting out a target's start
-        # window is running and not imaging. A NEW `unique_id` deliberately —
-        # 1.4.5's `_sequence_running` answered the other question, and a row
-        # whose meaning changes under an automation is worse than one that goes
-        # unavailable and asks to be repointed.
+        # The sequencer, not the camera: waiting out a target's start window is
+        # running and not imaging. Deliberately not 1.4.5's `sequence_running`
+        # `unique_id`, which meant `imaging`.
         value=lambda data: data.running,
     ),
     NinaBinarySensorDescription(
         key="scheduler_waiting",
         translation_key="scheduler_waiting",
         kind=None,
-        # No device class: HA has none for waiting, and RUNNING here would read
-        # as a third opinion on whether the sequence is going.
         value=lambda data: data.wait_ends_at is not None,
     ),
     NinaBinarySensorDescription(
@@ -207,9 +166,8 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         translation_key="imaging",
         device_class=BinarySensorDeviceClass.RUNNING,
         kind=None,
-        # §6.2's activity heuristic: a rising count, a camera exposing, or an
-        # IMAGE-SAVE inside five minutes. Frames are arriving, whatever the
-        # sequencer says.
+        # A rising frame count, a camera exposing, or an IMAGE-SAVE within five
+        # minutes, whatever the sequencer says.
         value=lambda data: data.imaging,
     ),
     NinaBinarySensorDescription(
@@ -245,12 +203,10 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="rotator",
-        # Retained (§5.2.3): unsynced, sky-PA `Position` degenerates toward
-        # `MechanicalPosition`, so the position sensors mean nothing without it.
+        # The sky position angle means nothing until the rotator is synced.
         value=read_field("rotator", "synced"),
     ),
-    # The dome is spec-derived and untested against hardware (§5.3.1): bare
-    # field reads, no derived state, and `verified=False` on every one.
+    # From the spec alone; no hardware has validated the dome.
     NinaBinarySensorDescription(
         key="dome_at_park",
         translation_key="dome_at_park",
@@ -318,12 +274,7 @@ async def async_setup_entry(
 
     @callback
     def _add_observed() -> None:
-        """Create the entities whose equipment the snapshot now carries.
-
-        Re-run on every publish, so equipment that connects hours after Home
-        Assistant started still gets its entities (Gold `dynamic-devices`); a
-        slot never returns to `None`, so nothing is ever removed here.
-        """
+        """Create the entities whose equipment has now been observed."""
         new = [
             NinaBinarySensor(coordinator, entry, description)
             for description in DESCRIPTIONS
