@@ -248,14 +248,9 @@ class NinaAutofocusCard extends HTMLElement {
     this._render();
   }
 
-  // The resolved entity id for a `translation_key`, falling back to a prefixed
-  // `slug` when there is nothing to resolve: an entity with no translation key,
-  // a disabled one, or a rig the resolver cannot identify.
-  //
-  // `slug` is the entity-id suffix — the device name plus the entity name — so
-  // it is not always the key, and on this card it usually is not: the focuser
-  // device supplies the leading "focuser", which the autofocus keys do not
-  // carry. Most reads below therefore pass one.
+  // Falls back to a prefixed `slug` when nothing resolves. The focuser device
+  // supplies "focuser", which the autofocus keys do not carry, so most reads
+  // below pass a slug.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -286,23 +281,17 @@ class NinaAutofocusCard extends HTMLElement {
     const fits = this._list(run, "fits");
     const minima = this._list(run, "minima");
 
-    // A CONTRASTDETECTION run measures a contrast score and not star sizes, so
-    // nothing it produces is in pixels. The integration already refuses to
-    // publish an HFR for one; the card has to stop labelling the axis.
+    // A CONTRASTDETECTION run measures a contrast score, not star sizes, so
+    // the card must stop labelling the axis in pixels.
     const method = this._attr(run, "method");
     const isHfr = method === null || method === undefined
       || String(method).toUpperCase() !== "CONTRASTDETECTION";
 
-    // `autofocus_fitted_hfr` and `autofocus_r2` are diagnostic and ship
-    // disabled, so both are taken from the attributes instead: the fitted HFR
-    // is the mean of the minima, which is how N.I.N.A. arrives at the point it
-    // moves to, and the sensor's R² is the worst of the run's fits.
-    //
-    // The mean holds only while EVERY minimum survived. A trend-line
-    // intersection can extrapolate below zero, and the mapper drops a negative
-    // one — averaging what is left would then quietly report the quadratic
-    // minimum alone, a different and much higher number than the integration's
-    // own `autofocus_fitted_hfr`, which is the mean including the negative.
+    // `autofocus_fitted_hfr`/`autofocus_r2` ship disabled, so both are taken
+    // from the attributes: the fitted HFR is the mean of the minima, N.I.N.A.'s
+    // own rule, and only holds if every minimum survived — the mapper drops a
+    // negative trend-line intersection, and averaging what is left would quietly
+    // report the quadratic minimum alone.
     const fitted = minima.map((minimum) => minimum.value).filter(Number.isFinite);
     const whole = minima.length > 0 && fitted.length === minima.length;
     const scored = fits.filter((fit) => Number.isFinite(fit.r_squared));
@@ -311,9 +300,8 @@ class NinaAutofocusCard extends HTMLElement {
       null,
     );
 
-    // Printed in the unit the focuser's reading is shown in — the two can
-    // differ, since a display unit is picked per entity — and compared in °C,
-    // the unit of `temperature_delta` and of N.I.N.A.'s own refocus trigger.
+    // Printed in the focuser's own display unit, compared in °C, the unit of
+    // `temperature_delta` and N.I.N.A.'s refocus trigger.
     const now = quantity(this._hass, this._eid("sensor", "focuser_temperature"));
     const then = quantity(this._hass,
       this._eid("sensor", "autofocus_temperature", "focuser_autofocus_temperature"));
@@ -321,11 +309,8 @@ class NinaAutofocusCard extends HTMLElement {
     const temperature = inUnit(now, unit);
     const at = inUnit(then, unit);
 
-    // The verdict, from the entity that makes it. `reason` separates a run
-    // that hung — which wrote no report, so the curve below belongs to an
-    // earlier run — from one that finished and was rejected on its fit. The
-    // R² is the one the judgement used, so the card cannot contradict the
-    // sensor it is quoting.
+    // `reason` separates a hung run — which wrote no report, so the curve
+    // below is an earlier run's — from one rejected on its fit.
     const verdict = this._eid("binary_sensor", "autofocus_failed", "focuser_autofocus_failed");
     const judged = this._attr(verdict, "r_squared");
     const threshold = this._attr(verdict, "r_squared_threshold");
@@ -348,14 +333,8 @@ class NinaAutofocusCard extends HTMLElement {
       fittedHfr: whole && isHfr
         ? fitted.reduce((total, value) => total + value, 0) / fitted.length
         : null,
-      // Named, because the sensor's R² is the worst of several fits and the
-      // number means nothing without knowing which one it came from. The
-      // sensor is only a fallback for a report that carried no fits at all —
-      // R² comes off `RSquares` whether or not the equation string parsed —
-      // and it ships disabled, so on a stock install `fits` is the only source.
-      // Disabled also means Home Assistant leaves it out of the registry a
-      // dashboard sees, so this read has nothing to resolve on and takes the
-      // prefix path.
+      // The sensor is only a fallback for a report with no fits at all, and
+      // it ships disabled, so this read is on the prefix path.
       worstSquare: worst ? worst.r_squared : this._number(
         this._eid("sensor", "autofocus_r_squared", "focuser_autofocus_r2")),
       worstFit: worst ? pretty(worst.name) : null,
@@ -369,9 +348,7 @@ class NinaAutofocusCard extends HTMLElement {
       temperature: at,
       nowTemperature: temperature,
       degrees: unit ?? "",
-      // The number domain and not the sensor one: the focuser position exists
-      // as both, and the sensor is the diagnostic one, disabled by default.
-      // The observatory card reads the same number for the same reason.
+      // The number domain, not the diagnostic sensor of the same reading.
       nowPosition: this._number(this._eid("number", "focuser_position")),
       drift: Number.isFinite(at) && Number.isFinite(temperature)
         ? temperature - at : null,
@@ -383,14 +360,9 @@ class NinaAutofocusCard extends HTMLElement {
     if (!this._hass) return;
     const run = this._read();
 
-    // `set hass` fires on every state change in the whole of Home Assistant,
-    // and redrawing the canvas each time buys nothing. The signature is
-    // everything the card renders rather than a few fields that stand in for
-    // it: state arrives per batch, not per run, so a `hass` can carry the new
-    // run's timestamp beside the previous run's HFR and duration. Rendering
-    // that mixture is survivable; skipping every later correction because a
-    // narrow signature already matched is not — on a focuser with no
-    // temperature probe nothing would ever dislodge it.
+    // The signature is everything the card renders, not a few stand-in
+    // fields: a `hass` batch can carry the new run's timestamp beside the
+    // previous run's HFR, and a narrower signature could then never update.
     const signature = JSON.stringify(run);
     if (signature === this._signature) return;
     this._run = run;
@@ -408,9 +380,8 @@ class NinaAutofocusCard extends HTMLElement {
         <div class="body">${this._body(run)}</div>
       </ha-card>
     `;
-    // Only once the markup is up. Recording it first would mean that a throw
-    // anywhere in `_body` left a blank card that never tried again, because
-    // the next identical `hass` would match the signature and return.
+    // After the markup, so a throw in `_body` doesn't leave a blank card that
+    // never tries again.
     this._signature = signature;
 
     if (this._plottable(run)) requestAnimationFrame(() => this._draw());
@@ -454,20 +425,16 @@ class NinaAutofocusCard extends HTMLElement {
     // one detected star, and a point the fit should not have leaned on.
     const lonely = run.curve.filter(
       (point) => Number.isFinite(point.value) && point.error === 0).length;
-    // A fit landing in the outermost step means the true focus is probably
-    // outside the range that was swept, so the sweep needs widening and this
-    // result does not deserve much confidence.
+    // A fit at the outermost step means the sweep probably needs widening.
     const swept = run.curve.map((point) => point.position);
     const reach = run.curve.length > 1
       ? (Math.max(...swept) - Math.min(...swept)) / (run.curve.length - 1) : 0;
     const atEdge = Number.isFinite(run.position) && run.curve.length > 1
       && (run.position <= Math.min(...swept) + reach
         || run.position >= Math.max(...swept) - reach);
-    // A hung run wrote no report, so nothing below it describes the failure —
-    // it describes whichever run last finished.
+    // A hung run wrote no report, so everything below describes whichever run
+    // last finished, not the failure.
     const hung = run.reason === "hung";
-    // Only a rejected run leaves a computed position the focuser never took.
-    // A hung run's report is an EARLIER run's, and that one was applied.
     const rejected = run.reason === "rejected";
     const quality = run.judged ?? run.worstSquare;
 
@@ -499,9 +466,6 @@ class NinaAutofocusCard extends HTMLElement {
           <div class="label">Best measured</div>
           <div class="value">${fixed(run.hfr, 2)} <span class="unit">${run.unit}</span></div>
           <div class="sub">${gained === null
-            // What the sweep was for. Both numbers are measured — the starting
-            // one before it, the best during it — so unlike the fitted value
-            // they are on the same scale and the difference means something.
             ? (Number.isFinite(run.fittedHfr) ? `Fitted ${fixed(run.fittedHfr, 2)} ${run.unit}` : "&nbsp;")
             : `${fixed(run.startHfr, 2)} → ${fixed(run.hfr, 2)} · ${
                 gained > 0 ? `${fixed(gained, 2)} better` : `${fixed(-gained, 2)} worse`}`}</div>
@@ -511,9 +475,6 @@ class NinaAutofocusCard extends HTMLElement {
           <div class="label">Fit quality</div>
           <div class="value">${fixed(quality, 3)} <span class="unit">R²</span></div>
           <div class="sub">${
-            // The threshold turns a number nobody knows the scale of into a
-            // verdict. Without it the card falls back to naming which of the
-            // run's fits the number came from.
             run.threshold === null || quality === null
               ? (run.worstFit || "&nbsp;")
               : `${quality < run.threshold ? "Rejected" : "Passed"} · needs ${fixed(run.threshold, 2)}`}</div>
@@ -535,10 +496,6 @@ class NinaAutofocusCard extends HTMLElement {
               <div class="label">Focuser now</div>
               <div class="value">${run.nowPosition} <span class="unit">steps</span></div>
               <div class="sub">${
-                // On a rejected run the focuser never moved to the computed
-                // position, so measuring against it would read as though
-                // something nudged the focuser afterwards. Sitting back at the
-                // starting position is the signature of the restore.
                 rejected
                   ? (run.nowPosition === run.startPosition
                       ? "Back where the run started" : "Not at the computed position")
@@ -583,9 +540,7 @@ class NinaAutofocusCard extends HTMLElement {
           run.isHfr ? "± spread across stars" : "contrast score"}</span></div>`,
     ];
     for (const fit of run.fits) {
-      // A fit whose equation is not a polynomial has no coefficients to
-      // evaluate, so it is listed with its R² and said to be absent from the
-      // chart rather than quietly missing from it.
+      // No coefficients to plot; listed with its R² and marked not plotted.
       const drawn = Array.isArray(fit.coefficients) && fit.coefficients.length > 0;
       const colour = isTrend(fit.name) ? TREND : FIT;
       const dash = isTrend(fit.name) ? "dashed" : "solid";
@@ -600,9 +555,7 @@ class NinaAutofocusCard extends HTMLElement {
     const { min: floor } = axisRange(run.curve);
     for (const minimum of run.minima) {
       const colour = isTrend(minimum.name) ? TREND : FIT;
-      // A minimum the mapper dropped for being negative has no value to plot,
-      // and the chart skips it. Saying so beats a legend entry pointing at a
-      // marker that is not there.
+      // A negative minimum the mapper dropped has no value to plot.
       const plotted = Number.isFinite(minimum.value);
       const under = plotted && minimum.value < floor;
       items.push(`<div class="item">
@@ -637,20 +590,17 @@ class NinaAutofocusCard extends HTMLElement {
     const plotW = W - pad.l - pad.r;
     const plotH = H - pad.t - pad.b;
 
-    // The x domain is the sweep's own range, nulls included: a position that
-    // measured nothing was still visited, and dropping it would narrow the
-    // range the run actually covered.
+    // The sweep's own range, nulls included: a position that measured nothing
+    // was still visited.
     const swept = run.curve.map((point) => point.position);
-    // The step comes off the sweep alone. Folding the final position in first
-    // would inflate it whenever the fit landed outside the swept range, and
-    // with it the margin either side.
+    // Off the sweep alone: folding the final position in first would inflate
+    // it whenever the fit landed outside the swept range.
     const step = run.curve.length > 1
       ? (Math.max(...swept) - Math.min(...swept)) / (run.curve.length - 1)
       : 1;
     const positions = Number.isFinite(run.position) ? [...swept, run.position] : swept;
     const xMin = Math.min(...positions) - step * 0.5;
-    // A sweep that collapsed onto one step would otherwise divide by zero and
-    // silently draw nothing: canvas treats a NaN coordinate as a no-op.
+    // Guards a sweep collapsed onto one step: canvas silently no-ops on NaN.
     const xSpan = (Math.max(...positions) + step * 0.5 - xMin) || 1;
     const xMax = xMin + xSpan;
 
@@ -664,9 +614,8 @@ class NinaAutofocusCard extends HTMLElement {
     ctx.font = "9px sans-serif";
     ctx.textBaseline = "middle";
 
-    // Grid and the measurement axis. The precision follows the range rather
-    // than assuming pixels: a contrast score spans thousandths, and five
-    // gridlines all reading "0.0" carry nothing.
+    // Precision follows the range, not pixels: a contrast score spans
+    // thousandths, and five gridlines reading "0.0" carry nothing.
     const places = Math.min(4, Math.max(1, 1 - Math.floor(Math.log10((yMax - yMin) / 4))));
     ctx.strokeStyle = "rgba(255,255,255,0.06)";
     ctx.fillStyle = "rgba(255,255,255,0.4)";
@@ -682,7 +631,6 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.fillText(value.toFixed(places), pad.l - 5, y);
     }
 
-    // The focuser-position axis
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
     for (let tick = 0; tick <= 3; tick++) {
@@ -709,9 +657,8 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.fillText("✕", x, pad.t + plotH / 2);
     }
 
-    // The fits, sampled across the sweep and broken wherever they leave the
-    // chart — which is how a trend line stays a line over its own half of the
-    // V rather than a spike out of the top of the frame.
+    // Sampled across the sweep and broken wherever a fit leaves the chart, so
+    // a trend line stays a line rather than a spike out of the frame.
     for (const fit of run.fits) {
       if (!Array.isArray(fit.coefficients) || !fit.coefficients.length) continue;
       ctx.strokeStyle = isTrend(fit.name) ? TREND : FIT;
@@ -730,8 +677,7 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.setLineDash([]);
     }
 
-    // Error bars: the spread of HFR across the stars in that frame, not the
-    // uncertainty on the V.
+    // The spread of HFR across the frame's stars, not the uncertainty on the V.
     ctx.strokeStyle = `${CURVE}77`;
     ctx.lineWidth = 1;
     for (const point of measured) {
@@ -749,9 +695,8 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.stroke();
     }
 
-    // The measured sweep. The pen lifts at a position that measured nothing
-    // rather than drawing a chord across it — which on a V is a chord through
-    // the very region focus lives in.
+    // The pen lifts at a position that measured nothing, rather than drawing
+    // a chord through the region focus lives in.
     ctx.strokeStyle = CURVE;
     ctx.lineWidth = 1.8;
     ctx.beginPath();
@@ -781,8 +726,7 @@ class NinaAutofocusCard extends HTMLElement {
       }
     }
 
-    // Where the focuser was actually left, which is neither minimum: it is
-    // their mean, rounded to a step.
+    // Where the focuser was left: the minima's mean, rounded to a step.
     if (Number.isFinite(run.position)) {
       const x = xOf(run.position);
       ctx.strokeStyle = FINAL;
@@ -797,9 +741,7 @@ class NinaAutofocusCard extends HTMLElement {
 
     for (const minimum of run.minima) {
       if (!Number.isFinite(minimum.value) || !Number.isFinite(minimum.position)) continue;
-      // Near-parallel trend lines cross a long way outside the sweep, which is
-      // exactly the failed run this card exists to explain. Drawing it anyway
-      // would put a marker on top of the axis labels or off the canvas; the
+      // Near-parallel trend lines can cross well outside the sweep; the
       // legend still carries its position.
       if (!onChart(minimum.position)) continue;
       const x = xOf(minimum.position);
@@ -811,8 +753,7 @@ class NinaAutofocusCard extends HTMLElement {
       const off = below || minimum.value > yMax;
       ctx.beginPath();
       if (off) {
-        // Off the chart: a chevron pointing the way it went, pinned to the
-        // edge.
+        // A chevron pointing the way it went, pinned to the edge.
         const tip = below ? y : y - 1;
         const back = below ? -6 : 6;
         ctx.moveTo(x, tip);
@@ -827,9 +768,7 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
-      // Its real value beside it, because this is the one marker the chart
-      // deliberately does not place where it belongs. Without the number a
-      // glance reads the chevron's height as the value.
+      // Its real value beside it, or the chevron's height reads as the value.
       if (off) {
         ctx.font = "9px sans-serif";
         ctx.textAlign = x > W / 2 ? "right" : "left";
@@ -857,8 +796,8 @@ class NinaAutofocusCard extends HTMLElement {
   static getStubConfig() { return {}; }
 }
 
-// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
-// defining the same tag would otherwise throw and abort this whole module.
+// Guarded: a stale 1.4.5 `/local/` resource defining the same tag would
+// otherwise throw and abort the rest of this module.
 if (!customElements.get("nina-autofocus-card")) {
   customElements.define("nina-autofocus-card", NinaAutofocusCard);
 }
