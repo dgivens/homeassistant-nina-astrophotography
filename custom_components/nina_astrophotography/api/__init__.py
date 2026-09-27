@@ -1,7 +1,5 @@
-"""Version-independent client seam.
-
-Nothing above this package knows a wire format, and no dict crosses this
-boundary. Everything that does live under api/<version>/.
+"""The client seam: nothing above it knows a wire format, and no dict crosses
+it. The wire lives under `api/<version>/`.
 """
 
 from .errors import (

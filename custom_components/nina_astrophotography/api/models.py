@@ -1,30 +1,14 @@
-"""Normalized models — THE CONTRACT.
+"""Normalized models: the contract everything above `api/` speaks, never dicts.
 
-Everything above api/ speaks in these and never in dicts. Two rules:
+`None` means no reading. Every in-band sentinel — `"NaN"`, a calibration
+frame's HFR 0, -1 iterations, an untracked mount's 24 h to flip — is already
+`None` here.
 
-**"Observed" is defined by key presence, not by `Connected`.** `/equipment/info`
-always emits all eleven device blocks, including a full `Dome` block on a rig
-that has never had a dome — so a device key being present proves nothing. What
-distinguishes them is that a disconnected device *drops* `DeviceId`, `Name` and
-`DisplayName`, while one that has never existed never had them. A device is
-observed once it has carried a `DeviceId`; the coordinator **latches** that,
-because evaluating it per-poll would delete the device the moment it disconnects.
+A device that is `None` has never been observed; one with `connected=False` is
+down. A down device carries only `connected`, `meta` and its capability flags:
+a disconnected driver answers template defaults for every reading.
 
-`None` means "no reading". Every sentinel the API uses in-band — "NaN", HFR 0 on
-a calibration frame, -1 iterations, 24 hours to meridian flip on an untracked
-mount — is already gone by the time a value lands here. If a sentinel reaches
-derive.py, the seam is broken.
-
-A device that is `None` has never been observed; a device present with
-`connected=False` has been observed and is currently down. §5.2.2's first-sight
-rule and §7.3's availability levels both need that distinction from one snapshot.
-A down device carries `connected`, `meta` and its capability flags and nothing
-else: a disconnected driver answers zeros and template defaults for every
-reading, and those are artefacts, not measurements.
-
-This module is closed to fields no entity, service, session.py or derive.py
-consumes. A guideline, not a test — the enforcement needs an exemption list on
-its first service-only field.
+Add a field only when something consumes it.
 """
 
 from collections.abc import Mapping
@@ -35,10 +19,9 @@ from typing import Any
 
 @dataclass(frozen=True, slots=True)
 class DeviceMeta:
-    """Registry metadata. DriverVersion is the device's sw_version (§5.1).
+    """Device registry metadata; `driver_version` is the device's sw_version.
 
-    DriverInfo is deliberately absent: the rotator and flat panel both return
-    the ASCOM template default, though the filter wheel returns real firmware.
+    No `DriverInfo`: many drivers return the ASCOM template default.
     """
 
     name: str | None
@@ -50,7 +33,7 @@ class DeviceMeta:
 
 @dataclass(frozen=True, slots=True)
 class CameraModel:
-    """`gains` and `binning_modes` are per-camera select options, never hardcoded."""
+    """A camera; `gains` and `binning_modes` are its own."""
 
     connected: bool
     meta: DeviceMeta
@@ -64,25 +47,25 @@ class CameraModel:
     usb_limit: int | None
     usb_limit_min: int | None
     usb_limit_max: int | None
-    """Per-camera; `number.camera_usb_limit`'s range comes from here."""
+    """Per camera, like `usb_limit_min`."""
     camera_state: str | None
     is_exposing: bool | None
     pixel_size: float | None
-    """Microns. Pairs with the profile focal length for image scale."""
+    """Microns."""
     has_battery: bool | None
     battery: float | None
-    """Percent. A camera without a battery reports -1, which is `None` here."""
+    """Percent; `None` for a camera without one."""
     can_set_temperature: bool | None
     gains: tuple[int, ...]
     binning_modes: tuple[str, ...]
     """Mode names as the driver spells them, e.g. "1x1"."""
     bin_x: int | None
-    """Current binning. Image scale scales by it; `/image-history` omits it."""
+    """Current binning, which `/image-history` frames do not carry."""
 
 
 @dataclass(frozen=True, slots=True)
 class MountModel:
-    """Reported coordinates are in the mount's own `epoch`, never J2000 (§3.7)."""
+    """A mount. Coordinates are in its own `epoch`, not necessarily J2000."""
 
     connected: bool
     meta: DeviceMeta
@@ -97,15 +80,15 @@ class MountModel:
     tracking_enabled: bool | None
     tracking_mode: str | None
     tracking_modes: tuple[str, ...]
-    """Per-mount; the select's options come from here."""
+    """This mount's own."""
     at_park: bool | None
     at_home: bool | None
     side_of_pier: str | None
     time_to_meridian_flip: float | None
-    """Hours. The 24-hour untracked sentinel is already `None` here."""
+    """Hours; `None` while untracked."""
     can_slew_alt_az: bool | None
     epoch: str | None
-    """The epoch the mount reports in — JNOW on this rig."""
+    """The epoch the mount reports in, usually JNOW."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,15 +110,10 @@ class FilterWheelModel:
     meta: DeviceMeta
     selected_filter: str | None
     available_filters: tuple[str, ...]
-    """Names, in the order the wheel reports them — the select's options."""
+    """Names, in the wheel's order."""
     filter_slots: Mapping[str, int]
-    """Name → the wheel's own `Id`, which is what `change-filter` takes.
-
-    Carried rather than derived from the option's position: a wheel is free to
-    number its slots non-contiguously, and a filter whose `Name` is not a
-    string drops out of the name list and shifts every position after it. A
-    wrong slot changes to the wrong filter, answers `Success: true`, and costs
-    the sub — the disagreement only shows up on the next poll.
+    """Name → the wheel's own `Id`, which `change-filter` takes. Slots need not
+    be numbered in list order.
     """
     is_moving: bool | None
 
@@ -145,13 +123,10 @@ class GuiderModel:
     connected: bool
     meta: DeviceMeta
     state: str | None
-    """Looping | Paused | LostLock | Guiding | Stopped | Calibrating. `switch.guider` is
-    on while the guider is running — every state but `Stopped` and a `LostLock`
-    left over after `GUIDER-STOP` — which is why `sensor.guider_status` is
-    retained (§5.2.3): the switch cannot tell a lost lock from a settled one.
-    `Paused` arrives from PHD2's `Paused` event and leaves on the next `GuideStep`
-    (`Guiding`) or `LoopingExposuresStopped` (`Stopped`); the switch reads it as
-    running, which is deliberate — exposures are still looping.
+    """Looping | Paused | LostLock | Guiding | Stopped | Calibrating.
+
+    `Paused` comes from PHD2's `Paused` event and ends on the next `GuideStep`
+    (`Guiding`) or `LoopingExposuresStopped` (`Stopped`).
     """
     rms_total: float | None
     rms_ra: float | None
@@ -165,7 +140,7 @@ class RotatorModel:
     connected: bool
     meta: DeviceMeta
     position: float | None
-    """Sky position angle, degrees. Meaningful only when `synced` (§5.2.3)."""
+    """Sky position angle, degrees. Meaningful only when `synced`."""
     mechanical_position: float | None
     is_moving: bool | None
     reverse: bool | None
@@ -174,7 +149,7 @@ class RotatorModel:
 
 @dataclass(frozen=True, slots=True)
 class DomeModel:
-    """Spec-derived and untested against hardware (§5.3.1)."""
+    """A dome, from the spec alone; no hardware has validated it."""
 
     connected: bool
     meta: DeviceMeta
@@ -195,9 +170,7 @@ class FlatDeviceModel:
     cover_state: str | None
     light_on: bool | None
     brightness: float | None
-    """Raw driver units, spanning `min_brightness`–`max_brightness` (§5.3.4).
-    Not Home Assistant's 0–255.
-    """
+    """Driver units, spanning `min_brightness`–`max_brightness`."""
     min_brightness: float | None
     max_brightness: float | None
     supports_on_off: bool | None
@@ -206,13 +179,11 @@ class FlatDeviceModel:
 
 @dataclass(frozen=True, slots=True)
 class WeatherModel:
-    """`channels` is a map, not a field per channel, so §5.2.2 can ask which
-    channels this source has ever produced. Keys are the wire's names
-    lowercased with underscores: cloud_cover, dew_point, humidity, pressure,
-    rain_rate, sky_brightness, sky_quality, sky_temperature, star_fwhm,
-    temperature, wind_direction, wind_gust, wind_speed. Every wire channel is
-    present; `None` means the source emitted `"NaN"` for it — which is how a
-    channel this source cannot report looks, poll after poll.
+    """A weather source.
+
+    `channels` holds every wire channel, keyed snake_case (`cloud_cover`,
+    `dew_point`, `sky_brightness`, …); `None` is a `"NaN"`, which is also how a
+    channel the source cannot report looks.
     """
 
     connected: bool
@@ -241,11 +212,9 @@ class SwitchChannelModel:
 
     @property
     def binary(self) -> bool:
-        """A one-step range is an on/off channel, and belongs on `switch`.
+        """Whether the range is exactly one step, so on/off.
 
-        A zero step is not one step: `Min 0 / Max 0 / Step 0` satisfies the
-        arithmetic and is what a DISCONNECTED device reports, so without the
-        guard it mints a switch whose on and off values are both 0.
+        A disconnected device's `Min 0 / Max 0 / Step 0` is not.
         """
         if self.minimum is None or self.maximum is None or self.step_size is None:
             return False
@@ -278,18 +247,18 @@ class EquipmentSnapshot:
 
 @dataclass(frozen=True, slots=True)
 class Frame:
-    """One saved sub. Identity is `(date, filename)` on all three paths (§4.4)."""
+    """One saved frame, identified by `(date, filename)`."""
 
     date: datetime
-    """Save time, not exposure start — subtract `exposure_time` for the latter."""
+    """Save time; the exposure started `exposure_time` earlier."""
     filename: str
     target_name: str | None
     filter_name: str | None
     image_type: str | None
     exposure_time: float | None
-    """Seconds. Integration time sums these, never count × nominal."""
+    """Seconds."""
     hfr: float | None
-    """The calibration-frame 0 is already `None` here (§5.2.4)."""
+    """`None` on a calibration frame."""
     stars: int | None
     mean: float | None
     median: float | None
@@ -297,19 +266,13 @@ class Frame:
     min: float | None
     max: float | None
     rms_arcsec: float | None
-    """Total guide RMS over the exposure, in arcseconds — comparable across
-    rigs, the same convention as `GuiderModel.rms_total`. `RmsText` carries the
-    pixel figure first and the arcsecond figure in brackets; a total of 0 is no
-    guiding, not perfect guiding, and is already `None` here.
-    """
+    """Total guide RMS over the exposure, arcseconds; `None` when unguided."""
     temperature: float | None
     gain: int | None
     offset: int | None
     focal_length: float | None
     generation: str | None
-    """The `/application-start` value in force when the frame was received; the
-    process boundary is a filter on this, never a clear (§3.6).
-    """
+    """The `/application-start` in force when the frame arrived."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -320,27 +283,19 @@ class NinaEvent:
     time: datetime
     """Always offset-aware."""
     data: Mapping[str, Any]
-    """The event's own scalar payload; empty for the many bare `{Event, Time}`."""
+    """The event's own scalar payload, as forwarded to the event bus."""
     generation: str | None
     frame: Frame | None = None
-    """Set on `IMAGE-SAVE`, whose payload is a frame the socket already mapped."""
+    """Set on `IMAGE-SAVE`."""
     wait_end: datetime | None = None
-    """Set on `TS-WAITSTART`: when Target Scheduler expects to resume.
-
-    Typed here rather than left in `data` because `data` is forwarded verbatim
-    onto the Home Assistant event bus, where a datetime would replace the wire
-    string automations read.
+    """Set on `TS-WAITSTART`: when Target Scheduler expects to resume. Not in
+    `data`, which keeps the wire's string for automations.
     """
 
 
 @dataclass(frozen=True, slots=True)
 class TargetBreakdown:
-    """Light-frame totals for one group — one row per target, or per filter.
-
-    `SessionStats.by_filter` reuses this with the filter name in `name`: the two
-    breakdowns carry identical fields, so a second class would differ only in
-    its docstring.
-    """
+    """Light-frame totals for one target, or one filter."""
 
     name: str
     count: int
@@ -351,19 +306,15 @@ class TargetBreakdown:
 
 @dataclass(frozen=True, slots=True)
 class AutoFocusState:
-    """`AUTOFOCUS-STARTING` and `AUTOFOCUS-FINISHED` do not pair up — an
-    ordinary night ends with one more STARTING than FINISHED, and there is no
-    failure event. A run is a failure once it has gone unanswered for longer
-    than the profile's autofocus timeout (§4.4); a run interrupted inside that
-    window — the sky turning unsafe, the sequence ending, a park, a disconnect,
-    or the sequencer moving on to the next exposure — was aborted, not failed.
+    """Autofocus as the events show it.
+
+    STARTING and FINISHED do not pair up, and there is no failure event. A
+    run unanswered past the profile's timeout failed; one interrupted inside
+    it was aborted.
     """
 
     last_finished_at: datetime | None
-    """The newest FINISHED. A FINISHED is the report, not a verdict: an
-    autofocus that found no focus still reports, so the verdict comes from
-    `AutoFocusReport.r_squared` against the profile's `RSquaredThreshold`.
-    """
+    """The newest FINISHED, which a rejected run also sends."""
     running_since: datetime | None
     """The newest STARTING with nothing answering it yet."""
     failed: bool
@@ -373,27 +324,17 @@ class AutoFocusState:
 class FocusPoint:
     """One position the autofocus sweep visited.
 
-    `value` is HFR in pixels only under a STARHFR run; a CONTRASTDETECTION run
-    measures a contrast score at the same positions, and
-    `AutoFocusReport.method` is what says which.
+    `value` is HFR in pixels under STARHFR, a contrast score under
+    CONTRASTDETECTION; `AutoFocusReport.method` says which.
     """
 
     position: int
     value: float | None
-    """None where the sweep measured nothing here — the star detector found no
-    usable stars, which out at the ends of a sweep means the stars bloated past
-    its cut. The position is kept so the sweep's real range survives, and so a
-    chart breaks its line rather than drawing a chord across the failure.
-    """
+    """None where no usable stars were found, often at a sweep's ends."""
     error: float | None
-    """The spread of HFR ACROSS THE STARS in that frame, which N.I.N.A.'s own
-    chart draws as an error bar.
-
-    Not the uncertainty on the V: with hundreds of stars the error on the mean
-    is smaller by √N. A fat bar means the field has a spread of star sizes —
-    tilt, field curvature, elongation — so it reads as "check the optics",
-    never as "distrust this point". A 0 on a measured point is near enough one
-    detected star, which is a run to distrust.
+    """The spread of HFR across the frame's stars, which N.I.N.A. draws as an
+    error bar: a sign of tilt or curvature, not uncertainty in the point. 0
+    means about one star was detected.
     """
 
 
@@ -401,16 +342,10 @@ class FocusPoint:
 class FitMinimum:
     """Where one of the report's fits puts best focus.
 
-    `name` is the wire's own key, because the second entry is named after
-    whichever curve the profile fitted — `QuadraticMinimum` on a TRENDPARABOLIC
-    run — so it is read as "the entry that is not `TrendLineIntersection`"
-    rather than by a literal name. (The published spec calls it
-    `HyperbolicMinimum`; the rig disagrees, and the rig wins.)
-
-    `TrendLineIntersection`'s value is not a star size a system can produce:
-    the two trend lines extrapolate the V's wings past each other, so it lands
-    far under anything measured (0.333 px on a captured run). A chart must not
-    let it set the y axis.
+    `name` is the wire's key. Besides `TrendLineIntersection`, the entry is
+    named for the fitted curve (`QuadraticMinimum` under TRENDPARABOLIC; the
+    spec says `HyperbolicMinimum`). `TrendLineIntersection`'s value lands far
+    below any measured star, so a chart must not scale to it.
     """
 
     name: str
@@ -420,148 +355,86 @@ class FitMinimum:
 
 @dataclass(frozen=True, slots=True)
 class CurveFit:
-    """One curve N.I.N.A. fitted through the sweep, as a chart would draw it.
-
-    Only fits the run actually used are carried; N.I.N.A. sends an empty
-    equation for the rest.
-    """
+    """One curve the run fitted through the sweep; unused fits are omitted."""
 
     name: str
     """`Quadratic`, `LeftTrend`, `RightTrend`, `Hyperbolic` or `Gaussian`."""
     equation: str
-    """As N.I.N.A. wrote it. Kept because `coefficients` is a best-effort parse
-    of a form only the polynomial fits have been observed in — for anything
-    else this string is the only record of what the fit actually was.
-    """
+    """As N.I.N.A. wrote it; the only record for a non-polynomial fit."""
     coefficients: tuple[float, ...] | None
-    """Highest power first, so `(a, b, c)` means `a·x² + b·x + c` — evaluate it
-    and the fitted line plots. None where the equation is not a polynomial.
-
-    The trend lines are fitted to the points on each side EXCLUDING the lowest
-    measured one, so re-fitting the published curve in a chart will not
-    reproduce them.
+    """Highest power first: `(a, b, c)` is `a·x² + b·x + c`. None where the
+    equation is not a polynomial. The trend lines exclude the lowest point, so
+    re-fitting the curve will not reproduce them.
     """
     r_squared: float | None
-    """This fit's own R², which is what labels this line in a legend.
-
-    `AutoFocusReport.r_squared` is the WORST across the run, which is the right
-    number for a pass/fail threshold and the wrong one for a chart.
-    """
+    """This fit's own R², unlike the run's worst in `AutoFocusReport`."""
 
 
 @dataclass(frozen=True, slots=True)
 class AutoFocusReport:
     """The newest `/equipment/focuser/last-af`.
 
-    **Success only, and not even that.** The report file is written per
-    ATTEMPT, before the verdict, and the endpoint returns the newest — so a run
-    N.I.N.A. rejected overwrites the last good one carrying no failure flag.
-    `r_squared` against the profile's `RSquaredThreshold` is the only judge
-    there is (§4.4).
-
-    The report also survives a restart, so it must be dated against the session
-    before it is believed: a bad run from three nights ago is not tonight's
-    problem.
+    The report is written per attempt, before the verdict, and carries no
+    failure flag, so a rejected run overwrites the last good one; only
+    `r_squared` against the profile's `RSquaredThreshold` judges it. It
+    survives a restart, so date it against the session before use.
     """
 
     timestamp: datetime | None
     filter_name: str | None
     temperature: float | None
-    """Focuser temperature at the run — the other half of a temp-comp slope."""
+    """Focuser temperature at the run."""
     method: str | None
     """`STARHFR` or `CONTRASTDETECTION`."""
     fitting: str | None
     """Which curve was fitted: `TRENDPARABOLIC`, `HYPERBOLIC`, and so on."""
     autofocuser: str | None
-    """Which autofocus routine ran; `star_detector` measured the stars.
-
-    Both are plugin settings — Hocus Focus rather than the built-in detector,
-    say — and HFR is on a different SCALE per detector, so two readings taken
-    under different ones are not comparable however close their numbers look.
+    """Which autofocus routine ran. With `star_detector`, says whether two
+    runs' HFRs are on the same scale.
     """
     star_detector: str | None
     position: int | None
     """Where the run left the focuser."""
     hfr: float | None
-    """The LOWEST HFR measured across the sweep, and the only comparable one.
+    """The lowest HFR measured in the sweep, which compares run to run.
 
-    Measured, so it is independent of the fitting the profile selects, which
-    `fitted_hfr` is not. Quantized by the sweep's step: the curve's true
-    minimum lies between two measured points.
-
-    None for a CONTRASTDETECTION run, whose focus points carry a contrast
-    score rather than pixels.
+    Quantized by the sweep's step. None under CONTRASTDETECTION.
     """
     fitted_hfr: float | None
-    """`CalculatedFocusPoint.Value` — a curve artifact, not an achieved HFR.
-
-    Under a `TREND*` fitting N.I.N.A. sets it to the MEAN of the trendline
-    intersection and the quadratic or hyperbolic minimum, and the trendline
-    intersection extrapolates the V's wings to a size no star on the system
-    can reach — so it reads far below anything the camera measured (1.09 px
-    against a best measured 1.55 on one captured run). Its bias also changes
-    with the profile's `AutoFocusCurveFitting`, which is why it is a
-    diagnostic and `hfr` is what a statistic keys on.
+    """`CalculatedFocusPoint.Value`, an artifact of the fit: under `TREND*`
+    fittings it averages in the trendline intersection, far below any
+    measured star.
     """
     curve: tuple[FocusPoint, ...]
-    """The sweep itself, ascending in focuser position — the V to plot.
-
-    Every position the sweep visited, including the ones that measured nothing
-    (`FocusPoint.value` None), so its length is what the run cost and
-    `measured_points` is what it got. Empty rather than None where the report
-    has no `MeasurePoints`: an absent sweep and an empty one draw the same.
-
-    The sweep is NOT necessarily centred on `initial_position` — one captured
-    run starts at the third of nine points — so nothing may assume the
-    starting marker lands mid-curve.
+    """Every position the sweep visited, ascending, including those that
+    measured nothing. Not necessarily centred on `initial_position`.
     """
     fits: tuple[CurveFit, ...]
-    """The curves N.I.N.A. fitted through `curve`, for a chart to overlay.
-
-    Empty where the report names none. A card cannot re-derive these from the
-    measured points: which points each fit used is undocumented and varies with
-    the fitting and the autofocus routine.
+    """The curves fitted through `curve`. Which points each used is
+    undocumented, so a card cannot re-derive them.
     """
     minima: tuple[FitMinimum, ...]
-    """Every entry of `Intersections` — the markers N.I.N.A.'s own chart draws.
-
-    `position`/`fitted_hfr` is where the run ended up, and it is the
-    componentwise MEAN of these two, so they are the explanation behind it:
-    when a run goes wrong, which one dragged the result is the diagnostic.
+    """Every entry of `Intersections`. `position`/`fitted_hfr` is their mean,
+    so they show which one pulled the result.
     """
     measured_points: int | None
-    """How many of the sweep's positions actually measured something.
-
-    Less than `len(curve)` where frames failed; `duration_seconds` bought the
-    failures too.
-    """
+    """How many of `curve`'s positions measured something."""
     initial_position: int | None
-    """Where the focuser was before the run — `position` less this is the move."""
+    """Where the focuser was before the run."""
     initial_hfr: float | None
-    """The measured HFR at `initial_position`, under `hfr`'s method rule."""
+    """The HFR measured at `initial_position`."""
     duration_seconds: float | None
-    """What the run cost the session, from the report's .NET TimeSpan.
-
-    Per ATTEMPT, as the whole report is: a run that failed twice before it
-    succeeded cost the night more than this says.
-    """
+    """The attempt's duration; retries cost more."""
     r_squared: float | None
-    """The WORST fit in the report, which is what a threshold must judge.
-
-    N.I.N.A. computes an R² only for the fittings it actually used and sends
-    `"NaN"` for the rest — a `TRENDPARABOLIC` run carries Quadratic, LeftTrend
-    and RightTrend and a `"NaN"` Hyperbolic — so taking the minimum of what
-    survives the `"NaN"` rule needs no table of which fitting uses which.
+    """The worst fit's R², which is what a threshold judges. Unused fits send
+    `"NaN"` and drop out.
     """
 
 
 @dataclass(frozen=True, slots=True)
 class SessionStats:
-    """The session fold's result (§5.2.4).
-
-    Every aggregate but `image_count` is over LIGHT frames only. Flats report a
-    Mean ADU two orders of magnitude above a light's and an HFR of zero, which
-    is what made `Last Image Mean ADU` read 33,139 after a dawn flat run.
+    """The session fold's result. Every aggregate but `image_count` is over
+    lights only.
     """
 
     session_start: datetime | None
@@ -570,17 +443,15 @@ class SessionStats:
     """Every frame in the session window, calibration included."""
     light_count: int
     integration_seconds: float
-    """Summed exposures, never count × nominal."""
     hfr_mean: float | None
     hfr_best: float | None
-    """The smallest HFR — a tighter star is a better one."""
+    """The smallest HFR."""
     hfr_worst: float | None
     star_count_mean: float | None
     last_frame: Frame | None
-    """The newest LIGHT, never the newest frame."""
+    """The newest light."""
     recent_lights: tuple[Frame, ...]
-    """The newest LIGHTs in the window, bounded, OLDEST first — chart order.
-    Lights only, so a dawn flat run cannot flush them out."""
+    """The newest lights in the window, bounded, oldest first."""
     by_target: tuple[TargetBreakdown, ...]
     """Sorted by name."""
     by_filter: tuple[TargetBreakdown, ...]
@@ -590,20 +461,20 @@ class SessionStats:
 
 @dataclass(frozen=True, slots=True)
 class SequenceNode:
-    """One node of `/sequence/json`, normalized so derive.py can walk it purely."""
+    """One node of `/sequence/json`."""
 
     name: str
     status: str | None
     iterations: str | None
-    """The wire's progress text, e.g. "3/10"; parsed in derive.py."""
+    """The wire's progress text, e.g. "3/10"."""
     children: tuple[SequenceNode, ...]
     attributes: Mapping[str, Any]
 
 
 @dataclass(frozen=True, slots=True)
 class FlatsStatus:
-    """Observes only flats started through the API — Target Scheduler Flats run
-    invisibly to it and leave `-1` iterations, which arrive here as `None`.
+    """Flats started through the API; others leave it `Finished`, with `None`
+    iterations.
     """
 
     state: str | None
@@ -613,15 +484,8 @@ class FlatsStatus:
 
 @dataclass(frozen=True, slots=True)
 class StackState:
-    """The stack `STACK-UPDATED` last reported.
-
-    `/livestack/image/{target}/{filter}` needs a pair to fetch, and the event
-    names the one currently accumulating. `/livestack/image/available` lists
-    every pair the plugin holds without saying which is current, and the event
-    is already folded, so nothing extra is polled for this.
-
-    `StackCount` rides the same event and is deliberately absent: nothing
-    consumes it, and this module is closed to fields nothing consumes.
+    """The stack `STACK-UPDATED` last reported: the target and filter
+    `/livestack/image/{target}/{filter}` fetches.
     """
 
     target: str
@@ -633,7 +497,7 @@ class StackState:
 class LivestackStatus:
     running: bool
     raw_state: str
-    """The status string as sent; case varies from the spec's enum (§5.3.2)."""
+    """The status string as sent; its case differs from the spec's enum."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -644,26 +508,21 @@ class VersionInfo:
 
 @dataclass(frozen=True, slots=True)
 class ProfileSettings:
-    """The allowlisted slice of `/profile/show` (§8.3)."""
+    """The allowlisted slice of `/profile/show`."""
 
     focal_length: float | None
     """Millimetres."""
     pixel_size: float | None
     """Microns."""
     autofocus_timeout_seconds: float | None
-    """The window an `AUTOFOCUS-STARTING` has to finish in before it is a
-    failure (§4.4).
-    """
+    """How long an autofocus may run before it counts as failed."""
     r_squared_threshold: float | None
     min_minutes_after_meridian: float | None
     max_minutes_after_meridian: float | None
     use_side_of_pier: bool | None
     site_latitude: float | None
-    """Degrees north. Where the RIG is, which for a hosted rig is not where Home
-    Assistant is — and a sky chart drawn at the wrong latitude is the wrong sky.
-
-    N.I.N.A.'s own configured site rather than the mount's `SiteLatitude`: this
-    is readable with the mount disconnected, and some drivers report 0.
+    """Degrees north, where the rig is. N.I.N.A.'s configured site rather than
+    the mount's, which needs the mount connected and some drivers report as 0.
     """
     site_longitude: float | None
     """Degrees east."""
