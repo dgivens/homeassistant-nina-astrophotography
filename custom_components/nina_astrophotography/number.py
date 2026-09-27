@@ -65,25 +65,6 @@ class NinaNumberDescription(NinaEntityDescription, NumberEntityDescription):
     bounds: Callable[[NinaData], tuple[float, float] | None] | None = None
 
 
-def _driver_range(
-    kind: str, low_field: str, high_field: str
-) -> Callable[[NinaData], tuple[float, float] | None]:
-    """The driver's own range, or `None` when it reports none, as a
-    disconnected flat panel's `Min 0 / Max 0` does.
-    """
-
-    def bounds(data: NinaData) -> tuple[float, float] | None:
-        device = getattr(data.snapshot, kind)
-        if device is None:
-            return None
-        low, high = getattr(device, low_field), getattr(device, high_field)
-        if low is None or high is None or high <= low:
-            return None
-        return float(low), float(high)
-
-    return bounds
-
-
 DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
     NinaNumberDescription(
         key="flat_panel_brightness",
@@ -92,7 +73,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         mode=NumberMode.SLIDER,
         kind="flat_device",
         value=read_field("flat_device", "brightness"),
-        bounds=_driver_range("flat_device", "min_brightness", "max_brightness"),
+        bounds=read_field("flat_device", "brightness_range"),
         command=lambda client, value: client.set_flat_brightness(round(value)),
     ),
     NinaNumberDescription(
@@ -133,7 +114,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         entity_registry_enabled_default=False,
         kind="camera",
         value=read_field("camera", "usb_limit"),
-        bounds=_driver_range("camera", "usb_limit_min", "usb_limit_max"),
+        bounds=read_field("camera", "usb_limit_range"),
         command=lambda client, value: client.set_usb_limit(round(value)),
     ),
     NinaNumberDescription(

@@ -150,6 +150,14 @@ def _integer(wire: Any, *path: str) -> int | None:
     return int(value) if _is_number(value) else None
 
 
+def _range(wire: Any, low_key: str, high_key: str) -> tuple[float, float] | None:
+    """`(low, high)`, or `None` for an empty or missing range."""
+    low, high = _number(wire, low_key), _number(wire, high_key)
+    if low is None or high is None or high <= low:
+        return None
+    return low, high
+
+
 def _flag(wire: Any, *path: str) -> bool | None:
     value = _dig(wire, *path)
     return value if isinstance(value, bool) else None
@@ -248,8 +256,7 @@ def map_camera(wire: dict) -> CameraModel:
         gain=_integer(readings, "Gain"),
         offset=_integer(readings, "Offset"),
         usb_limit=_integer(readings, "USBLimit"),
-        usb_limit_min=_integer(wire, "USBLimitMin"),
-        usb_limit_max=_integer(wire, "USBLimitMax"),
+        usb_limit_range=_range(wire, "USBLimitMin", "USBLimitMax"),
         camera_state=_text(readings, "CameraState"),
         is_exposing=_flag(readings, "IsExposing"),
         pixel_size=_number(readings, "PixelSize"),
@@ -369,8 +376,7 @@ def map_flat_device(wire: dict) -> FlatDeviceModel:
         cover_state=_text(readings, "CoverState"),
         light_on=_flag(readings, "LightOn"),
         brightness=_number(readings, "Brightness"),
-        min_brightness=_number(readings, "MinBrightness"),
-        max_brightness=_number(readings, "MaxBrightness"),
+        brightness_range=_range(readings, "MinBrightness", "MaxBrightness"),
         supports_on_off=_flag(wire, "SupportsOnOff"),
         supports_open_close=_flag(wire, "SupportsOpenClose"),
     )

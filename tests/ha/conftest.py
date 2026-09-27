@@ -316,8 +316,7 @@ async def disconnected_flat_panel_entry(set_up_with_flat_device):
         connected=False,
         brightness=None,
         light_on=None,
-        min_brightness=0.0,
-        max_brightness=0.0,
+        brightness_range=None,
     )
 
 

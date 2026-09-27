@@ -47,12 +47,10 @@ class NinaFlatLight(NinaEntity, LightEntity):
         return self.coordinator.data.snapshot.flat_device
 
     @property
-    def _span(self) -> float:
-        """The driver's brightness range; 0 for a disconnected panel (Min 0 / Max 0)."""
+    def _range(self) -> tuple[float, float] | None:
+        """The driver's brightness range; `None` when it reports none."""
         panel = self._panel
-        if panel is None:
-            return 0
-        return (panel.max_brightness or 0) - (panel.min_brightness or 0)
+        return None if panel is None else panel.brightness_range
 
     @property
     def _last_on_brightness(self) -> int:
@@ -70,7 +68,7 @@ class NinaFlatLight(NinaEntity, LightEntity):
         return bool(
             super().available
             and panel is not None
-            and self._span > 0
+            and self._range is not None
             and panel.supports_on_off is not False
         )
 
@@ -82,11 +80,11 @@ class NinaFlatLight(NinaEntity, LightEntity):
     @property
     def brightness(self) -> int | None:
         """The driver's value, scaled into HA's 0-255."""
-        panel = self._panel
-        if panel is None or panel.brightness is None or self._span <= 0:
+        panel, driver_range = self._panel, self._range
+        if panel is None or panel.brightness is None or driver_range is None:
             return None
-        fraction = (panel.brightness - (panel.min_brightness or 0)) / self._span
-        return round(fraction * _HA_MAX)
+        low, high = driver_range
+        return round((panel.brightness - low) / (high - low) * _HA_MAX)
 
     def _to_driver(self, ha_brightness: int) -> int:
         """Scale HA's 1-255 into driver units, refusing anything outside it.
@@ -98,9 +96,8 @@ class NinaFlatLight(NinaEntity, LightEntity):
             raise ServiceValidationError(
                 f"Brightness must be between 1 and {_HA_MAX}, got {ha_brightness}"
             )
-        panel = self._panel
-        low = 0 if panel is None else (panel.min_brightness or 0)
-        return round(low + (ha_brightness / _HA_MAX) * self._span)
+        low, high = self._range or (0.0, 0.0)
+        return round(low + (ha_brightness / _HA_MAX) * (high - low))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         # Never fall back to full: an idle panel's brightness scales to 0.

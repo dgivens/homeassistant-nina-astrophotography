@@ -140,8 +140,7 @@ async def test_a_panel_that_disconnects_after_being_observed_stays_as_unavailabl
             snapshot.flat_device,
             meta=DeviceMeta(None, None, None, None, None),
             connected=False,
-            min_brightness=0.0,
-            max_brightness=0.0,
+            brightness_range=None,
         ),
     )
 

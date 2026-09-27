@@ -45,9 +45,8 @@ class CameraModel:
     gain: int | None
     offset: int | None
     usb_limit: int | None
-    usb_limit_min: int | None
-    usb_limit_max: int | None
-    """Per camera, like `usb_limit_min`."""
+    usb_limit_range: tuple[float, float] | None
+    """`(USBLimitMin, USBLimitMax)`, per camera."""
     camera_state: str | None
     is_exposing: bool | None
     pixel_size: float | None
@@ -170,9 +169,10 @@ class FlatDeviceModel:
     cover_state: str | None
     light_on: bool | None
     brightness: float | None
-    """Driver units, spanning `min_brightness`–`max_brightness`."""
-    min_brightness: float | None
-    max_brightness: float | None
+    """Driver units, spanning `brightness_range`."""
+    brightness_range: tuple[float, float] | None
+    """`(MinBrightness, MaxBrightness)`; `None` when the driver reports no
+    usable range, as a disconnected panel's `0 / 0` does."""
     supports_on_off: bool | None
     supports_open_close: bool | None
 

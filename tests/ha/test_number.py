@@ -100,7 +100,7 @@ async def test_a_panel_reporting_no_range_is_refused_rather_than_sent_to(
     """A cover-only panel reports Min 0 / Max 0, and every value is in range of
     an empty range.
     """
-    await set_up_with_flat_device(max_brightness=0.0)
+    await set_up_with_flat_device(brightness_range=None)
     with pytest.raises(ServiceValidationError):
         await _set(hass, BRIGHTNESS, 0)
     assert sent.calls == []
