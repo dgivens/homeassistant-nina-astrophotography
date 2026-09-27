@@ -7,6 +7,12 @@ Assistant. This repository is the maintained fork; upstream is inactive.
 before making structural changes — it carries measured numbers and verified API
 behaviour that are expensive to rediscover.
 
+Newer design docs (`docs/test-vm.md` is the model) carry no rev number: merging
+the PR accepts them. The header is one status line ("accepted, not yet
+implemented"), updated when the work lands. A later change is a dated section
+appended after a `---` rule; the text above it is never edited. Write for a
+reader with no session context: final state, a glossary, no drafting history.
+
 ## Commands
 
 ```bash
