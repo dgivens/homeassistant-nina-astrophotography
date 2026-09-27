@@ -81,18 +81,13 @@ class NinaClientV2:
     def __init__(self, host: str, port: int, session: aiohttp.ClientSession) -> None:
         self.base_url = f"http://{host}:{port}/v2/api"
         self._session = session
-        # The rig's UTC offset, read from the mount's clock on each
-        # /equipment/info. Naive log-scraped event times are in this offset and
-        # it is the only place the API states it; the last known value is kept
-        # across a mount disconnect, which drops the clock from the wire.
+        # Read from the mount's clock; kept across a disconnect, which drops it.
         self._rig_offset: timedelta | None = None
 
     @property
     def rig_offset(self) -> timedelta | None:
-        """The rig's UTC offset as last read from the mount's clock; `None`
-        until the first `/equipment/info` with a connected mount. Frame dates
-        carry this offset, so anything placing a local-time boundary — the
-        session's noon rollover — must use it rather than Home Assistant's zone.
+        """The rig's UTC offset from the mount's clock; `None` until the first
+        connected `/equipment/info`.
         """
         return self._rig_offset
 
@@ -254,11 +249,10 @@ class NinaClientV2:
         return map_flats_status(await self._get("/flats/status") or {})
 
     async def get_last_autofocus(self) -> AutoFocusReport | None:
-        """The newest autofocus report. `None` where the rig has never run one.
+        """The newest autofocus report; `None` where the rig has never run one.
 
-        Reports SUCCESS ONLY in the sense that matters least: the file is
-        written per attempt, before the verdict, so a rejected run is here too
-        with nothing marking it rejected (§4.4).
+        Written per attempt, before the verdict, so a rejected run is here too
+        with nothing marking it rejected.
         """
         return map_last_autofocus(await self._get("/equipment/focuser/last-af") or {})
 
@@ -274,12 +268,8 @@ class NinaClientV2:
     ) -> bytes:
         """Fetch a rendered frame.
 
-        `index` counts OLDEST-first, confirmed against a live rig: 0 is the
-        first frame the rig ever saved, not the newest. The newest is always
-        `get_image_history_count() - 1`; callers translate, this does not.
-
-        autoPrepare, not useAutoStretch: an unknown parameter binds nothing and
-        is not rejected, so the request succeeds and returns the linear frame.
+        `index` counts oldest-first; the newest is
+        `get_image_history_count() - 1`. Callers translate; this does not.
         """
         params: dict[str, Any] = {"stream": "true", "quality": quality}
         if auto_prepare:
@@ -291,12 +281,8 @@ class NinaClientV2:
     ) -> bytes:
         """Fetch the accumulated stack for one target and filter.
 
-        Both halves are PATH segments and a target name carries spaces and
-        ampersands, so they are quoted here rather than passed through.
-
-        No `autoPrepare`: the plugin stacks already-stretched frames, and the
-        route takes no such parameter — an unknown one binds nothing and is not
-        rejected, so sending it would look like it worked.
+        Both are path segments and may carry spaces or ampersands, so they are
+        quoted.
         """
         path = (
             f"/livestack/image/{quote(target, safe='')}/{quote(filter_name, safe='')}"
@@ -304,11 +290,8 @@ class NinaClientV2:
         return await self._image_bytes(path, {"stream": "true", "quality": quality})
 
     async def _image_bytes(self, path: str, params: dict[str, Any]) -> bytes:
-        """The shared body of the two image routes.
-
-        Both answer 200 either way: a rendered frame arrives as `image/*`, and
-        a refusal as the JSON envelope. Content type is what separates them, so
-        the envelope is unwrapped for its error rather than served as bytes.
+        """The shared body of the two image routes: content type separates a
+        rendered frame from a refusal, since both answer 200.
         """
         url = self.base_url + path
         try:
@@ -324,9 +307,6 @@ class NinaClientV2:
                 body = await resp.text()
                 if resp.status != 200:
                     raise self._pre_handler_error(path, resp.status, body)
-                # `_unwrap` answers None for the "no data yet" sentinels — an
-                # empty history's `Index out of range` — which is the idle
-                # rig's ordinary state, not an outage.
                 if self._unwrap(path, self._decode(path, body)) is None:
                     raise NinaNoImageError(f"{path} has no image to render")
                 raise NinaUnavailableError(
@@ -399,11 +379,8 @@ class NinaClientV2:
     async def capture_image(
         self, duration: float, *, gain: int | None = None, save: bool = False
     ) -> None:
-        """The parameter is `duration`. 1.4.5 sent `time`, so exposure time was
-        silently ignored — the API defaulted it and answered Success: true.
-
-        `binning` and `filter_index` are deliberately absent: they bind nothing,
-        and a parameter that looks like it works is worse than no parameter.
+        """The parameter is `duration`. No `binning` or `filter_index`: they
+        bind nothing on the wire.
         """
         params: dict[str, Any] = {"duration": duration, "save": _boolean(save)}
         if gain is not None:
@@ -416,18 +393,9 @@ class NinaClientV2:
     # mount
 
     async def slew_mount(self, ra_degrees: float, dec_degrees: float) -> None:
-        """Slew to J2000 coordinates, in DEGREES.
-
-        All three branches construct
-        `new Coordinates(Angle.ByDegree(ra), Angle.ByDegree(dec), Epoch.J2000)`
-        and N.I.N.A. transforms to the mount's own EquatorialSystem internally.
-        Never pre-transform.
-
-        The round trip is asymmetric: MountInfo.Coordinates / RightAscension are
-        reported in the MOUNT's epoch (JNOW here) and in HOURS. Feeding a
-        reported RA back into slew is wrong twice — a 15x unit error and a
-        precession error — and 22.07 is a valid RA read either way, so nothing
-        catches it.
+        """Slew to J2000 coordinates, in degrees; N.I.N.A. transforms them to
+        the mount's own epoch. `MountInfo`'s reported RA is in hours and in the
+        mount's epoch, so feeding it straight back here is wrong twice.
         """
         await self._get("/equipment/mount/slew", {"ra": ra_degrees, "dec": dec_degrees})
 
@@ -441,9 +409,8 @@ class NinaClientV2:
         await self._get("/equipment/mount/home")
 
     async def set_tracking_mode(self, mode: int) -> None:
-        """`mode` is the API's enum value — 0 Sidereal, 1 Lunar, 2 Solar,
-        3 King, 4 Stopped — and **not** the position in `TrackingModes`, which
-        omits modes a mount does not offer.
+        """`mode` is the API's enum value, not the position in
+        `TrackingModes`, which omits modes a mount does not offer.
         """
         await self._get("/equipment/mount/tracking", {"mode": mode})
 
@@ -483,10 +450,8 @@ class NinaClientV2:
         await self._get("/equipment/rotator/move", {"position": position})
 
     async def move_rotator_mechanical(self, position: float) -> None:
-        """`position` is the MECHANICAL angle in degrees, which is what the
-        rotator reports as `MechanicalPosition`; /move takes the sky angle.
-
-        Parameter name taken from the spec and not confirmed against hardware.
+        """`position` is `MechanicalPosition`, in degrees; `/move` takes the
+        sky angle. Unconfirmed against hardware.
         """
         await self._get("/equipment/rotator/move-mechanical", {"position": position})
 
@@ -499,11 +464,8 @@ class NinaClientV2:
     # dome
 
     async def slew_dome(self, azimuth: float) -> None:
-        """Degrees. The spec also declares `waitToFinish`; it is omitted, since
-        a command that blocks until the dome arrives would hold the poll.
-
-        Parameter name taken from the spec and not confirmed against hardware —
-        there is no dome to confirm it against (§5.3.1).
+        """Degrees. `waitToFinish` is omitted, since it would block the poll
+        until the dome arrives. Unconfirmed against hardware.
         """
         await self._get("/equipment/dome/slew", {"azimuth": azimuth})
 
@@ -554,9 +516,7 @@ class NinaClientV2:
         await self._get("/sequence/stop")
 
     async def load_sequence(self, sequence_name: str) -> None:
-        """The parameter is `sequenceName`, and it is a NAME, not a path.
-        1.4.5 sent `path`, so the sequence never loaded.
-        """
+        """The parameter is `sequenceName`, a name, not a path."""
         await self._get("/sequence/load", {"sequenceName": sequence_name})
 
     # livestack

@@ -41,9 +41,8 @@ _MAX_RECONNECT_DELAY = 60
 class NinaEventStream:
     """The push half of the data flow: one socket, many model subscribers.
 
-    `generation` is set by the coordinator from `/application-start` and stamped
-    onto every dispatched event, so the process boundary stays a filter on the
-    tag rather than a clear of the accumulated set.
+    `generation` is set by the coordinator from `/application-start` and
+    stamped onto every dispatched event.
     """
 
     def __init__(
@@ -109,9 +108,9 @@ class NinaEventStream:
     ) -> list[NinaEvent]:
         """Fold `/event-history` at setup and on reconnect.
 
-        An empty `/event-history` at setup is a normal state, not a failure — a
-        N.I.N.A. restart resets it to as few as 13 events, or none. The server
-        list is unbounded, so only the newest `REPLAY_CAP` are folded.
+        An empty history at setup is normal, not a failure: a restart resets
+        it. The server list is unbounded, so only the newest `REPLAY_CAP` are
+        folded.
         """
         return (await client.get_events(generation))[-REPLAY_CAP:]
 
