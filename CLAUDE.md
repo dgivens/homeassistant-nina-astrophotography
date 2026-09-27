@@ -33,6 +33,10 @@ The `justfile` wraps all of these; `just ci` runs everything CI checks.
 git ref to another against a N.I.N.A. and holds the result to
 `docs/2.0-renames.md`; its README has the commands.
 
+`docs/windows-rig-design.md` is the proposed design for a disposable Windows
+VM that runs stable or nightly N.I.N.A. against simulators. Nothing in it is
+built yet.
+
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
 collection; always name the suite.
 
