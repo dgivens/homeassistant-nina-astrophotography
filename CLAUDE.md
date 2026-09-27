@@ -38,8 +38,8 @@ collection; always name the suite.
 test rather than a bad flag.
 
 **The Bash sandbox blocks all network.** `scripts/capture_fixtures.py` and any
-other rig request need `dangerouslyDisableSandbox` — and then Tailscale up, or
-the host times out rather than refusing.
+other rig request need `dangerouslyDisableSandbox` — and then Tailscale up for
+the real rig, or the host times out rather than refusing.
 
 Dependencies and pytest config live in `pyproject.toml`; there is no
 `requirements*.txt` and no `pytest.ini`. Groups: `test` (lean, HA-free),
@@ -355,6 +355,15 @@ connect, disconnect, guider, filter change, focuser move, flat light, dome,
 sequence start/stop, profile switch — unless the operator has explicitly said
 the rig is idle and it is safe. A rig may be imaging, and a wasted night is not
 recoverable. If unsure whether a call mutates state, do not make it.
+
+**The simulator rig is exempt.** `10.20.30.133:1888` is a second N.I.N.A. whose
+eleven devices are all ASCOM/Alpaca simulators, the dome included. Any command
+may be sent to it — slews, parks, sequences, disconnects — so it is where
+commands, the dome and the upgrade from 1.4.5 get exercised. It is on the LAN,
+not Tailscale. A fixture captured from it is real wire data from simulated
+devices: say so where it is used, and never let it replace a capture of the same
+state from the real rig, whose quirks (a station's `"NaN"` channels, a
+disconnected panel's `0 / 0` range) a simulator need not reproduce.
 
 **2. Redact before committing.** A profile dump contains live credentials.
 
