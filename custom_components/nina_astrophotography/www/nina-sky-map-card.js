@@ -21,8 +21,8 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import { resolveEntities } from "./nina-entity-resolver.js";
-import { quantityIn } from "./nina-units.js";
+import { RigEntities } from "./nina-entity-resolver.js";
+import { missing, quantityIn } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -75,9 +75,6 @@ const BRIGHT_STARS = [
   { name: "Alnilam",   ra: 5.6033,  dec: -1.2019  },
   { name: "Mintaka",   ra: 5.5333,  dec: -0.2990  },
 ];
-
-const ORION_BELT = [39, 40, 41]; // Alnitak, Alnilam, Mintaka
-const BIG_DIPPER = [22, 23, 25, 33, 34, 35, 36]; // approximate subset
 
 const DEG = Math.PI / 180;
 const RAD = 180 / Math.PI;
@@ -211,10 +208,8 @@ class NinaSkyMapCard extends HTMLElement {
       trail_length: config.trail_length ?? DEFAULT_TRAIL_LENGTH,
       map_size: config.map_size ?? DEFAULT_MAP_SIZE,
     };
-    this._prefix = this._config.prefix || DEFAULT_PREFIX;
-    // A new config may name a different rig: make the next `set hass` re-resolve.
-    this._resolved = {};
-    this._resolvedFrom = null;
+    this._rig = new RigEntities(
+      this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
   }
 
   connectedCallback() {
@@ -227,14 +222,7 @@ class NinaSkyMapCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // The frontend replaces `hass.entities` only when the registry itself
-    // changes, so this walks it on a rename, not on every state tick.
-    // `hass.devices` needs no second memo key: every device change that alters
-    // the map arrives with an entity-registry change too.
-    if (hass.entities !== this._resolvedFrom) {
-      this._resolvedFrom = hass.entities;
-      this._resolved = resolveEntities(hass, this._config.device_id);
-    }
+    this._rig.refresh(hass);
     this._updateTrail();
     if (!this._rendered) {
       this._buildDOM();
@@ -247,28 +235,27 @@ class NinaSkyMapCard extends HTMLElement {
   // Falls back to a prefixed `slug` when nothing resolves; every read here is
   // a mount entity whose name matches its key.
   _eid(domain, key, slug = key) {
-    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
+    return this._rig.id(domain, key, slug);
   }
 
   _s(id, fallback = null) {
     const e = this._hass?.states[id];
     return e ? e.state : fallback;
   }
-  _f(id, fallback = 0) {
-    return parseFloat(this._s(id, fallback)) || fallback;
+  _f(id) {
+    const value = parseFloat(this._s(id));
+    return Number.isFinite(value) ? value : null;
   }
   _on(id) { return this._s(id) === "on"; }
-  // Time to the flip in minutes, whatever unit the sensor is shown in; 999, as
-  // `_f` has it, for none.
+  // Time to the flip in minutes, whatever unit the sensor is shown in.
   _flipMinutes(id) {
-    return quantityIn(this._hass, id, "min") || 999;
+    return quantityIn(this._hass, id, "min");
   }
 
   // A disconnected device makes its entities unavailable, so availability is
   // "connected". `unknown` also counts as disconnected.
   _available(id) {
-    const value = this._s(id);
-    return value !== null && value !== "unavailable" && value !== "unknown";
+    return !missing(this._s(id));
   }
   // Tracking is one of the mount's own rates, and `Stopped` is one of them.
   _tracking(id) {
@@ -280,17 +267,15 @@ class NinaSkyMapCard extends HTMLElement {
   // Assistant's own location.
   _latitude() {
     if (this._config.latitude !== undefined) return this._config.latitude;
-    // Not `_f`: it folds a genuine 0 into its fallback, and the equator is a
-    // latitude.
-    const site = parseFloat(this._s(this._eid("sensor", "site_latitude")));
-    if (Number.isFinite(site)) return site;
+    const site = this._f(this._eid("sensor", "site_latitude"));
+    if (site !== null) return site;
     const home = this._hass?.config?.latitude;
     return Number.isFinite(home) ? home : 0;
   }
 
   _updateTrail() {
-    const alt = this._f(this._eid("sensor", "mount_altitude"));
-    const az  = this._f(this._eid("sensor", "mount_azimuth"));
+    const alt = this._f(this._eid("sensor", "mount_altitude")) ?? 0;
+    const az  = this._f(this._eid("sensor", "mount_azimuth")) ?? 0;
     if (alt === this._lastAlt && az === this._lastAz) return;
     this._lastAlt = alt;
     this._lastAz  = az;
@@ -347,12 +332,12 @@ class NinaSkyMapCard extends HTMLElement {
     // not a blank; keep the dash instead.
     const raId = this._eid("sensor", "mount_right_ascension");
     if (this._available(raId)) {
-      const alt = this._f(this._eid("sensor", "mount_altitude"));
-      const az  = this._f(this._eid("sensor", "mount_azimuth"));
-      const dec = this._f(this._eid("sensor", "mount_declination"));
+      const alt = this._f(this._eid("sensor", "mount_altitude")) ?? 0;
+      const az  = this._f(this._eid("sensor", "mount_azimuth")) ?? 0;
+      const dec = this._f(this._eid("sensor", "mount_declination")) ?? 0;
       set("inf-alt",  alt.toFixed(1) + "°");
       set("inf-az",   az.toFixed(1)  + "°");
-      set("inf-ra",   raToString(this._f(raId)));
+      set("inf-ra",   raToString(this._f(raId) ?? 0));
       set("inf-dec",  decToString(dec));
     } else {
       for (const cell of ["inf-alt", "inf-az", "inf-ra", "inf-dec"]) set(cell, "—");
@@ -367,7 +352,7 @@ class NinaSkyMapCard extends HTMLElement {
     const sub = this.shadowRoot?.getElementById("hdr-sub");
     if (sub) {
       sub.textContent = target
-        ? `${target} · flip in ${ttf < 999 ? ttf.toFixed(0) + " min" : "—"}`
+        ? `${target} · flip in ${ttf !== null ? ttf.toFixed(0) + " min" : "—"}`
         : "Telescope pointing";
     }
   }
@@ -492,7 +477,8 @@ class NinaSkyMapCard extends HTMLElement {
     const ttf = this._flipMinutes(flipId);
     const firesAt = parseFloat(
       this._hass?.states?.[flipId]?.attributes?.flip_fires_at_minutes) || 0;
-    const meridianColor = ttf < 15 + firesAt && ttf > 0
+    const flipSoon = ttf !== null && ttf > 0 && ttf < 15 + firesAt;
+    const meridianColor = flipSoon
       ? `rgba(244, 162, 97, ${0.5 + 0.4 * Math.sin(Date.now() / 400)})`
       : "rgba(123,141,232,0.25)";
     ctx.beginPath();
@@ -508,16 +494,15 @@ class NinaSkyMapCard extends HTMLElement {
 
     const lat = this._latitude();
     const siderealId = this._eid("sensor", "mount_sidereal_time");
-    const lst = this._f(siderealId, 12); // noon fallback
+    const lst = this._f(siderealId) ?? 12; // noon fallback
     const connectedST = this._available(siderealId);
 
     if (connectedST) {
-      for (const star of BRIGHT_STARS) {
+      for (const [idx, star] of BRIGHT_STARS.entries()) {
         const h = equToHoriz(star.ra, star.dec, lat, lst);
         if (h.alt < -5) continue;
         const p = proj(h.alt, h.az);
         // Brighter stars are listed first.
-        const idx = BRIGHT_STARS.indexOf(star);
         const size_px = idx < 5 ? 2.5 : idx < 15 ? 1.8 : 1.2;
         const alpha = h.alt < 5
           ? 0.2 + (h.alt / 5) * 0.5
@@ -555,8 +540,8 @@ class NinaSkyMapCard extends HTMLElement {
       ctx.stroke();
     }
 
-    const alt = this._f(this._eid("sensor", "mount_altitude"));
-    const az  = this._f(this._eid("sensor", "mount_azimuth"));
+    const alt = this._f(this._eid("sensor", "mount_altitude")) ?? 0;
+    const az  = this._f(this._eid("sensor", "mount_azimuth")) ?? 0;
     const isParked   = this._on(this._eid("binary_sensor", "mount_at_park"));
     const isTracking = this._tracking(this._eid("select", "mount_tracking_rate"));
     const isMounted  = this._available(this._eid("sensor", "mount_right_ascension"));
@@ -607,7 +592,7 @@ class NinaSkyMapCard extends HTMLElement {
 
     ctx.restore();
 
-    if (ttf < 15 + firesAt && ttf > 0) {
+    if (flipSoon) {
       ctx.font      = `bold ${10 * dpr}px sans-serif`;
       ctx.fillStyle = "rgba(244,162,97,0.9)";
       ctx.textAlign = "center";

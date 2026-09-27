@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaEndpointError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-from helpers import state_of
+from helpers import load_fixture, state_of
 from scenarios.fake_rig import FakeRig
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -25,32 +25,27 @@ def _count(entry: MockConfigEntry) -> int:
     return entry.runtime_data.coordinator.data.session.image_count
 
 
-def _reseeds(rig: FakeRig) -> int:
-    """How many times the rig has been asked for /image-history?all=true."""
-    return rig.reads("/image-history", {"all": "true"})
-
-
 async def test_a_pushed_frame_is_published_without_waiting_for_the_poll(
-    hass: HomeAssistant, loaded_entry, push, nina_responses
+    hass: HomeAssistant, loaded_entry, push, rig
 ) -> None:
     """`async_set_updated_data`, not `async_request_refresh` — that single line
     is what makes the design push-first rather than socket-as-a-hint.
     """
     before = _count(loaded_entry)
-    push(nina_responses("live_image_save_push.json"))
+    push(load_fixture("live_image_save_push.json"))
     await hass.async_block_till_done()
     assert _count(loaded_entry) == before + 1
 
 
 async def test_the_same_frame_pushed_twice_is_folded_once(
-    hass: HomeAssistant, loaded_entry, push, nina_responses
+    hass: HomeAssistant, loaded_entry, push, rig
 ) -> None:
     """Frame identity is `(Date, Filename)`, identical on the push and poll
     paths, so a redelivery must not move the count.
     """
     before = _count(loaded_entry)
     for _ in range(2):
-        push(nina_responses("live_image_save_push.json"))
+        push(load_fixture("live_image_save_push.json"))
         await hass.async_block_till_done()
     assert _count(loaded_entry) == before + 1
 
@@ -73,7 +68,7 @@ async def test_a_disconnect_event_refetches_the_snapshot_before_the_next_tick(
 
 
 async def test_a_push_cannot_resurrect_a_failed_poll(
-    hass: HomeAssistant, loaded_entry, push, advance, nina_responses
+    hass: HomeAssistant, loaded_entry, push, advance, rig
 ) -> None:
     """`async_set_updated_data` sets `last_update_success`, so an ungated push
     would report eleven devices available on a rig that is still unreachable.
@@ -81,7 +76,7 @@ async def test_a_push_cannot_resurrect_a_failed_poll(
     """
     before = _count(loaded_entry)
     await advance("nina_unreachable")
-    push(nina_responses("live_image_save_push.json"))
+    push(load_fixture("live_image_save_push.json"))
     await hass.async_block_till_done()
     assert state_of(hass, LIGHT).state == "unavailable"
 
@@ -89,7 +84,7 @@ async def test_a_push_cannot_resurrect_a_failed_poll(
     assert _count(loaded_entry) == before + 1
 
 
-async def test_setup_replays_the_event_history(loaded_entry, nina_responses) -> None:
+async def test_setup_replays_the_event_history(loaded_entry, rig) -> None:
     """What the socket could not deliver, because it was not connected yet: the
     entry knows about an autofocus that finished before Home Assistant started.
     """
@@ -102,7 +97,7 @@ async def test_setup_replays_the_event_history(loaded_entry, nina_responses) -> 
 
 
 async def test_a_replayed_event_pushed_live_is_not_folded_again(
-    hass: HomeAssistant, loaded_entry, push, nina_responses
+    hass: HomeAssistant, loaded_entry, push, rig
 ) -> None:
     """One ledger covers both paths, so an event the replay already took is
     dropped rather than appended a second time.
@@ -111,7 +106,7 @@ async def test_a_replayed_event_pushed_live_is_not_folded_again(
     identity of the published object shows that nothing was folded at all.
     """
     coordinator = loaded_entry.runtime_data.coordinator
-    history = nina_responses("dawn_event_history.json")
+    history = load_fixture("dawn_event_history.json")
     replayed = next(
         event for event in reversed(history) if event["Event"] == "AUTOFOCUS-FINISHED"
     )
@@ -144,12 +139,12 @@ async def test_only_a_socket_reconnect_reseeds_and_replays(
 
     connect(True)
     await hass.async_block_till_done()
-    first = (_reseeds(rig), rig.reads("/event-history"))
+    first = (rig.reseeds(), rig.reads("/event-history"))
     connect(False)
     connect(True)
     await hass.async_block_till_done()
 
-    assert (first, (_reseeds(rig), rig.reads("/event-history"))) == ((0, 0), (1, 1))
+    assert (first, (rig.reseeds(), rig.reads("/event-history"))) == ((0, 0), (1, 1))
 
 
 async def test_a_restart_replays_the_new_processs_event_history(
@@ -189,7 +184,12 @@ async def test_an_event_history_this_build_does_not_serve_is_replayed_once(
 
 
 async def test_the_rigs_own_autofocus_timeout_bounds_a_running_run(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig: FakeRig, push, freezer
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    rig: FakeRig,
+    push,
+    freezer,
+    set_up_at,
 ) -> None:
     """`FocuserSettings.AutoFocusTimeoutSeconds` is polled from /profile/show
     and reads 600 on this rig, so folding against the 300 s fallback would
@@ -199,10 +199,7 @@ async def test_the_rigs_own_autofocus_timeout_bounds_a_running_run(
     is its own: 02:30 rig-local, eight minutes after the pushed start.
     """
     freezer.move_to("2026-09-05T07:30:00+00:00")
-    rig.goto("imaging_guiding")
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
 
     push({"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-05T02:22:00-05:00"})
     await hass.async_block_till_done()

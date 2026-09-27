@@ -41,11 +41,6 @@ class FakeResponse:
         self.status = status
         self.content_type = content_type
 
-    async def json(self, **_kwargs):
-        if isinstance(self._payload, (dict, list)):
-            return self._payload
-        return json.loads(self._payload)
-
     async def read(self):
         return (
             self._payload
@@ -90,9 +85,6 @@ class FakeSession:
         return value if isinstance(value, FakeResponse) else FakeResponse(value)
 
     def get(self, url, params=None, timeout=None):
-        return self._respond(url, params)
-
-    def post(self, url, json=None, params=None, timeout=None):
         return self._respond(url, params)
 
 

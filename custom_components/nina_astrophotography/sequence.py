@@ -65,11 +65,7 @@ def target_name(root: SequenceNode | None) -> str | None:
     Targets are siblings, so depth does not order them. With several, this
     is the last in the file, not necessarily the one being shot.
     """
-    names = [
-        str(node.attributes["TargetName"])
-        for node in _walk(root)
-        if node.attributes.get("TargetName")
-    ]
+    names = [node.target_name for node in _walk(root) if node.target_name]
     return names[-1] if names else None
 
 

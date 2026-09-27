@@ -43,9 +43,9 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  LinkGrace, hubEntityIds, linkLostSince, resolveEntities,
+  LinkGrace, hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
-import { quantityIn } from "./nina-units.js";
+import { missing, quantityIn, shown } from "./nina-units.js";
 
 const VERSION = "3.0.0";
 
@@ -63,28 +63,15 @@ function slug(name) {
     .replace(/^_+|_+$/g, "");
 }
 
-// Home Assistant publishes "unknown" for no reading and "unavailable" for a
-// device that is not connected. Neither is a number to print.
-function missing(value) {
-  return value === null || value === undefined || value === ""
-    || value === "unknown" || value === "unavailable";
-}
-
-// A reading to print, dashed when there is none.
-function shown(value) {
-  return missing(value) ? "—" : value;
-}
-
 // A reading that is left out rather than dashed: a pill or a header part that
 // has nothing to say is not drawn at all.
 function known(value) {
   return missing(value) ? null : value;
 }
 
-// .NET writes NaN as the string "NaN", and an absent field is undefined.
+// An absent field is undefined; the integration publishes no reading as null.
 function finite(value) {
-  const number = typeof value === "number" ? value : parseFloat(value);
-  return Number.isFinite(number) ? number : null;
+  return Number.isFinite(value) ? value : null;
 }
 
 // The type a thumbnail is tagged with: a light is the ordinary case, and a
@@ -307,7 +294,6 @@ class NinaImagePanelCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._currentIndex = 0; // 0 = latest; set once the frame has loaded
-    this._totalFrames  = 0;
     this._loading = false;
     this._historyMeta = []; // {date, filename, image_type, filter, mean, median, min, max}
     this._hasImage = false;
@@ -329,9 +315,7 @@ class NinaImagePanelCard extends HTMLElement {
       prefix: config.prefix || DEFAULT_PREFIX,
       device_id: config.device_id,
     };
-    // A new config may name a different rig: make the next `set hass` re-resolve.
-    this._resolved = {};
-    this._resolvedFrom = null;
+    this._rig = new RigEntities(this._config.prefix, this._config.device_id);
     this._entryId = null;
     this._grace.reset();
   }
@@ -339,13 +323,7 @@ class NinaImagePanelCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
 
-    // The frontend replaces `hass.entities` only when the registry itself
-    // changes, so this walks it on a rename, not on every state tick.
-    // `hass.devices` needs no second memo key: every device change that alters
-    // the map arrives with an entity-registry change too.
-    if (hass.entities !== this._resolvedFrom) {
-      this._resolvedFrom = hass.entities;
-      this._resolved = resolveEntities(hass, this._config.device_id);
+    if (this._rig.refresh(hass)) {
       this._entryId = this._rigEntryId(hass);
       this._linkRows = hubEntityIds(hass, this._config.device_id)
         ?? [this._entityId(), this._eid("sensor", "session_image_count")];
@@ -442,7 +420,7 @@ class NinaImagePanelCard extends HTMLElement {
   // Falls back to a prefixed `slug` when nothing resolves. The camera's
   // exposing sensor is keyed `camera_is_exposing`.
   _eid(domain, key, slug = key) {
-    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._config.prefix}_${slug}`;
+    return this._rig.id(domain, key, slug);
   }
 
   // The entity the proxy resolves to a rig by — any of this integration's

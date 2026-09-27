@@ -14,8 +14,8 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import { resolveEntities } from "./nina-entity-resolver.js";
-import { interval, inUnit, quantity, quantityIn } from "./nina-units.js";
+import { RigEntities } from "./nina-entity-resolver.js";
+import { interval, inUnit, quantity, quantityIn, shown } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -32,12 +32,6 @@ const FIT = "#7b8de8";        // the fitted curve, and the minimum it found
 const TREND = "#f4a261";      // the trend lines, and where they cross
 const FINAL = "#57cc99";      // where the focuser was left
 const DANGER = "#e76f51";
-
-// A reading Home Assistant has no value for is not a number to print.
-function shown(value) {
-  return value === null || value === undefined || value === "—"
-    || value === "unknown" || value === "unavailable" ? "—" : value;
-}
 
 function fixed(value, places) {
   return Number.isFinite(value) ? value.toFixed(places) : "—";
@@ -210,16 +204,14 @@ class NinaAutofocusCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
-    this._prefix = this._config.prefix || DEFAULT_PREFIX;
     // Coerced, because YAML hands back a string as readily as a number, and a
     // silent fallback to the default would look like the setting was ignored.
     const delta = Math.abs(Number(this._config.temperature_delta));
     this._temperatureDelta = Number.isFinite(delta) && delta > 0
       ? delta : DEFAULT_TEMPERATURE_DELTA;
     this._signature = null;
-    // A new config may name a different rig: make the next `set hass` re-resolve.
-    this._resolved = {};
-    this._resolvedFrom = null;
+    this._rig = new RigEntities(
+      this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
   }
 
   connectedCallback() {
@@ -237,14 +229,7 @@ class NinaAutofocusCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    // The frontend replaces `hass.entities` only when the registry itself
-    // changes, so this walks it on a rename, not on every state tick.
-    // `hass.devices` needs no second memo key: every device change that alters
-    // the map arrives with an entity-registry change too.
-    if (hass.entities !== this._resolvedFrom) {
-      this._resolvedFrom = hass.entities;
-      this._resolved = resolveEntities(hass, this._config.device_id);
-    }
+    this._rig.refresh(hass);
     this._render();
   }
 
@@ -252,7 +237,7 @@ class NinaAutofocusCard extends HTMLElement {
   // supplies "focuser", which the autofocus keys do not carry, so most reads
   // below pass a slug.
   _eid(domain, key, slug = key) {
-    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
+    return this._rig.id(domain, key, slug);
   }
 
   _state(id, fallback = null) {

@@ -14,6 +14,7 @@ creates a nameless device.
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, cast
 
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
@@ -47,12 +48,12 @@ def observed(data: NinaData, kind: str | None) -> bool:
     return kind is None or getattr(data.snapshot, kind) is not None
 
 
-def read_field(kind: str, field: str) -> Callable[[NinaData], Any]:
-    """One reading off one equipment model, `None` while the device is absent."""
+def read_field(kind: str, field: str, default: Any = None) -> Callable[[NinaData], Any]:
+    """One reading off one equipment model, `default` while the device is absent."""
 
     def value(data: NinaData) -> Any:
         device = getattr(data.snapshot, kind)
-        return None if device is None else getattr(device, field)
+        return default if device is None else getattr(device, field)
 
     return value
 
@@ -63,19 +64,26 @@ def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
     return device.channels if device is not None else ()
 
 
-def unplaced_channels(data: NinaData) -> tuple[SwitchChannelModel, ...]:
-    """Channels no platform claims, so their absence can be logged.
+def channel_platform(channel: SwitchChannelModel) -> Platform | None:
+    """The platform a channel belongs on; `None` when none can take it.
 
     Read-only is a `sensor`, one step a `switch`, a wider range a `number`; a
     writable channel with no range is none of them.
     """
-    return tuple(
-        channel
-        for channel in channels_of(data)
-        if channel.writable
-        and not channel.binary
-        and (channel.minimum is None or channel.maximum is None)
-    )
+    if not channel.writable:
+        return Platform.SENSOR
+    if channel.binary:
+        return Platform.SWITCH
+    if channel.minimum is not None and channel.maximum is not None:
+        return Platform.NUMBER
+    return None
+
+
+def channels_for(
+    data: NinaData, platform: Platform | None
+) -> tuple[SwitchChannelModel, ...]:
+    """The channels one platform takes; `None` for those no platform claims."""
+    return tuple(c for c in channels_of(data) if channel_platform(c) == platform)
 
 
 def channel_key(channel: SwitchChannelModel) -> str:

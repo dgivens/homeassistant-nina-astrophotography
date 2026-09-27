@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nina_astrophotography.const import DOMAIN
+from ha.registry import registered
 from helpers import state_of
 
 FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip"
@@ -28,12 +28,6 @@ SEQUENCE_PROGRESS = "sensor.n_i_n_a_sequence_progress"
 WAIT_ENDS_AT = "sensor.n_i_n_a_wait_ends_at"
 LAST_FRAME_AT = "sensor.n_i_n_a_last_frame_at"
 SITE_LATITUDE = "sensor.n_i_n_a_site_latitude"
-
-
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    return registry.async_get_entity_id(
-        SENSOR_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
-    )
 
 
 async def test_the_meridian_sentinel_is_unknown_but_a_real_reading_is_minutes(
@@ -85,7 +79,7 @@ async def test_the_cut_sensors_are_not_registered(
     it reported RUNNING on an idle rig (§6.2).
     """
     await advance("imaging_guiding")
-    assert _registered(entity_registry, loaded_entry, suffix) is None
+    assert registered(SENSOR_DOMAIN, entity_registry, loaded_entry, suffix) is None
 
 
 @pytest.mark.parametrize(
@@ -122,7 +116,7 @@ async def test_the_kept_sensors_keep_their_1_4_5_unique_id(
     automation pointing at the old id permanently unavailable.
     """
     await advance("imaging_guiding")
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert registered(SENSOR_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 async def test_the_sequence_target_is_the_one_the_scheduler_announced(

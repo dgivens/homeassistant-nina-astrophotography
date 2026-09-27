@@ -18,7 +18,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.button import DESCRIPTIONS
-from custom_components.nina_astrophotography.const import DOMAIN
+from ha.registry import registered
 from helpers import failure
 
 AUTO_FOCUS = "button.n_i_n_a_focuser_auto_focus"
@@ -46,13 +46,6 @@ PATHS = {
 async def _press(hass: HomeAssistant, entity_id: str) -> None:
     await hass.services.async_call(
         BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: entity_id}, blocking=True
-    )
-
-
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    """The entity id claiming this `unique_id` suffix, or None if nothing does."""
-    return registry.async_get_entity_id(
-        BUTTON_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
     )
 
 
@@ -161,7 +154,7 @@ async def test_the_kept_buttons_keep_their_1_4_5_unique_id(
     """The dome's four keep theirs too, but no capture observes a dome, so
     they are never registered to assert on.
     """
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert registered(BUTTON_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 @pytest.mark.parametrize("suffix", ["btn_guider_start", "btn_guider_stop"])
@@ -172,4 +165,4 @@ async def test_the_cut_buttons_are_not_registered(
     be read back, and a pair of buttons cannot report it.
     """
     await advance("imaging_guiding")
-    assert _registered(entity_registry, loaded_entry, suffix) is None
+    assert registered(BUTTON_DOMAIN, entity_registry, loaded_entry, suffix) is None

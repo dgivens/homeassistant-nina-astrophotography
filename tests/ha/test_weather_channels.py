@@ -12,8 +12,8 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.sensor import WEATHER_CHANNELS
+from ha.registry import registered
 from helpers import state_of
 
 CLOUD_COVER = "sensor.n_i_n_a_weather_cloud_cover"
@@ -41,26 +41,19 @@ LEGACY_WEATHER_KEYS = {
 }
 
 
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    return registry.async_get_entity_id(
-        SENSOR_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
-    )
-
-
 async def _reload(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
 
 
 @pytest.fixture
-async def cold_entry(hass: HomeAssistant, config_entry: MockConfigEntry, rig):
+async def cold_entry(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, set_up_at
+):
     """The entry set up with every device down, which is the cold start: no
     weather reading has ever arrived, so no channel exists yet.
     """
-    rig.goto("equipment_disconnected")
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await set_up_at(hass, config_entry, rig, "equipment_disconnected")
     return config_entry
 
 
@@ -83,7 +76,10 @@ async def test_a_channel_no_source_has_ever_reported_is_not_registered(
     """SkyQuality reads "NaN" on both captured sources. An entity at `unknown`
     forever is worse than no entity: it claims a reading is merely missing.
     """
-    assert _registered(entity_registry, loaded_entry, "weather_sky_quality") is None
+    assert (
+        registered(SENSOR_DOMAIN, entity_registry, loaded_entry, "weather_sky_quality")
+        is None
+    )
 
 
 @pytest.mark.parametrize(
@@ -106,7 +102,7 @@ async def test_a_surviving_weather_sensor_keeps_its_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
     """`weather_name` is `sensor.weather_source`: same value, same purpose."""
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert registered(SENSOR_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 async def test_a_channel_the_active_source_cannot_provide_is_unavailable(

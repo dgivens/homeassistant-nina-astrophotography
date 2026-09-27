@@ -12,6 +12,20 @@
  * only to compare it against a threshold of its own.
  */
 
+/**
+ * Whether a state carries no reading: absent, empty, `unknown` for none yet,
+ * `unavailable` for a device that is down, or a card's own dash.
+ */
+export function missing(value) {
+  return value === null || value === undefined || value === "" || value === "—"
+    || value === "unknown" || value === "unavailable";
+}
+
+/** A reading to print, dashed when there is none. */
+export function shown(value) {
+  return missing(value) ? "—" : value;
+}
+
 // Every unit Home Assistant can show these quantities in, as maps into and out
 // of its family's base unit. The factors are core's (`util/unit_conversion.py`),
 // and `tests/ha/test_card_units.py` holds this table to them.

@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 import pytest
 
-from helpers import FakeResponse, failure, ok, state_of
+from helpers import FakeResponse, failure, load_fixture, ok, state_of
 
 LAST_FRAME = "image.n_i_n_a_last_frame"
 LIVESTACK = "image.n_i_n_a_livestack"
@@ -23,18 +23,6 @@ LIVESTACK = "image.n_i_n_a_livestack"
 NEWEST_ROUTE = "/image/121"
 
 
-def _params(rig, fragment: str) -> dict | None:
-    """The parameters of the last request whose URL ENDS WITH `fragment`.
-
-    Not `in`: `/image/1` is a substring of `/image/121`, and a fragment match
-    would silently pass against the wrong request.
-    """
-    return next(
-        (params for url, params in reversed(rig.requests) if url.endswith(fragment)),
-        None,
-    )
-
-
 async def test_the_last_frame_serves_the_stretched_frame(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
@@ -42,7 +30,7 @@ async def test_the_last_frame_serves_the_stretched_frame(
     is not rejected, so the request succeeds and returns the linear frame.
     """
     assert (await async_get_image(hass, LAST_FRAME)).content_type == "image/jpeg"
-    params = _params(rig, NEWEST_ROUTE)
+    params = rig.last_params(NEWEST_ROUTE)
     assert params is not None
     assert params["autoPrepare"] == "true"
 
@@ -59,8 +47,8 @@ async def test_the_newest_index_is_read_fresh_not_cached_from_the_fold(
         FakeResponse(b"\xff\xd8\xff\xe0 not a frame", content_type="image/jpeg"),
     )
     await async_get_image(hass, LAST_FRAME)
-    assert _params(rig, "/image/4") is not None
-    assert _params(rig, NEWEST_ROUTE) is None
+    assert rig.last_params("/image/4") is not None
+    assert rig.last_params(NEWEST_ROUTE) is None
 
 
 @pytest.mark.parametrize(
@@ -108,14 +96,14 @@ async def test_a_rig_with_no_frame_yet_says_nothing_about_a_route(
 
 
 async def test_the_last_frame_timestamp_is_the_newest_frame_the_rig_holds(
-    hass: HomeAssistant, loaded_entry, nina_responses
+    hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """Never `utcnow()`, which reports the moment the integration loaded as the
     moment a frame was captured — and never the session window either: the
     rig's history does not roll over at local noon, so what `image.last_frame`
     renders after the rollover is still last night's frame.
     """
-    frames = nina_responses("dawn_image_history_with_flats.json")
+    frames = load_fixture("dawn_image_history_with_flats.json")
     newest = max(frame["Date"] for frame in frames)
     assert (
         state_of(hass, LAST_FRAME).state == datetime.fromisoformat(newest).isoformat()
@@ -123,10 +111,10 @@ async def test_the_last_frame_timestamp_is_the_newest_frame_the_rig_holds(
 
 
 async def test_the_last_frame_timestamp_advances_when_a_frame_is_saved(
-    hass: HomeAssistant, loaded_entry, push, nina_responses
+    hass: HomeAssistant, loaded_entry, push, rig
 ) -> None:
     before = state_of(hass, LAST_FRAME).state
-    push(nina_responses("live_image_save_push.json"))
+    push(load_fixture("live_image_save_push.json"))
     await hass.async_block_till_done()
     assert state_of(hass, LAST_FRAME).state > before
 
@@ -147,7 +135,7 @@ async def test_the_livestack_image_follows_the_pair_the_stack_last_reported(
     `/livestack/image/available` lists every pair without saying which.
     """
     await async_get_image(hass, LIVESTACK)
-    assert _params(rig, "/livestack/image/NGC%20281/S") is not None
+    assert rig.last_params("/livestack/image/NGC%20281/S") is not None
 
 
 async def test_the_livestack_image_is_absent_until_a_stack_has_updated(
@@ -202,7 +190,6 @@ async def test_a_stack_that_starts_after_home_assistant_did_gets_its_entity(
             "Target": "NGC 281",
             "Filter": "S",
         },
-        entry.runtime_data.coordinator.generation,
     )
     await hass.async_block_till_done()
     assert hass.states.get("image.dome_livestack") is not None

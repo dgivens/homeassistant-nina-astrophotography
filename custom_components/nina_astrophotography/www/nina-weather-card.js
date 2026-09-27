@@ -15,9 +15,9 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  LinkGrace, hubEntityIds, linkLostSince, resolveEntities,
+  LinkGrace, hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
-import { displayed, inUnit, interval, quantity } from "./nina-units.js";
+import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -170,22 +170,14 @@ class NinaWeatherCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
-    this._prefix = this._config.prefix || DEFAULT_PREFIX;
-    // A new config may name a different rig: make the next `set hass` re-resolve.
-    this._resolved = {};
-    this._resolvedFrom = null;
+    this._rig = new RigEntities(
+      this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
     this._grace.reset();
   }
 
   set hass(hass) {
     this._hass = hass;
-    // The frontend replaces `hass.entities` only when the registry itself
-    // changes, so this walks it on a rename, not on every state tick.
-    // `hass.devices` needs no second memo key: every device change that alters
-    // the map arrives with an entity-registry change too.
-    if (hass.entities !== this._resolvedFrom) {
-      this._resolvedFrom = hass.entities;
-      this._resolved = resolveEntities(hass, this._config.device_id);
+    if (this._rig.refresh(hass)) {
       // The monitor's connectivity stays available while the monitor is down,
       // so it too goes `unavailable` only with the link.
       this._linkRows = [
@@ -203,7 +195,7 @@ class NinaWeatherCard extends HTMLElement {
   // entity-id suffix and is rarely `key` here: the weather device supplies
   // "weather" and the monitor "safety monitor", which the channel keys omit.
   _eid(domain, key, slug = key) {
-    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
+    return this._rig.id(domain, key, slug);
   }
 
   _s(id, fb = null) {
@@ -231,7 +223,7 @@ class NinaWeatherCard extends HTMLElement {
 
     // The source is diagnostic and may be disabled, so nothing else depends on it.
     const source = this._s(this._eid("sensor", "weather_source"));
-    const sourceLive = source !== null && source !== "unknown" && source !== "unavailable";
+    const sourceLive = !missing(source);
     const lostSince = linkLostSince(this._hass, this._linkRows);
     if (this._grace.hold(lostSince)) return;
     const unreachable = lostSince !== null;

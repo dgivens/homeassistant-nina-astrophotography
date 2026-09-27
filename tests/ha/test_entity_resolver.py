@@ -22,6 +22,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from cards import INSTANCE, lookups, resolving_cards
 from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
+from ha.registry import get_device
 from helpers import needs_node, run_node
 
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
@@ -101,12 +102,11 @@ async def _lose_the_link(advance, freezer: FrozenDateTimeFactory) -> int:
 
 def _hub_row(hass: HomeAssistant, entry, platform: str) -> er.RegistryEntry:
     """A registry row on the hub device, with no entity behind it."""
-    hub = dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, entry.entry_id), entry.entry_id
-    )
-    assert hub is not None
     return er.async_get(hass).async_get_or_create(
-        "sensor", platform, f"{entry.entry_id}_retired", device_id=hub.id
+        "sensor",
+        platform,
+        f"{entry.entry_id}_retired",
+        device_id=get_device(hass, entry).id,
     )
 
 
@@ -118,19 +118,6 @@ def _orphan_a_hub_row(hass: HomeAssistant, entry) -> None:
 def _templated(domain: str, suffix: str, instance: str = INSTANCE) -> str:
     """The prefix-templated id, which is the fallback `_eid` computes."""
     return f"{domain}.{instance}_{suffix}"
-
-
-async def _set_up_guiding(hass: HomeAssistant, entry, rig) -> None:
-    """Set the entry up with every piece of equipment this card reads present.
-
-    An entity exists only once its equipment has been observed, and no guider is
-    connected in the default state. The state has to be in force before setup,
-    not advanced on to — see `_set_up_at` in `test_binary_sensor.py`.
-    """
-    rig.goto("imaging_guiding")
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
 
 
 # Per card, the lookups that cannot resolve and why. Asserted as an exact set so
@@ -180,10 +167,10 @@ def test_every_resolving_card_is_accounted_for() -> None:
 async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     hass: HomeAssistant,
     config_entry,
-    nina_responses,
     rig,
     hass_ws_client,
     card: Path,
+    set_up_at,
 ) -> None:
     """On a rig carrying the ids the committed list records, every resolved
     lookup must equal its prefix-templated form. A mismatch means the card reads
@@ -192,7 +179,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     This is what pins the lookups whose key is not its suffix: a wrong slug on
     one of those shows up as a mismatch, not as a blank reading.
     """
-    await _set_up_guiding(hass, config_entry, rig)
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
 
     resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
@@ -211,10 +198,10 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
 async def test_only_the_entities_that_cannot_resolve_fall_back(
     hass: HomeAssistant,
     config_entry,
-    nina_responses,
     rig,
     hass_ws_client,
     card: Path,
+    set_up_at,
 ) -> None:
     """The companion to the test above, which would pass just as well if
     nothing resolved at all.
@@ -222,7 +209,7 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
     Catches a new silent fallback: one more entity shipped disabled, or a
     dropped `translation_key`, costs rename-survival and reports nothing.
     """
-    await _set_up_guiding(hass, config_entry, rig)
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
 
     resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
@@ -255,7 +242,7 @@ async def test_a_disabled_entity_is_absent_from_what_the_frontend_sees(
 
 @needs_node
 async def test_two_rigs_resolve_nothing_until_one_is_named(
-    hass: HomeAssistant, config_entry, nina_responses, hass_ws_client
+    hass: HomeAssistant, config_entry, rig, hass_ws_client
 ) -> None:
     """Discovery is only unambiguous for one rig. Guessing between two would
     give a dashboard the wrong rig's readings, so the map is empty instead and
@@ -281,7 +268,7 @@ async def test_two_rigs_resolve_nothing_until_one_is_named(
 
 @needs_node
 async def test_naming_a_child_device_resolves_its_whole_rig(
-    hass: HomeAssistant, config_entry, nina_responses, hass_ws_client
+    hass: HomeAssistant, config_entry, rig, hass_ws_client
 ) -> None:
     """`device_id` may name any one of a rig's devices, not just its hub — a
     device selector makes a child the likelier pick. Resolution has to cover the

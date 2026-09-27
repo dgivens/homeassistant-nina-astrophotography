@@ -13,7 +13,7 @@ from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.models import DeviceMeta
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
-from helpers import state_of
+from helpers import load_fixture, state_of
 
 ENTITY = "light.n_i_n_a_flat_panel_light"
 
@@ -140,8 +140,7 @@ async def test_a_panel_that_disconnects_after_being_observed_stays_as_unavailabl
             snapshot.flat_device,
             meta=DeviceMeta(None, None, None, None, None),
             connected=False,
-            min_brightness=0.0,
-            max_brightness=0.0,
+            brightness_range=None,
         ),
     )
 
@@ -188,7 +187,7 @@ async def test_a_panel_never_observed_has_no_entity(
 
 
 async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
-    hass: HomeAssistant, set_up_with_flat_device, nina_responses, monkeypatch
+    hass: HomeAssistant, set_up_with_flat_device, rig, monkeypatch
 ) -> None:
     """A sequence routinely connects the panel long after Home Assistant
     started; the light must arrive with it, as the panel's other entities do.
@@ -198,7 +197,7 @@ async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
         connected=False,
     )
     assert hass.states.get(ENTITY) is None
-    dawn = map_equipment_info(nina_responses("dawn_equipment_info.json"))
+    dawn = map_equipment_info(load_fixture("dawn_equipment_info.json"))
 
     async def get_equipment(self):
         return dawn
@@ -224,5 +223,5 @@ async def test_a_refused_command_surfaces_as_a_home_assistant_error(
         raise NinaCommandError("Flat device not connected")
 
     sent.patch(command, refuse)
-    with pytest.raises(HomeAssistantError, match="flat panel"):
+    with pytest.raises(HomeAssistantError, match="Flat device not connected"):
         await act(hass)

@@ -18,6 +18,7 @@ from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.nina_astrophotography.api.errors import NinaConnectionError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+from custom_components.nina_astrophotography.coordinator import FAST_INTERVAL
 from custom_components.nina_astrophotography.polling import TierSchedule
 from helpers import load_fixture, state_of
 from scenarios.fake_rig import FakeRig
@@ -49,6 +50,8 @@ def captured(name: str) -> dict:
 # luck. One second of margin is well inside every cadence here.
 _MARGIN = 1.0
 
+_TICK = FAST_INTERVAL.total_seconds()
+
 
 async def tick(
     hass: HomeAssistant, freezer: FrozenDateTimeFactory, seconds: float
@@ -78,7 +81,7 @@ async def tiers(hass, freezer, rig, config_entry):
 async def test_the_fast_tier_runs_on_every_tick(hass, tiers, freezer) -> None:
     rig = await tiers()
     for _ in range(3):
-        await tick(hass, freezer, TierSchedule.FAST)
+        await tick(hass, freezer, _TICK)
     assert rig.reads("/equipment/info") == 3
 
 
@@ -101,7 +104,7 @@ async def test_the_floor_backstops_the_flat_wizard(hass, tiers, freezer) -> None
     hardware, not the wizard — so only the floor ever reads it.
     """
     rig = await tiers()
-    await tick(hass, freezer, TierSchedule.FAST)
+    await tick(hass, freezer, _TICK)
     assert rig.reads("/flats/status") == 0
     await tick(hass, freezer, TierSchedule.FLOOR)
     assert rig.reads("/flats/status") == 1
@@ -143,7 +146,7 @@ async def test_ts_targetstart_never_refetches_the_sequence(
     for _ in range(10):
         push({"Event": "TS-TARGETSTART", "Time": "2026-09-05T06:41:53.9"})
     for _ in range(4):
-        await tick(hass, freezer, TierSchedule.FAST)
+        await tick(hass, freezer, _TICK)
     assert rig.reads("/sequence/json") == 0
 
 
@@ -173,7 +176,7 @@ async def test_an_event_cannot_re_arm_an_endpoint_the_build_does_not_serve(
     rig = await tiers(clear=False)
     assert rig.reads("/livestack/status") == 1  # the setup attempt
     push(captured("STACK-STATUS"))
-    await tick(hass, freezer, TierSchedule.FAST)
+    await tick(hass, freezer, _TICK)
     assert rig.reads("/livestack/status") == 1
 
 

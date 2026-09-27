@@ -20,18 +20,6 @@ ENTITY = "image.n_i_n_a_last_frame"
 FRAME = b"\xff\xd8\xff\xe0 not a frame"
 
 
-def _params(rig, fragment: str) -> dict | None:
-    """The parameters of the last request whose URL ENDS WITH `fragment`.
-
-    Not `in`: `/image/1` is a substring of `/image/121`, and a fragment match
-    would silently pass against the wrong request.
-    """
-    return next(
-        (params for url, params in reversed(rig.requests) if url.endswith(fragment)),
-        None,
-    )
-
-
 async def test_a_real_image_proxies_through_with_its_content_type(
     hass, loaded_entry, rig, hass_client
 ) -> None:
@@ -56,8 +44,8 @@ async def test_index_0_is_translated_to_ninas_newest_index(
     rig.respond("/image/4", ok({"Image": "irrelevant"}))  # proves 4 was asked
     client = await hass_client()
     await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
-    assert _params(rig, "/image/4") is not None
-    assert _params(rig, "/image/0") is None
+    assert rig.last_params("/image/4") is not None
+    assert rig.last_params("/image/0") is None
 
 
 async def test_an_index_at_or_past_the_current_count_answers_404(
@@ -162,11 +150,11 @@ async def test_autoprepare_is_only_sent_when_the_query_asks_for_it(
     rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
     client = await hass_client()
     await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
-    params = _params(rig, "/image/0")
+    params = rig.last_params("/image/0")
     assert params is not None
     assert "autoPrepare" not in params
 
     await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?autoPrepare=true")
-    params = _params(rig, "/image/0")
+    params = rig.last_params("/image/0")
     assert params is not None
     assert params["autoPrepare"] == "true"

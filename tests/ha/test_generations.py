@@ -17,11 +17,6 @@ RESTART_GENERATION = "2026-09-04T10:58:59.1429105-05:00"
 pytestmark = pytest.mark.usefixtures("inside_the_dawn_session")
 
 
-def _reseeds(rig: FakeRig) -> int:
-    """How many times the rig has been asked for /image-history?all=true."""
-    return rig.reads("/image-history", {"all": "true"})
-
-
 async def test_setup_seeds_the_session_from_the_full_history(
     loaded_entry: MockConfigEntry,
 ) -> None:
@@ -53,17 +48,7 @@ async def test_a_restart_reseeds_the_new_generations_frames(
     freezer.move_to("2026-09-05T07:30:00+00:00")
     await advance("imaging_guiding")
     assert loaded_entry.runtime_data.coordinator.data.session.image_count == 27
-    assert _reseeds(rig) == 2  # setup, then the restart
-
-
-async def test_the_event_stream_follows_the_new_generation(
-    loaded_entry: MockConfigEntry, advance
-) -> None:
-    """An event tagged with the stale generation would be filtered out of the
-    fold the moment it arrived.
-    """
-    await advance("nina_restarted")
-    assert loaded_entry.runtime_data.events.generation == RESTART_GENERATION
+    assert rig.reseeds() == 2  # setup, then the restart
 
 
 @pytest.mark.synthetic
@@ -80,10 +65,10 @@ async def test_a_count_mismatch_reseeds_once_it_persists_and_never_again(
     No capture can hold a snapshot of a race: the state varies the captured
     count envelope's one number.
     """
-    seeded = _reseeds(rig)
+    seeded = rig.reseeds()
     for _ in range(ticks):
         await advance("imaging_count_ahead")
-    assert _reseeds(rig) == seeded + reseeds
+    assert rig.reseeds() == seeded + reseeds
 
 
 @pytest.mark.synthetic
@@ -95,7 +80,7 @@ async def test_a_count_going_backwards_under_an_unchanged_start_reseeds(
     the generation having changed.
     """
     await advance("imaging_count_behind")
-    assert _reseeds(rig) == 2  # setup, then the shrunk history
+    assert rig.reseeds() == 2  # setup, then the shrunk history
 
 
 @pytest.mark.synthetic
@@ -114,7 +99,7 @@ async def test_an_unreadable_application_start_does_not_blank_the_session(
 
 @pytest.mark.synthetic
 async def test_a_generation_adopted_late_reseeds_the_frames_under_it(
-    hass, config_entry: MockConfigEntry, rig: FakeRig
+    hass, config_entry: MockConfigEntry, rig: FakeRig, set_up_at
 ) -> None:
     """An `/application-start` unreadable on the FIRST poll seeds the frames
     under a null tag; adopting the real one on the next poll filters every one
@@ -124,10 +109,7 @@ async def test_a_generation_adopted_late_reseeds_the_frames_under_it(
     A transiently empty endpoint has no capture: the state varies the captured
     envelope's one scalar.
     """
-    rig.goto("imaging_start_unreadable")
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await set_up_at(hass, config_entry, rig, "imaging_start_unreadable")
 
     rig.goto("imaging")
     await config_entry.runtime_data.coordinator.async_refresh()

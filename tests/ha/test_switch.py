@@ -23,8 +23,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-from custom_components.nina_astrophotography.const import DOMAIN
-from custom_components.nina_astrophotography.switch import DESCRIPTIONS
+from ha.registry import registered
 from helpers import state_of
 
 GUIDER = "switch.n_i_n_a_guider"
@@ -42,27 +41,6 @@ DIMMABLE = "switch.n_i_n_a_switch_dew_heater_a"
 async def _call(hass: HomeAssistant, service: str, entity_id: str) -> None:
     await hass.services.async_call(
         SWITCH_DOMAIN, service, {ATTR_ENTITY_ID: entity_id}, blocking=True
-    )
-
-
-async def _set_up_at(hass: HomeAssistant, entry: MockConfigEntry, rig, state: str):
-    """Set the entry up with the rig already in `state`.
-
-    A route that 404s is latched not-served until N.I.N.A. restarts
-    (`coordinator.py:243` clears the latch there, since a restart is exactly
-    when a plugin can appear), so a state that serves `/livestack/status` has
-    to be in force before the entry loads rather than advanced on to.
-    """
-    rig.goto(state)
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-
-
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    """The entity id claiming this `unique_id` suffix, or None if nothing does."""
-    return registry.async_get_entity_id(
-        SWITCH_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
     )
 
 
@@ -86,26 +64,26 @@ async def test_the_guider_switch_is_on_whenever_the_guider_is_running(
 
 
 async def test_a_lost_lock_left_over_from_a_stop_reads_off(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """N.I.N.A. keeps `LostLock` after `GUIDER-STOP`, and a switch reading on
     would never let a "restart guiding when it stops" automation fire. Set up
     in the state because `/event-history` is replayed once.
     """
-    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    await set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     assert state_of(hass, GUIDER).state == "off"
 
 
 @pytest.mark.synthetic
 async def test_a_lock_lost_while_guiding_restarts_reads_on(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """GUIDER-START waits for the settle, so a star lost during it is a
     `LostLock` with the stop still newest. The guider polled running since the
     stop is what keeps the switch on — off would invite a tap that interrupts
     the start in progress.
     """
-    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    await set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     coordinator = config_entry.runtime_data.coordinator
     for state in (
         "scheduler_waiting_lost_lock",
@@ -143,12 +121,12 @@ async def test_a_stop_pushed_while_a_poll_is_in_flight_is_not_passed_by_it(
 
 @pytest.mark.synthetic
 async def test_a_guider_start_after_the_stop_reads_the_lost_lock_as_running(
-    hass: HomeAssistant, config_entry, rig, push
+    hass: HomeAssistant, config_entry, rig, push, set_up_at
 ) -> None:
     """The wait ending restarts guiding, and a lock lost from then on is a
     guider hunting for its star. Fabricates the bare `GUIDER-START` push.
     """
-    await _set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
+    await set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
     push({"Event": "GUIDER-START"})
     await hass.async_block_till_done()
     assert state_of(hass, GUIDER).state == "on"
@@ -171,12 +149,12 @@ async def test_the_guider_switch_never_forces_a_calibration(
 
 
 async def test_the_livestack_switch_reads_the_status_endpoint(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """The endpoint answers `"Running"` where the spec's enum says `running`,
     so the comparison is case-insensitive.
     """
-    await _set_up_at(hass, config_entry, rig, "imaging_guiding")
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
     assert state_of(hass, LIVESTACK).state == "on"
 
 
@@ -224,36 +202,36 @@ async def test_a_switch_channel_reads_its_value_not_its_target_value(
 
 @pytest.mark.synthetic
 async def test_a_switch_channel_sends_its_own_id_not_its_position(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """`index` is the channel's `Id`. Every capture numbers from 0 in list
     order, so a channel list starting at 5 is what tells them apart.
     """
-    await _set_up_at(hass, config_entry, rig, "switch_channels_numbered_from_five")
+    await set_up_at(hass, config_entry, rig, "switch_channels_numbered_from_five")
     await _call(hass, SERVICE_TURN_OFF, OUTLET)
     assert rig.sent == [("/equipment/switch/set", {"index": 5, "value": 0.0})]
 
 
 @pytest.mark.synthetic
 async def test_channels_the_driver_leaves_unnamed_do_not_collide(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """An empty entity name resolves to the device's own under
     `has_entity_name`, so two unnamed channels would be one entity id.
     """
-    await _set_up_at(hass, config_entry, rig, "switch_channels_with_no_names")
+    await set_up_at(hass, config_entry, rig, "switch_channels_with_no_names")
     numbered = ["switch.n_i_n_a_switch_channel_0", "switch.n_i_n_a_switch_channel_1"]
     assert [name for name in numbered if hass.states.get(name)] == numbered
 
 
 @pytest.mark.synthetic
 async def test_on_and_off_are_the_channels_own_range_ends(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """A channel numbering its two states 1 and 2 is on at 2 and off at 1;
     sending a hardcoded 0 would be out of range and silently clamped.
     """
-    await _set_up_at(hass, config_entry, rig, "switch_channel_with_a_shifted_range")
+    await set_up_at(hass, config_entry, rig, "switch_channel_with_a_shifted_range")
     assert state_of(hass, OUTLET).state == "off"
     await _call(hass, SERVICE_TURN_ON, OUTLET)
     assert rig.sent == [("/equipment/switch/set", {"index": 0, "value": 2.0})]
@@ -361,7 +339,7 @@ async def test_the_kept_switches_keep_their_1_4_5_unique_id(
     observed in both, so one state registers the pair.
     """
     await advance("imaging_guiding")
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert registered(SWITCH_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 @pytest.mark.parametrize("key", ["mount_tracking_switch", "flat_light_switch"])
@@ -371,7 +349,7 @@ async def test_the_cut_switches_are_not_registered(
     """Tracking is `select.mount_tracking_rate`, whose options include
     `Stopped`; the panel's light is the `light` (§5.3.4).
     """
-    assert _registered(entity_registry, loaded_entry, key) is None
+    assert registered(SWITCH_DOMAIN, entity_registry, loaded_entry, key) is None
 
 
 async def test_the_long_tail_ships_diagnostic_and_disabled(
@@ -381,14 +359,9 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     dome, so §5.2.2 gates it out entirely.
     """
     entry = entity_registry.async_get(
-        _registered(entity_registry, loaded_entry, "rotator_reverse")
+        registered(SWITCH_DOMAIN, entity_registry, loaded_entry, "rotator_reverse")
     )
     assert (entry.entity_category, entry.disabled_by is not None) == (
         EntityCategory.DIAGNOSTIC,
         True,
     )
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
-    assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []

@@ -30,7 +30,7 @@ def _raising(error: Exception):
 
 
 async def test_the_session_boundary_is_the_rigs_local_noon(
-    hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses, freezer
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, freezer
 ) -> None:
     """Frame dates carry the rig's offset (-5 h on the dawn capture), so the
     noon rollover must be the rig's noon. At 12:30 UTC — 07:30 on the rig, in
@@ -81,7 +81,7 @@ async def test_a_rejected_request_keeps_the_previous_state_and_logs_once(
 
 
 async def test_a_rejected_first_refresh_fails_the_entry_rather_than_retrying(
-    hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses, monkeypatch
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, monkeypatch
 ) -> None:
     """With nothing to fall back on, a permanent rejection is ConfigEntryError:
     ConfigEntryNotReady would retry a condition that never clears.

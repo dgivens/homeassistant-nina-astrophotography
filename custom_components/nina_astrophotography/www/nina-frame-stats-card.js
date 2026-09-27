@@ -13,16 +13,10 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import { resolveEntities } from "./nina-entity-resolver.js";
-import { quantityIn } from "./nina-units.js";
+import { RigEntities } from "./nina-entity-resolver.js";
+import { quantityIn, shown } from "./nina-units.js";
 
 const VERSION = "2.0.0";
-
-// A reading Home Assistant has no value for is not a number to print.
-function shown(value) {
-  return value === null || value === undefined || value === "—"
-    || value === "unknown" || value === "unavailable" ? "—" : value;
-}
 
 // A filter keeps its colour from night to night, whichever others the session
 // used: the chips are the charts' legend, and an imager reads R as red. The
@@ -279,22 +273,13 @@ class NinaFrameStatsCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
-    this._prefix = this._config.prefix || DEFAULT_PREFIX;
-    // A new config may name a different rig: make the next `set hass` re-resolve.
-    this._resolved = {};
-    this._resolvedFrom = null;
+    this._rig = new RigEntities(
+      this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
   }
 
   set hass(hass) {
     this._hass = hass;
-    // The frontend replaces `hass.entities` only when the registry itself
-    // changes, so this walks it on a rename, not on every state tick.
-    // `hass.devices` needs no second memo key: every device change that alters
-    // the map arrives with an entity-registry change too.
-    if (hass.entities !== this._resolvedFrom) {
-      this._resolvedFrom = hass.entities;
-      this._resolved = resolveEntities(hass, this._config.device_id);
-    }
+    this._rig.refresh(hass);
     this._updateData();
     this._render();
   }
@@ -302,7 +287,7 @@ class NinaFrameStatsCard extends HTMLElement {
   // Falls back to a prefixed `slug` when nothing resolves. A hub sensor's
   // `slug` is `key`; the filter wheel's select adds its device name.
   _eid(domain, key, slug = key) {
-    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
+    return this._rig.id(domain, key, slug);
   }
 
   _state(id, fallback = null) {

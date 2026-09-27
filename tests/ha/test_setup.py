@@ -23,7 +23,7 @@ LIGHT = "light.n_i_n_a_flat_panel_light"
 
 
 async def test_setup_stores_state_on_runtime_data_not_hass_data(
-    hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig
 ) -> None:
     """Bronze runtime-data: a module-level dict keyed by entry_id leaks."""
     config_entry.add_to_hass(hass)
@@ -94,7 +94,7 @@ async def test_unload_leaves_no_state_behind(
 
 
 async def test_the_configured_poll_interval_drives_the_coordinator(
-    hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig
 ) -> None:
     config_entry.add_to_hass(hass)
     hass.config_entries.async_update_entry(

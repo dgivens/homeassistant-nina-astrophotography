@@ -12,9 +12,9 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  LinkGrace, hubEntityIds, linkLostSince, resolveEntities,
+  LinkGrace, hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
-import { displayed, quantity, quantityIn } from "./nina-units.js";
+import { displayed, missing, quantity, quantityIn, shown } from "./nina-units.js";
 
 const VERSION = "2.0.0";
 
@@ -46,8 +46,7 @@ function isOn(hass, entity_id) {
 // "connected". Probe an entity that ships enabled, or it reads as permanently
 // disconnected. `unknown` also counts as disconnected.
 function available(hass, entity_id) {
-  const e = hass.states[entity_id];
-  return !!e && e.state !== "unavailable" && e.state !== "unknown";
+  return !missing(hass.states[entity_id]?.state);
 }
 
 // On, off, or null when there is no state to read: a device that is down, a
@@ -65,12 +64,6 @@ function notStopped(hass, entity_id) {
 // Why a control is disabled when no state says which of its pair applies.
 function unread(value, device) {
   return value === null ? `The card cannot read the ${device} state` : "";
-}
-
-// A reading Home Assistant has no value for is not a number to print.
-function shown(value) {
-  return value === null || value === undefined || value === "—"
-    || value === "unknown" || value === "unavailable" ? "—" : value;
 }
 
 function numState(hass, entity_id, decimals = 1, fallback = "—") {
@@ -332,22 +325,14 @@ class NinaObservatoryCard extends HTMLElement {
 
   setConfig(config) {
     this._config = config || {};
-    this._prefix = this._config.prefix || DEFAULT_PREFIX;
-    // A new config may name a different rig: make the next `set hass` re-resolve.
-    this._resolved = {};
-    this._resolvedFrom = null;
+    this._rig = new RigEntities(
+      this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
     this._grace.reset();
   }
 
   set hass(hass) {
     this._hass = hass;
-    // The frontend replaces `hass.entities` only when the registry itself
-    // changes, so this walks it on a rename, not on every state tick.
-    // `hass.devices` needs no second memo key: every device change that alters
-    // the map arrives with an entity-registry change too.
-    if (hass.entities !== this._resolvedFrom) {
-      this._resolvedFrom = hass.entities;
-      this._resolved = resolveEntities(hass, this._config.device_id);
+    if (this._rig.refresh(hass)) {
       this._linkRows = hubEntityIds(hass, this._config.device_id) ?? [
         this._eid("binary_sensor", "sequencer_running"),
         this._eid("binary_sensor", "imaging"),
@@ -361,7 +346,7 @@ class NinaObservatoryCard extends HTMLElement {
   // `filter` lives on the Filter Wheel device; `guider_rms_dec` is named "RMS
   // declination".
   _eid(domain, key, slug = key) {
-    return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
+    return this._rig.id(domain, key, slug);
   }
 
   _callService(domain, service, data = {}) {

@@ -12,13 +12,18 @@ import pytest
 from helpers import load_fixture
 
 
-def _node(name: str, *children: SequenceNode, **own) -> SequenceNode:
+def _node(
+    name: str,
+    *children: SequenceNode,
+    iterations: str | None = None,
+    target: str | None = None,
+) -> SequenceNode:
     return SequenceNode(
         name=name,
-        status=own.pop("status", "RUNNING"),
-        iterations=own.pop("iterations", None),
+        status="RUNNING",
+        iterations=iterations,
+        target_name=target,
         children=children,
-        attributes=own,
     )
 
 
@@ -73,7 +78,7 @@ def test_the_last_named_target_in_pre_order_wins() -> None:
     """Last, not deepest — depth does not order sibling targets. Pinned so the
     ordering is a decision rather than an accident of the walk.
     """
-    tree = _node("Sequence", _node("Targets", TargetName="M31"), TargetName="Tonight")
+    tree = _node("Sequence", _node("Targets", target="M31"), target="Tonight")
     assert target_name(tree) == "M31"
 
 
@@ -81,8 +86,8 @@ def test_a_deeper_target_does_not_outrank_a_later_shallow_one() -> None:
     """The behaviour the docstring used to claim the opposite of."""
     tree = _node(
         "Sequence",
-        _node("A", _node("B", TargetName="deep")),
-        _node("C", TargetName="shallow"),
+        _node("A", _node("B", target="deep")),
+        _node("C", target="shallow"),
     )
     assert target_name(tree) == "shallow"
 

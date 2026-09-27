@@ -19,8 +19,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-from custom_components.nina_astrophotography.const import DOMAIN
-from custom_components.nina_astrophotography.number import DESCRIPTIONS
+from ha.registry import registered
 from helpers import state_of
 
 BRIGHTNESS = "number.n_i_n_a_flat_panel_brightness"
@@ -34,13 +33,6 @@ async def _set(hass: HomeAssistant, entity_id: str, value: float) -> None:
         SERVICE_SET_VALUE,
         {ATTR_ENTITY_ID: entity_id, ATTR_VALUE: value},
         blocking=True,
-    )
-
-
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    """The entity id claiming this `unique_id` suffix, or None if nothing does."""
-    return registry.async_get_entity_id(
-        NUMBER_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
     )
 
 
@@ -100,7 +92,7 @@ async def test_a_panel_reporting_no_range_is_refused_rather_than_sent_to(
     """A cover-only panel reports Min 0 / Max 0, and every value is in range of
     an empty range.
     """
-    await set_up_with_flat_device(max_brightness=0.0)
+    await set_up_with_flat_device(brightness_range=None)
     with pytest.raises(ServiceValidationError):
         await _set(hass, BRIGHTNESS, 0)
     assert sent.calls == []
@@ -147,7 +139,7 @@ async def test_a_refused_command_surfaces_as_a_home_assistant_error(
 async def test_the_kept_numbers_keep_their_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert registered(NUMBER_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 @pytest.mark.parametrize(
@@ -164,7 +156,7 @@ async def test_the_kept_numbers_keep_their_1_4_5_unique_id(
 async def test_the_cut_numbers_are_not_registered(
     loaded_entry: MockConfigEntry, entity_registry, key: str
 ) -> None:
-    assert _registered(entity_registry, loaded_entry, key) is None
+    assert registered(NUMBER_DOMAIN, entity_registry, loaded_entry, key) is None
 
 
 async def test_the_focuser_position_number_exists(
@@ -183,7 +175,9 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     """The dome's is absent from this table: no capture observes a dome, so
     §5.2.2 gates `dome_azimuth` out entirely.
     """
-    entry = entity_registry.async_get(_registered(entity_registry, loaded_entry, key))
+    entry = entity_registry.async_get(
+        registered(NUMBER_DOMAIN, entity_registry, loaded_entry, key)
+    )
     assert (entry.entity_category, entry.disabled_by is not None) == (
         EntityCategory.DIAGNOSTIC,
         True,
@@ -199,8 +193,3 @@ async def test_a_value_outside_this_cameras_usb_range_is_refused(
     with pytest.raises(ServiceValidationError):
         await _set(hass, USB_LIMIT, 20)
     assert rig.sent == []
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
-    assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []

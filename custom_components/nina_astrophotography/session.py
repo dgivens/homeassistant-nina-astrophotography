@@ -13,6 +13,7 @@ from collections.abc import Callable, Container, Iterable, Sequence
 from datetime import datetime, timedelta
 import heapq
 from math import fsum
+from operator import attrgetter
 from statistics import fmean
 
 from .api.models import (
@@ -26,6 +27,7 @@ from .api.models import (
 from .derive import session_start
 
 _LIGHT = "LIGHT"
+_IDENTITY = attrgetter("identity")
 _AUTOFOCUS_STARTING = "AUTOFOCUS-STARTING"
 _AUTOFOCUS_FINISHED = "AUTOFOCUS-FINISHED"
 _STACK_UPDATED = "STACK-UPDATED"
@@ -70,10 +72,6 @@ _NOTHING = SessionStats(
     by_filter=(),
     autofocus=AutoFocusState(last_finished_at=None, running_since=None, failed=False),
 )
-
-
-def _identity(frame: Frame) -> tuple[datetime, str]:
-    return (frame.date, frame.filename)
 
 
 def _mean(values: Iterable[float | None]) -> float | None:
@@ -164,7 +162,7 @@ def fold(
     of a frame could win and then be filtered out.
     """
     kept_frames = list(
-        {_identity(f): f for f in frames if f.generation == generation}.values()
+        {f.identity: f for f in frames if f.generation == generation}.values()
     )
     kept_events = [e for e in events if e.generation == generation]
 
@@ -176,7 +174,7 @@ def fold(
         moment = max(observed)
     start = session_start(moment, rollover_hour)
 
-    session_frames = sorted((f for f in kept_frames if f.date >= start), key=_identity)
+    session_frames = sorted((f for f in kept_frames if f.date >= start), key=_IDENTITY)
     lights = [f for f in session_frames if f.image_type == _LIGHT]
     hfrs = [f.hfr for f in lights if f.hfr is not None]
 
@@ -259,16 +257,7 @@ _RECENT_FRAMES_LIMIT = 20
 def recent_frames(frames: Iterable[Frame], generation: str | None) -> tuple[Frame, ...]:
     """The newest frames this process saved, of any type, newest first."""
     kept = (f for f in frames if f.generation == generation)
-    return tuple(heapq.nlargest(_RECENT_FRAMES_LIMIT, kept, key=_identity))
-
-
-def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | None:
-    """The newest frame this process saved, of any type.
-
-    Outside the session window: the image history does not roll over.
-    """
-    newest = recent_frames(frames, generation)
-    return newest[0] if newest else None
+    return tuple(heapq.nlargest(_RECENT_FRAMES_LIMIT, kept, key=_IDENTITY))
 
 
 def latest_target(events: Iterable[NinaEvent], generation: str | None) -> str | None:

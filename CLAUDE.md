@@ -112,7 +112,7 @@ disk proves nothing.
   dataclass carrying `value` (a lambda over `NinaData`), `kind` (the child
   device, `None` for the hub) and `verified`. Copy `binary_sensor.py`.
 - **An entity is created only once its `kind`'s model is non-`None`**, and a
-  listener adds the ones whose device appears later. A descriptor whose slot is
+  listener adds the ones whose device appears later: `entity.async_add_observed`. A descriptor whose slot is
   absent must not be registered: it would mint a nameless device and take the
   wrong entity id. Every equipment platform needs that listener, even one with a
   single entity; gating only at setup misses equipment a sequence connects hours
@@ -215,7 +215,7 @@ endpoint** — `/profile/show`, `/livestack/status`,
 `/equipment/focuser/last-af`. Every state but `imaging_guiding` withholds
 those, so the coordinator's not-served latch fires at setup and one refresh
 will not retry. Set the entry up with the rig already in the state instead
-(`_set_up_at` in `tests/ha/test_binary_sensor.py`). The same applies to
+(the `set_up_at` fixture in `tests/ha/conftest.py`). The same applies to
 `/event-history`, which is replayed once.
 
 Test through **public Home Assistant interfaces**: set up via

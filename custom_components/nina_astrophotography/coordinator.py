@@ -15,7 +15,6 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import logging
 import time
-from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -37,7 +36,7 @@ from .api.models import (
     StackState,
     VersionInfo,
 )
-from .api.v2 import NinaClientV2
+from .api.v2 import NinaClientV2, NinaEventStream
 from .const import CONF_HOST, DEFAULT_ROLLOVER_HOUR
 from .device import KINDS
 from .polling import (
@@ -58,9 +57,6 @@ from .session import (
     recent_frames,
     scheduler_wait,
 )
-
-if TYPE_CHECKING:
-    from .api.v2.events import NinaEventStream
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -122,10 +118,6 @@ class NinaData:
     autofocus_report: AutoFocusReport | None
     """The newest `/equipment/focuser/last-af`, or `None` if none was ever run.
     It survives a restart, so it is dated against the session before use."""
-    newest_frame: Frame | None
-    """The newest frame of any type this process saved. `session.last_frame`
-    is the newest light inside the session window, so after a flat run or the
-    rollover the two differ."""
     recent_frames: tuple[Frame, ...]
     """The newest frames of any type, newest first, bounded."""
     profile: ProfileSettings
@@ -143,6 +135,14 @@ class NinaData:
     """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` or running
     guider seen since. Tells a stale `LostLock` from a guider hunting for its
     star."""
+
+    @property
+    def newest_frame(self) -> Frame | None:
+        """The newest frame of any type this process saved. `session.last_frame`
+        is the newest light inside the session window, so after a flat run or
+        the rollover the two differ.
+        """
+        return self.recent_frames[0] if self.recent_frames else None
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
@@ -178,8 +178,6 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self.frames: dict[tuple[datetime, str], Frame] = {}
         self.events: list[NinaEvent] = []
         self.generation: str | None = None
-        # Set by setup, so the stream stamps events with the current generation.
-        self.event_stream: NinaEventStream | None = None
         self._version = version
         self._rollover_hour = rollover_hour
         self._observed: set[str] = set()
@@ -353,11 +351,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._publish()
 
     async def _replay(self) -> None:
-        """Fold `/event-history`. The caller publishes, once, afterwards."""
-        if self.event_stream is None:
-            return
+        """Fold `/event-history`. The caller publishes, once, afterwards.
+
+        An empty history at setup is normal, not a failure: a restart resets it.
+        """
         try:
-            replayed = await self.event_stream.replay(self.client, self.generation)
+            replayed = await self.client.get_events(self.generation)
         except NinaEndpointError:
             # Otherwise the setup replay would ask again every tick.
             _LOGGER.info("/event-history is not served by this N.I.N.A.; not replaying")
@@ -382,7 +381,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._ledger.mark(event)
         self.events.append(event)
         if event.frame is not None:
-            self.frames[(event.frame.date, event.frame.filename)] = event.frame
+            self.frames[event.frame.identity] = event.frame
         return True
 
     def _publish(self) -> None:
@@ -502,8 +501,6 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         if generation != self.generation:
             self._seeded = False
         self.generation = generation
-        if self.event_stream is not None:
-            self.event_stream.generation = generation
 
     def _generation_frames(self) -> int:
         """Frames held for the current process, which is what `?count=true` counts.
@@ -523,7 +520,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         for frame in await self.client.get_frames(
             include_all=True, generation=self.generation
         ):
-            self.frames[(frame.date, frame.filename)] = frame
+            self.frames[frame.identity] = frame
         self._seeded = True
         held = self._generation_frames()
         if not self._reseed_guard.settle(held, count):
@@ -559,7 +556,6 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def _assemble(self, snapshot: EquipmentSnapshot) -> NinaData:
         """Freeze the live sets into one snapshot, synchronously, at one moment."""
         moment = self._now()
-        recent = recent_frames(self.frames.values(), self.generation)
         return NinaData(
             snapshot=snapshot,
             session=fold(
@@ -581,8 +577,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 or target_name(self._sequence)
             ),
             autofocus_report=self._last_autofocus,
-            newest_frame=recent[0] if recent else None,
-            recent_frames=recent,
+            recent_frames=recent_frames(self.frames.values(), self.generation),
             profile=self._profile,
             generation=self.generation,
             version=self._version,
@@ -599,7 +594,6 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
 class NinaRuntimeData:
     """Everything setup builds, on `entry.runtime_data`."""
 
-    client: NinaClientV2
     coordinator: NinaCoordinator
     instance_name: str
     events: NinaEventStream

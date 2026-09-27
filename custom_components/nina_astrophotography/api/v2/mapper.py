@@ -98,7 +98,6 @@ _WEATHER_CHANNELS: Mapping[str, str] = MappingProxyType(
 # Keys under which /sequence/json nests child nodes. A node's own scalars go to
 # `attributes`; these do not.
 _SEQUENCE_CHILDREN = ("GlobalTriggers", "Conditions", "Items", "Triggers")
-_SEQUENCE_OWN_KEYS = ("Name", "Status", "Iterations", *_SEQUENCE_CHILDREN)
 
 # 'Tot: 0.26 (0.42")' — the bracketed figure is the arcsecond one.
 _TOTAL_RMS_ARCSEC = re.compile(r"\(\s*([-+]?\d*\.?\d+)")
@@ -148,6 +147,14 @@ def _number(wire: Any, *path: str) -> float | None:
 def _integer(wire: Any, *path: str) -> int | None:
     value = _dig(wire, *path)
     return int(value) if _is_number(value) else None
+
+
+def _range(wire: Any, low_key: str, high_key: str) -> tuple[float, float] | None:
+    """`(low, high)`, or `None` for an empty or missing range."""
+    low, high = _number(wire, low_key), _number(wire, high_key)
+    if low is None or high is None or high <= low:
+        return None
+    return low, high
 
 
 def _flag(wire: Any, *path: str) -> bool | None:
@@ -248,8 +255,7 @@ def map_camera(wire: dict) -> CameraModel:
         gain=_integer(readings, "Gain"),
         offset=_integer(readings, "Offset"),
         usb_limit=_integer(readings, "USBLimit"),
-        usb_limit_min=_integer(wire, "USBLimitMin"),
-        usb_limit_max=_integer(wire, "USBLimitMax"),
+        usb_limit_range=_range(wire, "USBLimitMin", "USBLimitMax"),
         camera_state=_text(readings, "CameraState"),
         is_exposing=_flag(readings, "IsExposing"),
         pixel_size=_number(readings, "PixelSize"),
@@ -369,8 +375,7 @@ def map_flat_device(wire: dict) -> FlatDeviceModel:
         cover_state=_text(readings, "CoverState"),
         light_on=_flag(readings, "LightOn"),
         brightness=_number(readings, "Brightness"),
-        min_brightness=_number(readings, "MinBrightness"),
-        max_brightness=_number(readings, "MaxBrightness"),
+        brightness_range=_range(readings, "MinBrightness", "MaxBrightness"),
         supports_on_off=_flag(wire, "SupportsOnOff"),
         supports_open_close=_flag(wire, "SupportsOpenClose"),
     )
@@ -607,17 +612,13 @@ def _sequence_node(wire: dict, fallback: str) -> SequenceNode:
         name=name if name is not None else fallback,
         status=_text(wire, "Status"),
         iterations=None if iterations is None else str(iterations),
+        target_name=_text(wire, "TargetName"),
         children=tuple(
             _sequence_node(child, key)
             for key in _SEQUENCE_CHILDREN
             for child in wire.get(key) or ()
             if isinstance(child, dict)
         ),
-        attributes={
-            key: nan_to_none(value)
-            for key, value in wire.items()
-            if key not in _SEQUENCE_OWN_KEYS and not isinstance(value, (dict, list))
-        },
     )
 
 
@@ -631,12 +632,12 @@ def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
         name="Sequence",
         status=None,
         iterations=None,
+        target_name=None,
         children=tuple(
             _sequence_node(node, "GlobalTriggers")
             for node in wire
             if isinstance(node, dict)
         ),
-        attributes={},
     )
 
 

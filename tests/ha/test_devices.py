@@ -10,23 +10,7 @@ from custom_components.nina_astrophotography import async_remove_config_entry_de
 from custom_components.nina_astrophotography.api.models import EquipmentSnapshot
 from custom_components.nina_astrophotography.const import DOMAIN
 from custom_components.nina_astrophotography.device import KINDS
-
-
-def _lookup(
-    hass: HomeAssistant, entry, kind: str | None = None
-) -> dr.DeviceEntry | None:
-    """The registry entry for one equipment kind, or the hub when `kind` is None."""
-    suffix = f"_{kind}" if kind else ""
-    return dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, f"{entry.entry_id}{suffix}"), entry.entry_id
-    )
-
-
-def _device(hass: HomeAssistant, entry, kind: str | None = None) -> dr.DeviceEntry:
-    """As `_lookup`, failing the test when the device is not registered."""
-    device = _lookup(hass, entry, kind)
-    assert device is not None, f"no {kind or 'hub'} device"
-    return device
+from ha.registry import get_device, lookup_device
 
 
 def test_every_kind_is_an_equipment_snapshot_field() -> None:
@@ -56,7 +40,7 @@ async def test_each_equipment_type_is_its_own_device(
 async def test_children_hang_off_the_hub(hass: HomeAssistant, loaded_entry) -> None:
     registry = dr.async_get(hass)
     devices = dr.async_entries_for_config_entry(registry, loaded_entry.entry_id)
-    hub = _device(hass, loaded_entry)
+    hub = get_device(hass, loaded_entry)
     assert {device.via_device_id for device in devices if device.id != hub.id} == {
         hub.id
     }
@@ -76,21 +60,21 @@ async def test_the_hub_is_the_only_device_without_a_parent(
     devices = dr.async_entries_for_config_entry(registry, loaded_entry.entry_id)
 
     assert [device.id for device in devices if device.via_device_id is None] == [
-        _device(hass, loaded_entry).id
+        get_device(hass, loaded_entry).id
     ]
 
 
 async def test_the_hub_carries_the_nina_version(
     hass: HomeAssistant, loaded_entry
 ) -> None:
-    assert _device(hass, loaded_entry).sw_version == "3.2.0.9001"
+    assert get_device(hass, loaded_entry).sw_version == "3.2.0.9001"
 
 
 async def test_the_hub_links_to_the_advanced_api(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """The entry's own host and port — the API serves the only page there is."""
-    assert _device(hass, loaded_entry).configuration_url == "http://nina.local:1888"
+    assert get_device(hass, loaded_entry).configuration_url == "http://nina.local:1888"
 
 
 async def test_driver_metadata_lands_in_the_registry_not_entity_attributes(
@@ -101,7 +85,7 @@ async def test_driver_metadata_lands_in_the_registry_not_entity_attributes(
     The focuser rather than the camera: this camera reports no `DriverVersion`
     at all, so it cannot show that the field is carried.
     """
-    focuser = _device(hass, loaded_entry, "focuser")
+    focuser = get_device(hass, loaded_entry, "focuser")
     assert (focuser.model, focuser.sw_version) == ("ASCOM.ToupTek.AAF1", "6.5")
 
 
@@ -109,16 +93,16 @@ async def test_a_device_never_observed_is_not_created(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """First sight, not first poll: this rig has never had a dome."""
-    assert _lookup(hass, loaded_entry, "dome") is None
+    assert lookup_device(hass, loaded_entry, "dome") is None
 
 
 async def test_equipment_seen_for_the_first_time_gets_its_device(
     hass: HomeAssistant, loaded_entry, advance
 ) -> None:
     """The guider is down at setup, so its device arrives on a later poll."""
-    assert _lookup(hass, loaded_entry, "guider") is None
+    assert lookup_device(hass, loaded_entry, "guider") is None
     await advance("imaging_guiding")
-    assert _device(hass, loaded_entry, "guider").model == "PHD2"
+    assert get_device(hass, loaded_entry, "guider").model == "PHD2"
 
 
 async def test_a_disconnected_device_keeps_its_registry_metadata(
@@ -126,7 +110,7 @@ async def test_a_disconnected_device_keeps_its_registry_metadata(
 ) -> None:
     """A down driver reports no identity at all; the registry keeps the last one."""
     await advance("equipment_disconnected")
-    assert _device(hass, loaded_entry, "camera").model == "ZWO ASI2600MM Pro"
+    assert get_device(hass, loaded_entry, "camera").model == "ZWO ASI2600MM Pro"
 
 
 async def test_a_swapped_driver_updates_the_registry(
@@ -134,7 +118,7 @@ async def test_a_swapped_driver_updates_the_registry(
 ) -> None:
     """The weather source can change under a running rig (§5.2.2)."""
     await advance("weather_openmeteo")
-    assert _device(hass, loaded_entry, "weather").model == "OpenMeteo"
+    assert get_device(hass, loaded_entry, "weather").model == "OpenMeteo"
 
 
 @pytest.mark.parametrize(
@@ -168,13 +152,13 @@ async def test_a_newly_created_child_inherits_the_hubs_area(
     """
     registry = dr.async_get(hass)
     area = ar.async_get(hass).async_get_or_create("Starfront")
-    hub = _device(hass, loaded_entry)
+    hub = get_device(hass, loaded_entry)
     registry.async_update_device(hub.id, area_id=area.id)
 
-    assert _lookup(hass, loaded_entry, "guider") is None
+    assert lookup_device(hass, loaded_entry, "guider") is None
     await advance("imaging_guiding")
 
-    assert _device(hass, loaded_entry, "guider").area_id == area.id
+    assert get_device(hass, loaded_entry, "guider").area_id == area.id
 
 
 async def test_syncing_does_not_move_an_already_placed_child(
@@ -187,20 +171,20 @@ async def test_syncing_does_not_move_an_already_placed_child(
     areas = ar.async_get(hass)
     hub_area = areas.async_get_or_create("Starfront")
     other_area = areas.async_get_or_create("Workshop")
-    hub = _device(hass, loaded_entry)
+    hub = get_device(hass, loaded_entry)
     registry.async_update_device(hub.id, area_id=hub_area.id)
-    camera = _device(hass, loaded_entry, "camera")
+    camera = get_device(hass, loaded_entry, "camera")
     registry.async_update_device(camera.id, area_id=other_area.id)
 
     await advance("imaging_guiding")
 
-    assert _device(hass, loaded_entry, "camera").area_id == other_area.id
+    assert get_device(hass, loaded_entry, "camera").area_id == other_area.id
 
 
 async def test_a_device_can_be_deleted_after_its_entry_is_unloaded(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """The registry offers deletion on a disabled entry, which holds no snapshot."""
-    camera = _device(hass, loaded_entry, "camera")
+    camera = get_device(hass, loaded_entry, "camera")
     assert await hass.config_entries.async_unload(loaded_entry.entry_id)
     assert await async_remove_config_entry_device(hass, loaded_entry, camera) is True

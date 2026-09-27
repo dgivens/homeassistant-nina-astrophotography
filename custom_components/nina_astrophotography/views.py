@@ -12,7 +12,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.http import KEY_HASS, HomeAssistantView
 
 from .api.errors import NinaCommandError, NinaError, NinaNoImageError
-from .api.v2.client import NinaClientV2
+from .api.v2.client import IMAGE_QUALITY, NinaClientV2
 from .const import DOMAIN
 
 
@@ -28,7 +28,7 @@ def _client_for_entity(hass: HomeAssistant, entity_id: str) -> NinaClientV2 | No
     entry = hass.config_entries.async_get_entry(entity_entry.config_entry_id)
     if entry is None or entry.state is not ConfigEntryState.LOADED:
         return None
-    return entry.runtime_data.client
+    return entry.runtime_data.coordinator.client
 
 
 def _bad_image_request() -> web.Response:
@@ -40,9 +40,7 @@ def _bad_image_request() -> web.Response:
 class NinaImageProxyView(HomeAssistantView):
     """`GET /api/nina_astrophotography/image/{entity_id}/{index}`.
 
-    `index` 0 is the newest frame, as in `recent_frames`. N.I.N.A.'s
-    `/image/{index}` counts from the oldest, so the translation reads the
-    live count: the fold can lag a frame behind.
+    `index` 0 is the newest frame, as in `recent_frames`.
     """
 
     url = "/api/nina_astrophotography/image/{entity_id}/{index}"
@@ -53,7 +51,7 @@ class NinaImageProxyView(HomeAssistantView):
     ) -> web.Response:
         try:
             frame_index = int(index)
-            quality = int(request.query.get("quality", 85))
+            quality = int(request.query.get("quality", IMAGE_QUALITY))
         except ValueError:
             return _bad_image_request()
         if frame_index < 0 or not 1 <= quality <= 100:
@@ -67,11 +65,8 @@ class NinaImageProxyView(HomeAssistantView):
         # The card omits the parameter to ask for the linear frame.
         auto_prepare = request.query.get("autoPrepare") == "true"
         try:
-            count = await client.get_image_history_count()
-            if frame_index >= count:
-                return web.Response(status=404)
-            image_bytes = await client.get_image_bytes(
-                count - 1 - frame_index, quality=quality, auto_prepare=auto_prepare
+            image_bytes = await client.get_recent_image_bytes(
+                frame_index, quality=quality, auto_prepare=auto_prepare
             )
         except NinaNoImageError, NinaCommandError:
             # An empty history, or an index no longer held.

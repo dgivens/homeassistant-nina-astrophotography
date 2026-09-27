@@ -9,8 +9,8 @@ from nina_astrophotography.session import (
     fold,
     latest_stack,
     latest_target,
-    newest_frame,
     pending_guider_stop,
+    recent_frames,
     scheduler_wait,
 )
 import pytest
@@ -393,19 +393,17 @@ def test_events_from_a_previous_session_do_not_report_an_autofocus(
     assert stats.autofocus == AutoFocusState(None, None, False)
 
 
-def test_the_newest_frame_ignores_the_session_window(night) -> None:
+def test_the_recent_frames_ignore_the_session_window(night) -> None:
     """The rig's image history does not roll over at local noon, so what
     `image.last_frame` renders long after the rollover is still last night's
     frame — which `fold`'s own `last_frame` has by then dropped.
     """
-    newest = newest_frame(night, "g1")
-    assert newest is not None
-    assert newest.date == max(f.date for f in night)
+    assert recent_frames(night, "g1")[0].date == max(f.date for f in night)
     assert fold(night, [], "g1", now=_AFTER_THE_ROLLOVER).last_frame is None
 
 
-def test_the_newest_frame_of_another_process_is_not_offered(night) -> None:
-    assert newest_frame(night, "g2") is None
+def test_the_recent_frames_of_another_process_are_not_offered(night) -> None:
+    assert recent_frames(night, "g2") == ()
 
 
 def test_the_stack_is_the_pair_the_newest_update_named(night_events) -> None:

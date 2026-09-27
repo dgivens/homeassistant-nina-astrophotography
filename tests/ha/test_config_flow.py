@@ -10,7 +10,6 @@ from unittest.mock import patch
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from homeassistant.helpers import device_registry as dr
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 import voluptuous as vol
@@ -31,6 +30,7 @@ from custom_components.nina_astrophotography.const import (
     CONF_ROLLOVER_HOUR,
     DOMAIN,
 )
+from ha.registry import get_device
 
 PROBE = (
     "custom_components.nina_astrophotography.api.v2.client.NinaClientV2.get_versions"
@@ -190,8 +190,4 @@ async def test_a_pre_2_0_entry_names_the_instance_from_its_title(
     """
     entry = two_rigs.entries[1]
     assert CONF_INSTANCE_NAME not in entry.data
-    hub = dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, entry.entry_id), entry.entry_id
-    )
-    assert hub is not None
-    assert hub.name == "Dome"
+    assert get_device(hass, entry).name == "Dome"

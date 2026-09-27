@@ -18,24 +18,29 @@ StepSize`), and its on/off values are its own range ends. It reads `Value`,
 never `TargetValue`, which is only what it was last asked for.
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
+from functools import partial
 import logging
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.const import EntityCategory
+from homeassistant.const import EntityCategory, Platform
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api.errors import NinaError
 from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_of, observed, read_field, unplaced_channels
-from .entity import NinaChannelEntity, NinaEntity
+from .device import channel_key, channels_for, observed, read_field
+from .entity import (
+    NinaChannelEntity,
+    NinaDescribedEntity,
+    NinaEntityDescription,
+    async_add_observed,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,32 +49,22 @@ PARALLEL_UPDATES = 1
 
 
 @dataclass(frozen=True, kw_only=True)
-class NinaSwitchDescription(SwitchEntityDescription):
+class NinaSwitchDescription(NinaEntityDescription, SwitchEntityDescription):
     """A switch, plus how to read it and how to send both directions.
 
-    `kind` names the child device; `None` puts it on the hub. `verified` is
-    False only for the dome, which no hardware has validated. `command` gets
-    the snapshot too, since the cooler sends the camera's own setpoint.
-    `supported` gates on a capability the driver reports, such as a flat
-    panel's cover.
+    `command` gets the snapshot too, since the cooler sends the camera's own
+    setpoint. `supported` gates on a capability the driver reports, such as a
+    flat panel's cover.
     """
 
     value: Callable[[NinaData], bool | None]
-    kind: str | None
     command: Callable[[NinaClientV2, NinaData, bool], Awaitable[None]]
     supported: Callable[[NinaData], bool] | None = None
-    verified: bool = True
-    unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
-    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
-    def supported(data: NinaData) -> bool:
-        device = getattr(data.snapshot, kind)
-        return device is not None and bool(getattr(device, field))
-
-    return supported
+    read = read_field(kind, field)
+    return lambda data: bool(read(data))
 
 
 def _guider_running(data: NinaData) -> bool | None:
@@ -129,14 +124,16 @@ async def _set_cooler(client: NinaClientV2, data: NinaData, on: bool) -> None:
     A warm-up leaves the setpoint at its final value, not the imaging
     temperature; the target temperature number cools to a chosen one.
     """
+    if not on:
+        await client.warm_camera()
+        return
     camera = data.snapshot.camera
     setpoint = camera.target_temperature if camera is not None else None
-    if on and setpoint is None:
+    if setpoint is None:
         raise ServiceValidationError(
             translation_domain=DOMAIN, translation_key="no_cooling_setpoint"
         )
-    # /warm takes no setpoint.
-    await client.set_cooler(on, setpoint if setpoint is not None else 0.0)
+    await client.cool_camera(setpoint)
 
 
 DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
@@ -203,24 +200,10 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
 )
 
 
-class NinaSwitch(NinaEntity, SwitchEntity):
+class NinaSwitch(NinaDescribedEntity, SwitchEntity):
     """One descriptor: read from the snapshot, written through the client."""
 
     entity_description: NinaSwitchDescription
-
-    def __init__(
-        self,
-        coordinator: NinaCoordinator,
-        entry: NinaConfigEntry,
-        description: NinaSwitchDescription,
-    ) -> None:
-        super().__init__(
-            coordinator,
-            entry,
-            description.unique_id_suffix or description.key,
-            kind=description.kind,
-        )
-        self.entity_description = description
 
     @property
     def is_on(self) -> bool | None:
@@ -233,13 +216,11 @@ class NinaSwitch(NinaEntity, SwitchEntity):
         await self._send(False)
 
     async def _send(self, on: bool) -> None:
-        try:
-            await self.entity_description.command(
+        await self._async_send(
+            self.entity_description.command(
                 self.coordinator.client, self.coordinator.data, on
             )
-        except NinaError as exc:
-            raise HomeAssistantError(f"N.I.N.A. refused the command: {exc}") from exc
-        await self.coordinator.async_request_refresh()
+        )
 
 
 class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
@@ -266,26 +247,10 @@ class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
         return None if value is None else value == self._on_value
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        await self._send(self._on_value)
+        await self._async_set_channel(self._on_value)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self._send(self._off_value)
-
-    async def _send(self, value: float) -> None:
-        if self.channel is None:
-            # The API answers `Success: true` to a `set` for a missing index.
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="channel_gone",
-                translation_placeholders={
-                    "channel": self._attr_name or str(self._index)
-                },
-            )
-        try:
-            await self.coordinator.client.set_switch_value(self._index, value)
-        except NinaError as exc:
-            raise HomeAssistantError(f"N.I.N.A. refused the command: {exc}") from exc
-        await self.coordinator.async_request_refresh()
+        await self._async_set_channel(self._off_value)
 
 
 def _usable(data: NinaData, description: NinaSwitchDescription) -> bool:
@@ -301,13 +266,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    added: set[str] = set()
     warned: set[int] = set()
 
     @callback
     def _warn_about_unplaced() -> None:
         """Warn, once per channel, when no platform can take a channel."""
-        for channel in unplaced_channels(coordinator.data):
+        for channel in channels_for(coordinator.data, None):
             if channel.index in warned:
                 continue
             warned.add(channel.index)
@@ -322,29 +286,19 @@ async def async_setup_entry(
                 channel.step_size,
             )
 
-    @callback
-    def _add_observed() -> None:
-        """Create the entities whose equipment and capability are now seen."""
-        descriptions = [
-            description
-            for description in DESCRIPTIONS
-            if description.key not in added and _usable(coordinator.data, description)
-        ]
-        channels = [
-            channel
-            for channel in channels_of(coordinator.data)
-            if channel.binary and channel.writable and channel_key(channel) not in added
-        ]
-        if not descriptions and not channels:
-            return
-        added.update(description.key for description in descriptions)
-        added.update(channel_key(channel) for channel in channels)
-        async_add_entities(
-            [NinaSwitch(coordinator, entry, d) for d in descriptions]
-            + [NinaSwitchChannel(coordinator, entry, c) for c in channels]
-        )
+    def _observed(data: NinaData) -> Iterator[tuple[str, Callable[[], SwitchEntity]]]:
+        for description in DESCRIPTIONS:
+            if _usable(data, description):
+                yield (
+                    description.key,
+                    partial(NinaSwitch, coordinator, entry, description),
+                )
+        for channel in channels_for(data, Platform.SWITCH):
+            yield (
+                channel_key(channel),
+                partial(NinaSwitchChannel, coordinator, entry, channel),
+            )
 
-    _add_observed()
+    async_add_observed(entry, async_add_entities, _observed)
     _warn_about_unplaced()
-    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
     entry.async_on_unload(coordinator.async_add_listener(_warn_about_unplaced))

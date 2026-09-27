@@ -59,6 +59,11 @@ _LOGGER = logging.getLogger(__name__)
 _TIMEOUT = aiohttp.ClientTimeout(total=10)
 _IMAGE_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
+REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
+
+# A quality makes `/image` answer JPEG rather than a far larger PNG.
+IMAGE_QUALITY = 85
+
 # Pre-handler statuses meaning the path itself is not served.
 _NOT_SERVED = (404, 405, 501)
 
@@ -218,29 +223,25 @@ class NinaClientV2:
         return int(await self._get("/image-history", {"count": "true"}) or 0)
 
     async def get_events(self, generation: str | None = None) -> list[NinaEvent]:
-        """The stored events, mapped. A malformed one is skipped, not raised.
+        """The newest `REPLAY_CAP` stored events, mapped. A malformed one is
+        skipped, not raised.
 
-        This feeds the setup replay, which runs inside
+        N.I.N.A.'s list is unbounded: no cap, eviction or pagination for the
+        life of the process. This feeds the setup replay, which runs inside
         `async_config_entry_first_refresh`, so anything escaping here fails the
         entry over one bad stored event — and the same widths guard `get_frames`
         and the socket's own dispatch.
         """
-        raw = await self._raw_event_history()
+        raw = await self._get("/event-history") or []
         if not isinstance(raw, list):
             return []
         events: list[NinaEvent] = []
-        for item in raw:
+        for item in raw[-REPLAY_CAP:]:
             try:
                 events.append(map_event(item, generation, rig_offset=self._rig_offset))
             except (AttributeError, KeyError, TypeError, ValueError) as exc:
                 _LOGGER.debug("Skipping unmappable event %s: %s", item, exc)
         return events
-
-    async def _raw_event_history(self) -> list[dict]:
-        """The stored events as sent. Package-private: the event socket replays
-        from it with its own generation bookkeeping.
-        """
-        return await self._get("/event-history") or []
 
     async def get_sequence(self) -> SequenceNode | None:
         return map_sequence(await self._get("/sequence/json"))
@@ -264,20 +265,31 @@ class NinaClientV2:
         return map_profile(await self._get("/profile/show", {"active": "true"}) or {})
 
     async def get_image_bytes(
-        self, index: int, *, quality: int = 85, auto_prepare: bool = True
+        self, index: int, *, quality: int = IMAGE_QUALITY, auto_prepare: bool = True
     ) -> bytes:
-        """Fetch a rendered frame.
-
-        `index` counts oldest-first; the newest is
-        `get_image_history_count() - 1`. Callers translate; this does not.
-        """
+        """Fetch a rendered frame; `index` counts oldest-first, as the route does."""
         params: dict[str, Any] = {"stream": "true", "quality": quality}
         if auto_prepare:
             params["autoPrepare"] = "true"
         return await self._image_bytes(f"/image/{index}", params)
 
+    async def get_recent_image_bytes(
+        self, age: int, *, quality: int = IMAGE_QUALITY, auto_prepare: bool = True
+    ) -> bytes:
+        """Fetch a rendered frame by `age`, 0 being the newest.
+
+        The count is read per call, not taken from the fold, which can lag a
+        frame behind. `NinaNoImageError` when fewer than `age + 1` are held.
+        """
+        count = await self.get_image_history_count()
+        if age >= count:
+            raise NinaNoImageError(f"{count} frames held, none at age {age}")
+        return await self.get_image_bytes(
+            count - 1 - age, quality=quality, auto_prepare=auto_prepare
+        )
+
     async def get_livestack_image_bytes(
-        self, target: str, filter_name: str, *, quality: int = 85
+        self, target: str, filter_name: str, *, quality: int = IMAGE_QUALITY
     ) -> bytes:
         """Fetch the accumulated stack for one target and filter.
 
@@ -351,20 +363,6 @@ class NinaClientV2:
         if minutes is not None:
             params["minutes"] = minutes
         await self._get("/equipment/camera/cool", params)
-
-    async def set_cooler(
-        self, on: bool, temperature: float, *, minutes: float = -1
-    ) -> None:
-        """The API has no cooler toggle: cooling starts with /cool and stops
-        with /warm, so the two branches are different endpoints.
-
-        `temperature` is the setpoint /cool requires — there is no "resume at
-        the existing target" form — and is unused when switching off.
-        """
-        if on:
-            await self.cool_camera(temperature, minutes=minutes)
-        else:
-            await self.warm_camera(minutes=minutes)
 
     async def set_dew_heater(self, on: bool) -> None:
         """The parameter is `power`, not `on` or `enabled`."""

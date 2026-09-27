@@ -84,9 +84,9 @@ CREATED ten seconds into a run, and `scheduler_waiting` carries no `SEQUENCE-*`
 event at all because its sequence started before the history window. Their
 image histories are empty, which is a rig before its first sub, not an error.
 
-Enter a whole capture with `_set_up_at`, not `advance`: it serves the three
-tier-polled endpoints that the dawn family withholds, and advancing from a dawn
-state arrives with the not-served latch already fired.
+Enter a whole capture with the `set_up_at` fixture, not `advance`: it serves
+the three tier-polled endpoints that the dawn family withholds, and advancing
+from a dawn state arrives with the not-served latch already fired.
 
 ## Adding one
 

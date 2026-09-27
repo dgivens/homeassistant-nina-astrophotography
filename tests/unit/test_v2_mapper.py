@@ -113,13 +113,13 @@ def test_flat_panel_range_comes_from_the_driver() -> None:
     """MaxBrightness 4096 on this panel; 255 on an Alnitak. Never hardcode."""
     snapshot = map_equipment_info(load("dawn_equipment_info.json"))
     assert snapshot.flat_device is not None
-    assert snapshot.flat_device.max_brightness == 4096
+    assert snapshot.flat_device.brightness_range == (0, 4096)
 
 
 def test_the_per_device_endpoint_shape_maps_too() -> None:
     """dawn_flatdevice_connected.json is a bare FlatDeviceInfo, not a snapshot."""
     panel = map_flat_device(load("dawn_flatdevice_connected.json"))
-    assert panel.max_brightness == 4096
+    assert panel.brightness_range == (0, 4096)
 
 
 @pytest.mark.parametrize(
@@ -130,8 +130,7 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("camera", "target_temperature", 20.0),
         ("camera", "battery", None),  # Battery -1 with HasBattery false
         # Per-camera, and narrower than the 0-100 a range-free reading suggests.
-        ("camera", "usb_limit_min", 40),
-        ("camera", "usb_limit_max", 100),
+        ("camera", "usb_limit_range", (40, 100)),
         ("mount", "epoch", "JNOW"),
         ("mount", "tracking_modes", ("Sidereal", "Lunar", "Solar", "Stopped")),
         ("focuser", "position", 2332),

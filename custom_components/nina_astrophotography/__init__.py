@@ -20,7 +20,6 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import (
     ConfigEntryError,
     ConfigEntryNotReady,
-    HomeAssistantError,
     ServiceValidationError,
 )
 from homeassistant.helpers import config_validation as cv
@@ -34,7 +33,6 @@ from .api.errors import (
     NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
-    NinaError,
     NinaRequestError,
     NinaUnavailableError,
 )
@@ -73,6 +71,7 @@ from .const import (
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 from .device import async_sync_devices, kind_of
+from .entity import refusals_raised
 from .frontend import (
     async_ensure_frontend_resources,
     async_register_frontend_resources,
@@ -186,19 +185,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         host=host,
         port=port,
         session=session,
+        generation=lambda: coordinator.generation,
         rig_offset=lambda: client.rig_offset,
         on_connection=_fire_connection_event,
     )
-    # Before the first refresh, which replays /event-history through the stream
-    # and sets the generation it stamps on every event.
-    coordinator.event_stream = events
     events.subscribe(coordinator.handle_event)
     events.subscribe(_fire_bus_event)
 
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = NinaRuntimeData(
-        client=client,
         coordinator=coordinator,
         instance_name=instance_name,
         events=events,
@@ -327,7 +323,7 @@ async def _entry_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaConfi
 
 async def _client_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaClientV2:
     """The client of the rig a call is aimed at."""
-    return (await _entry_for_target(hass, call)).runtime_data.client
+    return (await _entry_for_target(hass, call)).runtime_data.coordinator.client
 
 
 def _bounded(
@@ -360,23 +356,12 @@ def _bounded(
 
 
 def _service(handler: Callable[[ServiceCall], Awaitable[None]]):
-    """Re-raise `NinaError` as `HomeAssistantError`.
-
-    `NinaError` subclasses `Exception` alone, to keep the API layer free of
-    Home Assistant, and Home Assistant reports any other exception escaping a
-    handler as an integration defect.
-    """
+    """Re-raise `NinaError` as `HomeAssistantError`."""
 
     @functools.wraps(handler)
     async def wrapped(call: ServiceCall) -> None:
-        try:
+        with refusals_raised():
             await handler(call)
-        except NinaError as exc:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="command_failed",
-                translation_placeholders={"error": str(exc)},
-            ) from exc
 
     return wrapped
 
