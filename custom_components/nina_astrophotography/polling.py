@@ -1,11 +1,8 @@
-"""The polling decisions, as pure state machines.
+"""The polling decisions, as state machines with no I/O, clock or Home
+Assistant; the coordinator composes them.
 
-The coordinator owns the I/O and composes these; they own no clock, no client
-and no Home Assistant. That is what lets the unit suite drive a restart or a
-transient invariant failure as a sequence of arguments rather than a rig.
-
-Nothing here clears anything. A N.I.N.A. restart is a *generation* change, and
-the process boundary is applied downstream by filtering on that tag (§3.6).
+Nothing here clears anything: a N.I.N.A. restart is a generation change, which
+the fold filters on.
 """
 
 from collections.abc import Callable
@@ -19,20 +16,13 @@ from .api.models import EquipmentSnapshot, NinaEvent
 class EventLedger:
     """Which events the fold has already taken.
 
-    The key is `(generation, name, time)` — all the identity a replayed event
-    has, since `/event-history` stores exactly `{Event, Time}` even for the
-    `IMAGE-SAVE` the socket sent with statistics attached.
+    Keyed on `(generation, name, time)`, all the identity a replayed event
+    has: `/event-history` stores only `{Event, Time}`. The generation keeps a
+    restarted process's history, whose times can repeat, from reading as seen.
 
-    The mark is scoped to the GENERATION. A restart resets `/event-history`
-    with fresh timestamps that can be EARLIER than a retained mark — a
-    next-evening restart emits 21:00 events against an 05:30 one — so a mark
-    spanning generations would filter a whole replay away as already-seen.
-
-    `IMAGE-SAVE` is the one event that cannot be deduplicated across the live
-    and replayed paths: the socket sends it with no `Time` (it is stamped from
-    the frame's own `Date`) and `/event-history` stores it with the rig's, so
-    the two copies key differently. Consumers must therefore never COUNT
-    events — frames are counted, events are signals.
+    `IMAGE-SAVE` cannot be deduplicated: the socket's copy is stamped from the
+    frame's `Date`, the replayed one with the rig's `Time`. So events are never
+    counted; frames are.
     """
 
     def __init__(self) -> None:
@@ -49,35 +39,25 @@ class EventLedger:
         self._taken.add(self._key(event))
 
 
-# What N.I.N.A. reports only from a PHD2 event a start produces — never one a
-# stop does — so any of them after a GUIDER-STOP is a guider running again.
+# States only a start produces, so any of them after a GUIDER-STOP means the
+# guider is running again.
 _GUIDER_RUNNING = frozenset({"Looping", "Calibrating", "Guiding"})
 
-# Two copies of one stop — pushed, stamped on arrival, and replayed with the
-# rig's own `Time` — differ by the clocks' skew. Two real stops are a whole
-# restart apart.
+# A pushed and a replayed copy of one stop differ by the clocks' skew.
 _SAME_STOP = timedelta(minutes=1)
 
 
 class GuiderStopLatch:
     """Which `GUIDER-STOP` a poll has since seen the guider running past.
 
-    `GUIDER-START` is raised only once a start has settled, which with retries
-    can take minutes, so a star lost during that settle is a `LostLock` whose
-    newest guider event is still the stop. A poll that saw the guider Looping,
-    Calibrating or Guiding after the stop is what tells that from the
-    `LostLock` the stop itself left behind.
+    `GUIDER-START` fires only once a start has settled, which can take
+    minutes, so a star lost during the settle is a `LostLock` whose newest
+    guider event is still the stop. Seeing the guider running since the stop
+    tells that apart from the `LostLock` the stop left behind.
 
-    Only a poll that is at least the SECOND to find the stop pending can pass
-    it. The caller reads the stop before it fetches, so a stop pushed while a
-    poll is in flight is never judged by that poll's older snapshot — and
-    N.I.N.A. raises `GUIDER-STOP` up to half a second before its cached state
-    leaves `Guiding`, so the first poll to find the stop may still have read
-    `Guiding` from before it. A poll interval later, the cache has caught up.
-
-    A stop within `_SAME_STOP` of the passed one is the same stop, since a
-    reconnect's replay adds a second copy of it. A `GUIDER-START` clears the
-    latch, so that tolerance never merges two real stops.
+    Only the second poll to find a stop pending can pass it: N.I.N.A. raises
+    `GUIDER-STOP` up to half a second before its state leaves `Guiding`, so
+    the first may have read `Guiding` from before the stop.
     """
 
     def __init__(self) -> None:
@@ -103,14 +83,11 @@ def _same_stop(stop: datetime, other: datetime | None) -> bool:
 
 @dataclass
 class RestartDetector:
-    """The restart signals, all observed across two restarts in one day.
+    """Detects a N.I.N.A. restart.
 
-    `/application-start` is authoritative; `/image-history?count=true` going
-    backwards is a free corroboration at the same resolution, and it is what
-    still reports a restart across a tick whose `/application-start` reads
-    null. A first read has no baseline, so it is never a restart — treating it
-    as one would reseed on every startup and fire a false restart at every
-    reload.
+    `/application-start` changing is authoritative; the frame count going
+    backwards also reports one when `/application-start` reads null. A first
+    read has no baseline, so it is never a restart.
     """
 
     generation: str | None = None
@@ -124,11 +101,8 @@ class RestartDetector:
         return count < self.last_count
 
     def update(self, application_start: str | None, count: int) -> None:
-        """Record the baseline the next `observe` is measured against.
-
-        An unreadable `/application-start` is missing information, not a new
-        process, so the last value seen is kept: erasing it would leave the
-        next tick with no baseline and so blind to the restart it reports.
+        """Record the next baseline, keeping the last start time through an
+        unreadable one.
         """
         if application_start is not None:
             self.generation = application_start
@@ -136,19 +110,12 @@ class RestartDetector:
 
 
 class ReseedGuard:
-    """`?count=true`'s job: fold size ≠ count ⇒ refetch `?all=true`.
+    """Refetch `?all=true` when the fold's size differs from `?count=true`.
 
-    The mismatch must hold on two consecutive ticks. The count and the history
-    are separate requests, so a frame saved between them fails the invariant
-    transiently — and answering that immediately spends a 62 KB refetch every
-    time it happens. A match resets the count, and so does firing.
-
-    A mismatch that SURVIVES a refetch is structural, not transient: the count
-    and the fold disagree about what a frame is — an item the mapper skips, or
-    two the fold's `(date, filename)` identity merges. No refetch can close
-    that, so `settle` latches the guard at that count and it stays quiet until
-    the count moves; otherwise the invariant check reseeds every two ticks for
-    the life of the process.
+    Only after two consecutive mismatches: a frame saved between the two
+    requests mismatches once. A mismatch that survives a refetch is
+    structural (a frame the mapper skips, or two sharing an identity), so
+    `settle` silences the guard until the count moves.
     """
 
     def __init__(self, consecutive: int = 2) -> None:
@@ -180,12 +147,7 @@ class ReseedGuard:
 
 
 class TierSchedule:
-    """Per-tier due times, against an injected monotonic clock.
-
-    Six tiers, one coordinator: a single 10 s tick with per-tier due-time
-    checks inside it, not three coordinators. The measured byte budget these
-    cadences buy is in design §3.3 and in `coordinator.py`'s module docstring.
-    """
+    """Per-tier due times, checked inside the one 10 s tick."""
 
     FAST = 10.0
     SEQUENCE_IMAGING = 30.0
@@ -194,9 +156,7 @@ class TierSchedule:
     SEQUENCE_DEBOUNCE = 30.0
 
     def __init__(self, clock: Callable[[], float] | None = None) -> None:
-        # `time.monotonic` is resolved per call rather than bound as a default
-        # argument, which would capture the real function at import time and
-        # leave no seam for a test clock.
+        # Resolved per call, so a test can patch `time.monotonic`.
         self._clock = clock
         self._last: dict[str, float] = {}
         self._requested: float | None = None
@@ -207,16 +167,13 @@ class TierSchedule:
         return time.monotonic() if self._clock is None else self._clock()
 
     def _interval(self, tier: str) -> float:
-        """`KeyError` on an unknown tier: a silent default would hand a
-        misspelled caller a cadence it never asked for.
-        """
+        """The tier's interval; `KeyError` for an unknown tier."""
         if tier == "sequence":
             return self.sequence_interval
         return {"fast": self.FAST, "floor": self.FLOOR}[tier]
 
     def due(self, tier: str, now: float | None = None) -> bool:
-        # Resolved before the never-run shortcut, so an unknown tier raises
-        # rather than reading as due.
+        # First, so an unknown tier raises rather than reading as due.
         interval = self._interval(tier)
         moment = self._now() if now is None else now
         last = self._last.get(tier)
@@ -232,10 +189,9 @@ class TierSchedule:
         )
 
     def sequence_finished(self) -> None:
-        """Fall back to the idle interval — `SEQUENCE-FINISHED` fires once at
-        session end, so the cadence need not wait the five minutes the activity
-        heuristic (§6.2) takes to go quiet. Not a latch: a rising frame count
-        afterwards puts the tier back at 30 s through `set_imaging`.
+        """Drop to the idle interval now, rather than when activity goes quiet.
+
+        Not a latch: renewed activity restores 30 s through `set_imaging`.
         """
         self.sequence_interval = self.SEQUENCE_IDLE
 
@@ -244,13 +200,8 @@ class TierSchedule:
     ) -> bool:
         """True at most once per 30 s.
 
-        `TS-TARGETSTART` fires once per exposure and its payload already
-        carries what a refetch would fetch, so an undebounced refetch turns the
-        sequence tier's budget into a per-exposure cost.
-
-        `requeue` names the endpoint to hold pending when the debounce refuses:
-        the debounce is a rate limit, not a veto, and dropping a request an
-        event made loses it until the five-minute floor comes round.
+        When refused, `requeue` is held pending for a later tick rather than
+        dropped.
         """
         moment = self._now() if now is None else now
         if (
@@ -268,16 +219,13 @@ class TierSchedule:
         self._pending.add(endpoint)
 
     def take_pending(self) -> set[str]:
-        """The queued endpoints, cleared. Draining is the caller's obligation:
-        a queue that is read without clearing re-reads on every tick.
-        """
+        """Return and clear the queued endpoints."""
         pending, self._pending = self._pending, set()
         return pending
 
 
-# An IMAGE-SAVE older than this no longer counts as activity. One 600 s sub is
-# longer than the window, which is why `is_exposing` is a separate signal
-# rather than a refinement of it.
+# An IMAGE-SAVE older than this is not activity. A longer sub is covered by
+# `is_exposing`.
 _RECENT_SAVE = 300.0
 
 
@@ -287,14 +235,8 @@ def imaging(
     last_count: int,
     seconds_since_last_image_save: float,
 ) -> bool:
-    """Infer imaging from activity, never from `/sequence/json` node status.
-
-    Node `Status` persists from the loaded sequence file and from prior runs:
-    on the idle rig three nodes read RUNNING with nothing happening and zero
-    frames captured. Tree status drives only the displayed per-instruction
-    state, so gating the sequence tier on it polls at 30 s indefinitely.
-
-    All three signals are already on the fast tier, so this costs no request.
+    """Infer imaging from activity, never from `/sequence/json` node status,
+    which persists from the loaded file and earlier runs on an idle rig.
     """
     if count > last_count:
         return True

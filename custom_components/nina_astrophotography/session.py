@@ -1,20 +1,12 @@
-"""The session fold — pure, stateless, idempotent.
+"""The session fold: pure, stateless and idempotent, so push, poll and
+/event-history replay give the same result in any order.
 
-The coordinator owns the accumulated frame and event set; this module receives
-it as an argument and returns a value. That is what makes push, poll and
-/event-history replay the same operation, so arrival order stops mattering.
+Frame identity is `(Date, Filename)`. `Date` is the save time, after the
+exposure and download, so when a frame was taken is `Date - ExposureTime`.
 
-Frame identity is (Date, Filename), confirmed present and identical on both the
-push and poll paths. Date is the SAVE time — start + exposure + download — so
-anything reasoning about when a frame was taken must subtract ExposureTime.
-
-Aggregates are computed once from a deterministic sorted iteration, never
-accumulated incrementally: order-independence over floats is false under
-incremental accumulation, and frozen-dataclass equality is exact.
-
-The process boundary is the generation tag, applied by FILTERING. Clearing races
-a concurrent poll, produces a false positive on the first read when no baseline
-exists, and loses events arriving during the refetch.
+Aggregates are computed from a sorted iteration, never accumulated: float sums
+depend on order. A N.I.N.A. restart is handled by filtering on the generation
+tag, never by clearing.
 """
 
 from collections.abc import Callable, Container, Iterable, Sequence
@@ -40,39 +32,24 @@ _STACK_UPDATED = "STACK-UPDATED"
 # Announced with the time it expects to resume; nothing announces its end.
 _SCHEDULER_WAIT_STARTED = "TS-WAITSTART"
 _SEQUENCE_FINISHED = "SEQUENCE-FINISHED"
-# Target Scheduler announces a target twice: NEWTARGETSTART when it changes,
-# TARGETSTART once per exposure. Both name it, so both count.
+# NEWTARGETSTART fires on a change, TARGETSTART once per exposure; both name it.
 _TARGET_STARTED = frozenset({"TS-TARGETSTART", "TS-NEWTARGETSTART"})
 
-# What ends a wait, there being no TS-WAITSTOP: the scheduler moving on, or the
-# sequence stopping — `SEQUENCE-FINISHED` fires on a manual stop too.
+# There is no TS-WAITSTOP. SEQUENCE-FINISHED fires on a manual stop too.
 _WAIT_ENDED_BY = _TARGET_STARTED | {"SEQUENCE-FINISHED"}
 
-# Not GUIDER-DITHER: N.I.N.A. raises it even for a dither it skipped because
-# the guider was not guiding, so it says nothing about the guider running.
+# Not GUIDER-DITHER, which N.I.N.A. raises even for a dither it skipped.
 _GUIDER_STARTED = "GUIDER-START"
 _GUIDER_STOPPED = "GUIDER-STOP"
 _GUIDER_STARTED_OR_STOPPED = frozenset({_GUIDER_STARTED, _GUIDER_STOPPED})
 
-# Only a fallback: the rig's own `FocuserSettings.AutoFocusTimeoutSeconds` is
-# polled from /profile/show and is 600 on the captured rig, so folding against
-# this would call a seven-minute run failed.
+# Used only until the profile's `AutoFocusTimeoutSeconds` is read.
 DEFAULT_AUTOFOCUS_TIMEOUT = 300.0
 
-# Events that cancel a running autofocus without it reporting: the sequence
-# ending, a park, any device dropping, or the sequencer moving on to the next
-# exposure. SAFETY-CHANGED counts only when it reports unsafe.
-#
-# `MOUNT-PARKED` is the one name here no capture holds — the full-night corpus
-# has MOUNT-HOMED and no park — so if the wire spells it otherwise, a park
-# during a hung run reads as a failure rather than an abort. Harmless to keep
-# either way: a name the rig never sends matches nothing.
-#
-# Read as signals, never counted. IMAGE-SAVE is the one event that cannot be
-# deduplicated across the live and replayed paths — the socket sends it with no
-# `Time`, `/event-history` with the rig's — so the set can hold two copies of
-# one save. Frames are what get counted; events only say that something
-# happened.
+# Events that end a running autofocus without it reporting; also any
+# `-DISCONNECTED`, and SAFETY-CHANGED to unsafe. `MOUNT-PARKED` is from the
+# spec, unconfirmed on the wire. Signals only, never counted: IMAGE-SAVE can
+# appear twice, once pushed and once replayed.
 _INTERRUPTIONS = frozenset({"SEQUENCE-FINISHED", "MOUNT-PARKED", "IMAGE-SAVE"})
 
 _RECENT_LIGHTS_LIMIT = 60
@@ -111,11 +88,7 @@ def _integration(frames: Sequence[Frame]) -> float:
 def _breakdown(
     lights: Sequence[Frame], key: Callable[[Frame], str | None]
 ) -> tuple[TargetBreakdown, ...]:
-    """One row per named group, sorted by name.
-
-    A light whose group name is missing gets no row: a row headed by nothing
-    tells a dashboard reader less than its absence does.
-    """
+    """One row per named group, sorted by name; unnamed lights get none."""
     groups: dict[str, list[Frame]] = {}
     for frame in lights:
         name = key(frame)
@@ -141,12 +114,11 @@ def _interrupts(event: NinaEvent) -> bool:
 def _autofocus(
     events: Iterable[NinaEvent], moment: datetime, timeout_seconds: float
 ) -> AutoFocusState:
-    """There is no autofocus-failed event; a failure is an unanswered start.
+    """A failed autofocus is a start unanswered past the timeout; there is no
+    failure event.
 
-    An interruption landing inside the timeout window aborts the run — nothing
-    was wrong with the focuser. One landing after the window has closed shows
-    the sequencer carried on past a hung run: it clears `running_since` but the
-    failure verdict stands.
+    An interruption inside the timeout aborts the run, which is no failure.
+    One after it clears `running_since`, but the verdict stands.
     """
     events = list(events)
     finished = max(
@@ -184,16 +156,12 @@ def fold(
 ) -> SessionStats:
     """Frames and events in, one session snapshot out.
 
-    `now` is the clock the session window and the autofocus timeout are measured
-    against; with none supplied it is the newest thing observed, which makes the
-    fold a function of its arguments alone and so testable against a fixture.
-    A caller that wants `autofocus.failed` must pass a real clock: a hung
-    autofocus produces nothing newer, so under the derived default the STARTING
-    event is itself the newest thing and no time can ever have elapsed.
+    `now` defaults to the newest thing observed, which keeps the fold a pure
+    function of its arguments; `autofocus.failed` needs a real clock, since a
+    hung run produces nothing newer.
 
-    The generation filter runs BEFORE the dedupe. A restart leaves a pre-restart
-    and a refetched copy of the same `(date, filename)` in the store, and
-    deduplicating first would let the stale copy win and then be discarded.
+    The generation filter runs before the dedupe, or a stale pre-restart copy
+    of a frame could win and then be filtered out.
     """
     kept_frames = list(
         {_identity(f): f for f in frames if f.generation == generation}.values()
@@ -249,25 +217,16 @@ def _newest(
 def scheduler_wait(
     events: Iterable[NinaEvent], generation: str | None, *, now: datetime
 ) -> datetime | None:
-    """When the wait Target Scheduler is currently in ends, or None if it is
-    not waiting.
+    """When Target Scheduler's current wait ends, or None if it is not waiting.
 
-    `TS-WAITSTART` announces the time it expects to resume and **there is no
-    matching stop event**, so the wait is ended by what follows it: a target
-    start, a `SEQUENCE-FINISHED` (a stop leaves the announcement in the history
-    still naming a future time), or the time itself passing. Target Scheduler
-    re-announces a wait it re-plans, so the newest is the live one.
-
-    It names no reason. Darkness, a target's altitude, moon separation and a
-    meridian window all arrive as the same event, so nothing above this can say
-    why the rig is waiting.
+    `TS-WAITSTART` names its end time and has no stop event, so a target
+    start, a `SEQUENCE-FINISHED`, or the time passing ends it. A re-planned
+    wait is re-announced, so the newest is live. The event names no reason.
     """
     wait = _newest(events, {_SCHEDULER_WAIT_STARTED}, generation)
     if wait is None or wait.wait_end is None or wait.wait_end <= now:
         return None
     ended = _newest(events, _WAIT_ENDED_BY, generation)
-    # Strictly after: the announcement and the event that ends it never share a
-    # timestamp, and a wait that ended itself would be a contradiction.
     if ended is not None and ended.time > wait.time:
         return None
     return wait.wait_end
@@ -278,13 +237,8 @@ def latest_stack(
 ) -> StackState | None:
     """The stack `STACK-UPDATED` last reported, or None if none has.
 
-    Generation-filtered like the fold, so a stack from the previous N.I.N.A.
-    process is not offered as the current one — the plugin's stacks do not
-    survive a restart.
-
-    A payload missing `Target` or `Filter` yields None rather than a pair with
-    an empty half: both are path segments, and `/livestack/image//O` is a route
-    that does not exist.
+    Stacks do not survive a N.I.N.A. restart, hence the generation filter.
+    `Target` and `Filter` are both path segments, so neither may be empty.
     """
     newest = _newest(events, {_STACK_UPDATED}, generation)
     if newest is None:
@@ -299,29 +253,19 @@ def latest_stack(
 
 
 _RECENT_FRAMES_LIMIT = 20
-"""Comfortably covers a dashboard card's thumbnail strip; nowhere near a
-Target Scheduler night's frame count, so this stays cheap every tick."""
+"""Covers a card's thumbnail strip."""
 
 
 def recent_frames(frames: Iterable[Frame], generation: str | None) -> tuple[Frame, ...]:
-    """The newest frames this process saved, of any type, newest first,
-    bounded — what a dashboard's thumbnail strip and ADU histogram need.
-
-    `heapq.nlargest`, not a full sort: a Target Scheduler night's frame count
-    only has to be walked once, not ordered end to end for 20 of them.
-    """
+    """The newest frames this process saved, of any type, newest first."""
     kept = (f for f in frames if f.generation == generation)
     return tuple(heapq.nlargest(_RECENT_FRAMES_LIMIT, kept, key=_identity))
 
 
 def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | None:
-    """The newest frame this process saved, of any type — what `image.last_frame`
-    renders.
+    """The newest frame this process saved, of any type.
 
-    Deliberately outside the session window that `fold` applies: the rig's
-    image history does not roll over at local noon, so the frame the route
-    renders at 13:00 is still last night's. The single-frame case of
-    `recent_frames` — one ordering rule, not two.
+    Outside the session window: the image history does not roll over.
     """
     newest = recent_frames(frames, generation)
     return newest[0] if newest else None
@@ -330,8 +274,8 @@ def newest_frame(frames: Iterable[Frame], generation: str | None) -> Frame | Non
 def latest_target(events: Iterable[NinaEvent], generation: str | None) -> str | None:
     """The target the newest `TS-*TARGETSTART` named, or None if none has.
 
-    Target Scheduler only: a plain N.I.N.A. sequence emits no such event and
-    names its target in the `/sequence/json` tree instead (`sequence.py`).
+    Target Scheduler only; a plain sequence names its target in
+    `/sequence/json` (`sequence.py`).
     """
     start = _newest(events, _TARGET_STARTED, generation)
     if start is None:
@@ -345,16 +289,10 @@ def pending_guider_stop(
 ) -> datetime | None:
     """When the newest `GUIDER-STOP` was, if no `GUIDER-START` has followed it.
 
-    `GuiderInfo.State` alone cannot say. It is N.I.N.A.'s cache of PHD2's
-    events, and a stop that interrupts a guide exposure ends with PHD2 clearing
-    its lock position AFTER reporting looping stopped — which N.I.N.A. maps to
-    `LostLock` and keeps until the next start. A guider that has been stopped
-    then reads exactly like one hunting for a lost star.
-
-    None when neither event is in the history, which is the side that never
-    offers to restart a guider mid-exposure. The time is the stop's identity:
-    `polling.GuiderStopLatch` keys on it to tell a stop the guider has since
-    been seen running past.
+    A stop that interrupts a guide exposure can leave `GuiderInfo.State` at
+    `LostLock` until the next start (PHD2 clears its lock position after
+    reporting looping stopped), which reads like a guider hunting for its
+    star. The time identifies the stop to `polling.GuiderStopLatch`.
     """
     newest = _newest(events, _GUIDER_STARTED_OR_STOPPED, generation)
     return (
