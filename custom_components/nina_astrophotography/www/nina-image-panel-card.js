@@ -124,7 +124,6 @@ const STYLE = `
     padding: 0;
   }
 
-  /* ── Header ── */
   .header {
     display: flex; align-items: center; gap: 10px;
     padding: 12px 16px 10px;
@@ -141,7 +140,6 @@ const STYLE = `
   }
   .header .badge.warn { background: rgba(244,162,97,0.15); color: var(--warn); border-color: rgba(244,162,97,0.3); }
 
-  /* ── Image container ── */
   .img-wrap {
     position: relative;
     background: #000;
@@ -170,7 +168,6 @@ const STYLE = `
   .img-wrap .spinner.active { display: block; }
   @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
 
-  /* ── Stats overlay ── */
   .overlay {
     position: absolute; bottom: 0; left: 0; right: 0;
     padding: 10px 12px 8px;
@@ -191,7 +188,6 @@ const STYLE = `
   .overlay.stale .stat-pill:not(.tag), .overlay.stale .target { opacity: 0.5; }
   .stat-pill.tag { color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
 
-  /* ── Exposing indicator ── */
   .exposing-bar {
     position: absolute; top: 0; left: 0; right: 0;
     height: 2px;
@@ -203,7 +199,6 @@ const STYLE = `
   .exposing-bar.active { display: block; }
   @keyframes expose-pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
 
-  /* ── No image state ── */
   .no-image {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-height: 180px; gap: 10px;
@@ -213,7 +208,6 @@ const STYLE = `
   .no-image svg { opacity: 0.3; }
   .no-image .hint { font-size: 0.68rem; opacity: 0.7; text-align: center; }
 
-  /* ── Histogram ── */
   .histogram-wrap {
     padding: 6px 12px 4px;
     border-top: 1px solid var(--border);
@@ -230,7 +224,6 @@ const STYLE = `
   }
   canvas.hist-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-  /* ── Stats row ── */
   .stats-row {
     display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 1px; background: var(--border);
@@ -246,7 +239,6 @@ const STYLE = `
   .stat-cell .val.warn { color: var(--warn); }
   .stats-row.stale .stat-cell .val { opacity: 0.5; }
 
-  /* ── Image strip ── */
   .strip-wrap {
     padding: 8px 10px 10px;
     border-top: 1px solid var(--border);
@@ -288,7 +280,6 @@ const STYLE = `
     background: rgba(0,0,0,0.65); border-radius: 2px; padding: 0 2px;
   }
 
-  /* ── Fullscreen modal ── */
   .modal-bg {
     display: none;
     position: fixed; inset: 0; z-index: 9999;
@@ -315,10 +306,10 @@ class NinaImagePanelCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._currentIndex = 0;   // 0 = latest; the frame on screen, set once it has loaded
+    this._currentIndex = 0; // 0 = latest; set once the frame has loaded
     this._totalFrames  = 0;
     this._loading = false;
-    this._historyMeta = [];   // [{date, filename, image_type, filter, mean, median, min, max}]
+    this._historyMeta = []; // {date, filename, image_type, filter, mean, median, min, max}
     this._hasImage = false;
     this._loadToken = 0;
     this._rendered = false;
@@ -375,9 +366,8 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   _update() {
-    // On the first render, and whenever a new config or a registry change
-    // points the card at another entity — which may be another rig's. Past a
-    // load still in flight: that one is for the old entity.
+    // On the first render, and whenever a config or registry change points
+    // the card at another entity, which may be another rig's.
     const imageEntity = this._entityId();
     if (imageEntity !== this._imageEntity) {
       this._imageEntity = imageEntity;
@@ -449,13 +439,8 @@ class NinaImagePanelCard extends HTMLElement {
   // A duration in `unit`, whichever unit the sensor is shown in; 0 for none.
   _duration(id, unit) { return quantityIn(this._hass, id, unit) || 0; }
 
-  // The resolved entity id for a `translation_key`, falling back to a prefixed
-  // `slug` when there is nothing to resolve: an entity with no translation key,
-  // a disabled one, or a rig the resolver cannot identify.
-  //
-  // `slug` is the entity-id suffix — the device name plus the entity name — so
-  // it is not always the key: the camera's exposing sensor is keyed
-  // `camera_is_exposing`.
+  // Falls back to a prefixed `slug` when nothing resolves. The camera's
+  // exposing sensor is keyed `camera_is_exposing`.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._config.prefix}_${slug}`;
   }
@@ -501,8 +486,6 @@ class NinaImagePanelCard extends HTMLElement {
   // fetch of our own, and no reversal needed.
   _recentFrames() { return this._attr(this._entityId(), "recent_frames", []); }
 
-  // ── Signed, same-origin image URLs ──────────────────────────────────────
-
   // The unsigned path: a stable, cache-key-free description of one frame.
   _imagePath(index, forStrip = false) {
     const cfg = this._config;
@@ -524,8 +507,6 @@ class NinaImagePanelCard extends HTMLElement {
     });
     return signed;
   }
-
-  // ── DOM construction ──────────────────────────────────────────────────
 
   _buildDOM() {
     const cfg = this._config;
@@ -586,7 +567,6 @@ class NinaImagePanelCard extends HTMLElement {
           </div>
         ` : ""}
 
-        <!-- Fullscreen modal -->
         <div class="modal-bg" id="modal">
           <button class="modal-close" id="modal-close">✕</button>
           <img id="modal-img" alt="Full image" />
@@ -596,7 +576,6 @@ class NinaImagePanelCard extends HTMLElement {
 
     hideUntilLoaded(this.shadowRoot.getElementById("main-img"));
 
-    // Image click → fullscreen
     this.shadowRoot.getElementById("img-wrap").addEventListener("click", () => {
       if (this._hasImage) this._openModal().catch(() => {});
     });
@@ -605,8 +584,6 @@ class NinaImagePanelCard extends HTMLElement {
     });
     this.shadowRoot.getElementById("modal-close").addEventListener("click", () => this._closeModal());
   }
-
-  // ── Image loading ─────────────────────────────────────────────────────
 
   async _loadImage(index, silent = false) {
     if (this._loading && !silent) return;
@@ -665,7 +642,7 @@ class NinaImagePanelCard extends HTMLElement {
       // Held: the lost link is the likely cause; keep the frame on screen.
       if (this._grace.holding) return;
       this._hasImage = false;
-      // Show no-image state only if this is the latest frame (not a strip click)
+      // Only for the latest frame; a strip click leaves the frame shown.
       if (index === 0) {
         img.style.display = "none";
         noImg && (noImg.style.display = "flex");
@@ -674,8 +651,6 @@ class NinaImagePanelCard extends HTMLElement {
       if (token === this._loadToken) this._loading = false;
     }
   }
-
-  // ── Strip loading ─────────────────────────────────────────────────────
 
   async _loadStrip() {
     const count = this._config.strip_count;
@@ -725,7 +700,6 @@ class NinaImagePanelCard extends HTMLElement {
         thumb.appendChild(tag);
       }
 
-      // Filter label from the recent-frames metadata
       const filterName = this._historyMeta[i]?.filter ?? "";
       if (filterName) {
         const lbl = document.createElement("div");
@@ -759,8 +733,6 @@ class NinaImagePanelCard extends HTMLElement {
       else t.removeAttribute("aria-current");
     });
   }
-
-  // ── Histogram ─────────────────────────────────────────────────────────
 
   _drawHistogram() {
     const canvas = this.shadowRoot?.getElementById("hist-canvas");
@@ -796,20 +768,19 @@ class NinaImagePanelCard extends HTMLElement {
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
 
-    // Simplified gaussian histogram from min/max/mean/median
+    // A simplified gaussian histogram from min/max/mean/median.
     const range = max - min;
     const bars = 60;
     const sigma = (max - min) * 0.18;
     const vals = Array.from({ length: bars }, (_, i) => {
       const x = min + (i / bars) * range;
       const g = Math.exp(-0.5 * ((x - mean) / sigma) ** 2);
-      // Slight skew toward shadows (typical astrophoto histogram)
+      // A slight skew toward shadows, typical of an astrophoto histogram.
       const skew = 1 + 0.4 * Math.exp(-0.5 * ((x - min) / (range * 0.15)) ** 2);
       return g * skew;
     });
     const peakVal = Math.max(...vals);
 
-    // Gradient fill
     const grad = ctx.createLinearGradient(0, 0, W, 0);
     grad.addColorStop(0,   "rgba(60,80,180,0.7)");
     grad.addColorStop(0.4, "rgba(100,120,220,0.8)");
@@ -829,7 +800,6 @@ class NinaImagePanelCard extends HTMLElement {
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Mean line
     const meanX = ((mean - min) / range) * W;
     ctx.beginPath();
     ctx.moveTo(meanX, 0); ctx.lineTo(meanX, H);
@@ -837,7 +807,6 @@ class NinaImagePanelCard extends HTMLElement {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Median line
     const medX = ((median - min) / range) * W;
     ctx.beginPath();
     ctx.moveTo(medX, 0); ctx.lineTo(medX, H);
@@ -847,13 +816,10 @@ class NinaImagePanelCard extends HTMLElement {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Saturation zone
     const satX = ((max * 0.95 - min) / range) * W;
     ctx.fillStyle = "rgba(231,111,81,0.15)";
     ctx.fillRect(satX, 0, W - satX, H);
   }
-
-  // ── Overlay pills ─────────────────────────────────────────────────────
 
   _updateOverlay() {
     const overlay = this.shadowRoot?.getElementById("overlay");
@@ -973,8 +939,6 @@ class NinaImagePanelCard extends HTMLElement {
     }
   }
 
-  // ── Modal ─────────────────────────────────────────────────────────────
-
   async _openModal() {
     const modal    = this.shadowRoot?.getElementById("modal");
     const modalImg = this.shadowRoot?.getElementById("modal-img");
@@ -1037,8 +1001,8 @@ class NinaImagePanelCard extends HTMLElement {
   }
 }
 
-// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
-// defining the same tag would otherwise throw and abort this whole module.
+// Guarded: a stale 1.4.5 `/local/` resource defining the same tag would
+// otherwise throw and abort the rest of this module.
 if (!customElements.get("nina-image-panel-card")) {
   customElements.define("nina-image-panel-card", NinaImagePanelCard);
 }
