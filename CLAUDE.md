@@ -33,11 +33,10 @@ The `justfile` wraps all of these; `just ci` runs everything CI checks.
 git ref to another against a N.I.N.A. and holds the result to
 `docs/2.0-renames.md`; its README has the commands.
 
-`docs/windows-rig-design.md` is the proposed design for a simulated rig: a
-disposable Windows VM running stable or nightly N.I.N.A. against simulators.
-Only the macOS arm64 host is to be built. Other hosts are designed for, so keep
-host assumptions out of its provisioning scripts, fixtures and `tests/rig/`, the
-test tier it defines. Nothing in it is built yet.
+`docs/windows-rig-design.md` (proposed) designs the simulated rig: a disposable
+Windows VM on macOS/Apple silicon running stable or nightly N.I.N.A. against
+simulators. It also defines the `tests/rig/` tier. Host-specific code belongs
+only in its host backend (§4.1 there).
 
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
 collection; always name the suite.

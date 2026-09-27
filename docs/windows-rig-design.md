@@ -1,35 +1,56 @@
 # Simulated rig — design
 
-**Rev 3** · 2026-09-27 · **status: proposed** — nothing here is built yet
+**Rev 1** · 2026-09-27 · **status: proposed**
 
-A disposable Windows VM running N.I.N.A. against simulated equipment. Any
-contributor can build it, on Windows, Linux or macOS, amd64 or arm64. It exists to
-test N.I.N.A. and the Advanced API end to end, commands included, without a
-separate PC. It runs stable or nightly N.I.N.A. and Advanced API. §5 defines the
-test tier that uses it.
+The simulated rig is a disposable Windows VM running N.I.N.A., the Advanced API
+and PHD2 against simulated equipment. It lets the integration be tested end to end,
+commands included, without a Windows PC set aside for the purpose. It runs either
+of two channels, stable or nightly (§0). §5 defines the `tests/rig/` test tier
+that uses it.
 
-**Scope.** Only **macOS arm64** is built. Other hosts are **designed for, not
-built**: nothing here may assume the host, so adding one later means a new backend
-(§4.1), not a redesign. No stage builds another host.
+The supported host is **macOS on Apple silicon**. Nothing outside the host
+backend depends on the host, so another host can be added without redesigning
+the rest (§4.1).
 
-Normative text is plain. Justification appears in *Rationale* blocks.
-**Amendment rule:** a PR that contradicts this document amends it in the same PR
-and bumps the rev.
+**How to read this document.** Normative text is plain. Justification appears in
+*Rationale* blocks and can be skipped when implementing.
+
+**Amendment rule.** Once this document is accepted, a change to it:
+- bumps the rev;
+- adds an entry to §11 saying what changed and why;
+- moves any decision it replaces into §11.1 rather than deleting it.
+
+A PR that contradicts the document amends it in the same PR.
 
 ---
 
+## 0. Glossary
+
+| Term | Meaning |
+|---|---|
+| the rig | The VM this document designs |
+| host | The machine the rig's VM runs on |
+| guest | Windows, running inside the VM |
+| channel | Which pair of N.I.N.A. and Advanced API versions the rig runs. **Stable** is a pinned release of each. **Nightly** is N.I.N.A.'s newest nightly build with the Advanced API's newest pre-release |
+| simulator profile | A N.I.N.A. profile whose every device slot is a simulator. Any command may be sent to a N.I.N.A. running one |
+| the live rig | The operator's real observatory. Read-only (CLAUDE.md) |
+| the operator | Whoever runs the live rig, and owns the simulator profile the fixtures come from |
+| FakeRig | `tests/scenarios/`: serves recorded responses to the `tests/ha/` suite |
+| OmniSim | ASCOM's simulator for every device type, bundled with ASCOM Platform 7 |
+| Evaluation ISO | Microsoft's free Windows 11 Enterprise Evaluation image: no product key, valid 90 days |
+
 ## 1. Purpose and non-goals
 
-Today, exercising the integration against a real N.I.N.A. means a spare Windows PC
-with N.I.N.A., a simulator profile, ASCOM and PHD2 installed by hand. Only the
-maintainer has one, its address changes, and it runs one version. This rig replaces
-that PC with something reproducible:
+Testing the integration against a real N.I.N.A. otherwise needs a spare Windows PC:
+N.I.N.A., a simulator profile, ASCOM Platform and PHD2, all installed by hand. That
+PC runs one version at a time, cannot be reset, and is not something another
+contributor can reproduce. The rig replaces it:
 
-- **Any contributor can build it.** It runs on the host they already have, and
-  needs no Windows licence.
+- **It is reproducible.** One command builds it from a public ISO and the
+  repository, with no Windows licence.
 - **It is disposable.** Every start begins from the same state.
-- **It runs two channels:** stable, and nightly N.I.N.A. with the nightly Advanced
-  API. Nightly is where the next break will come from (§9).
+- **It runs both channels.** Nightly is where the Advanced API's next breaking
+  change will appear first (§9).
 
 ### 1.1 Where it sits
 
@@ -37,78 +58,72 @@ that PC with something reproducible:
 |---|---|---|---|
 | `tests/unit/` | nothing | — | our pure logic |
 | `tests/ha/` | FakeRig: recorded bytes | recorded in `rig.sent`, never executed | the integration against real wire data |
-| **`tests/rig/`** (§5) | **this rig: real N.I.N.A., simulated devices** | **executed** | commands, events and state changes end to end |
-| live rig | the operator's observatory | **never**, read-only | captures only |
+| **`tests/rig/`** (§5) | **the rig: real N.I.N.A., simulated devices** | **executed** | commands, events and state changes end to end |
+| the live rig | real equipment | **never** | captures only |
 
 ### 1.2 Non-goals
 
-- **No CI, for now.** Standard GitHub-hosted runners expose no KVM, and only
-  larger runners support nested virtualisation (§3.1). The design leaves the door
-  open: the Linux host path is the one CI would use.
-- **No redistribution.** The Evaluation licence does not allow sharing Windows
-  images. Every contributor downloads their own ISO and builds their own image.
-- **No replacement for captures from the real rig.** Simulators do not reproduce
-  the real rig's quirks: a station's `"NaN"` channels, a disconnected panel's
-  `0 / 0` range.
-- **No version matrix.** Two channels.
+- **CI.** Standard GitHub-hosted runners have no KVM, and only larger runners
+  support nested virtualisation (§3.1). A Linux host backend (§4.1) would be the
+  starting point if that changes.
+- **Hosts other than macOS on Apple silicon.** The design keeps room for them
+  (§4.1) but does not provide them.
+- **Redistributing images.** The Evaluation licence does not allow it. Each user
+  downloads the ISO and builds their own image.
+- **Replacing captures from the live rig.** Simulators do not reproduce real
+  hardware's quirks: a station's `"NaN"` channels, a disconnected panel's `0 / 0`
+  range.
+- **A version matrix.** There are two channels.
 
 ## 2. Decisions
 
 | # | Decision | Choice |
 |---|---|---|
-| W-01 | Hosts | **Built: macOS arm64** (QEMU + HVF). Designed for, not built: macOS amd64, Linux (QEMU + KVM), Windows (Hyper-V) |
-| W-02 | Guest architecture | **Matches the host.** An x64 guest on amd64 runs natively; an ARM64 guest on arm64 runs the x64 software under Prism emulation |
-| W-03 | Windows media | **Windows 11 Enterprise Evaluation** (x64 or ARM64, 25H2). No key, 90 days, and each contributor downloads their own |
-| W-04 | Build | **One Packer template.** Its `qemu` source (TPM from swtpm) is the only one built. A future `hyperv-iso` source (built-in vTPM) would run the same provisioners. Adapted from [mac-vms `windows-11-arm64`][macvms] (MIT, notice kept) |
-| W-05 | Answer file | `Autounattend.xml` rendered from a template. Guest architecture (`processorArchitecture`) and image index are variables, set for ARM64 only. No product key |
+| W-01 | Host | **macOS on Apple silicon**, running QEMU with HVF acceleration |
+| W-02 | Guest | **Windows 11 ARM64.** N.I.N.A., OmniSim and PHD2 are x64 and run under Windows' x64 emulation (Prism) |
+| W-03 | Windows media | **The Evaluation ISO, ARM64, 25H2**, downloaded by each user |
+| W-04 | Build | **Packer**, using its QEMU builder with swtpm for the TPM. Adapted from [mac-vms `windows-11-arm64`][macvms] (MIT, notice kept) |
+| W-05 | Answer file | `Autounattend.xml` is rendered from a template, with guest architecture and image index as variables. No product key |
 | W-06 | Transport | WinRM (elevated) for Packer's provisioners; OpenSSH after that |
 | W-07 | Generalisation | **No sysprep, no identity seeding.** The image boots straight into an autologon session |
-| W-08 | Portable core | `provision/*.ps1` turns **any** clean Windows 11 into the rig, x64 or ARM64. Packer is one caller of it; a contributor's own Windows machine or VM is another |
-| W-09 | Contents | ASCOM Platform **≥ 7.1 Update 3** (bundles OmniSim), PHD2 x64, N.I.N.A., and the Advanced API and Livestack plugins |
-| W-10 | Device selection | Every slot uses an **OmniSim COM ProgID**, not Alpaca discovery |
+| W-08 | Provisioning | `provision/*.ps1` turns **any** clean Windows 11, x64 or ARM64, into the rig. Packer calls it; so can a Windows VM the user made themselves |
+| W-09 | Contents | ASCOM Platform **≥ 7.1 Update 3** (which bundles OmniSim), PHD2 x64, N.I.N.A., and the Advanced API and Livestack plugins |
+| W-10 | Device selection | Every device slot uses an **OmniSim COM ProgID**, not Alpaca discovery |
 | W-11 | Start-up | A logon task starts **N.I.N.A. only**. COM activation starts OmniSim, and N.I.N.A. starts PHD2 |
-| W-12 | Profiles | The operator's simulator N.I.N.A. profile and PHD2 config, **committed as fixtures** under `tests/fixtures/rig/` |
-| W-13 | Image layers | `base` ← `stable-<ver>` / `nightly-<build>` ← `run`: qcow2 overlays under QEMU, differencing VHDX under Hyper-V (§4.3) |
-| W-14 | Expiry | `rig.py up` warns at 80 days since the base image was built, and refuses at 90 |
-| W-15 | Tooling | `tools/windows-rig/rig.py`: one command set over a backend seam, with one backend, `qemu` on macOS. It refuses other hosts with a pointer to W-08. `just` recipes wrap it. Pyright covers it |
-| W-16 | Test tier | `tests/rig/` needs `--rig HOST:PORT` and `--simulated`, and checks the rig itself is simulated before sending any command (§5) |
-| W-17 | Captures | Both channels are captured **on the same VM** and diffed by **structure**, not values. `capture_fixtures.py --out` keeps them out of `tests/fixtures/` |
+| W-12 | Profiles | The operator's simulator N.I.N.A. profile and PHD2 settings are **committed as fixtures** in `tests/fixtures/rig/` |
+| W-13 | Image layers | Three qcow2 layers: `base`, then a layer per installed channel version, then `run` for one session (§4.3) |
+| W-14 | Expiry | `rig.py up` warns at 80 days after the base image was built, and refuses at 90 |
+| W-15 | Tooling | `tools/windows-rig/rig.py`, with its host-specific code confined to one backend (§4.1). `just` recipes wrap it. Pyright covers it |
+| W-16 | Test tier | `tests/rig/` needs `--rig HOST:PORT` and `--simulated`, and checks the rig is simulated before sending any command (§5) |
+| W-17 | Captures | Both channels are captured **on the same rig** and compared by **structure**, not values. `capture_fixtures.py --out` keeps these captures out of `tests/fixtures/` |
 
-> *Rationale (W-01, W-02).* The maintainer's host is the only one anyone will
-> run, so it is the only one worth building. But a future contributor's hardware
-> decides both the hypervisor and the architecture. Matching the guest to the host
-> means virtualisation everywhere and emulation nowhere except in the guest's own
-> x64 layer on ARM64. On amd64 hosts, N.I.N.A. would run exactly as on a real
-> imaging PC. The macOS work keeps that open by keeping the host out of the
-> provisioning scripts, the fixtures and `tests/rig/`.
+> *Rationale (W-01, W-02).* The rig is built for the host the project's
+> maintainer uses. The guest has to match the host's architecture to be
+> virtualised rather than emulated, so on Apple silicon it is ARM64. The equipment
+> software is x64 only, so it runs under Prism inside that guest.
 
-> *Rationale (W-03, W-04).* No Windows licence is bought. The Evaluation image
-> expires after 90 days, and once expired it shuts down every hour. Rebuilding
-> about every 80 days is therefore routine, and a routine rebuild has to be one
-> command on every host.
->
-> Packer can drive both QEMU and Hyper-V from a single template, so a future
-> Windows host reuses the provisioners as written. That future host would use
-> Hyper-V rather than QEMU: it has a built-in virtual TPM, and swtpm is not
-> supported on Windows.
+> *Rationale (W-03, W-04, W-14).* No Windows licence is needed. The Evaluation
+> image expires after 90 days, and once expired it shuts down every hour.
+> Rebuilding about every 80 days is therefore routine, and a routine rebuild has
+> to be one command. Packer makes it one.
 
 > *Rationale (W-07).* mac-vms runs sysprep and injects an identity so that one
-> image can be cloned into many VMs. This rig runs one throwaway overlay at a
-> time, so generalising buys nothing, and it would force the out-of-box setup
-> screens on every boot.
+> image can be cloned into many VMs. The rig runs one throwaway layer at a time, so
+> generalising buys nothing. It would also force Windows' first-boot setup screens
+> on every start.
 
-> *Rationale (W-08).* The provisioning scripts, not Packer, are the durable part.
-> Someone whose platform no backend supports yet can still run them in a Windows
-> VM of their own and get the same rig, without the lifecycle.
+> *Rationale (W-08).* The provisioning scripts are the part other hosts would
+> reuse. Someone on a host without a backend can run them in a Windows VM of their
+> own and get the same rig, without `rig.py`'s lifecycle.
 
 > *Rationale (W-10, W-11).* OmniSim registers each device as a COM LocalServer32
-> (§3.2), so the first `CreateInstance` starts the process. With the Alpaca
-> discovery route, OmniSim has to be running already, which adds something to
-> start and to wait for.
+> (§3.2), so Windows starts it when N.I.N.A. first creates the device. Alpaca
+> discovery only finds an OmniSim that is already running, which would add a
+> process to start and wait for.
 
-> *Rationale (W-17).* Capturing two channels on two machines would mix machine
-> differences into version differences. Values differ between any two runs, so the
-> diff compares key paths and types.
+> *Rationale (W-17).* Capturing the two channels on different machines would mix
+> machine differences into version differences. Values differ between any two
+> runs, so the comparison is of key paths and types.
 
 ## 3. Verified findings
 
@@ -124,13 +139,6 @@ that PC with something reproducible:
 - **The Evaluation ISO** is published for x64 and ARM64 at 25H2. It needs a
   registration form to download, lasts 90 days, and shuts down hourly once
   expired ([Evaluation Center][evalcenter]).
-- **Packer's `hyperv-iso` builder** has the options this rig needs
-  ([docs][packer-hyperv]):
-  - Generation 2 VMs;
-  - `enable_tpm` and `enable_secure_boot`, with a `MicrosoftWindows` template;
-  - `cd_files` for the answer file, since Generation 2 has no floppy.
-- **Hyper-V is not available on Windows Home.** Contributors on Home fall back on
-  W-08.
 - **x64 emulation (Prism)** on Windows 11 ARM64 needs 24H2 or later for AVX
   ([Microsoft][prism]).
 - **N.I.N.A. is a WPF desktop application.** It needs an interactive session,
@@ -139,6 +147,9 @@ that PC with something reproducible:
 - **Standard GitHub-hosted Linux runners do not expose `/dev/kvm`.** Larger
   runners support hardware-accelerated nested virtualisation
   ([runner-images #7541][gh-kvm]).
+- **Packer's `hyperv-iso` builder** supports Generation 2 VMs, `enable_tpm`,
+  `enable_secure_boot` and `cd_files` ([docs][packer-hyperv]). That is what a
+  Windows host backend would need (§4.1).
 
 ### 3.2 Equipment software
 
@@ -147,8 +158,8 @@ that PC with something reproducible:
   activation starts it. See `RegisterObjects` in
   [`ASCOM.COM.LocalServer/LocalServer.cs`][omnisim-ls]. ASCOM Platform 7 installs
   OmniSim as its default simulators.
-- **OmniSim's Windows builds are x86 and x64 only** ([releases][omnisim-rel]).
-  On an ARM64 guest it runs under Prism, like N.I.N.A.
+- **OmniSim's Windows builds are x86 and x64 only** ([releases][omnisim-rel]),
+  so on the ARM64 guest it runs under Prism.
 - **ASCOM Platform 7.1 Update 2** added a workaround for a .NET bug that made COM
   drivers fail, "particularly Windows ARM 64bit". Update 2 was **withdrawn** for
   instability, and Update 3 carries the fix ([releases][ascom-rel]).
@@ -168,7 +179,7 @@ that PC with something reproducible:
     ([docs][phd-supp]), and the simulator camera needs neither.
   - PHD2 opens its first-light profile wizard on a new configuration, or one
     holding a single empty profile (`OnInit`, [`src/phd.cpp`][phd-main]).
-    Loading the config before first launch avoids it.
+    Loading the settings before first launch avoids it.
   - PHD2 ships an x64 Windows installer (`phd2-x64.iss.in`) as well as x86.
 
 ### 3.3 Nightly channel
@@ -200,58 +211,64 @@ that PC with something reproducible:
   container, a port forwarded on the host is `host.docker.internal`, not
   `127.0.0.1`.
 - The harness defaults `--host` to a fixed LAN address
-  (`SIM_HOST`, `tools/upgrade-harness/harness.py:44`). No such standing host
-  exists.
+  (`SIM_HOST`, `tools/upgrade-harness/harness.py:44`). No machine is permanently
+  at that address.
 - `scripts/capture_fixtures.py` always writes to `tests/fixtures/`
   (`FIXTURES`, `scripts/capture_fixtures.py:27`).
 - The redaction guard `scripts/check_fixtures.py` parses JSON only, and
   pre-commit runs it only on `^tests/fixtures/.*\.json$`.
-- Every command FakeRig receives is answered `Success: true` and recorded in
-  `rig.sent`, and nothing moves (`tests/scenarios/README.md`). The `tests/ha/`
-  suite can check what was sent, but never what the equipment did.
+- FakeRig answers every command `Success: true` and records it in `rig.sent`, and
+  nothing moves (`tests/scenarios/README.md`). The `tests/ha/` suite can check what
+  was sent, never what the equipment did.
 
 ## 4. Design
 
-### 4.1 Host support
+### 4.1 The host backend
 
-| Host | Status | Backend | Accelerator | Guest | TPM | Layers |
-|---|---|---|---|---|---|---|
-| macOS arm64 | **built** | `qemu` | HVF | ARM64 | swtpm | qcow2 |
-| macOS amd64 | future | `qemu` | HVF | x64 | swtpm | qcow2 |
-| Linux amd64 | future | `qemu` | KVM | x64 | swtpm | qcow2 |
-| Linux arm64 | future | `qemu` | KVM | ARM64 | swtpm | qcow2 |
-| Windows amd64 or arm64 (Pro and up) | future | `hyperv` | Hyper-V | matches the host | built in | differencing VHDX |
-| anything else | now | — | — | — | — | W-08: run `provision/` in your own Windows VM |
+All host-specific behaviour lives in two places:
+- a **backend** in `rig.py`, which creates and deletes layers, starts and stops
+  the VM, and reports the address the rig is reachable at;
+- a **Packer source**.
 
-`rig.py` detects the host and refuses any it has no backend for, pointing at
-W-08.
+The provisioning scripts, the profile fixtures and `tests/rig/` do not depend on
+the host. Anything in them that does is a defect.
 
-**What a future host would take.** A contributor adds it in their own PR, and
-amends this doc:
-- a backend in `rig.py` (start, stop, layer create and delete, the address to
-  print);
-- for another architecture, the answer file's variables;
-- for Windows, a `hyperv-iso` source.
+There is one backend:
 
-The provisioning scripts, the fixtures and `tests/rig/` should need no change. If
-one does, the macOS work leaked a host assumption into it, and that is the bug.
+| Host | Backend | Accelerator | Guest | TPM | Layers |
+|---|---|---|---|---|---|
+| macOS, Apple silicon | `qemu` | HVF | ARM64 | swtpm | qcow2 |
 
-**Questions only a future host answers:**
-- Hyper-V's Default Switch gives a NAT address, not a port forward, so `up` would
-  have to discover and print it.
-- Whether Windows 11 ARM64 Hyper-V hosts run ARM64 guests from the same template.
-- On Linux, whether standard GitHub-hosted runners gain KVM. That would make this
-  the CI path (§1.2).
+On macOS it needs Packer with its QEMU plugin, `qemu` and `swtpm` (all from
+Homebrew), the Evaluation ISO and `virtio-win.iso`. On any other host, `rig.py`
+refuses with a pointer to W-08.
+
+**Adding a host.** A new host is a new backend and, where needed, a new Packer
+source, added by amending this document. For example:
+
+| Host | Backend | Accelerator | Guest | TPM | Layers |
+|---|---|---|---|---|---|
+| Linux, amd64 | `qemu` | KVM | x64 | swtpm | qcow2 |
+| Linux, arm64 | `qemu` | KVM | ARM64 | swtpm | qcow2 |
+| Windows Pro or above | `hyperv` | Hyper-V | the host's | built in | differencing VHDX |
+
+- **An x64 guest** needs the answer file's architecture variable set, and runs
+  the equipment software without emulation.
+- **Windows hosts** need Hyper-V rather than QEMU: swtpm is not supported on
+  Windows, and Hyper-V has a built-in TPM (§3.1).
+- **Hyper-V's Default Switch** gives the guest a NAT address rather than a port
+  forward, so that backend would report the guest's address instead.
 
 ### 4.2 Layout
 
 ```
 tools/windows-rig/
-  packer/rig.pkr.hcl       one source today (qemu); one build block
+  packer/rig.pkr.hcl       the qemu source and the build
   packer/variables.pkr.hcl packer/autounattend.xml.pkrtpl
-  provision/*.ps1          the portable core (W-08): OpenSSH + firewall 1888,
-                           ASCOM, PHD2, profiles, autologon, logon task
+  provision/*.ps1          OpenSSH + firewall rule for 1888, ASCOM, PHD2,
+                           profiles, autologon, logon task (W-08)
   install-nina.ps1         <nina-url> <api-zip-url> <livestack-zip-url>
+  channels.toml            the pinned stable URLs and SHA256s
   scripts/qemu-with-tpm.sh
   rig.py  README.md  NOTICE
   .run/                    git-ignored: images, layers, swtpm state
@@ -261,35 +278,36 @@ tests/rig/                 the tier in §5
 ```
 
 The ISO paths and SHA256s are Packer variables. The ISOs never enter the
-repository.
+repository. Stable's versions change by editing `channels.toml`. Nightly's URLs
+are discovered each time (`nightly-urls`, §4.5).
 
 ### 4.3 Image layers
 
 ```
 base                      Packer: Windows, ASCOM, PHD2, profiles, autologon
  ├─ stable-<ver>          rig.py install stable   (once per pinned version)
- │   └─ run               rig.py up … down        (every start; discarded)
+ │   └─ run               rig.py up … down        (every session; discarded)
  └─ nightly-<build>       rig.py install nightly  (once per nightly build)
      └─ run
 ```
 
-- Under QEMU the layers are qcow2 backing files. A future Hyper-V backend would
-  use differencing VHDX disks with the same meaning.
-- **`install <channel>`** boots a throwaway child of `base` and runs
-  `install-nina.ps1` over SSH. It then shuts the guest down and keeps that child
-  as the channel layer.
-  - `install-nina.ps1` installs N.I.N.A. silently.
-  - It unzips each plugin into N.I.N.A.'s plugin folder.
-  - Stable and nightly differ only in the URLs they are given.
-- **`up <channel>`** creates `run` on the channel layer, installing that layer
-  first if it is missing or stale.
-  - It starts the VM with SSH and 1888 reachable from the host.
+Each layer is a qcow2 whose backing file is the layer above it.
+
+- **`install <channel>`** creates the channel layer. It boots a new child of
+  `base`, runs `install-nina.ps1` over SSH, shuts the guest down, and keeps that
+  child.
+  - `install-nina.ps1` installs N.I.N.A. silently and unzips each plugin into
+    N.I.N.A.'s plugin folder.
+  - The two channels differ only in the URLs it is given.
+- **`up <channel>`** creates `run` on top of the channel layer, installing that
+  layer first if it is missing or out of date.
+  - It starts the VM with SSH and port 1888 forwarded to the host.
   - It checks the base image's age (W-14).
-  - **Starting the VM never installs anything**, and every start begins from the
-    same state.
+  - **Starting the rig never installs anything**, and every session begins from
+    the same state.
 - **`down`** stops the VM and deletes `run`.
-- **Rebuilding `base`** leaves every channel layer without its parent, so
-  `rig.py` deletes them.
+- **Rebuilding `base`** leaves every channel layer without its backing file, so
+  `rig.py` deletes those layers.
 
 ### 4.4 Profiles as fixtures
 
@@ -302,7 +320,7 @@ base                      Packer: Windows, ASCOM, PHD2, profiles, autologon
 
 They follow CLAUDE.md's redaction rules, with changes that keep them loadable:
 
-- **The guard learns both formats.** `check_fixtures.py` parses the XML, and
+- **The guard reads both formats.** `check_fixtures.py` parses the XML, and
   PHD2's tab-separated `key type value` lines, into the shape
   `tests/redaction.py`'s `scan` already takes. Pre-commit and CI run it over
   `tests/fixtures/rig/*`.
@@ -312,46 +330,45 @@ They follow CLAUDE.md's redaction rules, with changes that keep them loadable:
 - **The profile's GUID `Id` is replaced with a freshly generated one**, which is
   allowlisted.
 - **Credential and key fields are blanked.**
-- **Alpaca device ids carry an address.** If the profile uses any, they are
-  switched to the OmniSim ProgIDs, as W-10 requires anyway.
-- **Both files are also read by eye before committing.** A trial `/profile/show`
-  capture once carried a live API key.
+- **Device ids are OmniSim ProgIDs** (W-10). Alpaca device ids, which carry a
+  network address, do not appear.
+- **Both files are read by eye before committing,** as well as by the guard.
+  Profiles can hold live API keys.
 
 ### 4.5 `rig.py`
 
 | Command | Does |
 |---|---|
-| `build` | `packer build -only=<backend source>`; records the build date for W-14 |
-| `install stable\|nightly` | Builds or refreshes a channel layer (§4.3) |
-| `nightly-urls` | Finds the newest N.I.N.A. nightly on its download page and the newest ninaAPI pre-release |
-| `up stable\|nightly` | Run layer, VM start, the age check; prints the `HOST:PORT` to hand to tests |
+| `build` | Runs `packer build` and records the build date for W-14 |
+| `install stable\|nightly` | Creates or refreshes a channel layer (§4.3) |
+| `nightly-urls` | Finds the newest N.I.N.A. nightly on its download page and the newest Advanced API pre-release |
+| `up stable\|nightly` | Creates the run layer, starts the VM, checks the age; prints the `HOST:PORT` for tests |
 | `wait` | Polls `/v2/api/version`, connects every device through the API, and checks each one reports connected |
-| `down` | Stops the VM, deletes the run layer |
+| `down` | Stops the VM and deletes the run layer |
 
-The `just` recipes `rig-build`, `rig-install`, `rig-up`, `rig-down` and `rig-test`
-wrap it. `rig-test` runs `up`, `wait`, the `tests/rig/` suite and `down`.
+The `just` recipes `rig-build`, `rig-install`, `rig-up`, `rig-down` and
+`rig-test` wrap it. `rig-test` runs `up`, `wait`, the `tests/rig/` suite and
+`down`.
 
-### 4.6 Capture and diff
+### 4.6 Comparing channels
 
 For each channel:
 
 1. `rig-up`, then `wait`.
 2. Run a short simulator sequence, so that image history, events, last-AF and
-   livestack are populated.
+   livestack have content.
 3. `capture_fixtures.py --host <rig> --out <scratch>/<channel>`.
 4. `rig-down`.
 
-Diff the two directories by key path and type.
+Compare the two directories by key path and type.
 
-### 4.7 Changes elsewhere
+### 4.7 Changes elsewhere in the repository
 
 - **`scripts/capture_fixtures.py`** gains `--out`, with a test.
 - **`tools/upgrade-harness/harness.py`** makes `--host` required, with no
-  default LAN address (§3.4). Home Assistant in its container reaches a rig on the
+  default address (§3.4). Home Assistant in its container reaches a rig on the
   host at `host.docker.internal`.
 - **`.gitignore`** gains `tools/windows-rig/.run/`.
-- **`CLAUDE.md`** says a simulator rig takes any command, and that none has a
-  standing address.
 
 ## 5. The `tests/rig/` tier
 
@@ -362,29 +379,28 @@ This tier sends the command to a real N.I.N.A. and checks what the equipment did
 **Contract:**
 
 - **Opt-in twice.** The tier is collected only with
-  `--rig HOST:PORT --simulated`. Without both flags, every test is skipped with
-  the reason. There is **no default host**, as for the harness.
-- **It checks for itself before commanding.** A session fixture reads
-  `/equipment/info` and fails the session unless every connected device's driver
-  is a simulator (OmniSim's ProgIDs or names) **before any command is sent**. A
-  typo in `--rig` that points at the live rig must stop here, not at the
-  first slew.
-- **Outcomes are observed, never read from the response.** A command returns when
+  `--rig HOST:PORT --simulated`. Without both, every test is skipped and says
+  why. There is **no default host**.
+- **It verifies the rig before commanding it.** A session fixture reads
+  `/equipment/info` and fails the session **before any command is sent** unless
+  every connected device's driver is a simulator (OmniSim's ProgIDs or names). A
+  mistyped `--rig` that reaches the live rig stops here.
+- **Outcomes are observed, never read from responses.** A command returns when
   N.I.N.A. accepts it (CLAUDE.md). A test polls state or waits for the event, with
-  a timeout sized for emulation.
-- **Channel-agnostic.** The same suite runs against stable and nightly. A test
-  that fails on one channel only is a finding about that channel, not a flake.
-- **HA-free where it can be.** Client-level tests (`api/v2/client.py` and
-  `events.py` against the rig) import no Home Assistant, like `tests/unit/`.
-  Integration-level tests put Home Assistant on the real client. Whether that
-  runs under PHACC with sockets allowed to the rig host, or through the upgrade
-  harness's container, is decided in stage 5.
-- **Clean start per session.** `rig-test` starts from a fresh run layer. Within a
-  session, tests leave the equipment as they found it (parked, disconnected state
-  restored), or say in their docstring that they don't.
+  timeouts sized for emulation.
+- **It is channel-agnostic.** The same suite runs against stable and nightly. A
+  test that fails on one channel only is a finding about that channel.
+- **It is HA-free where it can be.** Client-level tests run `api/v2/client.py`
+  and `events.py` against the rig and import no Home Assistant, like
+  `tests/unit/`. Integration-level tests put Home Assistant on the real client.
+  Whether those run under PHACC with sockets allowed to the rig, or in the upgrade
+  harness's container, is settled in stage 5 and recorded here.
+- **Each session starts clean.** `rig-test` starts from a fresh run layer.
+  Within a session, a test leaves the equipment as it found it (parked, connected
+  or not), or its docstring says it doesn't.
 
-**First coverage:** the commands CLAUDE.md lists as destructive, which FakeRig
-can only record:
+**First coverage** is the destructive controls CLAUDE.md lists, which FakeRig can
+only record:
 - abort exposure;
 - park and unpark;
 - dome open and close;
@@ -392,39 +408,37 @@ can only record:
 - sequence start and stop;
 - clearing the guider calibration.
 
-After those come the event socket delivering what the equipment actually did, and
-the actions' client-side validation against real device ranges.
+Next come the event socket reporting what the equipment actually did, and the
+actions' client-side validation against real device ranges.
 
 ## 6. Stages
 
-Each stage ends at a gate. Failing a gate stops the work, not only the stage.
+Each stage ends at a gate. Failing a gate stops the work, not just the stage.
 
-0. **Profile fixtures.** The operator exports both files. Redact them per §4.4,
-   teach the guard, and commit.
+0. **Profile fixtures.** The operator exports both files. They are redacted per
+   §4.4, the guard learns their formats, and they are committed.
    - *Gate:* `just ci` is green, and both files read clean by eye.
-1. **Spike, on the maintainer's host** (macOS arm64). Build mac-vms' image
-   **unmodified** except for the Evaluation ISO. Install everything by hand and load
-   the committed profiles.
+1. **Feasibility spike.** Build mac-vms' image **unmodified** except for the
+   Evaluation ISO. Install everything by hand and load the committed profiles.
    - *Gate:* under emulation, all eleven devices connect, PHD2 guides on its
      simulator, and the host reaches `/v2/api/*` and `/v2/socket`.
-2. **The portable core and the `qemu` source.** `provision/*.ps1` and the Packer
-   template, with the answer file's architecture as a variable (set to ARM64).
+2. **Provisioning and Packer.** `provision/*.ps1` and the Packer template.
    - *Gate:* `rig-build`, `rig-install stable` and `rig-up stable` reach a green
-     `wait` with no clicks.
+     `wait` with no manual steps.
 3. **`install-nina.ps1`, `rig.py`, the recipes.**
    - *Gate:* `up stable` and `up nightly` each reach a green `wait`, and a second
      `up` of the same channel installs nothing.
-4. **The harness change and capture diff** (§4.6, §4.7).
-5. **`tests/rig/`, first slice.** The safety fixture, plus the destructive
-   commands in §5, at client level.
-   - *Gate:* the tier passes on stable. Pointed at a N.I.N.A. with one real
+4. **The harness change and the channel comparison** (§4.6, §4.7).
+5. **`tests/rig/`, first slice.** The safety fixture, plus the first coverage in
+   §5, at client level.
+   - *Gate:* the tier passes on stable. Pointed at a N.I.N.A. with any real
      device, it refuses to run.
-No stage builds another host (§4.1).
 
 ## 7. Open questions
 
-- The Evaluation ISOs' image indexes and SKU labels, for the answer-file
-  template.
+Stage 1 answers these, and the answers are recorded here:
+
+- The Evaluation ISO's image index and SKU label, for the answer file.
 - Whether the N.I.N.A. profile loads with normalised paths and a new `Id`
   (`ImageFilePath`, `PHD2Path`, the plate solver's path).
 - Whether PHD2 needs anything outside `-s`/`-l`, such as its update-check prompt.
@@ -436,60 +450,71 @@ No stage builds another host (§4.1).
 
 ## 8. Risks
 
-- **COM across emulation, on ARM64 guests.** An ARM64-specific COM failure
-  needed a Platform fix in 2025 (§3.2). x64 guests don't carry this risk.
-- **Software rendering.** With no GPU, WPF is slow. N.I.N.A.'s start-up may
-  stretch every `wait`.
-- **Host assumptions leaking in.** With only macOS built, a macOS-only path or
-  tool can creep into `provision/`, the fixtures or `tests/rig/` without anything
-  failing. Review for it. §4.1 treats it as a bug.
-- **Churn in nightly URLs.** `nightly-urls` scrapes a page, and the page can
-  change.
+- **COM under emulation.** An ARM64-specific COM failure needed an ASCOM
+  Platform fix in 2025 (§3.2). An x64 guest would not carry this risk.
+- **Software rendering.** With no GPU, WPF is slow, and N.I.N.A.'s start-up may
+  lengthen every `wait`.
+- **Host assumptions.** With one backend, a macOS-only path or tool can enter
+  `provision/`, the fixtures or `tests/rig/` without anything failing. Reviews
+  check for it (§4.1).
+- **Nightly URLs.** `nightly-urls` reads a web page, and the page can change.
 - **Evaluation access.** Microsoft can move or re-gate the Evaluation ISO.
-- **Rebuild cost.** The build takes about 16 minutes plus provisioning. If the
+- **Rebuild cost.** A build takes about 16 minutes plus provisioning. If the
   80-day rebuild becomes a chore, the rig stops being used.
 
 ## 9. What the 3.0 plugin means for the integration
 
-This section is input to a future design; nothing here is decided.
+This is input to a future design. Nothing here is decided.
 
 - **Authentication.** If a user enables it, `quality_scale.yaml`'s
   `reauthentication-flow` exemption (line 55: "The N.I.N.A. Advanced API has no
   authentication of any kind") no longer holds.
 - **SSL.** The client assumes `http://` (`api/v2/client.py:87`).
-- **The web-server swap.** Moving to SimpleW may change two behaviours the
+- **The web-server change.** Moving to SimpleW may change two behaviours the
   client relies on: "the HTTP status is almost always 200", and "routing failures
-  return HTML". The diff in §4.6 and the `tests/rig/` tier are how we find out.
+  return HTML". The channel comparison (§4.6) and the `tests/rig/` tier show
+  whether it does.
 - **`/v3`** removes the envelope and adds process ids. It would be a new
-  `api/v3/` beside `api/v2/`, as the 2.0 design left room for (D-01).
+  `api/v3/` beside `api/v2/`, which the 2.0 design left room for (D-01).
 
-## 10. Rejected alternatives
+## 10. Alternatives considered
 
-- **A spare Windows PC.** This is the status quo. Only one person has one, its
-  address changes, and it runs one version.
-- **A macOS-only design.** Building only macOS is right for now. Designing only
-  for it would make a second host a rewrite.
-- **Sharing prebuilt images (Vagrant boxes, registries).** The Evaluation licence
-  forbids redistribution.
+- **A dedicated Windows PC.** Cannot be reset, runs one version, and cannot be
+  reproduced by another contributor.
+- **A design that assumes macOS throughout.** A second host would then mean a
+  rewrite rather than a backend.
+- **Prebuilt images (Vagrant boxes, registries).** The Evaluation licence forbids
+  redistribution.
 - **Windows containers.** N.I.N.A. needs an interactive desktop session, and
   Windows containers run only on Windows hosts.
-- **Lima** ([v2.2][lima]). It would do most of `rig.py`'s job, but its
-  Windows guests are experimental: x86_64 only, no port forwarding, no Windows
+- **Lima** ([v2.2][lima]). It would do most of `rig.py`'s job, but its Windows
+  guests are experimental: x86_64 only, with no port forwarding and no Windows
   hosts. Worth revisiting once it has ARM64 guests and port forwarding.
-- **QEMU on Windows hosts.** swtpm is not supported there, and WHPX acceleration
-  lags Hyper-V's.
-- **Building the VM by hand.** The evaluation expires every 90 days.
-- **Buying an activated licence.** Declined.
-- **Baking N.I.N.A. into the base image.** Nightly churns daily, and a base
-  rebuild takes the longest.
-- **Installing N.I.N.A. on every start.** Slow, and no two starts would match.
-- **A wider version matrix.** Stable and nightly answer the question.
-- **Sysprep and identity seeding.** Only one overlay runs at a time.
+- **A VM built by hand.** The Evaluation ISO expires every 90 days, so the build
+  has to be scripted.
+- **An activated Windows licence.** The rig should cost a user nothing.
+- **N.I.N.A. baked into the base image.** Nightly changes daily, and the base
+  image is the slowest layer to rebuild.
+- **Installing N.I.N.A. on every start.** Slow, and no two sessions would start
+  from the same state.
+- **A wider version matrix.** Stable and nightly answer the question the rig
+  exists for.
+- **Sysprep and identity seeding.** Only one run layer exists at a time.
 - **Moving PHD2 settings with `reg export`/`reg import`.** `-s`/`-l` is PHD2's own
-  format, it is text, and it diffs.
-- **Shell-only recipes instead of `rig.py`.** Shell is not portable to Windows
-  hosts, and URL discovery, polling and the expiry check read badly in it.
-- **Selecting devices over Alpaca.** OmniSim would need starting explicitly.
+  format, and being text, it diffs.
+- **Shell recipes instead of `rig.py`.** Shell does not carry to a Windows host,
+  and URL discovery, polling and the expiry check read badly in it.
+- **Alpaca device selection.** OmniSim would have to be started separately.
+
+## 11. Revision history
+
+| Rev | Date | Change |
+|---|---|---|
+| 1 | 2026-09-27 | Initial proposal |
+
+### 11.1 Superseded decisions
+
+None yet.
 
 [macvms]: https://github.com/bbirkinbine/mac-vms/tree/main/packer/windows-11-arm64
 [evalcenter]: https://www.microsoft.com/en-us/evalcenter/evaluate-windows-11-enterprise
