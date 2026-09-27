@@ -1,28 +1,13 @@
-"""Redaction rules for captured fixtures.
+"""Redaction rules for captured fixtures, shared by
+`scripts/capture_fixtures.py` and the pre-commit guard so the two cannot drift.
 
-Imported by both scripts/capture_fixtures.py and the pre-commit guard so the two
-cannot drift. A fixture is committed to a public repository; a profile dump
-contains live credentials.
+**Redaction preserves the JSON type, containers included**: a string becomes
+`"REDACTED"`, a number 0, a null stays null, a dict stays a dict — otherwise
+the drift guard checks this module's output rather than N.I.N.A.'s.
 
-Two rules that are easy to get wrong:
-
-**Redaction preserves the JSON type, containers included.** A string becomes
-"REDACTED", a number 0, a null stays null, and a dict stays a dict — otherwise
-the type-aware drift guard checks this module's output rather than N.I.N.A.'s,
-and a whole settings subtree under a key containing "path" collapses to a
-string.
-
-**Site coordinates are kept, deliberately.** The rig is hosted at a public
-commercial facility and the owner is content for the repository to show it, so
-latitude, longitude, elevation and the pointing fields that reconstruct them
-(Altitude at Dec 90, SiderealTime against Coordinates.DateTime.UtcNow) all stay
-real. That is not laxity — SiderealTime is the input to the meridian-flip maths
-in §11, and zeroing it would leave that formula with no captured fixture to test
-against and force a hand-written substitute, which the fixture rules forbid.
-
-Credentials, account names, absolute paths, hostnames, IPv4 and IPv6 addresses,
-UUIDs and Home Assistant entity ids are a different matter and are still
-redacted.
+**Site coordinates are kept.** The rig is hosted at a public facility, and
+`SiderealTime` is the meridian-flip maths' input; zeroing it would leave that
+formula with no fixture to test against.
 """
 
 import hashlib
@@ -160,21 +145,14 @@ def project(document: object, allowlist: tuple[str, ...]) -> dict:
 def _digest(value: str, prefix: str, legacy_width: int, suffix: str = "") -> str:
     """A stable pseudonym derived from the value, not from arrival order.
 
-    Order-derived numbering is wrong for Filename: frame identity is
-    (Date, Filename) and the fold spans fixtures, so a per-file counter both
+    Order-derived numbering is wrong for `Filename`: frame identity is
+    `(Date, Filename)` and the fold spans fixtures, so a per-file counter both
     collides distinct frames across files and splits identical ones.
 
-    8 hex digits of the digest (32 bits, ~4.3 billion buckets). A
-    positionally-sized decimal form was too narrow: 4 digits is only 10,000
-    buckets, so a single 122-frame night collides at roughly 50%; `device-NN`
-    at 2 digits (100 buckets) collides even sooner.
-
-    Already-pseudonymised input passes through, in *either* the current 8-hex
-    form or the legacy `legacy_width`-digit decimal form the pre-script corpus
-    still carries. Without that, hashing is not idempotent — re-redacting an
-    already-redacted value yields a different pseudonym — and `scan()`, which
-    is a diff against `redact()`, reports every committed fixture as dirty
-    forever.
+    8 hex digits (32 bits) of the digest; a positional decimal form collided
+    too often at the widths tried. Already-pseudonymised input, in the current
+    form or the legacy `legacy_width`-digit one, passes through unchanged, or
+    `scan()` would report every committed fixture as dirty forever.
     """
     if re.fullmatch(rf"{re.escape(prefix)}[0-9a-f]{{8}}{re.escape(suffix)}", value):
         return value
