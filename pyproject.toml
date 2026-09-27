@@ -261,6 +261,8 @@ split-on-trailing-comma = false
 # Relative imports within the integration's subpackages.
 "custom_components/*/*/*" = ["TID252"]
 "scripts/*" = ["T20"]
+# A command-line tool run by hand, not a package.
+"tools/*/*.py" = ["T20", "INP001"]
 # tests/ is not a package: pytest's pythonpath imports these as `helpers`,
 # `redaction` and so on, and an __init__.py would change that.
 "tests/*.py" = ["INP001"]
@@ -275,7 +277,7 @@ convention = "google"
 property-decorators = ["propcache.api.cached_property"]
 
 [tool.pyright]
-include = ["custom_components", "scripts", "tests"]
+include = ["custom_components", "scripts", "tests", "tools"]
 # pytest's `pythonpath` puts tests/ first; the unit suite imports the
 # integration as the top-level `nina_astrophotography`, and the scripts and
 # their tests reach each other through sys.path inserts.

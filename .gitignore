@@ -12,3 +12,6 @@ coverage.json
 
 # Playwright MCP writes screenshots and traces here (tools/card-harness).
 .playwright-mcp/
+
+# tools/upgrade-harness: the throwaway Home Assistant's config, token and snapshots.
+tools/upgrade-harness/.run/
