@@ -98,7 +98,6 @@ _WEATHER_CHANNELS: Mapping[str, str] = MappingProxyType(
 # Keys under which /sequence/json nests child nodes. A node's own scalars go to
 # `attributes`; these do not.
 _SEQUENCE_CHILDREN = ("GlobalTriggers", "Conditions", "Items", "Triggers")
-_SEQUENCE_OWN_KEYS = ("Name", "Status", "Iterations", *_SEQUENCE_CHILDREN)
 
 # 'Tot: 0.26 (0.42")' — the bracketed figure is the arcsecond one.
 _TOTAL_RMS_ARCSEC = re.compile(r"\(\s*([-+]?\d*\.?\d+)")
@@ -613,17 +612,13 @@ def _sequence_node(wire: dict, fallback: str) -> SequenceNode:
         name=name if name is not None else fallback,
         status=_text(wire, "Status"),
         iterations=None if iterations is None else str(iterations),
+        target_name=_text(wire, "TargetName"),
         children=tuple(
             _sequence_node(child, key)
             for key in _SEQUENCE_CHILDREN
             for child in wire.get(key) or ()
             if isinstance(child, dict)
         ),
-        attributes={
-            key: nan_to_none(value)
-            for key, value in wire.items()
-            if key not in _SEQUENCE_OWN_KEYS and not isinstance(value, (dict, list))
-        },
     )
 
 
@@ -637,12 +632,12 @@ def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
         name="Sequence",
         status=None,
         iterations=None,
+        target_name=None,
         children=tuple(
             _sequence_node(node, "GlobalTriggers")
             for node in wire
             if isinstance(node, dict)
         ),
-        attributes={},
     )
 
 

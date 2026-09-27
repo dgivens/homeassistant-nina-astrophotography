@@ -471,8 +471,8 @@ class SequenceNode:
     status: str | None
     iterations: str | None
     """The wire's progress text, e.g. "3/10"."""
+    target_name: str | None
     children: tuple[SequenceNode, ...]
-    attributes: Mapping[str, Any]
 
 
 @dataclass(frozen=True, slots=True)
