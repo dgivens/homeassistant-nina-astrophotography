@@ -58,9 +58,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `sensor.<instance>_mount_time_to_meridian_flip` gains `device_class: duration`
   and is unit-converted on display.
 - **Gain, offset and binning are no longer settable.** `number.<instance>_camera_gain`,
-  `_camera_offset` and `_camera_binning` are removed; the 2.0 `sensor` entities
-  of the same names are read-only. The API's capture endpoint binds no binning,
-  and the profile owns gain and offset.
+  `_camera_offset` and `_camera_binning` are removed; gain and offset are
+  read-only `sensor` entities of the same names, and binning has none. The
+  API's capture endpoint binds no binning, and the profile owns gain and
+  offset.
 - **Three actions changed their parameters**, because in 1.4.5 each silently
   did nothing. `camera_capture` takes `duration`, not `exposure` — the API
   reads `duration`, so the exposure length was ignored and defaulted — and no
