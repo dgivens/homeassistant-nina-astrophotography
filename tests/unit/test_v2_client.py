@@ -380,16 +380,6 @@ async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) 
             {"temperature": -10.0, "minutes": 5},
         ),
         (
-            lambda c: c.set_cooler(True, -10.0),
-            "/equipment/camera/cool",
-            {"temperature": -10.0, "minutes": -1},
-        ),
-        (
-            lambda c: c.set_cooler(False, -10.0),
-            "/equipment/camera/warm",
-            {"minutes": -1},
-        ),
-        (
             lambda c: c.set_dew_heater(True),
             "/equipment/camera/dew-heater",
             {"power": "true"},

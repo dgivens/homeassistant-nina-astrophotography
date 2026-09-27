@@ -20,7 +20,6 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import (
     ConfigEntryError,
     ConfigEntryNotReady,
-    HomeAssistantError,
     ServiceValidationError,
 )
 from homeassistant.helpers import config_validation as cv
@@ -34,7 +33,6 @@ from .api.errors import (
     NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
-    NinaError,
     NinaRequestError,
     NinaUnavailableError,
 )
@@ -73,6 +71,7 @@ from .const import (
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
 from .device import async_sync_devices, kind_of
+from .entity import refusals_raised
 from .frontend import (
     async_ensure_frontend_resources,
     async_register_frontend_resources,
@@ -360,23 +359,12 @@ def _bounded(
 
 
 def _service(handler: Callable[[ServiceCall], Awaitable[None]]):
-    """Re-raise `NinaError` as `HomeAssistantError`.
-
-    `NinaError` subclasses `Exception` alone, to keep the API layer free of
-    Home Assistant, and Home Assistant reports any other exception escaping a
-    handler as an integration defect.
-    """
+    """Re-raise `NinaError` as `HomeAssistantError`."""
 
     @functools.wraps(handler)
     async def wrapped(call: ServiceCall) -> None:
-        try:
+        with refusals_raised():
             await handler(call)
-        except NinaError as exc:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="command_failed",
-                translation_placeholders={"error": str(exc)},
-            ) from exc
 
     return wrapped
 

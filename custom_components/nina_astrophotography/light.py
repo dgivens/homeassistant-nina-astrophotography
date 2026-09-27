@@ -13,15 +13,14 @@ from typing import Any
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, LightEntity
 from homeassistant.components.light.const import ColorMode
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api.errors import NinaError
 from .api.models import FlatDeviceModel
 from .coordinator import NinaConfigEntry, NinaCoordinator
 from .device import observed
-from .entity import NinaEntity
+from .entity import NinaEntity, async_add_observed, refusals_raised
 
 PARALLEL_UPDATES = 1
 
@@ -39,10 +38,8 @@ class NinaFlatLight(NinaEntity, LightEntity):
     # request it comes on dim, never full.
     _DEFAULT_ON_BRIGHTNESS = 1
 
-    def __init__(
-        self, coordinator: NinaCoordinator, entry: NinaConfigEntry, key: str
-    ) -> None:
-        super().__init__(coordinator, entry, key, kind="flat_device")
+    def __init__(self, coordinator: NinaCoordinator, entry: NinaConfigEntry) -> None:
+        super().__init__(coordinator, entry, "flat_panel_light", kind="flat_device")
         self._remembered: int | None = None
 
     @property
@@ -109,23 +106,17 @@ class NinaFlatLight(NinaEntity, LightEntity):
         # Never fall back to full: an idle panel's brightness scales to 0.
         requested = int(kwargs.get(ATTR_BRIGHTNESS, self._last_on_brightness))
         driver_value = self._to_driver(requested)
-        try:
+        with refusals_raised():
             # Brightness first: a bare set-light jumps to MaxBrightness.
             await self.coordinator.client.set_flat_brightness(driver_value)
             if not self.is_on:
                 await self.coordinator.client.set_flat_light(True)
-        except NinaError as exc:
-            raise HomeAssistantError(f"N.I.N.A. refused the flat panel: {exc}") from exc
         self._remembered = requested
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        try:
-            # Brightness 0 is not off.
-            await self.coordinator.client.set_flat_light(False)
-        except NinaError as exc:
-            raise HomeAssistantError(f"N.I.N.A. refused the flat panel: {exc}") from exc
-        await self.coordinator.async_request_refresh()
+        # Brightness 0 is not off.
+        await self._async_send(self.coordinator.client.set_flat_light(False))
 
 
 async def async_setup_entry(
@@ -134,20 +125,14 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    added = False
-
-    @callback
-    def _add_observed() -> None:
-        """Create the light once the panel has been observed.
-
-        Not gated on `SupportsOnOff`, which a disconnected panel reports false;
-        `available` handles that.
-        """
-        nonlocal added
-        if added or not observed(coordinator.data, "flat_device"):
-            return
-        added = True
-        async_add_entities([NinaFlatLight(coordinator, entry, "flat_panel_light")])
-
-    _add_observed()
-    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
+    # Not gated on `SupportsOnOff`, which a disconnected panel reports false;
+    # `available` handles that.
+    async_add_observed(
+        entry,
+        async_add_entities,
+        lambda data: (
+            [("flat_panel_light", lambda: NinaFlatLight(coordinator, entry))]
+            if observed(data, "flat_device")
+            else []
+        ),
+    )

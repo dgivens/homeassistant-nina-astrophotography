@@ -7,38 +7,32 @@ shows in the entities that report it, on the next poll.
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from functools import partial
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api.errors import NinaError
 from .api.v2.client import NinaClientV2
-from .const import DOMAIN
-from .coordinator import NinaConfigEntry, NinaCoordinator
+from .coordinator import NinaConfigEntry
 from .device import observed
-from .entity import NinaEntity
+from .entity import (
+    NinaDescribedEntity,
+    NinaEntityDescription,
+    async_add_observed,
+    refusals_raised,
+)
 
 # One in-flight command per platform: these move hardware.
 PARALLEL_UPDATES = 1
 
 
 @dataclass(frozen=True, kw_only=True)
-class NinaButtonDescription(ButtonEntityDescription):
-    """A button, plus the command it sends.
-
-    `kind` names the child device; `None` puts it on the hub. `verified` is
-    False only for the dome, which no hardware has validated.
-    """
+class NinaButtonDescription(NinaEntityDescription, ButtonEntityDescription):
+    """A button, plus the command it sends."""
 
     press: Callable[[NinaClientV2], Awaitable[None]]
-    kind: str | None
-    verified: bool = True
-    unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
-    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
@@ -137,34 +131,14 @@ DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
 )
 
 
-class NinaButton(NinaEntity, ButtonEntity):
+class NinaButton(NinaDescribedEntity, ButtonEntity):
     """One descriptor's command, sent and not waited on."""
 
     entity_description: NinaButtonDescription
 
-    def __init__(
-        self,
-        coordinator: NinaCoordinator,
-        entry: NinaConfigEntry,
-        description: NinaButtonDescription,
-    ) -> None:
-        super().__init__(
-            coordinator,
-            entry,
-            description.unique_id_suffix or description.key,
-            kind=description.kind,
-        )
-        self.entity_description = description
-
     async def async_press(self) -> None:
-        try:
+        with refusals_raised():
             await self.entity_description.press(self.coordinator.client)
-        except NinaError as exc:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="command_failed",
-                translation_placeholders={"error": str(exc)},
-            ) from exc
 
 
 async def async_setup_entry(
@@ -173,23 +147,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    added: set[str] = set()
-
-    @callback
-    def _add_observed() -> None:
-        """Create the buttons whose equipment has now been observed."""
-        descriptions = [
-            description
-            for description in DESCRIPTIONS
-            if description.key not in added
-            and observed(coordinator.data, description.kind)
-        ]
-        if not descriptions:
-            return
-        added.update(description.key for description in descriptions)
-        async_add_entities(
-            NinaButton(coordinator, entry, description) for description in descriptions
-        )
-
-    _add_observed()
-    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
+    async_add_observed(
+        entry,
+        async_add_entities,
+        lambda data: (
+            (d.key, partial(NinaButton, coordinator, entry, d))
+            for d in DESCRIPTIONS
+            if observed(data, d.kind)
+        ),
+    )

@@ -16,8 +16,9 @@ such as a dew heater at 0–100. Its range is the channel's own, and it reads
 not off.
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
+from functools import partial
 
 from homeassistant.components.number import (
     NumberDeviceClass,
@@ -25,18 +26,22 @@ from homeassistant.components.number import (
     NumberEntityDescription,
     NumberMode,
 )
-from homeassistant.const import DEGREE, EntityCategory, UnitOfTemperature
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.const import DEGREE, EntityCategory, Platform, UnitOfTemperature
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .api.errors import NinaError
 from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_of, observed, read_field
-from .entity import NinaChannelEntity, NinaEntity
+from .device import channel_key, channels_for, observed, read_field
+from .entity import (
+    NinaChannelEntity,
+    NinaDescribedEntity,
+    NinaEntityDescription,
+    async_add_observed,
+)
 
 # One in-flight command per platform: these move hardware.
 PARALLEL_UPDATES = 1
@@ -47,23 +52,17 @@ _FOCUSER_MAX_STEP = 200_000
 
 
 @dataclass(frozen=True, kw_only=True)
-class NinaNumberDescription(NumberEntityDescription):
+class NinaNumberDescription(NinaEntityDescription, NumberEntityDescription):
     """A number, plus how to read it, bound it and send it.
 
-    `kind` names the child device. `verified` is False only for the dome,
-    which no hardware has validated. `bounds` reads the driver's range, `None`
-    when it reports none; without `bounds`, `native_min_value` and
-    `native_max_value` are the range.
+    `bounds` reads the driver's range, `None` when it reports none; without
+    `bounds`, `native_min_value` and `native_max_value` are the range.
     """
 
     value: Callable[[NinaData], float | None]
     kind: str
     command: Callable[[NinaClientV2, float], Awaitable[None]]
     bounds: Callable[[NinaData], tuple[float, float] | None] | None = None
-    verified: bool = True
-    unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
-    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _driver_range(
@@ -183,24 +182,10 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
 )
 
 
-class NinaNumber(NinaEntity, NumberEntity):
+class NinaNumber(NinaDescribedEntity, NumberEntity):
     """One descriptor: read from the snapshot, written through the client."""
 
     entity_description: NinaNumberDescription
-
-    def __init__(
-        self,
-        coordinator: NinaCoordinator,
-        entry: NinaConfigEntry,
-        description: NinaNumberDescription,
-    ) -> None:
-        super().__init__(
-            coordinator,
-            entry,
-            description.unique_id_suffix or description.key,
-            kind=description.kind,
-        )
-        self.entity_description = description
 
     @property
     def _range(self) -> tuple[float, float] | None:
@@ -231,11 +216,9 @@ class NinaNumber(NinaEntity, NumberEntity):
                 translation_key="no_driver_range",
                 translation_placeholders={"entity_id": self.entity_id},
             )
-        try:
-            await self.entity_description.command(self.coordinator.client, value)
-        except NinaError as exc:
-            raise HomeAssistantError(f"N.I.N.A. refused the command: {exc}") from exc
-        await self.coordinator.async_request_refresh()
+        await self._async_send(
+            self.entity_description.command(self.coordinator.client, value)
+        )
 
 
 class NinaNumberChannel(NinaChannelEntity, NumberEntity):
@@ -264,20 +247,7 @@ class NinaNumberChannel(NinaChannelEntity, NumberEntity):
         return self.channel_value
 
     async def async_set_native_value(self, value: float) -> None:
-        if self.channel is None:
-            # The API answers `Success: true` to a `set` for a missing index.
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="channel_gone",
-                translation_placeholders={
-                    "channel": self._attr_name or str(self._index)
-                },
-            )
-        try:
-            await self.coordinator.client.set_switch_value(self._index, value)
-        except NinaError as exc:
-            raise HomeAssistantError(f"N.I.N.A. refused the command: {exc}") from exc
-        await self.coordinator.async_request_refresh()
+        await self._async_set_channel(value)
 
 
 async def async_setup_entry(
@@ -286,34 +256,18 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    added: set[str] = set()
 
-    @callback
-    def _add_observed() -> None:
-        """Create the entities whose equipment has now been observed."""
-        descriptions = [
-            description
-            for description in DESCRIPTIONS
-            if description.key not in added
-            and observed(coordinator.data, description.kind)
-        ]
-        channels = [
-            channel
-            for channel in channels_of(coordinator.data)
-            if channel.writable
-            and not channel.binary
-            and channel.minimum is not None
-            and channel.maximum is not None
-            and channel_key(channel) not in added
-        ]
-        if not descriptions and not channels:
-            return
-        added.update(description.key for description in descriptions)
-        added.update(channel_key(channel) for channel in channels)
-        async_add_entities(
-            [NinaNumber(coordinator, entry, d) for d in descriptions]
-            + [NinaNumberChannel(coordinator, entry, c) for c in channels]
-        )
+    def _observed(data: NinaData) -> Iterator[tuple[str, Callable[[], NumberEntity]]]:
+        for description in DESCRIPTIONS:
+            if observed(data, description.kind):
+                yield (
+                    description.key,
+                    partial(NinaNumber, coordinator, entry, description),
+                )
+        for channel in channels_for(data, Platform.NUMBER):
+            yield (
+                channel_key(channel),
+                partial(NinaNumberChannel, coordinator, entry, channel),
+            )
 
-    _add_observed()
-    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
+    async_add_observed(entry, async_add_entities, _observed)

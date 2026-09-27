@@ -224,5 +224,5 @@ async def test_a_refused_command_surfaces_as_a_home_assistant_error(
         raise NinaCommandError("Flat device not connected")
 
     sent.patch(command, refuse)
-    with pytest.raises(HomeAssistantError, match="flat panel"):
+    with pytest.raises(HomeAssistantError, match="Flat device not connected"):
         await act(hass)

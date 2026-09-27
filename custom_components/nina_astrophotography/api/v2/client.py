@@ -59,6 +59,9 @@ _LOGGER = logging.getLogger(__name__)
 _TIMEOUT = aiohttp.ClientTimeout(total=10)
 _IMAGE_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
+# A quality makes `/image` answer JPEG rather than a far larger PNG.
+IMAGE_QUALITY = 85
+
 # Pre-handler statuses meaning the path itself is not served.
 _NOT_SERVED = (404, 405, 501)
 
@@ -264,20 +267,31 @@ class NinaClientV2:
         return map_profile(await self._get("/profile/show", {"active": "true"}) or {})
 
     async def get_image_bytes(
-        self, index: int, *, quality: int = 85, auto_prepare: bool = True
+        self, index: int, *, quality: int = IMAGE_QUALITY, auto_prepare: bool = True
     ) -> bytes:
-        """Fetch a rendered frame.
-
-        `index` counts oldest-first; the newest is
-        `get_image_history_count() - 1`. Callers translate; this does not.
-        """
+        """Fetch a rendered frame; `index` counts oldest-first, as the route does."""
         params: dict[str, Any] = {"stream": "true", "quality": quality}
         if auto_prepare:
             params["autoPrepare"] = "true"
         return await self._image_bytes(f"/image/{index}", params)
 
+    async def get_recent_image_bytes(
+        self, age: int, *, quality: int = IMAGE_QUALITY, auto_prepare: bool = True
+    ) -> bytes:
+        """Fetch a rendered frame by `age`, 0 being the newest.
+
+        The count is read per call, not taken from the fold, which can lag a
+        frame behind. `NinaNoImageError` when fewer than `age + 1` are held.
+        """
+        count = await self.get_image_history_count()
+        if age >= count:
+            raise NinaNoImageError(f"{count} frames held, none at age {age}")
+        return await self.get_image_bytes(
+            count - 1 - age, quality=quality, auto_prepare=auto_prepare
+        )
+
     async def get_livestack_image_bytes(
-        self, target: str, filter_name: str, *, quality: int = 85
+        self, target: str, filter_name: str, *, quality: int = IMAGE_QUALITY
     ) -> bytes:
         """Fetch the accumulated stack for one target and filter.
 
@@ -351,20 +365,6 @@ class NinaClientV2:
         if minutes is not None:
             params["minutes"] = minutes
         await self._get("/equipment/camera/cool", params)
-
-    async def set_cooler(
-        self, on: bool, temperature: float, *, minutes: float = -1
-    ) -> None:
-        """The API has no cooler toggle: cooling starts with /cool and stops
-        with /warm, so the two branches are different endpoints.
-
-        `temperature` is the setpoint /cool requires — there is no "resume at
-        the existing target" form — and is unused when switching off.
-        """
-        if on:
-            await self.cool_camera(temperature, minutes=minutes)
-        else:
-            await self.warm_camera(minutes=minutes)
 
     async def set_dew_heater(self, on: bool) -> None:
         """The parameter is `power`, not `on` or `enabled`."""

@@ -11,6 +11,7 @@ roof-close automation must act on the first.
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from functools import partial
 from typing import Any
 
 from homeassistant.components.binary_sensor import (
@@ -19,34 +20,26 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
+from .coordinator import NinaConfigEntry, NinaData
 from .device import observed, read_field
-from .entity import NinaEntity
+from .entity import NinaDescribedEntity, NinaEntityDescription, async_add_observed
 
 PARALLEL_UPDATES = 0
 
 
 @dataclass(frozen=True, kw_only=True)
-class NinaBinarySensorDescription(BinarySensorEntityDescription):
+class NinaBinarySensorDescription(NinaEntityDescription, BinarySensorEntityDescription):
     """A binary sensor, plus how to read it out of the snapshot.
 
-    `kind` names the child device; `None` puts it on the hub. `verified` is
-    False only for the dome, which no hardware has validated.
     `survives_disconnect` keeps an entity available while its device is down,
     for the one whose job is to report that.
     """
 
     value: Callable[[NinaData], bool | None]
-    kind: str | None
-    attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
-    verified: bool = True
     survives_disconnect: bool = False
-    unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
-    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _unsafe(data: NinaData) -> bool | None:
@@ -234,34 +227,18 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
 )
 
 
-class NinaBinarySensor(NinaEntity, BinarySensorEntity):
+class NinaBinarySensor(NinaDescribedEntity, BinarySensorEntity):
     """One descriptor, read out of the published snapshot."""
 
     entity_description: NinaBinarySensorDescription
 
-    def __init__(
-        self,
-        coordinator: NinaCoordinator,
-        entry: NinaConfigEntry,
-        description: NinaBinarySensorDescription,
-    ) -> None:
-        super().__init__(
-            coordinator,
-            entry,
-            description.unique_id_suffix or description.key,
-            kind=description.kind,
-        )
-        self.entity_description = description
-        self._survives_disconnect = description.survives_disconnect
+    @property
+    def _survives_disconnect(self) -> bool:
+        return self.entity_description.survives_disconnect
 
     @property
     def is_on(self) -> bool | None:
         return self.entity_description.value(self.coordinator.data)
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        build = self.entity_description.attributes
-        return None if build is None else build(self.coordinator.data)
 
 
 async def async_setup_entry(
@@ -270,21 +247,12 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    added: set[str] = set()
-
-    @callback
-    def _add_observed() -> None:
-        """Create the entities whose equipment has now been observed."""
-        new = [
-            NinaBinarySensor(coordinator, entry, description)
-            for description in DESCRIPTIONS
-            if description.key not in added
-            and observed(coordinator.data, description.kind)
-        ]
-        if not new:
-            return
-        added.update(sensor.entity_description.key for sensor in new)
-        async_add_entities(new)
-
-    _add_observed()
-    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
+    async_add_observed(
+        entry,
+        async_add_entities,
+        lambda data: (
+            (d.key, partial(NinaBinarySensor, coordinator, entry, d))
+            for d in DESCRIPTIONS
+            if observed(data, d.kind)
+        ),
+    )

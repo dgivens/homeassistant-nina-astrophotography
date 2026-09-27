@@ -21,9 +21,10 @@ source cannot produce one.
 warm at setup must not lose its cooler-power entity.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from functools import partial
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -38,6 +39,7 @@ from homeassistant.const import (
     LIGHT_LUX,
     PERCENTAGE,
     EntityCategory,
+    Platform,
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
@@ -52,8 +54,13 @@ from . import derive
 from .api.models import Frame, TargetBreakdown
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_of, observed, read_field
-from .entity import NinaChannelEntity, NinaEntity
+from .device import channel_key, channels_for, observed, read_field
+from .entity import (
+    NinaChannelEntity,
+    NinaDescribedEntity,
+    NinaEntityDescription,
+    async_add_observed,
+)
 from .sequence import progress_percent
 
 PARALLEL_UPDATES = 0
@@ -67,20 +74,10 @@ _SECONDS_PER_HOUR = 3600.0
 
 
 @dataclass(frozen=True, kw_only=True)
-class NinaSensorDescription(SensorEntityDescription):
-    """A sensor, plus how to read it out of the published snapshot.
-
-    `kind` names the child device; `None` puts it on the hub. `verified` is
-    False only for the dome, which no hardware has validated.
-    """
+class NinaSensorDescription(NinaEntityDescription, SensorEntityDescription):
+    """A sensor, plus how to read it out of the published snapshot."""
 
     value: Callable[[NinaData], float | int | str | datetime | None]
-    kind: str | None
-    verified: bool = True
-    unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
-    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
-    attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
 
 
 def _frame(field: str) -> Callable[[NinaData], Any]:
@@ -903,35 +900,16 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
 )
 
 
-class NinaSensor(NinaEntity, SensorEntity):
+class NinaSensor(NinaDescribedEntity, SensorEntity):
     """One descriptor, read out of the published snapshot."""
 
     entity_description: NinaSensorDescription
     # Cards read these live; recorded, each would write KBs per frame.
     _unrecorded_attributes = frozenset({"recent_frames", "recent_lights"})
 
-    def __init__(
-        self,
-        coordinator: NinaCoordinator,
-        entry: NinaConfigEntry,
-        description: NinaSensorDescription,
-    ) -> None:
-        super().__init__(
-            coordinator,
-            entry,
-            description.unique_id_suffix or description.key,
-            kind=description.kind,
-        )
-        self.entity_description = description
-
     @property
     def native_value(self) -> float | int | str | datetime | None:
         return self.entity_description.value(self.coordinator.data)
-
-    @property
-    def extra_state_attributes(self) -> Mapping[str, Any] | None:
-        build = self.entity_description.attributes
-        return None if build is None else build(self.coordinator.data)
 
 
 class NinaWeatherSensor(NinaSensor):
@@ -950,7 +928,6 @@ class NinaWeatherSensor(NinaSensor):
         """`established_by` is what the registry holds; `None` for a new channel."""
         super().__init__(coordinator, entry, description)
         self._established_by = established_by
-        self._recorded = established_by
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -965,18 +942,18 @@ class NinaWeatherSensor(NinaSensor):
     def _note_source(self) -> None:
         """Record the source of the newest reading in the entity registry.
 
-        `_recorded` mirrors the registry, so an unchanged source costs no write.
+        `_established_by` mirrors the registry, so an unchanged source costs no
+        write.
         """
         weather = self.coordinator.data.snapshot.weather
         if weather is None:
             return
         device_id = weather.meta.device_id
-        if device_id is None or device_id == self._recorded:
+        if device_id is None or device_id == self._established_by:
             return
         if weather.channels.get(self.entity_description.key) is None:
             return
         self._established_by = device_id
-        self._recorded = device_id
         er.async_get(self.hass).async_update_entity_options(
             self.entity_id, DOMAIN, {ESTABLISHED_BY: device_id}
         )
@@ -1037,63 +1014,46 @@ async def async_setup_entry(
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     coordinator = entry.runtime_data.coordinator
-    added: set[str] = set()
 
-    @callback
-    def _add_observed() -> None:
-        """Create the entities whose equipment has now been observed."""
-        descriptions = [
-            description
-            for description in DESCRIPTIONS
-            if description.key not in added
-            and observed(coordinator.data, description.kind)
-        ]
-        gauges = [
-            channel
-            for channel in channels_of(coordinator.data)
-            if not channel.writable and channel_key(channel) not in added
-        ]
-        if not descriptions and not gauges:
-            return
-        added.update(description.key for description in descriptions)
-        added.update(channel_key(channel) for channel in gauges)
-        async_add_entities(
-            [NinaSensor(coordinator, entry, d) for d in descriptions]
-            + [NinaSensorChannel(coordinator, entry, c) for c in gauges]
-        )
+    def _observed(data: NinaData) -> Iterator[tuple[str, Callable[[], SensorEntity]]]:
+        for description in DESCRIPTIONS:
+            if observed(data, description.kind):
+                yield (
+                    description.key,
+                    partial(NinaSensor, coordinator, entry, description),
+                )
+        for channel in channels_for(data, Platform.SENSOR):
+            yield (
+                channel_key(channel),
+                partial(NinaSensorChannel, coordinator, entry, channel),
+            )
 
-    _add_observed()
-    entry.async_on_unload(coordinator.async_add_listener(_add_observed))
+    async_add_observed(entry, async_add_entities, _observed)
 
     # Not gated on `observed()`: a station down at startup still owns its
     # channels, and their device row survives from the run that created them.
     established = _established_channels(er.async_get(hass), entry)
-    channels = set(established)
-    async_add_entities(
-        NinaWeatherSensor(coordinator, entry, description, established[description.key])
-        for description in WEATHER_CHANNELS
-        if description.key in established
-    )
 
-    @callback
-    def _add_newly_seen() -> None:
-        """Create each channel on its first non-`NaN` reading."""
-        weather = coordinator.data.snapshot.weather
-        if weather is None:
-            return
-        fresh = [
-            description
-            for description in WEATHER_CHANNELS
-            if description.key not in channels
-            and weather.channels.get(description.key) is not None
-        ]
-        if not fresh:
-            return
-        channels.update(description.key for description in fresh)
-        async_add_entities(
-            NinaWeatherSensor(coordinator, entry, description, None)
-            for description in fresh
-        )
+    def _weather_channels(
+        data: NinaData,
+    ) -> Iterator[tuple[str, Callable[[], SensorEntity]]]:
+        """The established channels, and each other on its first non-`NaN`
+        reading.
+        """
+        weather = data.snapshot.weather
+        for description in WEATHER_CHANNELS:
+            key = description.key
+            reading = None if weather is None else weather.channels.get(key)
+            if key in established or reading is not None:
+                yield (
+                    key,
+                    partial(
+                        NinaWeatherSensor,
+                        coordinator,
+                        entry,
+                        description,
+                        established.get(key),
+                    ),
+                )
 
-    _add_newly_seen()
-    entry.async_on_unload(coordinator.async_add_listener(_add_newly_seen))
+    async_add_observed(entry, async_add_entities, _weather_channels)
