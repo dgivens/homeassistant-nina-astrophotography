@@ -78,15 +78,12 @@ async def test_a_hung_autofocus_fires_when_the_fold_first_calls_it_failed(
 
 
 async def test_a_failure_that_predates_home_assistant_is_history_not_an_alarm(
-    hass: HomeAssistant, config_entry, rig, inside_the_dawn_session
+    hass: HomeAssistant, config_entry, rig, inside_the_dawn_session, set_up_at
 ) -> None:
     """Set up with the verdict already true: seeding from the first published
     fold is what keeps a restart from announcing last night's hung run.
     """
-    rig.goto("autofocus_timed_out")
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await set_up_at(hass, config_entry, rig, "autofocus_timed_out")
     assert state_of(hass, ERROR).state == "unknown"
 
 

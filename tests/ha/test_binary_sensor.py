@@ -33,19 +33,6 @@ def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
     )
 
 
-async def _set_up_at(hass: HomeAssistant, entry: MockConfigEntry, rig, state: str):
-    """Set the entry up with the rig already in `state`.
-
-    `/event-history` is replayed once, at setup, so a state that differs only in
-    its event history has to be in force before the entry loads — advancing on
-    to it leaves the events the first replay already folded in.
-    """
-    rig.goto(state)
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-
-
 @pytest.mark.parametrize(
     "key",
     [
@@ -156,12 +143,16 @@ async def test_an_unreachable_rig_still_makes_the_connectivity_sensor_unavailabl
 
 
 async def test_an_unanswered_autofocus_start_raises_the_problem_sensor(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig, inside_the_dawn_session
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    rig,
+    inside_the_dawn_session,
+    set_up_at,
 ) -> None:
     """There is no autofocus-failed event: the dawn night's eighth
     AUTOFOCUS-STARTING going unanswered past the timeout is the whole signal.
     """
-    await _set_up_at(hass, config_entry, rig, "autofocus_timed_out")
+    await set_up_at(hass, config_entry, rig, "autofocus_timed_out")
     assert state_of(hass, AUTOFOCUS_FAILED).state == "on"
 
 
@@ -194,23 +185,24 @@ async def test_the_waiting_sensor_clears_when_the_sequence_stops(
     during_the_scheduler_wait,
     state: str,
     expected: str,
+    set_up_at,
 ) -> None:
     """There is no TS-WAITSTOP: `sequence_stopped` still holds two TS-WAITSTART
     naming 21:05, so a sensor keyed on the newest wait alone would report a
     stopped rig as waiting.
     """
-    await _set_up_at(hass, config_entry, rig, state)
+    await set_up_at(hass, config_entry, rig, state)
     assert state_of(hass, SCHEDULER_WAITING).state == expected
 
 
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """The two entities read the two fields, and a wait is where they diverge —
     which is what the shutdown blueprint waits on, and what the meridian
     blueprint gates on.
     """
-    await _set_up_at(hass, config_entry, rig, "scheduler_waiting")
+    await set_up_at(hass, config_entry, rig, "scheduler_waiting")
     assert state_of(hass, SEQUENCER_RUNNING).state == "on"
     assert state_of(hass, IMAGING).state == "off"
 
@@ -238,7 +230,7 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
 
 
 async def test_a_device_observed_after_setup_gets_its_entities(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig, caplog
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, caplog, set_up_at
 ) -> None:
     """Equipment routinely connects long after Home Assistant starts, and the
     focuser carries no DeviceId in the partial-connection capture.
@@ -249,7 +241,7 @@ async def test_a_device_observed_after_setup_gets_its_entities(
     re-added `unique_id`, refuses the entity and logs it — so the assertion is
     on the log line, which is the only observable difference.
     """
-    await _set_up_at(hass, config_entry, rig, "partial_equipment_connection")
+    await set_up_at(hass, config_entry, rig, "partial_equipment_connection")
     assert hass.states.get(AUTOFOCUS_FAILED) is None
 
     coordinator = config_entry.runtime_data.coordinator
@@ -281,68 +273,72 @@ def test_every_dome_descriptor_is_marked_unverified() -> None:
 
 @pytest.mark.synthetic
 async def test_a_completed_autofocus_rejected_on_its_curve_fit_raises_the_problem(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
 ) -> None:
     """The failure that costs a night. A rejected run FINISHES — the event
     stream shows a normal pair, so the hung heuristic sees nothing — and
     N.I.N.A. writes its report with no verdict on it. The R² under the
     profile's `RSquaredThreshold` is the only evidence there is (§4.4).
     """
-    await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
+    await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
     assert state_of(hass, AUTOFOCUS_FAILED).state == "on"
 
 
 async def test_a_completed_autofocus_that_fitted_well_raises_nothing(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
 ) -> None:
     """The same captured report unmodified: 0.971 against a 0.7 threshold."""
-    await _set_up_at(hass, config_entry, rig, "imaging_guiding")
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
     assert state_of(hass, AUTOFOCUS_FAILED).state == "off"
 
 
 @pytest.mark.synthetic
 async def test_a_rejected_run_publishes_what_it_was_judged_against(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
 ) -> None:
     """`on` alone cannot be acted on. The R² and the threshold it lost to are
     what turn the verdict into a number the operator can check.
     """
-    await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
+    await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
     attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
     assert attributes["reason"] == "rejected"
     assert attributes["r_squared"] < attributes["r_squared_threshold"] == 0.7
 
 
 async def test_a_hung_run_says_so_because_the_report_is_another_runs(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig, inside_the_dawn_session
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    rig,
+    inside_the_dawn_session,
+    set_up_at,
 ) -> None:
     """A run that hangs never writes a report, so `last-af` still holds the
     previous one. Without the reason, anything read off that report reads as
     belonging to the run that just failed.
     """
-    await _set_up_at(hass, config_entry, rig, "autofocus_timed_out")
+    await set_up_at(hass, config_entry, rig, "autofocus_timed_out")
     assert state_of(hass, AUTOFOCUS_FAILED).attributes["reason"] == "hung"
 
 
 async def test_a_run_that_fitted_well_has_no_reason(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig
+    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
 ) -> None:
     """The threshold is published whether or not anything failed: it is what
     says how much headroom a passing run had.
     """
-    await _set_up_at(hass, config_entry, rig, "imaging_guiding")
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
     attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
     assert attributes["reason"] is None
     assert attributes["r_squared_threshold"] == 0.7
 
 
 async def test_a_report_older_than_the_session_is_not_tonights_problem(
-    hass: HomeAssistant, config_entry, rig
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """The report file outlives a restart, and without the real clock this test
     runs a day or more after the capture — so the same rejected report reads
     `off`. Believing an old one would raise a problem every time Home Assistant
     started.
     """
-    await _set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
+    await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
     assert state_of(hass, AUTOFOCUS_FAILED).state == "off"

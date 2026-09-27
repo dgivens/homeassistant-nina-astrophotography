@@ -53,14 +53,13 @@ async def _reload(hass: HomeAssistant, entry: MockConfigEntry) -> None:
 
 
 @pytest.fixture
-async def cold_entry(hass: HomeAssistant, config_entry: MockConfigEntry, rig):
+async def cold_entry(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, set_up_at
+):
     """The entry set up with every device down, which is the cold start: no
     weather reading has ever arrived, so no channel exists yet.
     """
-    rig.goto("equipment_disconnected")
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await set_up_at(hass, config_entry, rig, "equipment_disconnected")
     return config_entry
 
 

@@ -18,9 +18,9 @@ answers 404, which is what a build without the livestack plugin sends, and that
 keeps the coordinator's not-served latch exercised.
 
 Which makes those two groups the exception to the paragraph above, and the
-reason a test enters a whole capture with `_set_up_at` rather than `advance`:
-advancing from a dawn state has the latch already fired, and one refresh does
-not retry.
+reason a test enters a whole capture with the `set_up_at` fixture rather than
+`advance`: advancing from a dawn state has the latch already fired, and one
+refresh does not retry.
 
 Adding a state: build it from captured envelopes, never from a hand-written
 document. A state the corpus cannot show belongs in `AWAITING_CAPTURE`.

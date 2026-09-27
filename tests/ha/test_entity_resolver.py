@@ -120,19 +120,6 @@ def _templated(domain: str, suffix: str, instance: str = INSTANCE) -> str:
     return f"{domain}.{instance}_{suffix}"
 
 
-async def _set_up_guiding(hass: HomeAssistant, entry, rig) -> None:
-    """Set the entry up with every piece of equipment this card reads present.
-
-    An entity exists only once its equipment has been observed, and no guider is
-    connected in the default state. The state has to be in force before setup,
-    not advanced on to — see `_set_up_at` in `test_binary_sensor.py`.
-    """
-    rig.goto("imaging_guiding")
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
-
-
 # Per card, the lookups that cannot resolve and why. Asserted as an exact set so
 # that nothing joins one unnoticed; a card whose every lookup resolves has an
 # empty entry rather than none, so a newly converted card has to be listed.
@@ -184,6 +171,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     rig,
     hass_ws_client,
     card: Path,
+    set_up_at,
 ) -> None:
     """On a rig carrying the ids the committed list records, every resolved
     lookup must equal its prefix-templated form. A mismatch means the card reads
@@ -192,7 +180,7 @@ async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
     This is what pins the lookups whose key is not its suffix: a wrong slug on
     one of those shows up as a mismatch, not as a blank reading.
     """
-    await _set_up_guiding(hass, config_entry, rig)
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
 
     resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
@@ -215,6 +203,7 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
     rig,
     hass_ws_client,
     card: Path,
+    set_up_at,
 ) -> None:
     """The companion to the test above, which would pass just as well if
     nothing resolved at all.
@@ -222,7 +211,7 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
     Catches a new silent fallback: one more entity shipped disabled, or a
     dropped `translation_key`, costs rename-survival and reports nothing.
     """
-    await _set_up_guiding(hass, config_entry, rig)
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
 
     resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 

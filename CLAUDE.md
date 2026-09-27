@@ -215,7 +215,7 @@ endpoint** — `/profile/show`, `/livestack/status`,
 `/equipment/focuser/last-af`. Every state but `imaging_guiding` withholds
 those, so the coordinator's not-served latch fires at setup and one refresh
 will not retry. Set the entry up with the rig already in the state instead
-(`_set_up_at` in `tests/ha/test_binary_sensor.py`). The same applies to
+(the `set_up_at` fixture in `tests/ha/conftest.py`). The same applies to
 `/event-history`, which is replayed once.
 
 Test through **public Home Assistant interfaces**: set up via

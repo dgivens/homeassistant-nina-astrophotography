@@ -66,17 +66,14 @@ async def test_a_device_disconnection_is_logged_once_and_the_reconnection_once(
 
 
 async def test_first_sight_of_a_device_is_not_a_reconnection(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig, caplog
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, caplog, set_up_at
 ) -> None:
     """Equipment routinely connects long after Home Assistant starts. Only a
     slot that has been seen connected and gone down has anything to recover
     from, so a first connection is not a transition.
     """
     caplog.set_level(logging.INFO)
-    rig.goto("partial_equipment_connection")
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
+    await set_up_at(hass, config_entry, rig, "partial_equipment_connection")
 
     rig.goto("imaging")
     await config_entry.runtime_data.coordinator.async_refresh()
