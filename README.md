@@ -658,7 +658,7 @@ hand under Resources — the file, the entry, or both is fine, but leave the
 entry and its card competes with the integration's own copy to define the
 same custom element on every page load; whichever loses that race is the one
 that silently doesn't work. Each card logs `NINA-…-CARD vX.Y.Z` to the browser
-console on load — seeing `v1.4.5` there means a stale resource is still
+console on load — seeing `v1.0.0` there means a stale 1.4.5 resource is still
 winning. Hard-reload the dashboard after removing it.
 
 ```yaml

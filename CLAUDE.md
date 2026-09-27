@@ -141,10 +141,10 @@ disk proves nothing.
 
 ## Branches
 
-- `main` — the shipping line, at 1.4.5 until 2.0 merges
-- `v2` — the 2.0 integration branch. Stack PRs only when one builds on
-  another's diff (stack #17); independent fixes are plain PRs onto `v2`.
-  **Create one with `gh stack init --base v2 <bottom> <top>`, then `gh stack
+- `main` — the trunk and the shipping line; every PR targets it. Stack PRs
+  only when one builds on another's diff (stack #17); independent fixes are
+  plain PRs onto `main`.
+  **Create one with `gh stack init --base main <bottom> <top>`, then `gh stack
   submit --auto --remote origin`** — `gh pr create --base <branch>` chains the
   bases but GitHub tracks no stack, so a bottom-up merge strands the upper PR on
   a deleted branch. Adopting already-open PRs after the fact is safe and edits
@@ -159,16 +159,15 @@ disk proves nothing.
   **Every `gh stack` command needs `GH_REPO=<your fork>` and
   `--remote origin`**: it auto-detects `upstream` and will try to create
   duplicate PRs there. `gh repo set-default` covers `gh pr`, not `gh stack`.
-  One branch per task, `v2-<phase><NN>-<slug>`; each phase ends with a
-  `<phase>NN-phase-<x>-gate-fixes` branch carrying the review findings.
+  One branch per task, named for it.
 - **PRs are squash-merged.** A mechanical reformat ships as its own PR, and
   its squash SHA goes into `.git-blame-ignore-revs` after it merges. Git never
   sees a squashed branch as merged (`--merged`, `git cherry`), so check the
   PR's state before `git branch -D`.
-- **`wip/v2.0` — a read-only reference, deleted when 2.0 tags. Never merge or
-  rebase it.** It predates every fix on `main` and has no tests; its value is
-  the API audit in its CHANGELOG and README, which `docs/v2.0-design.md`
-  supersedes.
+- **A release** bumps `version` in `manifest.json` and `pyproject.toml` and
+  dates its CHANGELOG section, then tags `v<version>` on `main` and publishes
+  a GitHub release from it — HACS offers releases, not commits. A beta is
+  `v<version>b<N>`, published as a pre-release.
 
 ## Quality bar
 

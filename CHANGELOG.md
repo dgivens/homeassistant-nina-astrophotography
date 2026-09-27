@@ -4,7 +4,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
-## [2.0.0] - unreleased
+## [2.0.0] - 2026-09-26
 
 ### Breaking
 
@@ -91,7 +91,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   freshly-registered ones, and which copy a dashboard actually gets is a race
   each page load — not consistently the old one, so this can look like it
   "mostly works." Each card logs `NINA-…-CARD vX.Y.Z` to the browser console;
-  `v1.4.5` there means a stale resource is winning. Hard-reload after
+  `v1.0.0` there means a stale 1.4.5 resource is winning. Hard-reload after
   removing it. A YAML-managed dashboard (`lovelace: resource_mode: yaml`, or
   the older `mode: yaml`) can't be written to automatically — the six
   entries are logged for you to add by hand, or switch to
@@ -331,6 +331,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The cards no longer report good news they do not have.** An unknown safety
   state read as "Conditions safe", missing guiding RMS as perfect guiding, and
   an empty image history broke the image panel.
+- **The cards tell a lost link to N.I.N.A. from equipment that is off.** The
+  observatory, weather and image panel cards read "N.I.N.A. unreachable"
+  rather than a disconnected camera, station or rig on standby, and hold their
+  last view through one failed poll, for up to 30 seconds. While the link is
+  down, the observatory card keeps Stop Sequence, Park and Close Dome live
+  behind their confirmations and disables the controls that need a state it
+  cannot read. The weather card no longer reports a live station as missing
+  when its diagnostic `weather_source` sensor is disabled.
 - **`number.<instance>_camera_target_temperature` reads the camera's real
   setpoint.** It read `TargetTemp`, which is 0 whatever the camera is cooling
   to; the driver's setpoint is `TemperatureSetPoint`.
