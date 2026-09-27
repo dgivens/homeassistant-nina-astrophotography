@@ -1,12 +1,16 @@
 # Simulated rig — design
 
-**Rev 2** · 2026-09-27 · **status: proposed** — nothing here is built yet
+**Rev 3** · 2026-09-27 · **status: proposed** — nothing here is built yet
 
 A disposable Windows VM running N.I.N.A. against simulated equipment. Any
 contributor can build it, on Windows, Linux or macOS, amd64 or arm64. It exists to
 test N.I.N.A. and the Advanced API end to end, commands included, without a
 separate PC. It runs stable or nightly N.I.N.A. and Advanced API. §5 defines the
 test tier that uses it.
+
+**Scope.** Only **macOS arm64** is built. Other hosts are **designed for, not
+built**: nothing here may assume the host, so adding one later means a new backend
+(§4.1), not a redesign. No stage builds another host.
 
 Normative text is plain. Justification appears in *Rationale* blocks.
 **Amendment rule:** a PR that contradicts this document amends it in the same PR
@@ -52,11 +56,11 @@ that PC with something reproducible:
 
 | # | Decision | Choice |
 |---|---|---|
-| W-01 | Hosts | macOS (QEMU + HVF), Linux (QEMU + KVM), Windows (Hyper-V); amd64 and arm64 |
+| W-01 | Hosts | **Built: macOS arm64** (QEMU + HVF). Designed for, not built: macOS amd64, Linux (QEMU + KVM), Windows (Hyper-V) |
 | W-02 | Guest architecture | **Matches the host.** An x64 guest on amd64 runs natively; an ARM64 guest on arm64 runs the x64 software under Prism emulation |
 | W-03 | Windows media | **Windows 11 Enterprise Evaluation** (x64 or ARM64, 25H2). No key, 90 days, and each contributor downloads their own |
-| W-04 | Build | **One Packer template with two sources**, `qemu` (TPM from swtpm) and `hyperv-iso` (built-in vTPM), running the same provisioners. Adapted from [mac-vms `windows-11-arm64`][macvms] (MIT, notice kept) |
-| W-05 | Answer file | One `Autounattend.xml` template, rendered per guest architecture (`processorArchitecture`) and image index. No product key |
+| W-04 | Build | **One Packer template.** Its `qemu` source (TPM from swtpm) is the only one built. A future `hyperv-iso` source (built-in vTPM) would run the same provisioners. Adapted from [mac-vms `windows-11-arm64`][macvms] (MIT, notice kept) |
+| W-05 | Answer file | `Autounattend.xml` rendered from a template. Guest architecture (`processorArchitecture`) and image index are variables, set for ARM64 only. No product key |
 | W-06 | Transport | WinRM (elevated) for Packer's provisioners; OpenSSH after that |
 | W-07 | Generalisation | **No sysprep, no identity seeding.** The image boots straight into an autologon session |
 | W-08 | Portable core | `provision/*.ps1` turns **any** clean Windows 11 into the rig, x64 or ARM64. Packer is one caller of it; a contributor's own Windows machine or VM is another |
@@ -66,23 +70,27 @@ that PC with something reproducible:
 | W-12 | Profiles | The operator's simulator N.I.N.A. profile and PHD2 config, **committed as fixtures** under `tests/fixtures/rig/` |
 | W-13 | Image layers | `base` ← `stable-<ver>` / `nightly-<build>` ← `run`: qcow2 overlays under QEMU, differencing VHDX under Hyper-V (§4.3) |
 | W-14 | Expiry | `rig.py up` warns at 80 days since the base image was built, and refuses at 90 |
-| W-15 | Tooling | `tools/windows-rig/rig.py`, one command set with a backend per hypervisor (`qemu`, `hyperv`) chosen from the host. `just` recipes wrap it. Pyright covers it |
+| W-15 | Tooling | `tools/windows-rig/rig.py`: one command set over a backend seam, with one backend, `qemu` on macOS. It refuses other hosts with a pointer to W-08. `just` recipes wrap it. Pyright covers it |
 | W-16 | Test tier | `tests/rig/` needs `--rig HOST:PORT` and `--simulated`, and checks the rig itself is simulated before sending any command (§5) |
 | W-17 | Captures | Both channels are captured **on the same VM** and diffed by **structure**, not values. `capture_fixtures.py --out` keeps them out of `tests/fixtures/` |
 
-> *Rationale (W-01, W-02).* A contributor's hardware decides both the
-> hypervisor and the architecture. Matching the guest to the host means
-> virtualisation everywhere and emulation nowhere except in the guest's own x64
-> layer on ARM64. On amd64 hosts, N.I.N.A. runs exactly as on a real imaging PC.
+> *Rationale (W-01, W-02).* The maintainer's host is the only one anyone will
+> run, so it is the only one worth building. But a future contributor's hardware
+> decides both the hypervisor and the architecture. Matching the guest to the host
+> means virtualisation everywhere and emulation nowhere except in the guest's own
+> x64 layer on ARM64. On amd64 hosts, N.I.N.A. would run exactly as on a real
+> imaging PC. The macOS work keeps that open by keeping the host out of the
+> provisioning scripts, the fixtures and `tests/rig/`.
 
 > *Rationale (W-03, W-04).* No Windows licence is bought. The Evaluation image
 > expires after 90 days, and once expired it shuts down every hour. Rebuilding
 > about every 80 days is therefore routine, and a routine rebuild has to be one
 > command on every host.
 >
-> Packer is the one tool that drives both QEMU and Hyper-V from a single template,
-> so the provisioners are written once. On Windows hosts, Hyper-V rather than QEMU:
-> it has a built-in virtual TPM, and swtpm is not supported on Windows.
+> Packer can drive both QEMU and Hyper-V from a single template, so a future
+> Windows host reuses the provisioners as written. That future host would use
+> Hyper-V rather than QEMU: it has a built-in virtual TPM, and swtpm is not
+> supported on Windows.
 
 > *Rationale (W-07).* mac-vms runs sysprep and injects an identity so that one
 > image can be cloned into many VMs. This rig runs one throwaway overlay at a
@@ -206,25 +214,40 @@ that PC with something reproducible:
 
 ### 4.1 Host support
 
-| Host | Backend | Accelerator | Guest | TPM | Layers |
-|---|---|---|---|---|---|
-| macOS arm64 | `qemu` | HVF | ARM64 | swtpm | qcow2 |
-| macOS amd64 | `qemu` | HVF | x64 | swtpm | qcow2 |
-| Linux amd64 | `qemu` | KVM | x64 | swtpm | qcow2 |
-| Linux arm64 | `qemu` | KVM | ARM64 | swtpm | qcow2 |
-| Windows amd64 or arm64 (Pro and up) | `hyperv` | Hyper-V | matches the host | built in | differencing VHDX |
-| anything else | — | — | — | — | W-08: run `provision/` in your own Windows VM |
+| Host | Status | Backend | Accelerator | Guest | TPM | Layers |
+|---|---|---|---|---|---|---|
+| macOS arm64 | **built** | `qemu` | HVF | ARM64 | swtpm | qcow2 |
+| macOS amd64 | future | `qemu` | HVF | x64 | swtpm | qcow2 |
+| Linux amd64 | future | `qemu` | KVM | x64 | swtpm | qcow2 |
+| Linux arm64 | future | `qemu` | KVM | ARM64 | swtpm | qcow2 |
+| Windows amd64 or arm64 (Pro and up) | future | `hyperv` | Hyper-V | matches the host | built in | differencing VHDX |
+| anything else | now | — | — | — | — | W-08: run `provision/` in your own Windows VM |
 
-`rig.py` picks the backend and guest architecture from the host. A contributor
-overrides them only to debug. A backend is **unverified** until someone has
-built and run it on that host. The README marks each row, as the 2.0 design
-marks the dome.
+`rig.py` detects the host and refuses any it has no backend for, pointing at
+W-08.
+
+**What a future host would take.** A contributor adds it in their own PR, and
+amends this doc:
+- a backend in `rig.py` (start, stop, layer create and delete, the address to
+  print);
+- for another architecture, the answer file's variables;
+- for Windows, a `hyperv-iso` source.
+
+The provisioning scripts, the fixtures and `tests/rig/` should need no change. If
+one does, the macOS work leaked a host assumption into it, and that is the bug.
+
+**Questions only a future host answers:**
+- Hyper-V's Default Switch gives a NAT address, not a port forward, so `up` would
+  have to discover and print it.
+- Whether Windows 11 ARM64 Hyper-V hosts run ARM64 guests from the same template.
+- On Linux, whether standard GitHub-hosted runners gain KVM. That would make this
+  the CI path (§1.2).
 
 ### 4.2 Layout
 
 ```
 tools/windows-rig/
-  packer/rig.pkr.hcl       sources: qemu, hyperv-iso; one build block
+  packer/rig.pkr.hcl       one source today (qemu); one build block
   packer/variables.pkr.hcl packer/autounattend.xml.pkrtpl
   provision/*.ps1          the portable core (W-08): OpenSSH + firewall 1888,
                            ASCOM, PHD2, profiles, autologon, logon task
@@ -250,8 +273,8 @@ base                      Packer: Windows, ASCOM, PHD2, profiles, autologon
      └─ run
 ```
 
-- Under QEMU the layers are qcow2 backing files. Under Hyper-V they are
-  differencing VHDX disks. Both backends have the same meaning.
+- Under QEMU the layers are qcow2 backing files. A future Hyper-V backend would
+  use differencing VHDX disks with the same meaning.
 - **`install <channel>`** boots a throwaway child of `base` and runs
   `install-nina.ps1` over SSH. It then shuts the guest down and keeps that child
   as the channel layer.
@@ -385,7 +408,7 @@ Each stage ends at a gate. Failing a gate stops the work, not only the stage.
    - *Gate:* under emulation, all eleven devices connect, PHD2 guides on its
      simulator, and the host reaches `/v2/api/*` and `/v2/socket`.
 2. **The portable core and the `qemu` source.** `provision/*.ps1` and the Packer
-   template, with the answer file templated by architecture from the start.
+   template, with the answer file's architecture as a variable (set to ARM64).
    - *Gate:* `rig-build`, `rig-install stable` and `rig-up stable` reach a green
      `wait` with no clicks.
 3. **`install-nina.ps1`, `rig.py`, the recipes.**
@@ -396,11 +419,7 @@ Each stage ends at a gate. Failing a gate stops the work, not only the stage.
    commands in §5, at client level.
    - *Gate:* the tier passes on stable. Pointed at a N.I.N.A. with one real
      device, it refuses to run.
-6. **Other hosts.**
-   - Linux amd64 (`qemu`, KVM, x64 guest).
-   - Then the `hyperv-iso` source for Windows hosts.
-
-   Each row in §4.1 is marked verified once someone has run stages 2–5 on it.
+No stage builds another host (§4.1).
 
 ## 7. Open questions
 
@@ -414,10 +433,6 @@ Each stage ends at a gate. Failing a gate stops the work, not only the stage.
 - Whether the 3.0 plugin starts with authentication and SSL off.
 - N.I.N.A.'s start-up time under emulation, which sets `wait`'s timeout, and
   which first-run dialogs need suppressing.
-- How `rig.py` reaches the guest under Hyper-V. The Default Switch hands out a NAT
-  address, not a port forward, so `up` has to discover and print it.
-- Whether Windows 11 ARM64 Hyper-V hosts run ARM64 guests from the same template
-  unchanged.
 
 ## 8. Risks
 
@@ -425,8 +440,9 @@ Each stage ends at a gate. Failing a gate stops the work, not only the stage.
   needed a Platform fix in 2025 (§3.2). x64 guests don't carry this risk.
 - **Software rendering.** With no GPU, WPF is slow. N.I.N.A.'s start-up may
   stretch every `wait`.
-- **Untested backends.** The maintainer has one host. The other rows in §4.1
-  stay unverified until a contributor runs them, and could rot unnoticed.
+- **Host assumptions leaking in.** With only macOS built, a macOS-only path or
+  tool can creep into `provision/`, the fixtures or `tests/rig/` without anything
+  failing. Review for it. §4.1 treats it as a bug.
 - **Churn in nightly URLs.** `nightly-urls` scrapes a page, and the page can
   change.
 - **Evaluation access.** Microsoft can move or re-gate the Evaluation ISO.
@@ -451,8 +467,8 @@ This section is input to a future design; nothing here is decided.
 
 - **A spare Windows PC.** This is the status quo. Only one person has one, its
   address changes, and it runs one version.
-- **Supporting macOS arm64 only.** The rig has to serve contributors on any
-  host.
+- **A macOS-only design.** Building only macOS is right for now. Designing only
+  for it would make a second host a rewrite.
 - **Sharing prebuilt images (Vagrant boxes, registries).** The Evaluation licence
   forbids redistribution.
 - **Windows containers.** N.I.N.A. needs an interactive desktop session, and
