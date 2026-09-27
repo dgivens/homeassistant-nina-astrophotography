@@ -33,7 +33,7 @@ The `justfile` wraps all of these; `just ci` runs everything CI checks.
 git ref to another against a N.I.N.A. and holds the result to
 `docs/2.0-renames.md`; its README has the commands.
 
-`docs/windows-rig-design.md` (proposed) designs the simulated rig: a disposable
+`docs/test-vm.md` designs the simulated rig: a disposable
 Windows VM on macOS/Apple silicon running stable or nightly N.I.N.A. against
 simulators. It also defines the `tests/rig/` tier. Host-specific code belongs
 only in its host backend (§4.1 there).
@@ -375,8 +375,8 @@ the dome and the upgrade from 1.4.5 get exercised.
 A fixture captured from it is real wire data from simulated devices. Say so
 where it is used, and never let it replace a capture of the same state from the
 real rig, whose quirks (a station's `"NaN"` channels, a disconnected panel's
-`0 / 0` range) a simulator need not reproduce. `docs/windows-rig-design.md`
-proposes a disposable one any contributor can build.
+`0 / 0` range) a simulator need not reproduce. `docs/test-vm.md`
+designs a disposable one.
 
 **2. Redact before committing.** A profile dump contains live credentials.
 

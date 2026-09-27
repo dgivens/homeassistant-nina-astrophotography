@@ -1,6 +1,6 @@
-# Simulated rig — design
+# Test VM — design
 
-**Rev 1** · 2026-09-27 · **status: proposed**
+**Status:** accepted, not yet implemented · 2026-09-27
 
 The simulated rig is a disposable Windows VM running N.I.N.A., the Advanced API
 and PHD2 against simulated equipment. It lets the integration be tested end to end,
@@ -15,12 +15,10 @@ the rest (§4.1).
 **How to read this document.** Normative text is plain. Justification appears in
 *Rationale* blocks and can be skipped when implementing.
 
-**Amendment rule.** Once this document is accepted, a change to it:
-- bumps the rev;
-- adds an entry to §11 saying what changed and why;
-- moves any decision it replaces into §11.1 rather than deleting it.
-
-A PR that contradicts the document amends it in the same PR.
+**Revisions.** The text above the first revision stays as written. A later
+change is a new dated section at the end, after a horizontal rule. It says what
+changed and why, and which earlier sections it replaces. The status line above
+records where the work stands.
 
 ---
 
@@ -505,16 +503,6 @@ This is input to a future design. Nothing here is decided.
 - **Shell recipes instead of `rig.py`.** Shell does not carry to a Windows host,
   and URL discovery, polling and the expiry check read badly in it.
 - **Alpaca device selection.** OmniSim would have to be started separately.
-
-## 11. Revision history
-
-| Rev | Date | Change |
-|---|---|---|
-| 1 | 2026-09-27 | Initial proposal |
-
-### 11.1 Superseded decisions
-
-None yet.
 
 [macvms]: https://github.com/bbirkinbine/mac-vms/tree/main/packer/windows-11-arm64
 [evalcenter]: https://www.microsoft.com/en-us/evalcenter/evaluate-windows-11-enterprise
