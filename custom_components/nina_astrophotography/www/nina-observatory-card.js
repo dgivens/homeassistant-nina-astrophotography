@@ -42,13 +42,9 @@ function isOn(hass, entity_id) {
   return state(hass, entity_id) === "on";
 }
 
-// A disconnected device makes its entities unavailable rather than publishing
-// an off state, so availability is what "connected" now reads from. Probe an
-// entity that ships ENABLED — a disabled one has no state object at all, and
-// would read as permanently disconnected.
-//
-// `unknown` counts as disconnected too: a state Home Assistant has never had a
-// value for is not evidence of a connection.
+// A disconnected device makes its entities unavailable, so availability is
+// "connected". Probe an entity that ships enabled, or it reads as permanently
+// disconnected. `unknown` also counts as disconnected.
 function available(hass, entity_id) {
   const e = hass.states[entity_id];
   return !!e && e.state !== "unavailable" && e.state !== "unknown";
@@ -361,13 +357,9 @@ class NinaObservatoryCard extends HTMLElement {
     this._render();
   }
 
-  // The resolved entity id for a `translation_key`, falling back to a prefixed
-  // `slug` when there is nothing to resolve: an entity with no translation key,
-  // a disabled one, or a rig the resolver cannot identify.
-  //
-  // `slug` is the entity-id suffix — the device name plus the entity name — so
-  // it is not always the key. The select keyed `filter` lives on the Filter
-  // Wheel device; `guider_rms_dec` is named "RMS declination".
+  // Falls back to a prefixed `slug` when nothing resolves. The select keyed
+  // `filter` lives on the Filter Wheel device; `guider_rms_dec` is named "RMS
+  // declination".
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -400,11 +392,8 @@ class NinaObservatoryCard extends HTMLElement {
     const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
     const gdrStatusId  = this._eid("sensor", "guider_status");
     const gdrConnected = available(h, gdrStatusId);
-    // Every dome entity ships disabled (§5.3.1: spec-derived, no hardware to
-    // verify against) and a disabled entity has no state object, so the dome
-    // section stays hidden until a dome owner enables them — issue #93, whose
-    // fix is to probe the dome *device*. Resolution cannot help: disabled
-    // entities are absent from the registry payload.
+    // Every dome entity ships disabled, so the section stays hidden until a
+    // dome owner enables them (issue #93).
     const domeParkId   = this._eid("binary_sensor", "dome_at_park");
     const domeConnected = available(h, domeParkId);
     // Any row, even `unavailable`: Close Dome must survive a lost link.
@@ -440,10 +429,8 @@ class NinaObservatoryCard extends HTMLElement {
     const mntDec       = numState(h, this._eid("sensor", "mount_declination"), 3);
     const mntAlt       = numState(h, this._eid("sensor", "mount_altitude"), 1);
     const mntAz        = numState(h, this._eid("sensor", "mount_azimuth"), 1);
-    // The flip fires when the reading reaches (Max - Min), not zero, and both
-    // bounds are per-profile — so the warning window is added to the offset
-    // the sensor publishes rather than to a bare number. Both in minutes: the
-    // attribute always is, and the state is shown in whatever unit was picked.
+    // The flip fires at (Max − Min), not zero, so the warning window adds the
+    // sensor's own published offset rather than a bare number.
     const flipId       = this._eid("sensor", "mount_time_to_meridian_flip");
     const ttf          = quantityIn(h, flipId, "min") ?? NaN;
     const flipFiresAt  = parseFloat(attr(h, flipId, "flip_fires_at_minutes", "")) || 0;
@@ -479,9 +466,8 @@ class NinaObservatoryCard extends HTMLElement {
       `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"`
       + `${off ? ` disabled title="${off}"` : ""}>${label}</button>`;
     const LOST = "N.I.N.A. unreachable";
-    // With no state to pick either of a pair, the link-lost set is fixed:
-    // commands that end activity stay live (harmless if already done; an
-    // unreachable press fails with the action's error), the rest wait.
+    // With no state to choose either of a pair, the set is fixed: commands
+    // that end activity stay live, the rest wait.
     const controls = unreachable ? [
       [
         btn("btn-stop", "⏹ Stop Sequence", "danger"),
@@ -525,7 +511,6 @@ class NinaObservatoryCard extends HTMLElement {
     const html = `
       <style>${STYLE}</style>
       <ha-card>
-        <!-- Header -->
         <div class="header">
           <span class="nina-icon">🔭</span>
           <div>
@@ -537,7 +522,6 @@ class NinaObservatoryCard extends HTMLElement {
 
         <div class="body">
 
-          <!-- Session banner -->
           ${unreachable ? unreachableBanner(lostSince, domeEnabled) : `
           <div class="session-banner">
             <div>
@@ -553,7 +537,6 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>`}
 
-          <!-- Equipment chips: unknown with the link lost -->
           ${unreachable ? "" : `
           <div class="equip-row">
             ${chip("Camera", camConnected)}
@@ -564,14 +547,12 @@ class NinaObservatoryCard extends HTMLElement {
             ${domeConnected ? chip("Dome", domeConnected) : ""}
           </div>`}
 
-          <!-- Flip warning -->
           ${showFlipWarning ? `
             <div class="flip-alert">
               ⚠️ Meridian flip in <strong style="margin:0 4px;">${ttf.toFixed(0)} min</strong>
             </div>
           ` : ""}
 
-          <!-- Camera section -->
           <div class="section">
             <div class="section-title">Camera ${cooling ? "· ❄️ Cooling" : ""}</div>
             <div class="metric-grid">
@@ -583,7 +564,6 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>
 
-          <!-- Mount section -->
           <div class="section">
             <div class="section-title">Mount${mountStatus}</div>
             <div class="metric-grid">
@@ -595,7 +575,6 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>
 
-          <!-- Focuser section -->
           <div class="section">
             <div class="section-title">Focuser</div>
             <div class="metric-grid">
@@ -604,7 +583,6 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>
 
-          <!-- Guiding section -->
           ${gdrConnected ? `
             <div class="section">
               <div class="section-title">Guiding · ${guiding === null ? "" : guiding ? "Active · " : "Stopped · "}bars full scale 4"</div>
@@ -630,7 +608,6 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           ` : ""}
 
-          <!-- Last image stats -->
           <div class="section">
             <div class="section-title">Last Image</div>
             <div class="img-stats-row">
@@ -640,13 +617,12 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>
 
-          <!-- Controls -->
           <div class="section">
             <div class="section-title">Controls</div>
             ${controls.map((row) => `<div class="btn-row">${row.join("")}</div>`).join("")}
           </div>
 
-        </div><!-- end body -->
+        </div>
       </ha-card>
     `;
 
@@ -686,15 +662,12 @@ class NinaObservatoryCard extends HTMLElement {
   }
 }
 
-// ─── Tiny render helpers ──────────────────────────────────────────────────────
-
 function chip(label, connected) {
   return `<div class="equip-chip ${connected ? "connected" : "disconnected"}">
     ${statusDot(connected)} ${label}
   </div>`;
 }
 
-// No unit on a reading that is not there.
 function metric(label, value, unit) {
   return `<div class="metric">
     <div class="label">${label}</div>
@@ -709,10 +682,8 @@ function imgStat(label, value, unit = "") {
   </div>`;
 }
 
-// ─── Register ────────────────────────────────────────────────────────────────
-
-// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
-// defining the same tag would otherwise throw and abort this whole module.
+// Guarded: a stale 1.4.5 `/local/` resource defining the same tag would
+// otherwise throw and abort the rest of this module.
 if (!customElements.get("nina-observatory-card")) {
   customElements.define("nina-observatory-card", NinaObservatoryCard);
 }
