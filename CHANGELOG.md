@@ -48,7 +48,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   snake_case (`frame.hfr`, `frame.stars`). `trigger.event.data.event` is
   unchanged.
 
-- **Long-term statistics restart for two session sensors.**
+- **Long-term statistics restart for two session sensors, and stop for sky
+  brightness until you fix it.**
   `sensor.<instance>_session_integration_time` moves from `min` to `h` and from
   `state_class: total_increasing` to `measurement`, gaining
   `device_class: duration`; `sensor.<instance>_session_image_count` likewise
@@ -57,6 +58,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `measurement` statistic are different types and are not migrated between.
   `sensor.<instance>_mount_time_to_meridian_flip` gains `device_class: duration`
   and is unit-converted on display.
+  `sensor.<instance>_weather_sky_brightness` moves from `lux`, which Home
+  Assistant does not accept for `device_class: illuminance`, to `lx`. Seeing two
+  units, the recorder stops compiling its long-term statistics until the old
+  unit's are fixed or deleted under **Developer tools → Statistics**.
 - **Gain, offset and binning are no longer settable.** `number.<instance>_camera_gain`,
   `_camera_offset` and `_camera_binning` are removed; gain and offset are
   read-only `sensor` entities of the same names, and binning has none. The
