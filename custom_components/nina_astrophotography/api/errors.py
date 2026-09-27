@@ -1,10 +1,7 @@
-"""The error taxonomy.
+"""The error taxonomy, by meaning rather than HTTP status: the API answers
+HTTP 200 for almost everything, with the outcome in the envelope's StatusCode.
 
-Subclasses builtins only — never HomeAssistantError — so the fast suite stays
-HA-free. Mapping to Home Assistant happens in __init__.py and coordinator.py.
-
-Definitions are semantic, not HTTP: the Advanced API answers HTTP 200 for
-almost everything and carries the real outcome in the envelope's StatusCode.
+Builtin subclasses only, so `api/` stays free of Home Assistant.
 """
 
 
@@ -27,10 +24,8 @@ class NinaUnavailableError(NinaError):
 
 
 class NinaEndpointError(NinaError):
-    """This N.I.N.A. build does not serve the requested capability.
-
-    A wrong path never becomes right, so failing the config entry beats
-    retrying forever.
+    """This N.I.N.A. build does not serve the requested route; retrying will
+    not change that.
     """
 
 
@@ -43,22 +38,17 @@ class NinaRequestError(NinaError):
 
 
 class NinaNoImageError(NinaError):
-    """The rig has nothing to render at this index or for this stack.
-
-    Distinct from `NinaUnavailableError`, which means the rig is unwell: an
-    empty image history answering `Index out of range` is the ordinary state of
-    an idle rig, and treating it as an outage would put a traceback in the log
-    every time a dashboard drew the card before the first sub.
+    """The rig has nothing to render at this index or for this stack, as an
+    idle rig's empty image history does. Not an outage.
     """
 
 
 class NinaCommandError(NinaError):
     """The handler ran and refused.
 
-    Retryability depends on the command: `status_code` and `api_error` are the
-    envelope's, never HTTP's. Note that the envelope's code alone cannot
-    classify a failure — "Sequence is not initialized" is raised with 409 on
-    seven routes and 400 on two.
+    `status_code` and `api_error` are the envelope's. The code alone does not
+    classify a failure: "Sequence is not initialized" is 409 on some routes
+    and 400 on others.
     """
 
     def __init__(

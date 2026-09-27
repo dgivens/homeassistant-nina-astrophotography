@@ -1,16 +1,8 @@
-"""Proxy an image byte-for-byte, so a dashboard card only ever talks to
-Home Assistant's own origin.
+"""Proxy frames from the image history, so a card fetches from Home
+Assistant's own origin.
 
-N.I.N.A.'s Advanced API is plain HTTP-only; Home Assistant is commonly
-served over HTTPS, and a browser refuses an HTTPS page's own `fetch()` of
-an HTTP resource as mixed content. Routing the bytes through here — same
-origin, same TLS, same auth — is what a dashboard card actually needs;
-`image.py`'s `ImageEntity` already does the equivalent for the single
-"latest frame", this generalizes it to an arbitrary history index.
-
-Deliberately NOT under `api/`: `api/` is the version-independent, HA-free
-seam (nothing there imports `homeassistant`), and a `HomeAssistantView`
-inherently does. Keep it here even if that seems worth tidying later.
+N.I.N.A. serves plain HTTP, and a browser refuses an HTTPS dashboard's fetch
+of it as mixed content.
 """
 
 from aiohttp import web
@@ -25,13 +17,8 @@ from .const import DOMAIN
 
 
 def _client_for_entity(hass: HomeAssistant, entity_id: str) -> NinaClientV2 | None:
-    """The rig's client behind one of its entities, or `None`.
-
-    `None` covers every way this can fail to resolve — no such entity, an
-    entity from a different integration, a config entry id it never got, one
-    that no longer exists, or one that exists but is not loaded — as one
-    outcome: a request naming any of these all answer the same 404, never a
-    traceback.
+    """The rig's client behind one of its entities, or `None` if the entity
+    or its loaded entry cannot be found.
     """
     entity_entry = er.async_get(hass).async_get(entity_id)
     if entity_entry is None or entity_entry.platform != DOMAIN:
@@ -53,14 +40,9 @@ def _bad_image_request() -> web.Response:
 class NinaImageProxyView(HomeAssistantView):
     """`GET /api/nina_astrophotography/image/{entity_id}/{index}`.
 
-    `index` counts back from the newest frame — 0 is newest, matching
-    `session.recent_frames`, the ordering the card and the sensor attribute
-    both use. N.I.N.A.'s own `/image/{index}` counts the OTHER way: 0 is the
-    OLDEST frame of the process's whole history, confirmed by inspecting
-    real frames from a live rig (the spec only says "the index of the image
-    to get", either direction). Translating needs the live count — cached
-    client-side history can lag a frame behind what N.I.N.A. holds right
-    now, and an off-by-one here silently serves the wrong image.
+    `index` 0 is the newest frame, as in `recent_frames`. N.I.N.A.'s
+    `/image/{index}` counts from the oldest, so the translation reads the
+    live count: the fold can lag a frame behind.
     """
 
     url = "/api/nina_astrophotography/image/{entity_id}/{index}"
@@ -82,9 +64,7 @@ class NinaImageProxyView(HomeAssistantView):
         if client is None:
             return web.Response(status=404)
 
-        # Absent, not "false": the card omits the param entirely to ask for
-        # the linear frame, mirroring `NinaClientV2.get_image_bytes`'s own
-        # "only sent when true" contract for this parameter.
+        # The card omits the parameter to ask for the linear frame.
         auto_prepare = request.query.get("autoPrepare") == "true"
         try:
             count = await client.get_image_history_count()
@@ -94,8 +74,7 @@ class NinaImageProxyView(HomeAssistantView):
                 count - 1 - frame_index, quality=quality, auto_prepare=auto_prepare
             )
         except NinaNoImageError, NinaCommandError:
-            # Nothing to render, or the handler declined — an empty history,
-            # or an index the rig no longer holds. Ordinary, not a defect.
+            # An empty history, or an index no longer held.
             return web.Response(status=404)
         except NinaError:
             return web.Response(status=502)
@@ -103,8 +82,7 @@ class NinaImageProxyView(HomeAssistantView):
         return web.Response(
             body=image_bytes,
             content_type="image/jpeg",
-            # The signed URL this is fetched through is itself a bearer
-            # credential for its short TTL; nothing should cache it further.
+            # Fetched through a signed URL, a short-lived bearer credential.
             headers={"Cache-Control": "no-store"},
         )
 

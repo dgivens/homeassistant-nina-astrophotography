@@ -299,13 +299,8 @@ class NinaFrameStatsCard extends HTMLElement {
     this._render();
   }
 
-  // The resolved entity id for a `translation_key`, falling back to a prefixed
-  // `slug` when there is nothing to resolve: an entity with no translation key,
-  // a disabled one, or a rig the resolver cannot identify.
-  //
-  // `slug` is the entity-id suffix — the device name plus the entity name — so
-  // it is not always the key. A hub sensor adds nothing past the instance
-  // name; the filter wheel's select adds its device's.
+  // Falls back to a prefixed `slug` when nothing resolves. A hub sensor's
+  // `slug` is `key`; the filter wheel's select adds its device name.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -351,15 +346,8 @@ class NinaFrameStatsCard extends HTMLElement {
     const h = this._hass;
     if (!h) return;
 
-    // `_state`'s fallback covers a missing entity only; `shown` covers one
-    // that exists and reads `unknown` or `unavailable`, which would otherwise
-    // print as the word.
-    //
-    // Lights, not frames: the count sensor's state includes the flats, and
-    // everything beside it — the integration, the HFR figures, the chips — is
-    // lights only.
+    // The count sensor's state includes flats; everything else here is lights only.
     const lightCount   = shown(this._attr(this._eid("sensor", "session_image_count"), "light_count"));
-    // Durations in the units printed beside them, whichever each is shown in.
     const hours        = quantityIn(this._hass, this._eid("sensor", "session_integration_time"), "h");
     const integration  = hours === null ? "—" : hours.toFixed(1);
     const lastHfr      = this._state(this._eid("sensor", "last_image_hfr"), "—");
@@ -370,8 +358,7 @@ class NinaFrameStatsCard extends HTMLElement {
     const avgHfrId = this._eid("sensor", "session_avg_hfr");
     const sessionAvgHfr = this._state(avgHfrId, "—");
     const sessionBestHfr = this._state(this._eid("sensor", "session_best_hfr"), "—");
-    // The session breakdown rides on the average-HFR sensor, one row per
-    // filter: {count, integration_hours, hfr_mean}.
+    // One row per filter: {count, integration_hours, hfr_mean}.
     const byFilter = this._attr(avgHfrId, "by_filter", {}) || {};
 
     // The last five frames against the five before them, in the newest
@@ -439,7 +426,6 @@ class NinaFrameStatsCard extends HTMLElement {
               <div style="font-size:0.72rem;margin-top:4px">Statistics will appear once N.I.N.A. saves a light frame</div>
             </div>
           ` : `
-            <!-- KPI row -->
             <div class="stat-row">
               <div class="stat-box trend-${trend}">
                 <div class="label">Last HFR</div>
@@ -458,7 +444,6 @@ class NinaFrameStatsCard extends HTMLElement {
               </div>
             </div>
 
-            <!-- Trend + session row -->
             <div class="stat-row">
               <div class="stat-box trend-${trend}">
                 <div class="label">HFR Trend</div>
@@ -472,25 +457,21 @@ class NinaFrameStatsCard extends HTMLElement {
               </div>
             </div>
 
-            <!-- HFR sparkline -->
             <div class="chart-section">
               <div class="chart-label">HFR per frame</div>
               <canvas id="hfr-chart" height="64"></canvas>
             </div>
 
-            <!-- Stars sparkline -->
             <div class="chart-section">
               <div class="chart-label">Star count per frame</div>
               <canvas id="stars-chart" height="48"></canvas>
             </div>
 
-            <!-- ADU sparkline -->
             <div class="chart-section">
               <div class="chart-label">Mean ADU per frame</div>
               <canvas id="adu-chart" height="48"></canvas>
             </div>
 
-            <!-- Filter breakdown -->
             ${!chipless ? `
               <div class="chart-section">
                 <div class="chart-label">Frames per filter</div>
@@ -540,7 +521,6 @@ class NinaFrameStatsCard extends HTMLElement {
       ? null
       : pad.t + plotH - ((v - minVal) / range) * plotH;
 
-    // Subtle grid
     ctx.strokeStyle = "rgba(255,255,255,0.05)";
     ctx.lineWidth = 0.5;
     for (let g = 0; g <= 3; g++) {
@@ -558,7 +538,6 @@ class NinaFrameStatsCard extends HTMLElement {
     }
     ctx.setLineDash([]);
 
-    // Filled area under line
     ctx.beginPath();
     let started = false;
     const firstValid = data.findIndex(v => v !== null);
@@ -568,7 +547,6 @@ class NinaFrameStatsCard extends HTMLElement {
       if (!started) { ctx.moveTo(xOf(i), y); started = true; }
       else ctx.lineTo(xOf(i), y);
     }
-    // Close to baseline
     const lastValid = data.length - 1 - [...data].reverse().findIndex(v => v !== null);
     ctx.lineTo(xOf(lastValid), H - pad.b);
     ctx.lineTo(xOf(firstValid), H - pad.b);
@@ -584,7 +562,6 @@ class NinaFrameStatsCard extends HTMLElement {
     const colourOf = (i) => colours[i] ?? fillColour;
     const hollow = (i) => colours[i] === NO_FILTER;
 
-    // Main line, coloured by filter.
     for (let i = 1; i < data.length; i++) {
       const y0 = yOf(data[i - 1]);
       const y1 = yOf(data[i]);
@@ -598,7 +575,6 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.stroke();
     }
 
-    // Average line
     if (showAvgLine && valid.length > 0) {
       const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
       const yAvg = yOf(avg);
@@ -611,14 +587,12 @@ class NinaFrameStatsCard extends HTMLElement {
         ctx.lineTo(W - pad.r, yAvg);
         ctx.stroke();
         ctx.setLineDash([]);
-        // avg label
         ctx.fillStyle = "rgba(255,255,255,0.4)";
         ctx.font = "9px sans-serif";
         ctx.fillText(`avg ${avg.toFixed(2)}`, W - pad.r - 48, yAvg - 3);
       }
     }
 
-    // Dots on each data point
     for (let i = 0; i < data.length; i++) {
       const y = yOf(data[i]);
       if (y === null) continue;
@@ -641,7 +615,6 @@ class NinaFrameStatsCard extends HTMLElement {
       }
     }
 
-    // Latest value label
     const lastY = yOf(data[data.length - 1]);
     if (lastY !== null) {
       const v = data[data.length - 1];
@@ -663,11 +636,8 @@ class NinaFrameStatsCard extends HTMLElement {
   static getStubConfig() { return {}; }
 }
 
-// Guarded: a stale 1.4.5 `/local/nina-frame-stats-card.js` resource left over
-// from a manual install defines the same tag. A second `define` throws
-// `NotSupportedError` and aborts the rest of this module — including the
-// `customCards.push` below — so whichever copy loses the race silently
-// disappears from the picker instead of just being redundant.
+// Guarded: a stale 1.4.5 `/local/` resource defining the same tag would
+// otherwise throw and abort the rest of this module.
 if (!customElements.get("nina-frame-stats-card")) {
   customElements.define("nina-frame-stats-card", NinaFrameStatsCard);
 }

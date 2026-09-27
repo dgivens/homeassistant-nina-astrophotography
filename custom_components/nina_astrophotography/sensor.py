@@ -1,33 +1,24 @@
 """Sensors: the equipment readings, the session family, the sequence, the flat
 wizard and the weather channels.
 
-**One session family, fed by both paths (§5.2.4).** 1.4.5 shipped two — a
-polled set read off `/image-history` and a pushed set fed by `IMAGE-SAVE` — and
-they disagreed. The pushed semantics win: after a dawn flat run the polled
-`Last Image HFR` read `0` and `Last Image Mean ADU` read `33139.77`, which is
-exactly the last FLAT's mean, because a calibration frame's HFR sentinel of
-zero looks like a measurement. Every aggregate here but `session_image_count`
-is over LIGHT frames only, and all of it comes from one stateless fold, so
-push, poll and `/event-history` replay produce the same numbers.
+**The session family is one stateless fold**, so push, poll and
+`/event-history` replay give the same numbers. Every aggregate but
+`session_image_count` is over lights only: a flat's HFR sentinel of 0 looks
+like a measurement.
 
-**A channel of the N.I.N.A. switch device belongs here when it is read-only**
-(§5.3.5) — a Pegasus voltage or current gauge. `ReadonlySwitches` carry no
-range, which is what separates them from the writable channels the `number` and
-`switch` platforms take.
+**A read-only channel of the N.I.N.A. switch device is a sensor** — a voltage
+or current gauge. `ReadonlySwitches` carry no range; the writable ones are
+`number`s and `switch`es.
 
-**Weather channels are created on sight and kept (§5.2.2).** A channel exists
-for this entry once it has produced one non-`NaN` reading; thereafter it reads
-`unavailable` whenever the ACTIVE source is not the one that established it.
-Two sources on a rig are routinely disjoint in both directions — a physical
-station reports `SkyBrightness`/`SkyTemperature` but not `CloudCover`, an
-internet forecast the reverse — so accumulating the union would leave channels
-at `unknown` forever, which claims a reading is merely missing when the source
-cannot produce it at all.
+**A weather channel is created on its first non-`NaN` reading**, and reads
+`unavailable` whenever the active source is not the one that established it.
+Two sources are routinely disjoint (a station reports sky brightness, a
+forecast cloud cover), so `unknown` would claim a missing reading where the
+source cannot produce one.
 
-**Do not generalise the create-on-sight rule to every `"NaN"` field.** It
-applies only where absence is a permanent driver property. `CoolerPower` and
-`TimeToMeridianFlip` are transiently `NaN`, and a rig whose camera is warm at
-setup must not lose its cooler-power entity.
+**This create-on-sight rule is only for fields whose absence is permanent.**
+`CoolerPower` and `TimeToMeridianFlip` are transiently `NaN`, and a camera
+warm at setup must not lose its cooler-power entity.
 """
 
 from collections.abc import Callable, Mapping
@@ -65,13 +56,11 @@ from .device import channel_key, channels_of, observed, read_field
 from .entity import NinaChannelEntity, NinaEntity
 from .sequence import progress_percent
 
-# Read-only: nothing here commands the rig, so there is nothing to serialize.
 PARALLEL_UPDATES = 0
 
-# The registry option that records the last weather source to feed a channel.
-# The registry row is the only per-entity store that outlives a restart, and
-# without it a recovered channel cannot tell a source that will never report it
-# from one that is momentarily quiet.
+# The registry option recording which weather source established a channel; it
+# survives a restart, so a restored channel can tell a source that never
+# reports it from one momentarily quiet.
 ESTABLISHED_BY = "established_by"
 
 _SECONDS_PER_HOUR = 3600.0
@@ -81,22 +70,16 @@ _SECONDS_PER_HOUR = 3600.0
 class NinaSensorDescription(SensorEntityDescription):
     """A sensor, plus how to read it out of the published snapshot.
 
-    `kind` names the child device the entity hangs off (§5.1); `None` puts it on
-    the hub, which is where anything session- or rig-scoped belongs. `verified`
-    is False only for the dome, which cannot be validated against hardware.
-
-    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
-    `unique_id_suffix` where the new `key` reads better than the old one. Home
-    Assistant keys the registry on `unique_id`, so changing it mints a fresh
-    entity and strands the old row as `unavailable`.
+    `kind` names the child device; `None` puts it on the hub. `verified` is
+    False only for the dome, which no hardware has validated.
     """
 
     value: Callable[[NinaData], float | int | str | datetime | None]
     kind: str | None
     verified: bool = True
     unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`. `unique_id` is
-    `{entry_id}_{unique_id_suffix or key}`."""
+    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
+    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
     attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
 
 
@@ -111,12 +94,10 @@ def _frame(field: str) -> Callable[[NinaData], Any]:
 
 
 def _breakdown(field: str) -> Callable[[NinaData], Mapping[str, Any]]:
-    """One breakdown as a name-keyed dict, small enough to sit in attributes.
+    """One breakdown as a name-keyed dict, for attributes.
 
-    Session-wide aggregates are dominated by whichever target got the most
-    frames — per-target HFR means ranged 1.429 to 1.667 against a session-wide
-    1.513 on one observed night — so the split is worth carrying. As attributes
-    rather than entities: the target list changes with the night.
+    A session-wide mean is dominated by the target with the most frames. The
+    target list changes nightly, so these are attributes, not entities.
     """
 
     def value(data: NinaData) -> Mapping[str, Any]:
@@ -136,11 +117,9 @@ def _breakdown(field: str) -> Callable[[NinaData], Mapping[str, Any]]:
 
 
 def _minutes_to_meridian_flip(data: NinaData) -> float | None:
-    """`TimeToMeridianFlip` is HOURS; minutes is the useful unit for a flip
-    warning, and is what 1.4.5 published.
+    """`TimeToMeridianFlip`, which N.I.N.A. reports in hours, in minutes.
 
-    The 24-hour untracked sentinel is already `None` from the mapper. Twelve
-    hours is not: a mount inside a pier-side window reports it legitimately.
+    The mapper has already made the untracked 24-hour sentinel `None`.
     """
     mount = data.snapshot.mount
     if mount is None or mount.time_to_meridian_flip is None:
@@ -149,11 +128,8 @@ def _minutes_to_meridian_flip(data: NinaData) -> float | None:
 
 
 def _flip_bounds(data: NinaData) -> Mapping[str, Any]:
-    """The reading at which N.I.N.A. actually flips, for a warning threshold.
-
-    The flip fires at (Max − Min), not zero, and both bounds are per-profile —
-    so a warning written as a bare `below: 10` fires at the flip on this rig
-    and somewhere else on the next one.
+    """The reading at which N.I.N.A. actually flips: (Max − Min), not zero,
+    and per profile.
     """
     minimum = data.profile.min_minutes_after_meridian
     maximum = data.profile.max_minutes_after_meridian
@@ -167,11 +143,8 @@ def _flip_bounds(data: NinaData) -> Mapping[str, Any]:
 def _autofocus(field: str) -> Callable[[NinaData], Any]:
     """One field off the newest autofocus report; `None` until a run reports.
 
-    The report is whatever `/equipment/focuser/last-af` last held, previous
-    nights included: it is not dated against the session here, the way
-    `binary_sensor.autofocus_failed` has to date it. A stale run is still the
-    focuser's last known state, and `autofocus_last_run` is what says how old
-    it is.
+    Not dated against the session: a previous night's run is still the
+    focuser's last known state, and `autofocus_last_run` says how old it is.
     """
 
     def value(data: NinaData) -> Any:
@@ -182,25 +155,14 @@ def _autofocus(field: str) -> Callable[[NinaData], Any]:
 
 
 def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
-    """How the run was measured, how much of it there was, and its curve.
+    """How the run was measured, and its curve.
 
-    Attributes rather than entities: the four names are profile and plugin
-    settings, and a statistic over a string is nothing. They are what says
-    whether two HFR readings months apart are even on the same scale — HFR
-    from Hocus Focus's fitted PSF and from the built-in detector are not — and
-    the point count is what makes the duration mean anything.
-
-    `curve` is the sweep a card plots as the V, one `position`/`value`/`error`
-    row per position visited, `value` None where that frame measured nothing.
-    An attribute because a statistic cannot hold a curve: the sweep is the
-    shape of ONE run, and `autofocus_hfr` is already the series across runs.
-    `method` sits beside it because it is what says whether `value` is pixels.
-
-    `fits` and `minima` are the overlay — the fitted lines and the markers
-    N.I.N.A.'s own chart draws. They travel with the curve because a card
-    cannot re-derive them: which points each fit used is undocumented, and
-    `r_squared` the sensor is the WORST fit of the run, which labels no
-    single line.
+    The method, fitting, autofocuser and star detector say whether two runs'
+    HFRs are on the same scale (Hocus Focus's PSF fit and the built-in
+    detector are not). `curve` is the V a card plots, one row per position,
+    `value` None where that frame measured nothing. `fits` and `minima` are
+    the overlay N.I.N.A.'s chart draws, which a card cannot re-derive: which
+    points each fit used is undocumented.
     """
     report = data.autofocus_report
     if report is None:
@@ -218,9 +180,7 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
 
 
 def _weather_source(data: NinaData) -> str | None:
-    """Which source the readings are coming from. Some drivers report an empty
-    name, and the opaque `DeviceId` is still better than nothing.
-    """
+    """The weather source's name, or its `DeviceId` where the driver gives none."""
     weather = data.snapshot.weather
     if weather is None:
         return None
@@ -232,13 +192,10 @@ _BY_FILTER = _breakdown("by_filter")
 
 
 def _recent_frames(data: NinaData) -> tuple[Mapping[str, Any], ...]:
-    """Newest-first, hand-picked fields — what a dashboard's thumbnail strip
-    and ADU histogram need to browse recent frames without their own fetch to
-    N.I.N.A. Not `dataclasses.asdict(frame)`: this is a card's contract, free
-    to diverge from `Frame`'s own fold/identity semantics on purpose.
+    """Recent frames of every type, newest first, for the image panel card.
 
-    `image_type` is what lets a card tell a flat from a light: the strip is
-    every type, while the `last_image_*` sensors beside it are lights only.
+    Hand-picked fields rather than `asdict(frame)`: this is the card's
+    contract, not `Frame`'s.
     """
     return tuple(
         {
@@ -256,9 +213,7 @@ def _recent_frames(data: NinaData) -> tuple[Mapping[str, Any], ...]:
 
 
 def _recent_lights(data: NinaData) -> tuple[Mapping[str, Any], ...]:
-    """Oldest-first per-light readings for a dashboard's sparklines. Published
-    rather than accumulated in the card, so a page reload keeps the series.
-    """
+    """Recent lights, oldest first, for the frame statistics card's sparklines."""
     return tuple(
         {
             "date": frame.date.isoformat(),
@@ -280,8 +235,7 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         unique_id_suffix="frame_session_count",
         state_class=SensorStateClass.MEASUREMENT,
         kind=None,
-        # Every frame in the window, calibration included — the one aggregate
-        # that is not lights-only, because "did the flats run?" is a question.
+        # Every frame, calibration included: "did the flats run?" is a question.
         value=lambda data: data.session.image_count,
         attributes=lambda data: {"light_count": data.session.light_count},
     ),
@@ -294,8 +248,7 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind=None,
-        # Summed exposures, never count x nominal: a session spans exposure
-        # lengths, and on one observed night the two differ by 2.25x.
+        # Summed exposures, not count × nominal: a night mixes exposure lengths.
         value=lambda data: data.session.integration_seconds / _SECONDS_PER_HOUR,
     ),
     NinaSensorDescription(
@@ -320,7 +273,6 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind=None,
-        # The smallest HFR: a tighter star is a better one.
         value=lambda data: data.session.hfr_best,
     ),
     NinaSensorDescription(
@@ -349,10 +301,8 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind=None,
-        # The most recent rollover in the RIG's local time, not Home
-        # Assistant's: 12:00 UTC is 07:00 on a UTC-5 rig, inside its dawn flats.
-        # Diagnostic because a healthy rig always reads `rollover_hour` today;
-        # any other hour means the rig's clock offset is not being honoured.
+        # The latest rollover in the rig's time zone. Any hour but
+        # `rollover_hour` means the rig's clock offset is not being honoured.
         value=lambda data: data.session.session_start,
     ),
     NinaSensorDescription(
@@ -402,8 +352,7 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind=None,
-        # Arcseconds, not pixels, so it is comparable with the guider's own RMS
-        # and across rigs. A total of 0 is no guiding, and is already None.
+        # Arcseconds, comparable across rigs. An unguided frame is None.
         value=_frame("rms_arcsec"),
     ),
     NinaSensorDescription(
@@ -425,8 +374,7 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         translation_key="weather_source",
         unique_id_suffix="weather_name",
         entity_category=EntityCategory.DIAGNOSTIC,
-        # On the hub, not the weather device: it says WHICH source is feeding
-        # the channels, and it has to stay readable across a source swap.
+        # On the hub, so it stays readable across a source swap.
         kind=None,
         value=_weather_source,
     ),
@@ -436,12 +384,8 @@ SESSION: tuple[NinaSensorDescription, ...] = (
         native_unit_of_measurement=DEGREE,
         suggested_display_precision=4,
         entity_category=EntityCategory.DIAGNOSTIC,
-        # Enabled, unlike most diagnostics: `nina-sky-map-card` projects the
-        # star field from it, and a disabled entity is absent from the registry
-        # payload a dashboard receives, so a card can never resolve one.
-        #
-        # No `state_class`: the site does not move, and long-term statistics
-        # over a constant are just rows.
+        # Enabled: the sky map card needs it, and a card cannot resolve a
+        # disabled entity. No `state_class`: the site does not move.
         kind=None,
         value=lambda data: data.profile.site_latitude,
     ),
@@ -463,13 +407,10 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
     NinaSensorDescription(
         key="camera_cooler_power",
         translation_key="camera_cooler_power",
-        # No device class: Home Assistant has none for a cooler duty cycle.
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         kind="camera",
-        # Transiently `NaN` on a warm camera, so it is NOT under §5.2.2's
-        # create-on-sight rule: a rig configured by day must keep the entity.
         value=read_field("camera", "cooler_power"),
     ),
     NinaSensorDescription(
@@ -494,11 +435,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         unique_id_suffix="camera_status",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="camera",
-        # Retained beside `binary_sensor.<instance>_camera_exposing` for the
-        # same reason `guider_status` is retained beside `switch.guider`
-        # (§5.2.3): the flag answers "is it exposing", while `Reading`,
-        # `Download`, `Waiting` and `Error` are the states an automation about
-        # a stalled camera needs.
+        # Beside `camera_exposing`: `Download`, `Waiting` and `Error` are what
+        # an automation about a stalled camera needs.
         value=read_field("camera", "camera_state"),
     ),
     # ── Mount ────────────────────────────────────────────────────────────
@@ -510,8 +448,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=4,
         kind="mount",
-        # In the MOUNT's epoch — JNOW on this rig — never J2000, and in hours.
-        # Feeding it back into a slew is wrong twice (§3.7).
+        # Hours, in the mount's epoch (usually JNOW): not what `mount_slew` takes.
         value=read_field("mount", "right_ascension"),
     ),
     NinaSensorDescription(
@@ -557,9 +494,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         translation_key="mount_side_of_pier",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="mount",
-        # New. One of the two inputs to §11's pier-side windows. It does NOT
-        # say whether a flip has happened: that needs the EXPECTED side from
-        # ASCOM's `DestinationSideOfPier`, which this API does not expose.
+        # Not whether a flip has happened: that needs ASCOM's
+        # `DestinationSideOfPier`, which this API does not expose.
         value=read_field("mount", "side_of_pier"),
     ),
     NinaSensorDescription(
@@ -581,10 +517,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
         kind="focuser",
-        # Reinstated beside `number.focuser_position` (§5.2.3): NumberEntity
-        # carries no `state_class`, and position against temperature is the
-        # standard temp-comp-slope diagnostic — which this rig needs, because
-        # it reports `TempCompAvailable: false`.
+        # Beside `number.focuser_position`, which has no `state_class`, so
+        # position can be charted against temperature.
         value=read_field("focuser", "position"),
     ),
     NinaSensorDescription(
@@ -604,21 +538,16 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="focuser",
-        # A driver constant, not a reading: no `state_class`, because a
-        # statistic over an unchanging number is noise.
+        # A driver constant, so no `state_class`.
         value=read_field("focuser", "step_size"),
     ),
     # ── The last autofocus run ───────────────────────────────────────────
-    # Separate sensors rather than attributes on one: position and HFR earn
-    # long-term statistics, which is what makes focus drift against
-    # temperature chartable, and no statistic is ever computed over an
-    # attribute.
+    # Sensors rather than attributes, so they get long-term statistics.
     NinaSensorDescription(
         key="autofocus_last_run",
         translation_key="autofocus_last_run",
         device_class=SensorDeviceClass.TIMESTAMP,
         kind="focuser",
-        # The report survives a restart and a night: an age, not a heartbeat.
         value=_autofocus("timestamp"),
         attributes=_autofocus_run,
     ),
@@ -637,10 +566,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind="focuser",
-        # The sweep's lowest MEASURED point, which is what compares run to run:
-        # `CalculatedFocusPoint.Value` moves with the profile's curve fitting
-        # and reads far below anything the camera saw (`autofocus_fitted_hfr`).
-        # Unknown on a CONTRASTDETECTION run, whose values are not pixels.
+        # The sweep's lowest measured point, which compares run to run; the
+        # fitted value does not. Unknown on a contrast-detection run.
         value=_autofocus("hfr"),
     ),
     NinaSensorDescription(
@@ -652,10 +579,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="focuser",
-        # What N.I.N.A. moved to, and a curve artifact rather than a reading:
-        # under a TREND* fitting it is the mean of the trendline intersection
-        # and the quadratic minimum. Kept for reading one run's fit; not a
-        # series to key a statistic on.
+        # The fit's minimum, which N.I.N.A. moved to: an artifact of the curve
+        # fitting, often far below any frame the camera measured.
         value=_autofocus("fitted_hfr"),
     ),
     NinaSensorDescription(
@@ -664,9 +589,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         native_unit_of_measurement="steps",
         state_class=SensorStateClass.MEASUREMENT,
         kind="focuser",
-        # Against `autofocus_position`: how far the run moved. With temp comp
-        # off that is the drift since the last run; with it on it is the
-        # residual temp comp did NOT cover, which is the opposite reading.
+        # Against `autofocus_position`, how far the run moved: the drift since
+        # the last run, or with temperature compensation on, what it missed.
         value=_autofocus("initial_position"),
     ),
     NinaSensorDescription(
@@ -676,8 +600,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind="focuser",
-        # Measured before the sweep, as `autofocus_hfr` is measured during it,
-        # so the pair is comparable — which it would not be against the fit.
+        # Measured, like `autofocus_hfr`, so the two compare.
         value=_autofocus("initial_hfr"),
     ),
     NinaSensorDescription(
@@ -688,8 +611,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
         kind="focuser",
-        # The temperature the run was triggered at, held until the next run —
-        # which is what `focuser_temperature` cannot show, because it moves on.
+        # The temperature at the run, held until the next one.
         value=_autofocus("temperature"),
     ),
     NinaSensorDescription(
@@ -700,8 +622,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         kind="focuser",
-        # What the run cost, per ATTEMPT — the whole report is per attempt, so
-        # a run that retried twice cost the night more than this says.
+        # Per attempt, like the whole report: retries cost more than this.
         value=_autofocus("duration_seconds"),
     ),
     NinaSensorDescription(
@@ -712,9 +633,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="focuser",
-        # The worst fit the run computed, and the only evidence that N.I.N.A.
-        # rejected it — `binary_sensor.autofocus_failed` is that judgement
-        # already made, against the profile's threshold.
+        # The run's worst fit. `autofocus_failed` judges it against the
+        # profile's threshold.
         value=_autofocus("r_squared"),
     ),
     NinaSensorDescription(
@@ -722,11 +642,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         translation_key="autofocus_filter",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="focuser",
-        # Which filter the run was measured through. Enabled, unlike the other
-        # diagnostic here: a non-parfocal set moves focus hundreds of steps
-        # between filters, so without this recorded alongside, position against
-        # temperature interleaves filter offsets with thermal drift — and a
-        # disabled entity records nothing to split by afterwards.
+        # Enabled so its history exists: filter offsets on a non-parfocal set
+        # would otherwise read as thermal drift.
         value=_autofocus("filter_name"),
     ),
     # ── Guider ───────────────────────────────────────────────────────────
@@ -734,9 +651,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         key="guider_status",
         translation_key="guider_status",
         kind="guider",
-        # Retained (§5.2.3). `switch.guider` is on for every state but
-        # `Stopped` — the guider is RUNNING — so it cannot tell a lost lock
-        # from a settled one, and that is what this reports.
+        # `switch.guider` cannot tell a lost lock from a settled one; this can.
         value=read_field("guider", "state"),
     ),
     NinaSensorDescription(
@@ -746,8 +661,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
         kind="guider",
-        # Arcseconds, not pixels: comparable across rigs, and the same
-        # convention as `sensor.last_image_rms`.
+        # Arcseconds, like `last_image_rms`.
         value=read_field("guider", "rms_total"),
     ),
     NinaSensorDescription(
@@ -774,21 +688,17 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         translation_key="flat_panel_cover_state",
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="flat_device",
-        # Retained beside `switch.flat_panel_cover`: `CoverState` is
-        # Open | Closed | NeitherOpenNorClosed | NotPresent | Unknown | Error,
-        # and a switch cannot express a cover stuck between the two.
+        # Beside `switch.flat_panel_cover`, which cannot express a cover stuck
+        # half-way (`NeitherOpenNorClosed`).
         value=read_field("flat_device", "cover_state"),
     ),
     # ── Sequence ─────────────────────────────────────────────────────────
-    # On the hub: sequence control is rig-scoped, not any one device's.
     NinaSensorDescription(
         key="sequence_target",
         translation_key="sequence_target",
         unique_id_suffix="sequence_target_name",
         kind=None,
-        # What is being shot NOW, where `last_image_target` is what was shot
-        # last: across a target change the two disagree, and before the first
-        # sub only this one has a name at all.
+        # What is being shot now; `last_image_target` lags a target change.
         value=lambda data: data.target,
     ),
     NinaSensorDescription(
@@ -796,8 +706,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         translation_key="wait_ends_at",
         device_class=SensorDeviceClass.TIMESTAMP,
         kind=None,
-        # A timestamp rather than minutes remaining: `at: {entity_id: …}` takes
-        # one directly, and nothing has to tick.
+        # A timestamp, which a time trigger takes directly.
         value=lambda data: data.wait_ends_at,
     ),
     NinaSensorDescription(
@@ -805,9 +714,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         translation_key="last_frame_at",
         device_class=SensorDeviceClass.TIMESTAMP,
         kind=None,
-        # The newest frame of ANY type, so dawn flats count as the rig working.
-        # `now() - last_frame_at` is what a stall looks like, and it needs a
-        # timestamp the seven other `last_image_*` sensors do not carry.
+        # The newest frame of any type, so flats count as the rig working.
         value=lambda data: (
             None if data.newest_frame is None else data.newest_frame.date
         ),
@@ -818,18 +725,14 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
-        # Disabled because no captured rig has ever produced a value: a Target
-        # Scheduler rig keeps its target list inside the imaging container and
-        # publishes no iteration count, and the "3/10" fraction the walk parses
-        # is unverified on a plain sequence. Inventing a percentage from the
-        # node statuses would be worse (§6.2).
+        # Disabled: Target Scheduler publishes no iteration count, so it is
+        # always unknown there.
         entity_registry_enabled_default=False,
         kind=None,
         value=lambda data: progress_percent(data.sequence),
     ),
     # ── Dome ─────────────────────────────────────────────────────────────
-    # Spec-derived and untested against hardware (§5.3.1): a bare field read,
-    # no derived state, `verified=False`.
+    # From the spec alone; no hardware has validated it.
     NinaSensorDescription(
         key="dome_shutter_status",
         translation_key="dome_shutter_status",
@@ -841,12 +744,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
 )
 
 FLATS: tuple[NinaSensorDescription, ...] = (
-    # `/flats/status` observes only flats started THROUGH THE API (§5.3.3).
-    # This rig runs Target Scheduler Flats, so it reads
-    # {State: "Finished", TotalIterations: -1, CompletedIterations: -1}
-    # straight through a completed dawn run — which is why all three ship
-    # disabled: an entity that reports a stale "Finished" all night is worse
-    # than no entity. The `-1`s are already `None` from the mapper.
+    # Disabled: `/flats/status` sees only flats started through the API, and
+    # reads a stale "Finished" through Target Scheduler's or the wizard's.
     NinaSensorDescription(
         key="flats_state",
         translation_key="flats_state",
@@ -875,9 +774,8 @@ FLATS: tuple[NinaSensorDescription, ...] = (
     ),
 )
 
-# The table `async_setup_entry` creates statically, gated on the entity's
-# equipment having been observed. The weather channels are not here: they are
-# created per channel rather than per device, and have their own lifecycle.
+# Created once their equipment is observed. The weather channels are created
+# per channel instead.
 DESCRIPTIONS: tuple[NinaSensorDescription, ...] = SESSION + EQUIPMENT + FLATS
 
 
@@ -890,7 +788,7 @@ def _channel(key: str) -> Callable[[NinaData], float | None]:
 
 
 def _weather(key: str, unique_id_suffix: str, **fields: Any) -> NinaSensorDescription:
-    """One ObservingConditions channel. Every one is the same four lines."""
+    """One ObservingConditions channel."""
     return NinaSensorDescription(
         key=key,
         translation_key=key,
@@ -905,7 +803,6 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
     _weather(
         "cloud_cover",
         "weather_cloud_cover",
-        # No device class: Home Assistant has none for cloud cover.
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
     ),
@@ -938,16 +835,13 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
         device_class=SensorDeviceClass.PRECIPITATION_INTENSITY,
         native_unit_of_measurement=UnitOfVolumetricFlux.MILLIMETERS_PER_HOUR,
         state_class=SensorStateClass.MEASUREMENT,
-        # Core's default for the class is whole mm/h, which prints light rain
-        # as 0.
+        # The class defaults to whole mm/h, which prints light rain as 0.
         suggested_display_precision=2,
     ),
     _weather(
         "sky_brightness",
         "weather_sky_brightness",
-        # LUX, not mag/arcsec2. SkyBrightness and SkyQuality are two distinct
-        # ASCOM ObservingConditions properties: a station reports SkyBrightness
-        # 5692 (lux, at dawn) alongside SkyQuality "NaN".
+        # Lux. Sky quality in mag/arcsec² is a separate ASCOM property.
         device_class=SensorDeviceClass.ILLUMINANCE,
         native_unit_of_measurement=LIGHT_LUX,
         state_class=SensorStateClass.MEASUREMENT,
@@ -955,7 +849,6 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
     _weather(
         "sky_quality",
         "weather_sky_quality",
-        # No device class: Home Assistant has none for mag/arcsec².
         native_unit_of_measurement="mag/arcsec²",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
@@ -986,8 +879,7 @@ WEATHER_CHANNELS: tuple[NinaSensorDescription, ...] = (
     _weather(
         "wind_direction",
         "weather_wind_direction",
-        # MEASUREMENT_ANGLE, not MEASUREMENT: averaging a compass bearing the
-        # ordinary way puts north between east and west.
+        # An ordinary mean of bearings puts north between east and west.
         device_class=SensorDeviceClass.WIND_DIRECTION,
         native_unit_of_measurement=DEGREE,
         state_class=SensorStateClass.MEASUREMENT_ANGLE,
@@ -1015,9 +907,7 @@ class NinaSensor(NinaEntity, SensorEntity):
     """One descriptor, read out of the published snapshot."""
 
     entity_description: NinaSensorDescription
-    # Both are what a dashboard card reads live off current state; no history
-    # query ever wants them, and each would otherwise write several KB to the
-    # recorder on every saved frame for nothing.
+    # Cards read these live; recorded, each would write KBs per frame.
     _unrecorded_attributes = frozenset({"recent_frames", "recent_lights"})
 
     def __init__(
@@ -1047,9 +937,7 @@ class NinaSensor(NinaEntity, SensorEntity):
 class NinaWeatherSensor(NinaSensor):
     """One ObservingConditions channel.
 
-    `unique_id` is deliberately source-INDEPENDENT. Keying it on `DeviceId`
-    would change entity ids whenever the active source swapped, breaking
-    automations permanently to avoid a rare event.
+    `unique_id` does not name the source, so swapping sources keeps entity ids.
     """
 
     def __init__(
@@ -1059,9 +947,7 @@ class NinaWeatherSensor(NinaSensor):
         description: NinaSensorDescription,
         established_by: str | None,
     ) -> None:
-        """`established_by` is what the registry already holds, or `None` for a
-        channel seen for the first time — which records itself once added.
-        """
+        """`established_by` is what the registry holds; `None` for a new channel."""
         super().__init__(coordinator, entry, description)
         self._established_by = established_by
         self._recorded = established_by
@@ -1077,12 +963,9 @@ class NinaWeatherSensor(NinaSensor):
 
     @callback
     def _note_source(self) -> None:
-        """Record the source of the newest reading, so a restart can read it back.
+        """Record the source of the newest reading in the entity registry.
 
-        Written to the entity registry rather than held in memory: the whole
-        point of the channel surviving a restart is that it comes back still
-        knowing whether the active source is one that can feed it. `_recorded`
-        is what the registry holds, so an unchanged source costs no write.
+        `_recorded` mirrors the registry, so an unchanged source costs no write.
         """
         weather = self.coordinator.data.snapshot.weather
         if weather is None:
@@ -1103,11 +986,8 @@ class NinaWeatherSensor(NinaSensor):
         weather = self.coordinator.data.snapshot.weather
         if not super().available or weather is None:
             return False
-        # A reading in hand needs no further argument. Without one, the
-        # question is whether the ACTIVE source is the one that established the
-        # channel: if it is, the reading is merely missing this poll; if it is
-        # not, the source cannot produce it at all and `unavailable` is the
-        # honest state.
+        # Without a reading, available only if the active source established
+        # the channel: otherwise it cannot produce one at all.
         return (
             weather.channels.get(self.entity_description.key) is not None
             or self._established_by == weather.meta.device_id
@@ -1117,9 +997,8 @@ class NinaWeatherSensor(NinaSensor):
 class NinaSensorChannel(NinaChannelEntity, SensorEntity):
     """One read-only channel of the N.I.N.A. switch device.
 
-    No unit and no device class: `ReadonlySwitches` carry neither, and a guess
-    — volts for anything named "voltage" — would mislabel every channel the
-    guess is wrong about.
+    No unit or device class: `ReadonlySwitches` carry neither, and a guess
+    from the name would mislabel some.
     """
 
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -1134,12 +1013,8 @@ def _established_channels(
 ) -> dict[str, str | None]:
     """The weather channels this entry already has, and what established each.
 
-    `async_setup_entry` runs BEFORE any data arrives, and a source that cannot
-    report a channel never will — so without the registry a channel would come
-    back only if some other source happened to feed it. Home Assistant leaves a
-    `restored` placeholder for the row in the meantime, which reads
-    `unavailable` and never updates, so the symptom is a permanently dead
-    entity rather than a missing one. The registry, not the poll, is the truth.
+    Read from the registry, because a channel whose source is down or swapped
+    at setup would otherwise stay a dead `restored` placeholder.
     """
     by_suffix = {
         description.unique_id_suffix or description.key: description
@@ -1166,12 +1041,7 @@ async def async_setup_entry(
 
     @callback
     def _add_observed() -> None:
-        """Create the entities whose equipment the snapshot now carries.
-
-        Re-run on every publish, so equipment that connects hours after Home
-        Assistant started still gets its entities; a slot never returns to
-        `None`, so nothing is removed here.
-        """
+        """Create the entities whose equipment has now been observed."""
         descriptions = [
             description
             for description in DESCRIPTIONS
@@ -1195,12 +1065,8 @@ async def async_setup_entry(
     _add_observed()
     entry.async_on_unload(coordinator.async_add_listener(_add_observed))
 
-    # The one path that does not gate on `observed()`. It cannot: the registry
-    # rows exist precisely because setup runs before any poll, and a source
-    # that is down at Home Assistant's start leaves `snapshot.weather` None
-    # while its channels are still this entry's. The device is not minted
-    # nameless because the device registry has kept the row from the run that
-    # created these entities — the same row this is reading them out of.
+    # Not gated on `observed()`: a station down at startup still owns its
+    # channels, and their device row survives from the run that created them.
     established = _established_channels(er.async_get(hass), entry)
     channels = set(established)
     async_add_entities(
@@ -1211,9 +1077,7 @@ async def async_setup_entry(
 
     @callback
     def _add_newly_seen() -> None:
-        """First sight at the channel granularity: a channel appears the first
-        time it reads non-`NaN`, and is never removed.
-        """
+        """Create each channel on its first non-`NaN` reading."""
         weather = coordinator.data.snapshot.weather
         if weather is None:
             return

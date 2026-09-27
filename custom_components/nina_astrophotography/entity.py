@@ -1,8 +1,4 @@
-"""The shared entity base.
-
-Bronze common-modules puts it here; Bronze has-entity-name means every entity
-name derives from its device, so `_attr_name` is the channel, never the rig.
-"""
+"""The shared entity base. Entity names derive from their device."""
 
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -15,19 +11,14 @@ from .device import channel_key, channel_name, channel_of, device_identifiers
 class NinaEntity(CoordinatorEntity[NinaCoordinator]):
     """Base for every N.I.N.A. entity.
 
-    `kind` names the equipment this entity belongs to — an `EquipmentSnapshot`
-    slot — and `None` puts it on the hub, which is where anything session- or
-    rig-scoped belongs. Only the identifiers are claimed: the device itself is
-    created and kept current by `device.async_sync_devices`, so metadata that is
-    missing when the entity is constructed — the ordinary case, since equipment
-    is often still connecting — is filled in by a later poll rather than frozen
-    here.
+    `kind` names the equipment the entity belongs to; `None` puts it on the
+    hub. Only the device's identifiers are claimed; `device.async_sync_devices`
+    writes its metadata.
     """
 
     _attr_has_entity_name = True
 
-    # §7.3's one exception: an entity that REPORTS its own device being down
-    # must not be made unavailable by it. Set per entity from its descriptor.
+    # Keeps an entity reporting its own device's state available while down.
     _survives_disconnect = False
 
     def __init__(
@@ -46,17 +37,7 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
 
     @property
     def available(self) -> bool:
-        """Level 2 of §7.3: the equipment this entity belongs to is connected.
-
-        Level 1 — the rig being reachable at all — is `CoordinatorEntity`'s and
-        is inherited through `super()`. A hub entity has no equipment of its
-        own and stops there. Level 3, a sentinel reading `unknown` rather than
-        `unavailable`, is a value concern of the platform.
-
-        §7.3's one exception is `_survives_disconnect`: the safety monitor's
-        own connectivity sensor stays available while the monitor is down, or a
-        roof-close automation triggering on `to: "off"` never fires.
-        """
+        """The rig is reachable and, for equipment, connected."""
         if not super().available:
             return False
         if self._kind is None or self._survives_disconnect:
@@ -66,13 +47,8 @@ class NinaEntity(CoordinatorEntity[NinaCoordinator]):
 
 
 class NinaChannelEntity(NinaEntity):
-    """Base for one channel of the N.I.N.A. switch device.
-
-    A channel is not one of the eleven equipment slots: it is a row of the
-    switch device's own list, so it is keyed on the channel's `Id` and named by
-    the driver. The shape the driver reports decides which platform takes it —
-    read-only is a `sensor`, one-step is a `switch`, anything wider is a
-    `number` (§5.3.5).
+    """Base for one channel of the N.I.N.A. switch device, keyed on its `Id`
+    and named by the driver.
     """
 
     def __init__(
@@ -83,32 +59,22 @@ class NinaChannelEntity(NinaEntity):
     ) -> None:
         super().__init__(coordinator, entry, channel_key(channel), kind="switch_device")
         self._index = channel.index
-        # Named by the driver, so there is no translation key to name it by.
         self._attr_name = channel_name(channel)
 
     @property
     def channel(self) -> SwitchChannelModel | None:
-        """This channel as the newest snapshot reports it; `None` once the
-        driver stops reporting it, which the entity outlives.
-        """
+        """This channel in the newest snapshot; `None` once no longer reported."""
         return channel_of(self.coordinator.data, self._index)
 
     @property
     def channel_value(self) -> float | None:
-        """`Value` is where the channel IS; `TargetValue` is only what it was
-        last asked for.
-        """
+        """`Value`, never `TargetValue`, which is only what it was asked for."""
         channel = self.channel
         return None if channel is None else channel.value
 
     @property
     def available(self) -> bool:
-        """A channel the driver has stopped reporting is genuinely unavailable.
-
-        `NinaEntity.available` asks whether the switch DEVICE is connected,
-        which is still true — so without this the entity reads `unknown` and
-        stays clickable, and a tap sends a command for an index that no longer
-        exists. Nothing refuses it: this API answers `Success: true` to a `set`
-        it did not act on.
+        """Unavailable once the driver stops reporting the channel, though the
+        switch device is still connected.
         """
         return super().available and self.channel is not None

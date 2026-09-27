@@ -37,8 +37,7 @@ STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
         vol.Required(CONF_PORT, default=DEFAULT_PORT): int,
-        # An empty name would title the entry "" and name devices " Camera",
-        # and `vol.Length` alone accepts "   ".
+        # Stripped first: `vol.Length` alone accepts "   ".
         vol.Required(CONF_INSTANCE_NAME, default=DEFAULT_INSTANCE_NAME): vol.All(
             str, vol.Strip, vol.Length(min=1)
         ),
@@ -58,16 +57,12 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Hostnames are case-insensitive, so `NINA.local` and `nina.local`
-            # are one rig; normalising before the unique id is what makes the
-            # duplicate guard see that. The entry stores the normalised form.
+            # Hostnames are case-insensitive, so the duplicate guard normalises.
             user_input = {
                 **user_input,
                 CONF_HOST: user_input[CONF_HOST].strip().lower(),
             }
-            # Host and port, not a rig-reported id: the API exposes nothing
-            # stable, and this is what a second instance must differ in. Set
-            # BEFORE the probe, so adding a rig twice costs no HTTP call.
+            # Host and port: the API reports no stable id of its own.
             await self.async_set_unique_id(
                 f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}"
             )
@@ -86,8 +81,7 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     # Transient or equipment-level: the address is probably right.
                     errors["base"] = "cannot_connect"
                 except NinaEndpointError, NinaRequestError:
-                    # Something answers, but not the Advanced API this expects —
-                    # a plugin too old, or another service on the port.
+                    # A plugin too old, or another service on the port.
                     errors["base"] = "unsupported_api"
                 except Exception:
                     _LOGGER.exception(
@@ -104,11 +98,8 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _name_in_use(self, name: str) -> bool:
-        """Whether another entry already answers to this instance name.
-
-        Two rigs sharing one would name their devices identically and collide
-        into `_2` entity ids. An entry created before 2.0 carries no
-        `instance_name`, and its title is what names its devices.
+        """Whether another entry already has this instance name, or, from
+        before 2.0, this title.
         """
         return any(
             entry.data.get(CONF_INSTANCE_NAME, entry.title) == name
@@ -119,15 +110,14 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> NinaOptionsFlow:
-        """Home Assistant assigns `config_entry` on the flow it is handed."""
+        """Create the options flow; Home Assistant sets its `config_entry`."""
         return NinaOptionsFlow()
 
 
 class NinaOptionsFlow(config_entries.OptionsFlow):
     """Handle options for the N.I.N.A. integration.
 
-    Not `OptionsFlowWithReload`: the entry already carries an update listener
-    that reloads it, and both would reload it twice.
+    Not `OptionsFlowWithReload`: the entry's update listener already reloads.
     """
 
     async def async_step_init(

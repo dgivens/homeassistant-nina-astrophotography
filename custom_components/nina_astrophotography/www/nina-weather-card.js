@@ -199,15 +199,9 @@ class NinaWeatherCard extends HTMLElement {
     this._render();
   }
 
-  // The resolved entity id for a `translation_key`, falling back to a prefixed
-  // `slug` when there is nothing to resolve: an entity with no translation key,
-  // a disabled one, or a rig the resolver cannot identify.
-  //
-  // `slug` is the entity-id suffix — the device name plus the entity name — so
-  // it is not always the key, and on this card it almost never is: the weather
-  // device supplies the leading "weather" that the channel keys do not carry,
-  // and the monitor supplies "safety monitor". The source is the exception —
-  // it hangs off the hub, because it says which station is feeding the rest.
+  // Falls back to a prefixed `slug` when nothing resolves. `slug` is the
+  // entity-id suffix and is rarely `key` here: the weather device supplies
+  // "weather" and the monitor "safety monitor", which the channel keys omit.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -228,20 +222,14 @@ class NinaWeatherCard extends HTMLElement {
     // Safety monitor
     const safetyLinkRow = this._hass.states?.[this._eid("binary_sensor", "safety_monitor_connected")];
     const safetyConnected = safetyLinkRow?.state === "on";
-    // The SAFETY device class is on = problem, so the entity is named for the
-    // problem: it reads `on` when conditions are UNSAFE.
-    //
-    // Three states, not two. `unknown` is what the monitor reports before it
-    // has a reading, and rendering that as "safe" is the trap this entity is
-    // named to avoid — at the worst possible moment.
+    // `on` means UNSAFE. Three states, not two: `unknown` is no reading yet,
+    // and must not render as "safe".
     const unsafeState = this._s(
       this._eid("binary_sensor", "safety_unsafe", "safety_monitor_unsafe"));
     const isUnsafe = unsafeState === "on";
     const isSafe   = safetyConnected && unsafeState === "off";
 
-    // Weather. The source names the station, and nothing else here depends on
-    // it existing: it is diagnostic, so a user may disable it, and a disabled
-    // entity has no state to read.
+    // The source is diagnostic and may be disabled, so nothing else depends on it.
     const source = this._s(this._eid("sensor", "weather_source"));
     const sourceLive = source !== null && source !== "unknown" && source !== "unavailable";
     const lostSince = linkLostSince(this._hass, this._linkRows);
@@ -262,18 +250,14 @@ class NinaWeatherCard extends HTMLElement {
       skyT: this._eid("sensor", "sky_temperature", "weather_sky_temperature"),
       seeing: this._eid("sensor", "star_fwhm", "weather_star_fwhm"),
     };
-    // A station is connected when it names itself or any channel is available.
-    // A channel is available only while the station is connected and feeding
-    // it, so `unknown` there is a reading missing this poll, not a station
-    // gone; a restored row is always `unavailable`, so it cannot pass for one.
+    // Connected when it names itself or any channel is available. A channel's
+    // `unknown` means a missed poll, not a gone station; a restored row is
+    // always `unavailable`.
     const wxConnected = !unreachable && (sourceLive || Object.values(channels).some((id) => {
       const state = this._s(id);
       return state !== null && state !== "unavailable";
     }));
     const wxName  = wxConnected && sourceLive ? source : "Weather station";
-    // Every channel Home Assistant can convert is read with its unit: it is
-    // printed in that unit, and converted only to meet a threshold here, which
-    // is in the unit the integration publishes.
     const temp    = this._q(channels.temp);
     const humid   = this._f(channels.humid);
     const dewPt   = this._q(channels.dewPt);
@@ -298,11 +282,8 @@ class NinaWeatherCard extends HTMLElement {
     const windColor = windMs !== null && windMs > 12 ? "var(--danger)"
       : windMs !== null && windMs > 8 ? "var(--warn)" : "var(--text)";
 
-    // Safety banner content
-    // UNSAFE is tested first, and deliberately not behind the connectivity
-    // read: that entity is diagnostic, so a user may disable it, and a disabled
-    // entity has no state to read. Ordered the other way, hiding a diagnostic
-    // would turn a monitor screaming UNSAFE into a grey "not connected".
+    // UNSAFE is tested first, ahead of the diagnostic connectivity read: the
+    // other order would let a disabled diagnostic hide a monitor screaming UNSAFE.
     let safetyIcon, safetyLabelCls, safetyLabel, safetyDetail;
     if (isUnsafe) {
       safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
@@ -341,8 +322,7 @@ class NinaWeatherCard extends HTMLElement {
               Compatible: OpenWeatherMap, Pegasus UPB, AAG CloudWatcher, ASCOM Alpaca, and others.`;
     }
 
-    // Sky quality: Bortle-ish mapping (mag/arcsec²)
-    // 22+ = Bortle 1-2 (excellent), 20-22 = good, 18-20 = moderate, <18 = poor
+    // Bortle-ish mapping: 22+ excellent, 20–22 good, 18–20 moderate, <18 poor.
     let sqPct = 0, sqLabel = "—", sqColor = "#7b8de8";
     if (skyQ !== null) {
       sqPct   = Math.min(100, Math.max(0, ((skyQ - 16) / (22.5 - 16)) * 100));
@@ -359,17 +339,13 @@ class NinaWeatherCard extends HTMLElement {
         <div class="val">${valStr}<span class="unit">${unit}</span></div>
       </div>`;
     };
-    // A cell for a quantity: its own precision and unit, and none of either
-    // when there is no reading.
     const qcell = (icon, label, q, decimals, ...flags) =>
       cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
     const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
 
-    // The margin as the reader can check it: the difference of the two numbers
-    // printed beside it, at their precision, so 20.54 over 20.46 °C, both shown
-    // as 20.5, reads as "at" rather than "within 0.1". Readings printed in two
-    // units or at two precisions have no such difference, so theirs is the
-    // true one. One that rounds to nothing is "at".
+    // The margin as printed: the difference of the two shown numbers, so
+    // 20.54/20.46 °C both showing 20.5 reads "at" rather than "within 0.1".
+    // Two units or precisions get the true margin instead.
     const places = temp?.precision ?? 1;
     const shownMargin = !dewThreat ? null
       : temp.unit === dewPt.unit && places === (dewPt.precision ?? 1)
@@ -522,8 +498,8 @@ class NinaWeatherCard extends HTMLElement {
     ctx.fillText("E", cx + r - 4, cy);
     ctx.fillText("W", cx - r + 4, cy);
 
-    // Wind arrow — points FROM the direction wind is coming FROM (meteorological)
-    const arrowRad = (dir - 90) * Math.PI / 180;  // rotate so 0° = North = up
+    // Meteorological: the arrow points from where the wind comes from.
+    const arrowRad = (dir - 90) * Math.PI / 180; // 0° = north = up
     const speedRatio = speed !== null ? Math.min(1, (speed || 0) / 20) : 0.5;
     const arrowLen = 12 + speedRatio * 10;
     const endX = cx + Math.cos(arrowRad) * arrowLen;

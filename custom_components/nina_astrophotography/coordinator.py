@@ -1,27 +1,14 @@
-"""The single DataUpdateCoordinator.
+"""The DataUpdateCoordinator: the I/O, and the frame and event sets it owns.
 
-It owns the accumulated frame and event set. session.py is stateless and
-receives that set as an argument.
+`session.py` folds those sets statelessly; the polling decisions live in
+`polling.py`. Four writers touch the sets — the poll, the socket, the
+/event-history replay and the restart reseed — so `NinaData` is assembled
+with no `await` between reading them and freezing it. Otherwise a poll
+awaiting /equipment/info while IMAGE-SAVE arrives publishes a read from
+before the event, and the frame appears, vanishes and reappears.
 
-All mutation happens on the event loop, and NinaData is assembled from the live
-set at the moment of publication with no `await` between reading the set and
-freezing the dataclass. Four writers touch it — the poll, the WebSocket
-callback, /event-history replay and the restart reseed — and without that rule a
-poll awaiting /equipment/info while IMAGE-SAVE arrives publishes a snapshot
-assembled from a pre-event read, so the frame appears, vanishes and reappears.
-
-The polling decisions themselves — is this a restart, does the invariant hold —
-live in `polling.py`, which knows nothing of Home Assistant. This module is the
-I/O and the ownership.
-
-Polling runs in six tiers behind ONE 10 s tick, not three coordinators: the
-per-tier due-time checks live inside `_async_update_data`.
-
-    fast       7,420 B @ 10 s  =  44,520 B/min
-    sequence   8,418 B @ 30 s  =  16,836 B/min
-                                  ──────────
-                                  61,356 B/min ~ 3.7 MB/h ~ 37 MB / 10 h night
-    before                        82,606 B x 6/min ~ 297 MB / night
+The slower tiers run behind the one 10 s tick; `_run_tiers` decides which are
+due.
 """
 
 from dataclasses import dataclass, replace
@@ -88,11 +75,10 @@ _TIER_READS: dict[str, tuple[str, str]] = {
     "/equipment/focuser/last-af": ("_last_autofocus", "get_last_autofocus"),
 }
 
-# The floor backstops the event-driven set. `/flats/status` has no event at
-# all — the FLAT-* events are panel hardware, not the flat wizard.
-# `/equipment/focuser/last-af` is here as well as on AUTOFOCUS-FINISHED: the
-# report is the only evidence a completed run was REJECTED, so a missed event
-# must not leave the verdict unread for the night.
+# Read every five minutes whatever the events say. `/flats/status` has no event
+# (the FLAT-* events are the panel, not the flat wizard), and last-af is the
+# only evidence a finished autofocus was rejected, so a missed
+# AUTOFOCUS-FINISHED must not leave it unread.
 _FLOOR_ENDPOINTS = (
     "/flats/status",
     "/livestack/status",
@@ -100,8 +86,7 @@ _FLOOR_ENDPOINTS = (
     "/equipment/focuser/last-af",
 )
 
-# What a tier publishes before its endpoint has ever answered, and what it goes
-# on publishing if the build does not serve it.
+# Published until the endpoint first answers, and for good if it is not served.
 _NO_FLATS = FlatsStatus(state=None, total_iterations=None, completed_iterations=None)
 _NO_LIVESTACK = LivestackStatus(running=False, raw_state="")
 _NO_PROFILE = ProfileSettings(
@@ -128,56 +113,46 @@ class NinaData:
     flats: FlatsStatus
     livestack: LivestackStatus
     stack: StackState | None
-    """The pair `image.livestack` fetches; None until a stack has updated."""
+    """What `image.livestack` fetches; None until a stack has updated."""
     target: str | None
     """What the sequence is shooting: the newest `TS-*TARGETSTART`'s name, else
-    the innermost `TargetName` in the `/sequence/json` tree. Distinct from
-    `session.last_frame.target_name`, which is what was shot LAST — the two
-    differ across a target change, and only this one moves before the first
+    the innermost `TargetName` in `/sequence/json`. Unlike
+    `session.last_frame.target_name`, it moves before a new target's first
     sub."""
     autofocus_report: AutoFocusReport | None
-    """The newest `/equipment/focuser/last-af`, or `None` on a rig that has
-    never run one. Dated against the session before it is believed — the report
-    survives a restart, so an old bad run is not tonight's problem."""
+    """The newest `/equipment/focuser/last-af`, or `None` if none was ever run.
+    It survives a restart, so it is dated against the session before use."""
     newest_frame: Frame | None
-    """The newest frame of any type this process saved — `image.last_frame`'s
-    timestamp. `session.last_frame` is the newest LIGHT inside the session
-    window: after a dawn flat run, and at any hour after the noon rollover,
-    the two name different frames or none at all."""
+    """The newest frame of any type this process saved. `session.last_frame`
+    is the newest light inside the session window, so after a flat run or the
+    rollover the two differ."""
     recent_frames: tuple[Frame, ...]
-    """The newest frames of any type, newest first, bounded — what the
-    `recent_frames` sensor attribute publishes for a dashboard's thumbnail
-    strip and histogram to browse."""
+    """The newest frames of any type, newest first, bounded."""
     profile: ProfileSettings
     generation: str | None
     version: VersionInfo
     imaging: bool
-    """§6.2's activity heuristic, computed once per tick for the tier schedule
-    and published here so `binary_sensor.imaging` reads the same value. Never
-    `/sequence/json` node status."""
+    """The activity heuristic, computed once per tick for both the tier
+    schedule and `binary_sensor.imaging`."""
     running: bool
-    """Whether the SEQUENCER is executing, which a rig waiting out a target's
-    start window is while `imaging` is false. From the root containers, with
-    `SEQUENCE-STARTING`/`-FINISHED` breaking a tie — see `sequence.running`."""
+    """Whether the sequencer is executing, which it is while Target Scheduler
+    waits out a start window and `imaging` is false. See `sequence.running`."""
     wait_ends_at: datetime | None
-    """When the wait Target Scheduler is in ends, or None if it is not waiting.
-    The event names no reason, so neither can this."""
+    """When Target Scheduler's current wait ends, or None if it is not waiting."""
     guider_stopped: bool
-    """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` since, and
-    no poll since that saw the guider running. What tells a stale `LostLock`
-    from a guider hunting for its star."""
+    """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` or running
+    guider seen since. Tells a stale `LostLock` from a guider hunting for its
+    star."""
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):
-    """Polls the fast tier and publishes `NinaData`.
+    """Polls, folds pushed events, and publishes `NinaData`.
 
-    The §5.2.2 first-sight rule lives here because the mapper is stateless:
-    `/equipment/info` always emits all eleven device blocks, so a block's
-    presence proves nothing. A device is *observed* once it has carried a
-    `DeviceId`, and the observation is latched for the coordinator's lifetime —
-    disconnection drops the `DeviceId`, so evaluating it per poll would delete
-    the device the moment it went down. A never-observed kind publishes as
-    `None`; an observed one that is down publishes with `connected=False`.
+    `/equipment/info` always carries all eleven device blocks, so a block
+    proves nothing. A kind is observed once it has carried a `DeviceId`, and
+    that is latched for the coordinator's lifetime, because disconnecting drops
+    the `DeviceId`. A never-observed kind publishes as `None`; an observed one
+    that is down publishes with `connected=False`.
     """
 
     config_entry: ConfigEntry
@@ -203,9 +178,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self.frames: dict[tuple[datetime, str], Frame] = {}
         self.events: list[NinaEvent] = []
         self.generation: str | None = None
-        # Set by setup once the socket exists, so the generation reaches the
-        # push path: an event tagged with a stale one is filtered out of the
-        # fold the moment it arrives.
+        # Set by setup, so the stream stamps events with the current generation.
         self.event_stream: NinaEventStream | None = None
         self._version = version
         self._rollover_hour = rollover_hour
@@ -230,10 +203,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._last_image_save: float | None = None
         self._last_count: int | None = None
         self._imaging = False
-        # The latched snapshot of the last successful poll. A push publishes
-        # against it rather than reading /equipment/info of its own: an event
-        # says nothing about the eleven devices, and a read would put an await
-        # between the fold and the publish.
+        # The last successful poll's snapshot, which a push publishes against:
+        # reading /equipment/info would put an await between fold and publish.
         self._last_snapshot: EquipmentSnapshot | None = None
 
     async def _async_update_data(self) -> NinaData:
@@ -245,24 +216,18 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             count = await self.client.get_image_history_count()
             await self._track_process(application_start, count)
         except (NinaRequestError, NinaEndpointError) as exc:
-            # Neither becomes right by retrying. With a previous snapshot, log
-            # once and keep it rather than making every entity unavailable;
-            # with none, fail the entry — ConfigEntryNotReady would retry a
-            # permanent condition forever.
+            # Retrying will not fix either. Keep the last data if there is any;
+            # otherwise fail the entry rather than retry forever.
             if self.data is None:
                 raise ConfigEntryError(f"N.I.N.A. rejected a request: {exc}") from exc
             if not self._rejection_logged:
                 _LOGGER.error("N.I.N.A. rejected a request: %s", exc)
                 self._rejection_logged = True
-            # A refused request is an answer, so the rig is up and the entities
-            # are available again on the retained data.
+            # A refusal is an answer: the rig is up.
             self._note_reachable()
             return self.data
         except NinaError as exc:
-            # log-when-unavailable (§7.3). Home Assistant logs its own "Error
-            # fetching …" for the UpdateFailed; this one is the ENTITY-visible
-            # transition, and it is logged once per outage rather than once per
-            # ten-second tick.
+            # Once per outage, not once per tick.
             if not self._unavailable_logged:
                 _LOGGER.warning("N.I.N.A. at %s is unavailable: %s", self._host, exc)
                 self._unavailable_logged = True
@@ -279,18 +244,16 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         await self._run_tiers(snapshot, count)
         self._last_snapshot = snapshot
         if not self._replayed:
-            # Setup: fold what the socket could not deliver because it was not
-            # connected yet. Before `_assemble`, so the first published snapshot
-            # already carries it and no extra publish is needed.
+            # What happened before the socket connected, folded before
+            # `_assemble` so the first publish carries it.
             await self._replay()
         return self._assemble(snapshot)
 
     async def _track_process(self, application_start: str | None, count: int) -> None:
-        """Apply the process boundary, and keep the frame set whole across it.
+        """Detect a N.I.N.A. restart, and keep the frame set whole across it.
 
-        Runs inside the poll's own error handling: every call it makes can
-        raise, and a failure here is a failed poll rather than a silent gap in
-        the fold.
+        Runs inside the poll's error handling, so a failure here fails the poll
+        rather than leaving a gap in the fold.
         """
         restarted = self._restart.observe(application_start, count)
         if restarted:
@@ -298,23 +261,19 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 "N.I.N.A. restarted (%s); reseeding from /image-history?all=true",
                 application_start,
             )
-            # A restart is exactly when the served routes change — a plugin
-            # enabled, the API updated — so what the old process refused says
-            # nothing about the new one. `/event-history` is replayed again for
-            # the same reason, under the new generation.
+            # A new process may serve different routes (a plugin enabled, the
+            # API updated), and its /event-history is replayed afresh.
             self._not_served.clear()
             self._tier_warned.clear()
             self._replayed = False
-        # Only a restart moves the generation on. A single unreadable
-        # /application-start is missing information, not a new process, and
-        # adopting its `None` would filter the whole session away for a tick.
+        # Only a restart moves the generation. One unreadable
+        # /application-start is not a new process, and adopting its `None`
+        # would filter the whole session away for a tick.
         if restarted or self.generation is None:
             self._set_generation(application_start)
-        # The frame set is never seeded from the bare path: it answers the
-        # newest frame alone, which leaves the session count reading 1. The
-        # guard is consulted only when nothing else has already asked for a
-        # reseed — a tick that reseeds anyway must not spend one of its two
-        # strikes.
+        # Seeded from `?all=true`: the bare path answers the newest frame alone.
+        # The guard is asked last, so a tick that reseeds anyway spends none of
+        # its strikes.
         if (
             restarted
             or not self._seeded
@@ -324,17 +283,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._restart.update(application_start, count)
 
     def handle_event(self, event: NinaEvent) -> None:
-        """Fold one pushed event into the accumulated sets and publish.
+        """Fold one pushed event into the sets and publish it without a poll.
 
-        `async_set_updated_data`, never `async_request_refresh`: publishing the
-        fold directly is what makes the design push-first rather than
-        socket-as-a-hint (§6.3). `_react_to` holds the exceptions — the events
-        that ask for a value the event itself does not carry.
-
-        The publish comes FIRST, and the order is load-bearing:
-        `async_set_updated_data` cancels the debouncer, so a publish after
-        §6.4's `async_request_refresh` would eat the very refetch that branch
-        had just asked for.
+        `_react_to` handles the events whose payload does not carry the value
+        they announce. It runs after the publish, because
+        `async_set_updated_data` cancels the debouncer and would swallow the
+        refresh `_react_to` requests.
         """
         if not self._take(event):
             return
@@ -342,61 +296,39 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._react_to(event)
 
     def _react_to(self, event: NinaEvent) -> None:
-        """Queue what one event's own payload cannot answer.
+        """Queue the reads an event announces but does not carry.
 
-        TS-* queue nothing by design — TS-TARGETSTART
-        fires once per exposure and its payload already carries TargetName,
-        ProjectName, Rotation and TargetEndTime (§6.1).
+        TS-* queue nothing: their payloads carry everything published.
         """
         name = event.name
         if name == "IMAGE-SAVE":
-            # The imaging heuristic only — the frame itself rides the push path.
             self._last_image_save = time.monotonic()
         elif name == "SEQUENCE-FINISHED":
-            # The recency arm of the heuristic is what keeps the tier at 30 s
-            # for five minutes after the last frame, so the event has to clear
-            # it as well as the cadence; live activity — a rising count, a
-            # camera still exposing — still overrides both on the next tick.
+            # Clears the recency that would hold the tier at 30 s for five
+            # minutes; live activity still overrides it on the next tick.
             self._last_image_save = None
             self._schedule.sequence_finished()
             self._schedule.add_pending("/sequence/json")
         elif name == "SEQUENCE-STARTING":
-            # Both boundaries move every node's status at once, and the
-            # document is the only place that is reported. Queued rather than
-            # fetched: /sequence/json passes the same ≤1 per 30 s debounce
-            # whichever caller asked for it.
+            # Queued, not fetched, so it passes the ≤1 per 30 s debounce.
             self._schedule.add_pending("/sequence/json")
         elif name.startswith("PROFILE-"):
             self._schedule.add_pending("/profile/show")
         elif name == "AUTOFOCUS-FINISHED":
-            # A FINISHED is the report, not a verdict: the run may have been
-            # rejected on its curve fit, and only /last-af carries the R² that
-            # says so.
+            # Only /last-af says whether the run was rejected on its fit.
             self._schedule.add_pending("/equipment/focuser/last-af")
         elif name == "STACK-STATUS":
-            # The payload's `Status` is the transition the plugin announced,
-            # not the server's own state, and only /livestack/status reports
-            # whether the stack is running — so it is read back.
+            # `Status` is the transition announced, not whether the stack runs.
             self._schedule.add_pending("/livestack/status")
         elif (
             name == "SAFETY-CHANGED"
             or name.startswith("FLAT-")
             or name.endswith(("-CONNECTED", "-DISCONNECTED"))
         ):
-            # Nothing safety-related waits for a tier (§6.4), and a connection
-            # change moves all eleven device blocks at once. The FLAT-* events
-            # are change hints and nothing more (§5.3.4) — FLAT-LIGHT-TOGGLED
-            # carries an empty payload and FLAT-BRIGHTNESS-CHANGED fires
-            # through a ramp with inconsistent `Previous` values — so the
-            # panel's state comes from /equipment/info.
-            #
-            # `async_request_refresh`, not `async_refresh`: its debouncer runs
-            # the first call immediately and coalesces the rest. A N.I.N.A.
-            # start emits eleven connection events in a few seconds, and eleven
-            # bare refreshes would both spend eleven snapshots and interleave
-            # their awaits over the frame set.
-            #
-            # On the entry, like the reconnect task, so unload cancels it.
+            # Safety must not wait for a tier; a connection change moves every
+            # device block; FLAT-* payloads are empty or unreliable through a
+            # ramp. The debounced refresh coalesces the burst of connection
+            # events a N.I.N.A. start emits.
             self.config_entry.async_create_task(
                 self.hass, self.async_request_refresh(), "nina_event_refresh"
             )
@@ -408,14 +340,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         )
 
     async def async_reconnected(self) -> None:
-        """The socket came back: recover what it could not deliver while down.
+        """Recover what the socket missed while it was down.
 
-        The poll comes FIRST. N.I.N.A. may have restarted while the socket was
-        down, and replaying under the stale generation would tag every replayed
-        event to be filtered straight back out of the fold. That poll also
-        performs §6.1's one-shot reseed: `/event-history` carries
-        `{Event, Time}` only, so it can never reconstruct the statistics a
-        missed `IMAGE-SAVE` push held — the frames come back from `?all=true`.
+        Poll first: N.I.N.A. may have restarted meanwhile, and a replay under
+        the old generation would be filtered straight out of the fold. The poll
+        also reseeds the frames, since `/event-history` carries no `IMAGE-SAVE`
+        statistics.
         """
         self._seeded = False
         await self.async_refresh()
@@ -429,14 +359,12 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         try:
             replayed = await self.event_stream.replay(self.client, self.generation)
         except NinaEndpointError:
-            # A route this build does not serve cannot start working, and the
-            # setup replay would otherwise ask again on every 10 s tick.
+            # Otherwise the setup replay would ask again every tick.
             _LOGGER.info("/event-history is not served by this N.I.N.A.; not replaying")
             self._replayed = True
             return
         except NinaError as exc:
-            # An empty history is normal; an unreadable one is not worth failing
-            # setup over, and the next poll tries again.
+            # The next poll tries again.
             _LOGGER.debug("Could not replay /event-history: %s", exc)
             return
         for event in replayed:
@@ -444,11 +372,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._replayed = True
 
     def _take(self, event: NinaEvent) -> bool:
-        """Accept one event into the sets; False if it has been taken already.
+        """Accept one event into the sets; False if it was already taken.
 
-        One ledger serves the socket and the replay, so an event that arrives
-        by both paths is folded once. The mapper has already turned an
-        `IMAGE-SAVE` payload into a `Frame` — no wire dict reaches this module.
+        The socket and the replay share one ledger, so an event arriving by
+        both is folded once.
         """
         if self._ledger.seen(event):
             return False
@@ -459,46 +386,30 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return True
 
     def _publish(self) -> None:
-        """Freeze the live sets and hand them to the entities, with no poll.
+        """Publish the live sets without a poll.
 
-        Silent while the last poll failed, and before the first has succeeded.
-        `async_set_updated_data` sets `last_update_success`, so publishing
-        against a stale `_last_snapshot` would flip eleven devices back to
-        available on a rig that is still unreachable. The fold accumulates
-        either way; the next successful poll publishes what piled up.
-
-        Each publish also restarts the fast tier's interval — that is what
-        `async_set_updated_data` does — so a busy night's ~600 events push the
-        next tick out by up to 10 s apiece. Bounded and harmless: an event
-        arriving IS the fresher information the tick would have gone to fetch.
+        Silent until a poll has succeeded, and while the last one failed:
+        `async_set_updated_data` sets `last_update_success`, which would mark
+        an unreachable rig available. The next successful poll publishes what
+        accumulated. Each publish also restarts the tick's interval, which is
+        harmless: the event is the fresher news.
         """
         if self._last_snapshot is None or not self.last_update_success:
             return
         self.async_set_updated_data(self._assemble(self._last_snapshot))
 
     async def _run_tiers(self, snapshot: EquipmentSnapshot, count: int) -> None:
-        """The non-fast tiers, behind the fast tier's own tick.
-
-        A tier never fails the poll: the fast tier owns the entry's
-        availability, and a five-minute endpoint going quiet must not make
-        eleven devices unavailable.
-        """
+        """Read the slower tiers that are due. A tier never fails the poll."""
         schedule = self._schedule
-        # The first read has no baseline, so 122 frames against an initial 0 is
-        # not a rise — the same first-read rule the restart detector applies.
+        # The first read has no baseline, so it is not a rise.
         baseline = count if self._last_count is None else self._last_count
         self._last_count = count
-        # One computation, one truth: the tier schedule and
-        # `binary_sensor.sequence_running` read the same value.
         self._imaging = imaging(
             snapshot, count, baseline, self._since_last_image_save()
         )
         schedule.set_imaging(self._imaging)
         queued = schedule.take_pending()
-        # Every /sequence/json read passes one debounce — the tier's own and
-        # any an event queued — so ≤1 per 30 s is structural rather than a
-        # property of whichever caller asked (§6.1). It re-enters `endpoints`
-        # only through that debounce.
+        # Every /sequence/json read, scheduled or queued, passes one debounce.
         endpoints = queued - {"/sequence/json"}
         asked_for = "/sequence/json" in queued
         wanted = asked_for or schedule.due("sequence")
@@ -514,11 +425,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             await self._read_tier(endpoint, queued=endpoint in queued)
 
     async def _read_tier(self, endpoint: str, *, queued: bool) -> None:
-        """One tier read, which cannot fail the poll by any route.
+        """One tier read, which cannot fail the poll.
 
-        `queued` says the read was asked for by an event rather than by a
-        cadence: a transient failure re-queues it, because the alternative is
-        losing the event's request until the five-minute floor comes round.
+        A transient failure of a read an event `queued` re-queues it, rather
+        than losing the request until the next five-minute floor.
         """
         if endpoint in self._not_served:
             return
@@ -526,28 +436,22 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         try:
             model = await getattr(self.client, getter)()
         except NinaEndpointError:
-            # A build without the livestack plugin, or a route this API version
-            # does not carry. It cannot start working, so stop asking and leave
-            # the model at its empty value — the entities read "nothing here"
-            # rather than going unavailable.
+            # No livestack plugin, say. Stop asking; the entities read the
+            # empty model rather than going unavailable.
             self._not_served.add(endpoint)
             _LOGGER.info(
                 "%s is not served by this N.I.N.A.; not polling it again", endpoint
             )
             return
         except NinaError as exc:
-            # Transient. Keep what the last successful read left and try again
-            # when the tier is next due.
+            # Transient: keep the last read.
             _LOGGER.debug("%s failed this tick: %s", endpoint, exc)
             if queued:
                 self._schedule.add_pending(endpoint)
             return
         except Exception:
-            # A wire shape no mapper anticipated. Broad on purpose: this runs
-            # outside the fast tier's own guard, so anything escaping here
-            # fails the poll and takes eleven devices unavailable over one
-            # five-minute endpoint. Warned once per endpoint, and again if it
-            # recovers and breaks anew.
+            # A wire shape the mapper did not anticipate. Broad on purpose: one
+            # slow endpoint must not take every device unavailable.
             if endpoint not in self._tier_warned:
                 self._tier_warned.add(endpoint)
                 _LOGGER.warning(
@@ -569,12 +473,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._unavailable_logged = False
 
     def _log_connection_changes(self, snapshot: EquipmentSnapshot) -> None:
-        """Level 2's transitions: one line when a device drops, one when it returns.
-
-        A kind that has never been observed connected has not "come back" —
-        equipment is routinely down when Home Assistant starts, and treating
-        first sight as a recovery would log a line per device at every startup.
-        """
+        """Log a device dropping and returning, but not its first sighting."""
         previous = self._last_snapshot
         if previous is None:
             return
@@ -595,13 +494,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return time.monotonic() - self._last_image_save
 
     def _set_generation(self, generation: str | None) -> None:
-        """Publish the process tag everything the fold keeps is stamped with.
+        """Set the process tag the fold filters on.
 
-        A change unseeds the frame set. Everything held was stamped with the
-        old tag and the fold filters on the new one, so without this the
-        session reads zero until the reseed guard's two-tick rule restores it —
-        which is what an `/application-start` unreadable on the first poll then
-        readable on the second does.
+        A change unseeds the frame set: every frame held carries the old tag,
+        so the session would read zero until the reseed guard caught up.
         """
         if generation != self.generation:
             self._seeded = False
@@ -610,21 +506,19 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self.event_stream.generation = generation
 
     def _generation_frames(self) -> int:
-        """Frames held for the CURRENT process — what `?count=true` counts.
+        """Frames held for the current process, which is what `?count=true` counts.
 
-        `?count=true` is process-scoped, not session-scoped, so the invariant
-        is checked against the whole generation and not the night. The set is
-        therefore unbounded for the N.I.N.A. process lifetime: pruning it makes
-        the fold smaller than the count forever, and so reseeds forever. At
-        Target Scheduler volumes a week is a few thousand frames.
+        So the set is never pruned within a process: a pruned set would
+        disagree with the count and reseed forever. A week of Target Scheduler
+        is a few thousand frames.
         """
         return sum(1 for f in self.frames.values() if f.generation == self.generation)
 
     async def _reseed(self, count: int) -> None:
         """Union `/image-history?all=true` into the frame set. Never clears.
 
-        Clearing races a concurrent poll and loses what arrives during the
-        refetch; the stale generation is dropped by the fold's filter instead.
+        Clearing would lose what arrives during the refetch; the fold filters
+        out the stale generation instead.
         """
         for frame in await self.client.get_frames(
             include_all=True, generation=self.generation
@@ -644,11 +538,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._mismatch_logged = True
 
     def _latch_observed(self, snapshot: EquipmentSnapshot) -> EquipmentSnapshot:
-        """Record every kind carrying a `DeviceId`; blank the never-observed.
-
-        `KINDS` and the `EquipmentSnapshot` field names are one list — a kind
-        indexes the snapshot directly.
-        """
+        """Record every kind carrying a `DeviceId`; blank the never-observed."""
         for kind in KINDS:
             device = getattr(snapshot, kind)
             if device is not None and device.meta.device_id is not None:
@@ -657,12 +547,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return replace(snapshot, **unseen)
 
     def _now(self) -> datetime:
-        """The clock the session's rollover is measured against.
+        """Now, in the rig's zone, which frame dates and the rollover use.
 
-        Frame dates carry the RIG's offset, so the boundary must be rig-local:
-        12:00 UTC is 07:00 on a UTC-5 rig, inside its dawn flats. Home
-        Assistant's own zone is the fallback until the mount's clock has been
-        read, and the two differ on any rig not co-located with the server.
+        Home Assistant's zone stands in until the rig's offset is known.
         """
         offset = self.client.rig_offset
         if offset is None:
@@ -670,16 +557,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return dt_util.utcnow().astimezone(timezone(offset))
 
     def _assemble(self, snapshot: EquipmentSnapshot) -> NinaData:
-        """Freeze the live sets into one snapshot. Synchronous by design.
-
-        One clock reading for the whole snapshot: the session boundary and the
-        scheduler wait are both measured against it, and two readings could
-        straddle a second.
-        """
+        """Freeze the live sets into one snapshot, synchronously, at one moment."""
         moment = self._now()
-        # One pass over `self.frames`, not two: `newest_frame` is `recent`'s
-        # own newest entry, and a Target Scheduler night's frame count is not
-        # worth walking twice a tick.
         recent = recent_frames(self.frames.values(), self.generation)
         return NinaData(
             snapshot=snapshot,
@@ -718,7 +597,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
 
 @dataclass
 class NinaRuntimeData:
-    """Everything setup builds, hung on `entry.runtime_data` (Bronze)."""
+    """Everything setup builds, on `entry.runtime_data`."""
 
     client: NinaClientV2
     coordinator: NinaCoordinator

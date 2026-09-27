@@ -1,25 +1,14 @@
-"""The device model: a N.I.N.A. hub with one child per piece of equipment.
+"""The device model: a N.I.N.A. hub with one child per piece of equipment,
+carrying the driver metadata.
 
-N.I.N.A. drives a camera, a mount, a focuser and so on, each with its own
-driver, version and identity. Each gets its own Home Assistant device linked to
-the hub by `via_device_id`, so the driver metadata the API reports lands in the
-device registry rather than in entity attributes (§5.1).
+A device is created once its equipment has been observed (see
+`NinaCoordinator`), and a poll never removes one: equipment is routinely
+down, and its entity ids would go with it.
 
-Devices are created on FIRST SIGHT: `/equipment/info` always emits all eleven
-blocks, so a block's presence proves nothing — the coordinator latches which
-slots have ever carried a `DeviceId` and blanks the rest, and this module
-creates a device for every slot that survives that. A device once created is
-never removed by a poll: equipment is routinely disconnected when Home
-Assistant starts, and a device that came and went would take its entity ids
-with it. `async_remove_config_entry_device` is the deliberate way out.
-
-`async_sync_devices` is the only writer of device metadata. Entities claim a
-device by its identifiers alone (`device_identifiers`), because the metadata is
-usually not available when an entity is constructed — equipment is still
-connecting — and a value frozen there would never be filled in. The price is
-that a platform MUST gate entity creation on its slot being non-`None`, as
-`light.py` does: an identifiers-only `DeviceInfo` naming a kind this module has
-not created leaves the entity platform to create a nameless device.
+`async_sync_devices` is the only writer of device metadata; entities claim a
+device by identifiers alone, since the metadata usually arrives later. So a
+platform must gate entity creation on `observed()`, or the entity platform
+creates a nameless device.
 """
 
 from collections.abc import Callable, Mapping
@@ -37,8 +26,7 @@ if TYPE_CHECKING:
 
 MANUFACTURER = "N.I.N.A."
 
-# Slot name -> the label shown after the instance name. The slot names are the
-# `EquipmentSnapshot` field names, so a kind indexes the snapshot directly.
+# `EquipmentSnapshot` field -> the device name after the instance name.
 KINDS: Mapping[str, str] = {
     "camera": "Camera",
     "mount": "Mount",
@@ -55,21 +43,12 @@ KINDS: Mapping[str, str] = {
 
 
 def observed(data: NinaData, kind: str | None) -> bool:
-    """Whether the equipment an entity hangs off has ever been seen.
-
-    `None` is the hub, which always exists. A platform MUST gate entity
-    creation on this: an identifiers-only `DeviceInfo` naming a kind this
-    module has not created leaves the entity platform to mint a nameless one.
-    """
+    """Whether an entity's equipment has been seen; always for the hub (`None`)."""
     return kind is None or getattr(data.snapshot, kind) is not None
 
 
 def read_field(kind: str, field: str) -> Callable[[NinaData], Any]:
-    """One reading off one equipment model, `None` while the device is absent.
-
-    A disconnected device's readings are already `None` from the mapper, so
-    this yields `unknown` rather than a driver template default.
-    """
+    """One reading off one equipment model, `None` while the device is absent."""
 
     def value(data: NinaData) -> Any:
         device = getattr(data.snapshot, kind)
@@ -79,23 +58,16 @@ def read_field(kind: str, field: str) -> Callable[[NinaData], Any]:
 
 
 def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
-    """Every channel the N.I.N.A. switch device reports, empty while it is
-    absent — the device is one of eleven slots, not one of the channels.
-    """
+    """Every channel the N.I.N.A. switch device reports; empty while absent."""
     device = data.snapshot.switch_device
     return device.channels if device is not None else ()
 
 
 def unplaced_channels(data: NinaData) -> tuple[SwitchChannelModel, ...]:
-    """Channels no platform will claim, so the absence can be reported.
+    """Channels no platform claims, so their absence can be logged.
 
-    The three platforms partition by shape (§5.3.5) — read-only is a `sensor`,
-    one step is a `switch`, a wider range is a `number` — and that partition
-    has a hole: a WRITABLE channel whose `Minimum`/`Maximum`/`StepSize` are
-    absent or arrive as `"NaN"` is none of the three. Without this it simply
-    does not appear in Home Assistant, and the operator has a switch device
-    with fewer channels than the driver reports and nothing to diagnose it
-    with.
+    Read-only is a `sensor`, one step a `switch`, a wider range a `number`; a
+    writable channel with no range is none of them.
     """
     return tuple(
         channel
@@ -109,28 +81,23 @@ def unplaced_channels(data: NinaData) -> tuple[SwitchChannelModel, ...]:
 def channel_key(channel: SwitchChannelModel) -> str:
     """The `unique_id` suffix for one N.I.N.A. switch-device channel.
 
-    Keyed on the channel's own `Id` rather than its position, so a channel the
-    driver adds later does not renumber every entity after it. A channel with
-    no `Id` at all falls back to a synthesized index, offset per list so the
-    two cannot collide.
+    Keyed on the channel's `Id`, not its position, so a channel added later
+    renumbers nothing.
     """
     return f"switch_channel_{channel.index}"
 
 
 def channel_name(channel: SwitchChannelModel) -> str:
-    """The entity name for one channel — the driver's, where it gave one.
+    """The driver's name for a channel, else `Channel <n>`.
 
-    A driver need not name a channel, and an empty name resolves to the
-    device's own under `has_entity_name`, which would collapse every unnamed
-    channel onto one entity id.
+    An empty name would take the device's, collapsing unnamed channels onto
+    one entity id.
     """
     return channel.name or f"Channel {channel.index}"
 
 
 def channel_of(data: NinaData, index: int) -> SwitchChannelModel | None:
-    """The channel with this `Id` in the published snapshot, if it is still
-    there — a driver may stop reporting one, and the entity outlives it.
-    """
+    """The channel with this `Id`, if the driver still reports it."""
     return next((c for c in channels_of(data) if c.index == index), None)
 
 
@@ -169,15 +136,12 @@ def child_device_info(
 ) -> DeviceInfo:
     """One piece of equipment, linked to the hub.
 
-    `model` and `sw_version` are OMITTED rather than set to `None` when the
-    driver is not reporting them: a disconnected device drops its whole
-    identity, and writing that through would blank what the registry holds.
-    The manufacturer is the hub's — the driver's vendor is not on the wire.
+    Missing `model` and `sw_version` are omitted rather than `None`, so a
+    disconnected device does not blank the registry. The driver's vendor is
+    not on the wire.
 
-    `suggested_area` seeds the area only where the registry CREATES the
-    device — `via_device` grants no area inheritance of its own, so without it
-    equipment first observed after the operator has organised the hub lands
-    arealess. A device that already exists keeps the area it has.
+    `suggested_area` is the hub's area, applied only when the device is
+    created: `via_device` does not inherit an area.
     """
     return DeviceInfo(
         identifiers=device_identifiers(entry_id, kind),
@@ -197,9 +161,7 @@ def async_sync_devices(
 ) -> None:
     """Create the hub and every observed child, and keep their metadata current.
 
-    Runs on every coordinator publish. A device that connects long after Home
-    Assistant started, or one whose driver is swapped under a running rig,
-    fills in or replaces its registry fields here.
+    Runs on every publish, so late equipment and swapped drivers update.
     """
     registry = dr.async_get(hass)
     instance_name = entry.runtime_data.instance_name
@@ -237,8 +199,7 @@ def async_sync_devices(
 def kind_of(entry_id: str, device: dr.DeviceEntry) -> str | None:
     """The equipment kind a registry device stands for; `None` for the hub.
 
-    Raises `LookupError` for a device this entry does not recognise — one left
-    behind by an identifier scheme we no longer write.
+    Raises `LookupError` for an identifier this entry does not write.
     """
     for domain, identifier in device.identifiers:
         if domain != DOMAIN:
@@ -252,9 +213,8 @@ def kind_of(entry_id: str, device: dr.DeviceEntry) -> str | None:
 
 
 def _present(**fields: str | None) -> DeviceInfo:
-    """The fields that carry a value, so a missing one never blanks the registry.
-
-    Only for `DeviceInfo`'s string-valued keys: the cast checks none of them.
+    """The fields that carry a value. String-valued keys only: the cast checks
+    nothing.
     """
     return cast(
         DeviceInfo,

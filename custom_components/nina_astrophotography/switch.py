@@ -1,30 +1,21 @@
-"""Switches: the things that are either on or off, and can be told to change.
+"""Switches.
 
-**The state is the actual value, never the last commanded one** (§5.2.3), and
-never the command's own response (§3.5). Every command on this API answers
-`Success: true` without confirming anything — `set-light?on=true` was measured
-answering success while an immediate re-read still showed `LightOn: false` — so
-a switch that optimistically assumed its new state would lie for a poll and
-then flip back. The state moves when the next poll says it moved.
+**The state is the reported value, never the one commanded.** A command
+answers `Success: true` before the equipment moves, so the state changes when
+the next poll says it did.
 
-**`switch.guider` is on whenever the guider is RUNNING**, which is every state
-but `Stopped` and a `LostLock` that outlived a `GUIDER-STOP`. `State ==
-"Guiding"` reads *off* through `LostLock` and `Calibrating`, and a dashboard
-tap on a switch that looks off sends `/equipment/guider/start` and forces a
-re-settle mid-exposure. `sensor.guider_status` is what distinguishes the
-running states, and reports the rig's `State` as it is.
+**`switch.guider` is on whenever the guider is running**: every state but
+`Stopped`, and a `LostLock` outliving a `GUIDER-STOP`. Keyed on `Guiding`, it
+would read off while calibrating, and a tap would restart guiding
+mid-exposure. `sensor.guider_status` tells the running states apart.
 
-**The cooler is two endpoints, not a toggle.** `/equipment/camera/cool` takes
-the setpoint and has no "resume at the existing target" form, so cooling starts
-at the temperature the camera reports as its own target; a camera that reports
-none is refused rather than cooled to a guessed temperature. `"NaN"` is how a
-camera with no cooling would report the field; no capture in the corpus holds
-one, so the rig state exercising it is derived.
+**The cooler is two endpoints, not a toggle.** `/equipment/camera/cool` needs a
+setpoint, so on cools to the one the camera reports; a camera reporting none is
+refused.
 
-**A channel of the N.I.N.A. switch device belongs here only when it is
-binary** — `Max - Min == StepSize` (§5.3.5) — and its on/off values are that
-channel's own range ends, not 1 and 0. It reads `Value`, the channel's state,
-never `TargetValue`, which is only what the channel was last asked for.
+**A switch device channel is a switch only when binary** (`Max - Min ==
+StepSize`), and its on/off values are its own range ends. It reads `Value`,
+never `TargetValue`, which is only what it was last asked for.
 """
 
 from collections.abc import Awaitable, Callable
@@ -56,22 +47,11 @@ PARALLEL_UPDATES = 1
 class NinaSwitchDescription(SwitchEntityDescription):
     """A switch, plus how to read it and how to send both directions.
 
-    `kind` names the child device the entity hangs off (§5.1); `None` puts it on
-    the hub. `verified` is False only for the dome, which cannot be validated
-    against hardware — a test asserts every dome descriptor carries the marker.
-
-    `command` receives the published snapshot as well as the client, because a
-    command can need a reading to send: the cooler's setpoint is the camera's
-    own `TemperatureSetPoint`.
-
-    `supported` is a second gate beyond the device being observed, for a
-    capability the driver reports per device — a flat panel with no cover would
-    otherwise ship a switch that does nothing.
-
-    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
-    `unique_id_suffix` where the new `key` reads better than the old one. Home
-    Assistant keys the registry on `unique_id`, so changing it mints a fresh
-    entity and strands the old row as `unavailable`.
+    `kind` names the child device; `None` puts it on the hub. `verified` is
+    False only for the dome, which no hardware has validated. `command` gets
+    the snapshot too, since the cooler sends the camera's own setpoint.
+    `supported` gates on a capability the driver reports, such as a flat
+    panel's cover.
     """
 
     value: Callable[[NinaData], bool | None]
@@ -80,8 +60,8 @@ class NinaSwitchDescription(SwitchEntityDescription):
     supported: Callable[[NinaData], bool] | None = None
     verified: bool = True
     unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`. `unique_id` is
-    `{entry_id}_{unique_id_suffix or key}`."""
+    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
+    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
@@ -93,18 +73,11 @@ def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
 
 
 def _guider_running(data: NinaData) -> bool | None:
-    """Every guider state but `Stopped` is guiding in progress.
+    """On for every guider state but `Stopped`.
 
-    `Looping`, `Calibrating`, `Paused` and `LostLock` are all a guider that has
-    been started and has not been stopped; only `Stopped` is off. `Paused`
-    (PHD2 `set_paused`) suspends guide output while exposures keep looping, so
-    it reads on, and a stop sent during it is accepted and then ignored by
-    N.I.N.A. — `StopGuiding` acts only on `Guiding`, `Calibrating` and
-    `LostLock`. The exception is
-    a `LostLock` N.I.N.A. is still reporting after a `GUIDER-STOP` the guider
-    has not been seen running past — see `session.pending_guider_stop` for why
-    the state outlives the stop, and `polling.GuiderStopLatch` for a restart
-    that loses its star before `GUIDER-START`.
+    `Paused` reads on too, though N.I.N.A. ignores a stop sent during it. The
+    exception is a `LostLock` still reported after a `GUIDER-STOP`; see
+    `session.pending_guider_stop` and `polling.GuiderStopLatch`.
     """
     guider = data.snapshot.guider
     state = guider.state if guider is not None else None
@@ -143,9 +116,7 @@ def _either(
 
 
 async def _set_guiding(client: NinaClientV2, data: NinaData, on: bool) -> None:
-    """Never forces a calibration: an existing one is worth keeping, and
-    recalibrating costs the settle as well as the frames it spans.
-    """
+    """Start guiding on the existing calibration, or stop."""
     if on:
         await client.start_guiding(force_calibration=False)
     else:
@@ -153,9 +124,10 @@ async def _set_guiding(client: NinaClientV2, data: NinaData, on: bool) -> None:
 
 
 async def _set_cooler(client: NinaClientV2, data: NinaData, on: bool) -> None:
-    """On resumes at the driver's current setpoint, which a warm-up leaves at
-    its own final value rather than the imaging temperature. To cool to a
-    chosen temperature, set the target temperature number instead.
+    """Cool to the driver's current setpoint, or warm up.
+
+    A warm-up leaves the setpoint at its final value, not the imaging
+    temperature; the target temperature number cools to a chosen one.
     """
     camera = data.snapshot.camera
     setpoint = camera.target_temperature if camera is not None else None
@@ -163,7 +135,7 @@ async def _set_cooler(client: NinaClientV2, data: NinaData, on: bool) -> None:
         raise ServiceValidationError(
             translation_domain=DOMAIN, translation_key="no_cooling_setpoint"
         )
-    # The setpoint is unused on the way down, where /warm takes only a ramp.
+    # /warm takes no setpoint.
     await client.set_cooler(on, setpoint if setpoint is not None else 0.0)
 
 
@@ -171,7 +143,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
     NinaSwitchDescription(
         key="guider",
         unique_id_suffix="guider_switch",
-        # The guider device's one function, so it takes the device's own name.
+        # The guider device's one function, so it takes the device's name.
         name=None,
         kind="guider",
         value=_guider_running,
@@ -203,10 +175,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
     NinaSwitchDescription(
         key="livestack",
         translation_key="livestack",
-        # Session-scoped, so it hangs off the hub. It always exists because
-        # the model has an empty default, not because the endpoint always
-        # answers: a build without the plugin 404s, the coordinator latches
-        # that and stops asking, and the switch then reads `off` — where
+        # Always created. Without the livestack plugin it reads off, and
         # turning it on raises.
         kind=None,
         value=lambda data: data.livestack.running,
@@ -221,8 +190,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         value=read_field("rotator", "reverse"),
         command=_toggle("set_rotator_reverse"),
     ),
-    # Spec-derived and untested against hardware (§5.3.1): a bare field read,
-    # and `verified=False`.
+    # From the spec alone; no hardware has validated it.
     NinaSwitchDescription(
         key="dome_following",
         translation_key="dome_following",
@@ -277,10 +245,8 @@ class NinaSwitch(NinaEntity, SwitchEntity):
 class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
     """One binary channel of the N.I.N.A. switch device.
 
-    The on and off values are the channel's own range ends, held from creation:
-    they are capability metadata rather than readings, so they survive the
-    device disconnecting, and `SwitchChannelModel.binary` has already proved
-    both are present.
+    On and off are the channel's range ends, held from creation so they
+    survive the device disconnecting.
     """
 
     def __init__(
@@ -307,8 +273,7 @@ class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
 
     async def _send(self, value: float) -> None:
         if self.channel is None:
-            # The API answers `Success: true` to a `set` for an index it does
-            # not have, so nothing downstream would report this.
+            # The API answers `Success: true` to a `set` for a missing index.
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="channel_gone",
@@ -341,11 +306,7 @@ async def async_setup_entry(
 
     @callback
     def _warn_about_unplaced() -> None:
-        """Say so when a channel falls through all three platforms.
-
-        Once per channel: the switch device is polled on the fast tier, and a
-        driver that reports no range will go on doing it all night.
-        """
+        """Warn, once per channel, when no platform can take a channel."""
         for channel in unplaced_channels(coordinator.data):
             if channel.index in warned:
                 continue
@@ -363,13 +324,7 @@ async def async_setup_entry(
 
     @callback
     def _add_observed() -> None:
-        """Create the entities whose equipment the snapshot now carries.
-
-        Re-run on every publish, so equipment that connects hours after Home
-        Assistant started still gets its entities (Gold `dynamic-devices`), and
-        so does a capability that only appears once the driver is up. A slot
-        never returns to `None`, so nothing is ever removed here.
-        """
+        """Create the entities whose equipment and capability are now seen."""
         descriptions = [
             description
             for description in DESCRIPTIONS

@@ -6,9 +6,8 @@ from enum import IntEnum
 class TrackingMode(IntEnum):
     """Mount tracking rates.
 
-    The value is what /equipment/mount/tracking expects as its `mode`
-    parameter; the label is what /equipment/mount/info reports back as
-    TrackingMode, so one definition drives both the request and the display.
+    The value is `/equipment/mount/tracking`'s `mode`; the name is what
+    `/equipment/mount/info` reports as `TrackingMode`.
     """
 
     SIDEREAL = 0
@@ -20,24 +19,18 @@ class TrackingMode(IntEnum):
 
 DOMAIN = "nina_astrophotography"
 
-# Config entry keys
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_INSTANCE_NAME = "instance_name"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_ROLLOVER_HOUR = "rollover_hour"
 
-# Defaults
 DEFAULT_PORT = 1888
 DEFAULT_INSTANCE_NAME = "N.I.N.A."
 DEFAULT_POLL_INTERVAL = 10  # seconds
-# The session boundary, in the RIG's local hours. Noon is the astrophotographer's
-# night boundary; a rig whose Windows clock runs UTC needs it moved, because
-# every N.I.N.A. timestamp is local to that clock and 12:00 UTC falls inside a
-# UTC-5 site's dawn flats.
+# The session boundary, in the rig clock's hours. A rig whose clock runs UTC
+# needs it moved, or it falls inside a western site's dawn flats.
 DEFAULT_ROLLOVER_HOUR = 12
-
-# ─── Services ────────────────────────────────────────────────────────────────
 
 SERVICE_CAMERA_COOL = "camera_cool"
 SERVICE_CAMERA_WARM = "camera_warm"

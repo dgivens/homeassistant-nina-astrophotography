@@ -1,49 +1,29 @@
-"""wire → models.
+"""wire → models. Every wire quirk lives here.
 
-Every wire quirk lives here and nowhere else:
+  - `"NaN"` → `None` across every field, no allowlist. .NET serializes
+    `double.NaN` as that string, and it is overloaded: disconnected,
+    momentarily unreadable, and unimplemented all look alike.
+  - Calibration is FLAT / DARK / BIAS / DARKFLAT, keyed on `ImageType`, never
+    on `HFR == 0`. It loses `hfr`, `stars` and the guide RMS; a light keeps
+    `stars` even at 0, since a clouded sub reporting none is still
+    diagnostic. `Stars -1` is a sentinel everywhere, never a calibration
+    signal.
+  - `TimeToMeridianFlip` is `None` while tracking is off, and at the literal
+    24 (the sentinel) regardless of `TrackingEnabled` — every computed value
+    is in [0, 24), so 12 h is a legitimate reading and only 24 is the sentinel.
+  - A `Connected: false` block maps with every reading `None`; `connected`,
+    `meta` and capability flags survive, since a disconnected driver answers
+    template defaults for readings, not for capabilities.
+  - Every `NinaEvent.time` is offset-aware, keyed on event name through
+    `EVENT_TIMEZONES`; where the zone is local and the rig's offset is
+    unknown, UTC stands in until replay corrects it.
+  - `TS-*` payloads carry empty arrays where scalars belong (`"RA": []`), so
+    `NinaEvent.data` keeps scalars only.
+  - Flat-panel brightness range and mount tracking modes are per-device;
+    never hardcoded.
 
-  - "NaN" → None across every field, no allowlist. .NET serializes double.NaN
-    as a JSON string, and the sentinel is overloaded — disconnected, momentarily
-    unreadable, and not implemented by this driver all look alike.
-  - Calibration is the explicit set FLAT / DARK / BIAS / DARKFLAT, keyed on
-    `ImageType`, never on `HFR == 0`. A calibration frame loses `hfr`, `stars`
-    and the guide RMS; LIGHT, SNAPSHOT and an unknown type keep their readings
-    under the sentinel rules alone (HFR 0, Stars -1, RMS 0 → None). A LIGHT
-    keeps `stars` even at 0, because a clouded sub reporting zero stars is the
-    most diagnostic reading it has. `Stars -1` is a sentinel everywhere and
-    never a calibration signal — flats report it, the captured dark reported
-    `Stars 1`.
-  - TimeToMeridianFlip is None while tracking is off, and at the literal 24 —
-    the sentinel — whatever TrackingEnabled says. Tracking off and a driver
-    exception both return that 24 without computing anything; every computed
-    value is in [0, 24), because the calculation subtracts 24 from whatever
-    reaches it. 12 h is legitimate — a mount inside the pier-side window that
-    adds 12 h reads it — so "≥12" is no rule either: only the literal 24 is.
-  - A `Connected: false` block maps with every reading None — `connected`,
-    `meta` and the capabilities survive, and a switch's channel list is a
-    capability, not a reading. A disconnected driver answers Position 0,
-    StepSize 0, ShutterNone: template defaults, not readings. Guider
-    PixelScale 0 is no reading even when connected.
-  - Three timestamp classes, two of them naive and indistinguishable by shape,
-    keyed by EVENT NAME through EVENT_TIMEZONES. Every NinaEvent.time is
-    offset-aware: the fold sorts events, and one naive time among aware ones
-    raises. Where the class is local and the rig's offset is not yet known, UTC
-    stands in — ordering must always be defined, and replay corrects it.
-  - The live socket IMAGE-SAVE carries ImageStatistics and no Time; the frame's
-    own Date is its time.
-  - TS-* payloads carry "Coordinates": {"RA": [], …} — empty arrays where
-    scalars belong — so NinaEvent.data keeps scalars only.
-  - Flat-panel brightness range is per-device; mount tracking modes come from
-    TrackingModes. Never hardcode either.
-
-A device block is mapped whenever it is present, disconnected or not: a
-disconnected device DROPS `DeviceId`, `Name` and `DisplayName` rather than
-nulling them, and the "has ever carried a DeviceId" latch that distinguishes
-"never observed" from "down" needs state, so it lives in the coordinator. This
-module is stateless.
-
-If a sentinel reaches derive.py, models.py carries sentinel values and the seam
-is broken.
+A device block is mapped whenever present, connected or not: the coordinator
+keeps the "has ever carried a `DeviceId`" latch; this module is stateless.
 """
 
 from collections.abc import Mapping
@@ -204,11 +184,7 @@ def _timestamp(raw: Any) -> datetime | None:
 
 
 def _slots(entries: Any) -> Mapping[str, int]:
-    """Filter name → the wheel's own `Id`, for the entries that carry both.
-
-    A name with no usable `Id` is simply absent, so the platform refuses the
-    change rather than guessing a slot for it.
-    """
+    """Filter name → the wheel's own `Id`, for entries that carry both."""
     if not isinstance(entries, list):
         return MappingProxyType({})
     return MappingProxyType(
@@ -246,11 +222,9 @@ def _connected(wire: dict) -> bool:
 
 
 def _readings(wire: dict) -> dict:
-    """The block to read measurements from: empty when the device is down.
-
-    Capability flags and registry metadata still come from `wire`; everything
-    a driver measures comes from here, so a disconnected block maps to None
-    for every reading without a per-field guard.
+    """Where readings come from; empty when the device is down, so every
+    reading maps to `None` without a per-field guard. Capability flags and
+    metadata still read from `wire`.
     """
     return wire if _connected(wire) else {}
 
@@ -403,9 +377,8 @@ def map_flat_device(wire: dict) -> FlatDeviceModel:
 
 
 def map_weather(wire: dict) -> WeatherModel:
-    """Every channel the wire carries is in the map; a channel this source
-    cannot report arrives as "NaN" and so reads None, poll after poll. §5.2.2's
-    first-reading rule keys on a channel having ever been non-None.
+    """Every channel the wire carries; one this source cannot report arrives
+    as `"NaN"` and reads `None`, poll after poll.
     """
     readings = _readings(wire)
     return WeatherModel(
@@ -428,21 +401,14 @@ def map_safety_monitor(wire: dict) -> SafetyMonitorModel:
 
 
 def _fallback_index(key: str, position: int) -> int:
-    """A synthetic channel index for an entry the driver gave no `Id`.
-
-    Offset per list so the two cannot collide. The value is only ever a key —
-    `switch_channel_{index}` and the `set` parameter — and a channel with no
-    `Id` cannot be commanded anyway, so a number no real `Id` will reach is
-    strictly better than one that can be reached twice.
+    """A synthetic index for an entry with no `Id`, offset per list so the
+    two lists cannot collide.
     """
     return position + (_READONLY_INDEX_BASE if key == "ReadonlySwitches" else 0)
 
 
 def map_switch(wire: dict) -> SwitchDeviceModel:
-    """The channel list is the device's capability, so it survives a disconnect
-    the way every other block's option lists and ranges do; only `value` is a
-    reading, and a disconnected device has none.
-    """
+    """The channel list survives a disconnect; only `value` is a reading."""
     connected = _connected(wire)
     channels: list[SwitchChannelModel] = []
     for key, writable in (("WritableSwitches", True), ("ReadonlySwitches", False)):
@@ -450,11 +416,8 @@ def map_switch(wire: dict) -> SwitchDeviceModel:
             index = _integer(entry, "Id")
             channels.append(
                 SwitchChannelModel(
-                    # The fallback is namespaced per list: `position` restarts at
-                    # zero for the second one, so a writable and a read-only
-                    # channel both missing `Id` would otherwise land on the same
-                    # index — and `channel_of` resolves by index, so the read-only
-                    # gauge would render the writable channel's value.
+                    # Namespaced per list: `position` restarts at 0 for the
+                    # second list, so both lists' fallbacks would collide.
                     index=index
                     if index is not None
                     else _fallback_index(key, position),
@@ -490,11 +453,9 @@ _BLOCKS = (
 
 
 def map_equipment_info(wire: dict) -> EquipmentSnapshot:
-    """All eleven blocks, mapped whether the device is connected or not.
+    """All eleven blocks, mapped whether connected or not.
 
-    `None` here means the block was missing from the response, which this build
-    never does. "Never observed" is a latch over successive snapshots and is the
-    coordinator's to keep.
+    `None` means the block was missing from the response.
     """
 
     def block(key: str, mapper: Any) -> Any:
@@ -507,11 +468,9 @@ def map_equipment_info(wire: dict) -> EquipmentSnapshot:
 
 
 def rig_utc_offset(wire: dict) -> timedelta | None:
-    """The rig's UTC offset, from the mount's own clock in /equipment/info.
+    """The rig's UTC offset, from the mount's clock in `/equipment/info`.
 
-    Naive log-scraped event times are in this offset, and it is the only place
-    the API states it. `None` while the mount is disconnected — the block drops
-    `Coordinates` entirely.
+    `None` while the mount is disconnected, which drops `Coordinates`.
     """
     now = _timestamp(_dig(wire, "Mount", "Coordinates", "DateTime", "Now"))
     if now is None:
@@ -526,23 +485,17 @@ def rig_utc_offset(wire: dict) -> timedelta | None:
 
 
 def _total_rms_arcsec(raw: Any) -> float | None:
-    """The bracketed arcsecond total of 'Tot: 0.18 (0.29")'; the leading figure
-    is guide-camera pixels, which mean something different on every rig.
-    """
+    """The bracketed arcsecond total of `'Tot: 0.18 (0.29")'`."""
     match = _TOTAL_RMS_ARCSEC.search(raw) if isinstance(raw, str) else None
     return float(match.group(1)) if match else None
 
 
 def map_frame(wire: dict, generation: str | None) -> Frame:
-    """One saved sub, from `/image-history` or from an `IMAGE-SAVE` push.
+    """One saved frame, from `/image-history` or an `IMAGE-SAVE` push.
 
-    `Date` and `Filename` are the frame's identity and are present on every
-    frame on both paths; a payload without them is not a frame.
-
-    Only the calibration set loses readings. LIGHT, SNAPSHOT and a frame with
-    no `ImageType` at all keep every reading the sentinel rules allow: the type
-    decides only what is *dropped*, so an unclassifiable frame is treated as
-    neither calibration nor light rather than losing real data.
+    `Date` and `Filename` identify it on both paths. Only calibration types
+    lose readings; anything else, including an unclassifiable frame, keeps
+    what the sentinel rules allow.
     """
     image_type = _text(wire, "ImageType")
     hfr = _number(wire, "HFR")
@@ -584,9 +537,7 @@ def map_frame(wire: dict, generation: str | None) -> Frame:
 
 
 def map_image_save(payload: dict, generation: str | None) -> Frame | None:
-    """The frame inside an `IMAGE-SAVE`. `/event-history`'s stored copies carry
-    no statistics at all, so absence is normal.
-    """
+    """The frame inside an `IMAGE-SAVE`; absent on a stored/replayed copy."""
     statistics = payload.get("ImageStatistics")
     if not isinstance(statistics, dict) or "Date" not in statistics:
         return None
@@ -612,14 +563,9 @@ def _event_time(
 
 
 def _wait_end(name: str, wire: dict, offset: timedelta | None) -> datetime | None:
-    """`TS-WAITSTART`'s `WaitEndTime`, which is the rig's LOCAL time.
-
-    The same payload's `Time` is naive UTC (`EVENT_TIMEZONES`), so the two
-    fields of one event follow different conventions and reading this one by
-    the `Time` rule puts the wait hours out. Every captured value carries an
-    offset; a naive one needs the rig's clock, and without it there is no
-    reading — unlike `_event_time`, which falls back to UTC so that events
-    always sort.
+    """`TS-WAITSTART`'s `WaitEndTime`, the rig's local time, unlike the same
+    payload's naive-UTC `Time`. A naive value with no known offset yields no
+    reading, unlike `_event_time`'s UTC fallback.
     """
     if name != _SCHEDULER_WAIT_STARTED:
         return None
@@ -634,10 +580,8 @@ def map_event(
 ) -> NinaEvent:
     """One socket push or `/event-history` entry.
 
-    `rig_offset` resolves the naive local times of the log-scraped `ERROR-*`
-    events; without it they are read as UTC, which keeps every event comparable
-    at the cost of a known offset. Replay corrects them once the mount's clock
-    has been read.
+    `rig_offset` resolves `ERROR-*`'s naive local times; without it they read
+    as UTC, and replay corrects them once the mount's clock is known.
     """
     name = str(wire.get("Event", ""))
     frame = map_image_save(wire, generation)
@@ -678,9 +622,8 @@ def _sequence_node(wire: dict, fallback: str) -> SequenceNode:
 
 
 def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
-    """`/sequence/json` answers a LIST of top-level nodes — the global triggers
-    in a bare wrapper, then the root containers — so the tree gets a synthetic
-    root. A sequence that has not been loaded answers `""` and no tree.
+    """`/sequence/json` answers a list of top-level nodes, so the tree gets a
+    synthetic root. An unloaded sequence answers `""` and no tree.
     """
     if not isinstance(wire, list):
         return None
@@ -688,8 +631,6 @@ def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
         name="Sequence",
         status=None,
         iterations=None,
-        # The only nameless top-level node is the global-trigger wrapper, which
-        # names itself through the key its children hang from.
         children=tuple(
             _sequence_node(node, "GlobalTriggers")
             for node in wire
@@ -705,9 +646,7 @@ def _iterations(wire: dict, key: str) -> int | None:
 
 
 def map_flats_status(wire: dict) -> FlatsStatus:
-    """Only flats started through the API are counted; a Target Scheduler flat
-    run leaves -1 iterations behind, which is no count at all.
-    """
+    """Flats started through the API only; others leave `-1`, read as no count."""
     return FlatsStatus(
         state=_text(wire, "State"),
         total_iterations=_iterations(wire, "TotalIterations"),
@@ -716,15 +655,13 @@ def map_flats_status(wire: dict) -> FlatsStatus:
 
 
 def _numeric(value: Any) -> float | None:
-    """A BARE wire value as a number; the `_number` path walk needs a dict."""
+    """A bare wire value as a number; `_number` needs a dict to walk."""
     value = nan_to_none(value)
     return float(value) if _is_number(value) else None
 
 
 def _positive(value: float | None) -> float | None:
-    """A star has a size: 0 is "never measured", and a fit can extrapolate
-    past zero. N.I.N.A. guards its own `initialHFR` the same way.
-    """
+    """0 is "never measured", and a fit can extrapolate past zero."""
     return value if value is not None and value > 0 else None
 
 
@@ -734,18 +671,11 @@ def _hfr(wire: dict, point: str) -> float | None:
 
 
 def _focus_curve(wire: dict) -> tuple[FocusPoint, ...]:
-    """Every position the sweep visited — the only points that plot as a curve.
+    """Every position the sweep visited, sorted by position.
 
-    A position is what makes a point plottable, so a row without one goes; a
-    row whose measurement failed STAYS, at a None value. Deleting it instead
-    takes its x off the axis, and a line chart then joins the surviving
-    neighbours straight through the failure — a fabricated chord across the
-    region where the V bends hardest. A None breaks the line there, which is
-    what actually happened.
-
-    Sorted by position: a plot needs monotonic x, and nothing in the report
-    states its own order. Every capture is already ascending, so this only
-    catches a build that emitted acquisition order.
+    A row with no position is dropped; one whose measurement failed stays, at
+    `None`, so a chart breaks its line there instead of drawing a chord across
+    the failure.
     """
     points = wire.get("MeasurePoints")
     if not isinstance(points, list):
@@ -755,9 +685,7 @@ def _focus_curve(wire: dict) -> tuple[FocusPoint, ...]:
         position = _integer(point, "Position")
         if position is None:
             continue
-        # `_positive`, because a measurement of 0 is the star detector finding
-        # nothing usable. `Error` is not held to that rule: zero spread is a
-        # real reading, if a suspicious one.
+        # `Error` is not `_positive`-guarded: zero spread is a real reading.
         swept.append(
             FocusPoint(
                 position=position,
@@ -777,12 +705,10 @@ _TERM = re.compile(
 def _polynomial(equation: str) -> tuple[float, ...] | None:
     """`"y = 0.0003 * x^2 + -1.429 * x + 1671.6"` → `(0.0003, -1.429, 1671.6)`.
 
-    Highest power first, zero-filled, so a card evaluates it as a plain
-    polynomial. None where the equation is not one — N.I.N.A. can fit a
-    hyperbolic or a gaussian, and neither's written form has been observed.
-
-    Split on `" + "` and not `"+"`, because .NET writes a negative coefficient
-    as `+ -1.429` and an exponent as `1E+05`; only the former carries spaces.
+    Highest power first, zero-filled. None for a non-polynomial equation, such
+    as a hyperbolic or gaussian fit. Split on `" + "`, not `"+"`: .NET writes a
+    negative coefficient as `+ -1.429` and an exponent as `1E+05`, and only the
+    former carries spaces.
     """
     _, _, terms = equation.partition("=")
     if not terms.strip():
@@ -798,11 +724,11 @@ def _polynomial(equation: str) -> tuple[float, ...] | None:
 
 
 def _curve_fits(wire: dict) -> tuple[CurveFit, ...]:
-    """The fits this run actually used, each with its OWN R².
+    """The fits this run used, each with its own R².
 
-    N.I.N.A. carries one entry per fitting it knows and an empty equation for
-    every one this run did not use, so a non-empty equation is the filter.
-    `RSquares` has no Gaussian entry at all, hence a lookup rather than a zip.
+    N.I.N.A. sends every fitting it knows, with an empty equation for the
+    ones unused; a non-empty equation is the filter. `RSquares` has no
+    Gaussian entry, hence a lookup rather than a zip.
     """
     fittings = wire.get("Fittings")
     if not isinstance(fittings, dict):
@@ -822,12 +748,8 @@ def _curve_fits(wire: dict) -> tuple[CurveFit, ...]:
 
 
 def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
-    """Every `Intersections` entry, keyed by the wire's own name.
-
-    Read generically because the non-trendline entry is named after whichever
-    curve was fitted — `QuadraticMinimum` here, where the spec says
-    `HyperbolicMinimum` — so keying on a literal name would silently find
-    nothing the moment the profile's curve fitting changed.
+    """Every `Intersections` entry, keyed by the wire's own name: the
+    non-trendline entry is named for whichever curve was fitted.
     """
     intersections = wire.get("Intersections")
     if not isinstance(intersections, dict):
@@ -849,31 +771,14 @@ def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
 def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     """The newest autofocus report, or `None` where the rig has never run one.
 
-    `RSquares` carries one entry per fitting N.I.N.A. knows and `"NaN"` for
-    every fitting this run did not use, so the minimum of what survives the
-    `"NaN"` rule is the worst fit actually computed — which is what the
-    profile's threshold has to judge. No fitting-to-R² table is needed, and
-    none is guessed at.
+    `r_squared` is the minimum of `RSquares`, which sends `"NaN"` for fittings
+    this run did not use — the worst fit actually computed.
 
-    A CONTRASTDETECTION run measures a contrast score rather than star sizes,
-    so its focus-point values are not pixels and are dropped: one statistic
-    cannot hold both quantities. The positions stay — a step is a step. A
-    report with no `Method` at all is read as STARHFR, which every capture is.
-
-    A focus point of 0 is no measurement — a star has a size — and N.I.N.A.
-    leaves `InitialFocusPoint.Value` at 0 where the pre-sweep measurement found
-    no stars, which is its own `if (initialHFR != 0 …)` guard. A fitted value
-    can also come out negative, the trendline intersection extrapolating past
-    zero, so the rule is: positive or nothing. `curve` keeps such a point at a
-    None value rather than dropping it, because a position the sweep visited
-    and failed at is part of what the run did; `measured_points` counts only
-    the ones that measured.
-
-    `hfr` is the sweep's LOWEST MEASURED point, not
-    `CalculatedFocusPoint.Value`: under a `TREND*` fitting that value is the
-    mean of the trendline intersection and the quadratic minimum, which reads
-    far below anything the camera measured and moves with the profile's curve
-    fitting. It is kept as `fitted_hfr` for the operator who wants it.
+    A CONTRASTDETECTION run's focus points are a contrast score, not pixels,
+    so `hfr`/`fitted_hfr` are dropped; positions stay. `hfr` is the sweep's
+    lowest measured point, unlike `fitted_hfr` (`CalculatedFocusPoint.Value`),
+    which under a `TREND*` fitting averages in the trendline intersection and
+    reads far below anything measured.
     """
     if not wire:
         return None
@@ -914,19 +819,15 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
 
 
 def map_livestack_status(wire: dict | str) -> LivestackStatus:
-    """The Response is the BARE status string — `"Running"`, not
-    `{"Status": "Running"}` as the spec documents. The documented shape is
-    still read, because only one build has been observed. The spec's enum is
-    also lowercase, and the rig answers "Stopped".
+    """The Response is the bare status string (`"Running"`), not the spec's
+    `{"Status": "Running"}`, which is still read as a fallback.
     """
     raw = wire if isinstance(wire, str) else _text(wire, "Status") or ""
     return LivestackStatus(running=raw.lower() == "running", raw_state=raw)
 
 
 def map_profile(wire: dict) -> ProfileSettings:
-    """The allowlisted slice of `/profile/show`. The full dump carries live
-    credentials and is never captured, so this maps from the spec's names.
-    """
+    """The allowlisted slice of `/profile/show`."""
     return ProfileSettings(
         focal_length=_number(wire, "TelescopeSettings", "FocalLength"),
         pixel_size=_number(wire, "CameraSettings", "PixelSize"),

@@ -1,21 +1,8 @@
-"""Buttons: the one-shot commands, each of which is a single endpoint.
+"""Buttons: the one-shot commands, each a single endpoint.
 
-**A press awaits the HTTP round trip and nothing more** (§3.5). Autofocus and a
-mount park take minutes, but v2 issues no request id, so a completion event
-cannot be attributed to the caller that started it; waiting would block the
-service call on something it cannot identify. The result arrives as the state of
-the entities that report it — `binary_sensor.<instance>_mount_at_park`,
-`sensor.<instance>_focuser_position` — on the next poll.
-
-**A command's own response confirms nothing**, so nothing is read back here and
-no state is assumed. `guider/clear-calibration` is one of the seven handlers
-that assign `Success` from a driver boolean and answer
-`Success: false, Error: "", StatusCode: 200` on a call that worked; the client's
-envelope classification already keys on `StatusCode` and `Error` rather than
-`Success` alone, so that is a normal return here rather than a special case.
-
-Guiding is not on this platform: it is a state that can be read back, so it is
-`switch.<instance>_guider` (§5.2.3).
+**A press awaits the HTTP round trip and nothing more.** N.I.N.A. issues no
+operation id, so a completion event cannot be tied to the press; the result
+shows in the entities that report it, on the next poll.
 """
 
 from collections.abc import Awaitable, Callable
@@ -42,21 +29,16 @@ PARALLEL_UPDATES = 1
 class NinaButtonDescription(ButtonEntityDescription):
     """A button, plus the command it sends.
 
-    `kind` names the child device the entity hangs off (§5.1); `None` puts it on
-    the hub. `verified` is False only for the dome, which cannot be validated
-    against hardware — a test asserts every dome descriptor carries the marker.
-
-    **A 1.4.5 entity that survives keeps its 1.4.5 `unique_id`**, through
-    `unique_id_suffix`. Home Assistant keys the registry on `unique_id`, so
-    changing it mints a fresh entity and strands the old row as `unavailable`.
+    `kind` names the child device; `None` puts it on the hub. `verified` is
+    False only for the dome, which no hardware has validated.
     """
 
     press: Callable[[NinaClientV2], Awaitable[None]]
     kind: str | None
     verified: bool = True
     unique_id_suffix: str | None = None
-    """The 1.4.5 key, where it differs from `key`. `unique_id` is
-    `{entry_id}_{unique_id_suffix or key}`."""
+    """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
+    its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
 
 
 DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
@@ -95,7 +77,6 @@ DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
         kind="focuser",
         press=lambda client: client.auto_focus(),
     ),
-    # Sequence control is rig-scoped, so it hangs off the hub.
     NinaButtonDescription(
         key="sequence_start",
         translation_key="sequence_start",
@@ -117,7 +98,7 @@ DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
         kind="guider",
         press=lambda client: client.clear_guider_calibration(),
     ),
-    # Spec-derived and untested against hardware (§5.3.1): `verified=False`.
+    # From the spec alone; no hardware has validated the dome.
     NinaButtonDescription(
         key="dome_open",
         translation_key="dome_open",
@@ -196,12 +177,7 @@ async def async_setup_entry(
 
     @callback
     def _add_observed() -> None:
-        """Create the buttons whose equipment the snapshot now carries.
-
-        Re-run on every publish, so equipment that connects hours after Home
-        Assistant started still gets its buttons (Gold `dynamic-devices`). A
-        slot never returns to `None`, so nothing is ever removed here.
-        """
+        """Create the buttons whose equipment has now been observed."""
         descriptions = [
             description
             for description in DESCRIPTIONS
