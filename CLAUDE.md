@@ -33,9 +33,10 @@ The `justfile` wraps all of these; `just ci` runs everything CI checks.
 git ref to another against a N.I.N.A. and holds the result to
 `docs/2.0-renames.md`; its README has the commands.
 
-`docs/windows-rig-design.md` is the proposed design for a disposable Windows
-VM that runs stable or nightly N.I.N.A. against simulators. Nothing in it is
-built yet.
+`docs/windows-rig-design.md` is the proposed design for a simulated rig that
+any contributor can build: a disposable Windows VM running stable or nightly
+N.I.N.A. against simulators, on Windows, Linux or macOS, amd64 or arm64. It
+also defines the `tests/rig/` tier that commands it. Nothing in it is built yet.
 
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
 collection; always name the suite.
@@ -364,14 +365,18 @@ sequence start/stop, profile switch — unless the operator has explicitly said
 the rig is idle and it is safe. A rig may be imaging, and a wasted night is not
 recoverable. If unsure whether a call mutates state, do not make it.
 
-**The simulator rig is exempt.** `10.20.30.133:1888` is a second N.I.N.A. whose
-eleven devices are all ASCOM/Alpaca simulators, the dome included. Any command
-may be sent to it — slews, parks, sequences, disconnects — so it is where
-commands, the dome and the upgrade from 1.4.5 get exercised. It is on the LAN,
-not Tailscale. A fixture captured from it is real wire data from simulated
-devices: say so where it is used, and never let it replace a capture of the same
-state from the real rig, whose quirks (a station's `"NaN"` channels, a
-disconnected panel's `0 / 0` range) a simulator need not reproduce.
+**A simulator rig is exempt.** This means a N.I.N.A. running a profile whose
+eleven devices are all ASCOM/Alpaca simulators, the dome included. There is no
+standing one: the operator brings one up on whatever machine is to hand, and
+its address changes. Ask for it rather than assume a host. Any command may be
+sent to it — slews, parks, sequences, disconnects — so it is where commands,
+the dome and the upgrade from 1.4.5 get exercised.
+
+A fixture captured from it is real wire data from simulated devices. Say so
+where it is used, and never let it replace a capture of the same state from the
+real rig, whose quirks (a station's `"NaN"` channels, a disconnected panel's
+`0 / 0` range) a simulator need not reproduce. `docs/windows-rig-design.md`
+proposes a disposable one any contributor can build.
 
 **2. Redact before committing.** A profile dump contains live credentials.
 
