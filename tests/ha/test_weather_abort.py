@@ -6,11 +6,9 @@ the `rig_unreachable` trigger and read which notification comes out.
 
 from datetime import timedelta
 
-from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
-from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import (
@@ -51,19 +49,7 @@ async def watching(hass: HomeAssistant, installed):
         )
         hass.states.async_set(CONNECTED, "on")
         sent = async_mock_service(hass, "notify", "send_message")
-        assert await async_setup_component(
-            hass,
-            AUTOMATION_DOMAIN,
-            {
-                AUTOMATION_DOMAIN: {
-                    "use_blueprint": {
-                        "path": "nina_astrophotography/weather_abort.yaml",
-                        "input": INPUTS,
-                    }
-                }
-            },
-        )
-        await hass.async_block_till_done()
+        await installed("weather_abort.yaml", INPUTS)
         return sent
 
     return _set_up

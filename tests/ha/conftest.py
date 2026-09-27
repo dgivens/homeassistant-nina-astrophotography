@@ -8,6 +8,7 @@ from typing import NamedTuple
 
 from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
+from homeassistant.setup import async_setup_component
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.syrupy import HomeAssistantSnapshotExtension
@@ -61,13 +62,30 @@ BLUEPRINTS = Path(__file__).resolve().parents[2] / "blueprints"
 
 @pytest.fixture
 async def installed(hass: HomeAssistant):
-    """The shipped blueprints, in the config directory Home Assistant reads.
+    """The shipped blueprints, in the config directory Home Assistant reads,
+    and a function that sets one up as an automation with the given inputs.
 
     Turned off again afterwards: a time trigger registers a timer that would
     otherwise outlive the test.
     """
     shutil.copytree(BLUEPRINTS, hass.config.path("blueprints"), dirs_exist_ok=True)
-    yield
+
+    async def use_blueprint(name: str, inputs: dict) -> None:
+        assert await async_setup_component(
+            hass,
+            AUTOMATION_DOMAIN,
+            {
+                AUTOMATION_DOMAIN: {
+                    "use_blueprint": {
+                        "path": f"nina_astrophotography/{name}",
+                        "input": inputs,
+                    }
+                }
+            },
+        )
+        await hass.async_block_till_done()
+
+    yield use_blueprint
     if entities := hass.states.async_entity_ids(AUTOMATION_DOMAIN):
         await hass.services.async_call(
             AUTOMATION_DOMAIN, "turn_off", {"entity_id": entities}, blocking=True
@@ -115,16 +133,6 @@ def rig(monkeypatch) -> FakeRig:
 
 
 @pytest.fixture
-def nina_responses(rig):
-    """The rig, under the name the phase-A tests ask for.
-
-    Returns the fixture loader, so a test that needs the same wire data can
-    read it without opening the file itself.
-    """
-    return load_fixture
-
-
-@pytest.fixture
 def advance(hass, loaded_entry, rig):
     """Move the fake rig to a named state and let Home Assistant settle."""
 
@@ -149,9 +157,6 @@ class _RigRouter:
 
     def get(self, url, params=None, timeout=None):
         return self._rig(url).get(url, params, timeout)
-
-    def post(self, url, json=None, params=None, timeout=None):
-        return self._rig(url).post(url, json, params, timeout)
 
 
 class TwoRigs(NamedTuple):
@@ -263,7 +268,7 @@ async def _async(value):
 
 
 @pytest.fixture
-async def loaded_entry(hass, config_entry, nina_responses) -> MockConfigEntry:
+async def loaded_entry(hass, config_entry, rig) -> MockConfigEntry:
     """The entry set up against the dawn snapshot, exactly as captured."""
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
@@ -272,7 +277,7 @@ async def loaded_entry(hass, config_entry, nina_responses) -> MockConfigEntry:
 
 
 @pytest.fixture
-def set_up_with_flat_device(hass, config_entry, nina_responses, monkeypatch):
+def set_up_with_flat_device(hass, config_entry, rig, monkeypatch):
     """Set the entry up against the dawn snapshot with its panel varied.
 
     Varies the mapped MODEL, not the captured wire JSON: the fixture rule bans
@@ -281,7 +286,7 @@ def set_up_with_flat_device(hass, config_entry, nina_responses, monkeypatch):
     """
 
     async def _set_up(**changes):
-        snapshot = map_equipment_info(nina_responses("dawn_equipment_info.json"))
+        snapshot = map_equipment_info(load_fixture("dawn_equipment_info.json"))
         assert snapshot.flat_device is not None
         snapshot = replace(
             snapshot, flat_device=replace(snapshot.flat_device, **changes)

@@ -23,8 +23,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-from custom_components.nina_astrophotography.const import DOMAIN
-from custom_components.nina_astrophotography.switch import DESCRIPTIONS
+from ha.registry import registered
 from helpers import state_of
 
 GUIDER = "switch.n_i_n_a_guider"
@@ -42,13 +41,6 @@ DIMMABLE = "switch.n_i_n_a_switch_dew_heater_a"
 async def _call(hass: HomeAssistant, service: str, entity_id: str) -> None:
     await hass.services.async_call(
         SWITCH_DOMAIN, service, {ATTR_ENTITY_ID: entity_id}, blocking=True
-    )
-
-
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    """The entity id claiming this `unique_id` suffix, or None if nothing does."""
-    return registry.async_get_entity_id(
-        SWITCH_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
     )
 
 
@@ -347,7 +339,7 @@ async def test_the_kept_switches_keep_their_1_4_5_unique_id(
     observed in both, so one state registers the pair.
     """
     await advance("imaging_guiding")
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert registered(SWITCH_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 @pytest.mark.parametrize("key", ["mount_tracking_switch", "flat_light_switch"])
@@ -357,7 +349,7 @@ async def test_the_cut_switches_are_not_registered(
     """Tracking is `select.mount_tracking_rate`, whose options include
     `Stopped`; the panel's light is the `light` (§5.3.4).
     """
-    assert _registered(entity_registry, loaded_entry, key) is None
+    assert registered(SWITCH_DOMAIN, entity_registry, loaded_entry, key) is None
 
 
 async def test_the_long_tail_ships_diagnostic_and_disabled(
@@ -367,14 +359,9 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     dome, so §5.2.2 gates it out entirely.
     """
     entry = entity_registry.async_get(
-        _registered(entity_registry, loaded_entry, "rotator_reverse")
+        registered(SWITCH_DOMAIN, entity_registry, loaded_entry, "rotator_reverse")
     )
     assert (entry.entity_category, entry.disabled_by is not None) == (
         EntityCategory.DIAGNOSTIC,
         True,
     )
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
-    assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []

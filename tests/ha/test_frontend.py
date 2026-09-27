@@ -27,7 +27,7 @@ FRONTEND_LOGGER = "custom_components.nina_astrophotography.frontend"
 
 
 @pytest.fixture
-async def lovelace_entry(hass, config_entry, nina_responses) -> None:
+async def lovelace_entry(hass, config_entry, rig) -> None:
     """The entry set up on an instance that has lovelace.
 
     Lovelace first: registration happens in `async_setup`, which is the
@@ -40,7 +40,7 @@ async def lovelace_entry(hass, config_entry, nina_responses) -> None:
 
 
 @pytest.fixture
-async def yaml_lovelace_entry(hass, config_entry, nina_responses) -> None:
+async def yaml_lovelace_entry(hass, config_entry, rig) -> None:
     """The entry set up on an instance whose dashboards are YAML-managed."""
     assert await async_setup_component(
         hass, "lovelace", {"lovelace": {"resource_mode": "yaml", "resources": []}}
@@ -97,7 +97,7 @@ async def test_setup_does_not_crash_when_lovelace_is_not_set_up(
 
 
 async def test_a_registration_failure_does_not_sink_the_integration(
-    hass, config_entry, nina_responses, monkeypatch, caplog
+    hass, config_entry, rig, monkeypatch, caplog
 ) -> None:
     """Registering a Lovelace resource is cosmetic; the entry, its devices
     and its entities are not. A storage read that raises — a corrupt
@@ -143,7 +143,7 @@ async def test_registering_twice_does_not_duplicate_resources(
 
 
 async def test_a_restart_does_not_duplicate_persisted_resources(
-    hass, hass_storage, config_entry, nina_responses
+    hass, hass_storage, config_entry, rig
 ) -> None:
     """The real restart case: the store already has every card from a
     previous run, and `resources.loaded` starts `False` again — a fresh
@@ -172,7 +172,7 @@ async def test_a_restart_does_not_duplicate_persisted_resources(
 
 
 async def test_yaml_managed_resources_are_left_to_the_operator(
-    hass, config_entry, nina_responses, caplog
+    hass, config_entry, rig, caplog
 ) -> None:
     """A YAML-mode collection has no create: the resources live in the
     operator's file, so the cards are named in one warning instead.
@@ -241,7 +241,7 @@ async def test_removing_the_entry_does_not_crash_when_lovelace_was_never_set_up(
 
 
 async def test_removing_one_of_two_entries_keeps_the_resources(
-    hass, config_entry, nina_responses
+    hass, config_entry, rig
 ) -> None:
     """A multi-rig install shouldn't lose its cards just because one rig was
     uninstalled — only the last entry going should take the resources with it.

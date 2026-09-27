@@ -17,11 +17,6 @@ RESTART_GENERATION = "2026-09-04T10:58:59.1429105-05:00"
 pytestmark = pytest.mark.usefixtures("inside_the_dawn_session")
 
 
-def _reseeds(rig: FakeRig) -> int:
-    """How many times the rig has been asked for /image-history?all=true."""
-    return rig.reads("/image-history", {"all": "true"})
-
-
 async def test_setup_seeds_the_session_from_the_full_history(
     loaded_entry: MockConfigEntry,
 ) -> None:
@@ -53,7 +48,7 @@ async def test_a_restart_reseeds_the_new_generations_frames(
     freezer.move_to("2026-09-05T07:30:00+00:00")
     await advance("imaging_guiding")
     assert loaded_entry.runtime_data.coordinator.data.session.image_count == 27
-    assert _reseeds(rig) == 2  # setup, then the restart
+    assert rig.reseeds() == 2  # setup, then the restart
 
 
 @pytest.mark.synthetic
@@ -70,10 +65,10 @@ async def test_a_count_mismatch_reseeds_once_it_persists_and_never_again(
     No capture can hold a snapshot of a race: the state varies the captured
     count envelope's one number.
     """
-    seeded = _reseeds(rig)
+    seeded = rig.reseeds()
     for _ in range(ticks):
         await advance("imaging_count_ahead")
-    assert _reseeds(rig) == seeded + reseeds
+    assert rig.reseeds() == seeded + reseeds
 
 
 @pytest.mark.synthetic
@@ -85,7 +80,7 @@ async def test_a_count_going_backwards_under_an_unchanged_start_reseeds(
     the generation having changed.
     """
     await advance("imaging_count_behind")
-    assert _reseeds(rig) == 2  # setup, then the shrunk history
+    assert rig.reseeds() == 2  # setup, then the shrunk history
 
 
 @pytest.mark.synthetic

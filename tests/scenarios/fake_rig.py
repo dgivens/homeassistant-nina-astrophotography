@@ -104,6 +104,21 @@ class FakeRig(FakeSession):
             if url.endswith(path) and (params is None or sent == params)
         )
 
+    def last_params(self, path: str) -> dict | None:
+        """The parameters of the last request whose URL ends with `path`.
+
+        Not `in`: `/image/1` is a substring of `/image/121`, and a fragment match
+        would silently pass against the wrong request.
+        """
+        return next(
+            (sent for url, sent in reversed(self.requests) if url.endswith(path)),
+            None,
+        )
+
+    def reseeds(self) -> int:
+        """How many times the frame set was reseeded from `?all=true`."""
+        return self.reads("/image-history", {"all": "true"})
+
     def _lookup(self, path: str, params: dict | None):
         state = self.states[self.state_name]
         if params is not None and len(params) == 1:

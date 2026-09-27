@@ -4,10 +4,11 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.api.v2 import NinaEventStream
+from helpers import load_fixture
 
 
 async def test_a_pushed_event_reaches_the_bus_under_both_names(
-    hass: HomeAssistant, loaded_entry, push, nina_responses
+    hass: HomeAssistant, loaded_entry, push, rig
 ) -> None:
     """1.4.x automations trigger on `nina_<event>` or the catch-all `nina_event`;
     the payload is now model-derived, so `frame` is a mapped Frame, not wire.
@@ -16,7 +17,7 @@ async def test_a_pushed_event_reaches_the_bus_under_both_names(
     hass.bus.async_listen("nina_image_save", lambda e: fired.update(named=e.data))
     hass.bus.async_listen("nina_event", lambda e: fired.update(catch_all=e.data))
 
-    push(nina_responses("live_image_save_push.json"))
+    push(load_fixture("live_image_save_push.json"))
     await hass.async_block_till_done()
 
     assert fired["named"] == fired["catch_all"]
@@ -26,7 +27,7 @@ async def test_a_pushed_event_reaches_the_bus_under_both_names(
 
 
 async def test_unloading_stops_the_event_stream(
-    hass: HomeAssistant, config_entry: MockConfigEntry, nina_responses, monkeypatch
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, monkeypatch
 ) -> None:
     """`entry.async_on_unload(events.stop)` is what keeps the reconnect task
     from outliving the entry. The spy wraps the real `stop` rather than
@@ -56,7 +57,7 @@ async def test_unloading_stops_the_event_stream(
 
 
 async def test_a_pushed_event_says_which_rig_it_came_from(
-    hass: HomeAssistant, two_rigs, nina_responses
+    hass: HomeAssistant, two_rigs, rig
 ) -> None:
     """The event types are shared by every instance, so an automation with two
     rigs configured needs the payload to discriminate — which is what the flip
@@ -67,7 +68,7 @@ async def test_a_pushed_event_says_which_rig_it_came_from(
 
     second = two_rigs.entries[1]
     second.runtime_data.events._dispatch(  # noqa: SLF001
-        nina_responses("live_image_save_push.json")
+        load_fixture("live_image_save_push.json")
     )
     await hass.async_block_till_done()
 

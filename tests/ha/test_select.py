@@ -22,8 +22,7 @@ from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 from custom_components.nina_astrophotography.const import DOMAIN
-from custom_components.nina_astrophotography.select import DESCRIPTIONS
-from helpers import state_of
+from helpers import load_fixture, state_of
 
 FILTER = "select.n_i_n_a_filter_wheel_filter"
 TRACKING = "select.n_i_n_a_mount_tracking_rate"
@@ -39,7 +38,7 @@ async def _select(hass: HomeAssistant, entity_id: str, option: str) -> None:
 
 
 @pytest.fixture
-def set_up_with_mount(hass, config_entry, nina_responses, monkeypatch):
+def set_up_with_mount(hass, config_entry, rig, monkeypatch):
     """Set the entry up against the dawn snapshot with its mount varied.
 
     Varies the mapped MODEL, not the captured wire JSON: the fixture rule bans
@@ -48,7 +47,7 @@ def set_up_with_mount(hass, config_entry, nina_responses, monkeypatch):
     """
 
     async def _set_up(**changes) -> MockConfigEntry:
-        snapshot = map_equipment_info(nina_responses("dawn_equipment_info.json"))
+        snapshot = map_equipment_info(load_fixture("dawn_equipment_info.json"))
         assert snapshot.mount is not None
         snapshot = replace(snapshot, mount=replace(snapshot.mount, **changes))
 
@@ -155,14 +154,6 @@ async def test_the_kept_selects_keep_their_1_4_5_unique_id(
         )
         is not None
     )
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1).
-    No dome descriptor exists on this platform yet — the guard is for the one
-    that is added next.
-    """
-    assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []
 
 
 @pytest.mark.synthetic

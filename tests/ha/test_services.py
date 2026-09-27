@@ -21,6 +21,7 @@ import yaml
 
 import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.const import DOMAIN
+from ha.registry import get_device
 from helpers import failure
 
 SERVICES_YAML = yaml.safe_load(
@@ -38,11 +39,7 @@ async def _call(hass: HomeAssistant, service: str, **data) -> None:
 
 def _hub(hass: HomeAssistant, entry) -> str:
     """The device id of an entry's hub, as a target picker would yield it."""
-    hub = dr.async_get(hass).async_get_device_by_identifier(
-        (DOMAIN, entry.entry_id), entry.entry_id
-    )
-    assert hub is not None
-    return hub.id
+    return get_device(hass, entry).id
 
 
 async def test_a_service_reaches_the_rig_its_device_belongs_to(

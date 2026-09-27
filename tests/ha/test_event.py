@@ -8,7 +8,7 @@ is listening.
 
 from homeassistant.core import HomeAssistant
 
-from helpers import state_of
+from helpers import load_fixture, state_of
 
 ERROR = "event.n_i_n_a_error"
 
@@ -88,7 +88,7 @@ async def test_a_failure_that_predates_home_assistant_is_history_not_an_alarm(
 
 
 async def test_a_hung_autofocus_fires_once_and_not_on_every_publish(
-    hass: HomeAssistant, inside_the_dawn_session, loaded_entry, push, nina_responses
+    hass: HomeAssistant, inside_the_dawn_session, loaded_entry, push, rig
 ) -> None:
     """The EDGE, not the level. The verdict stays true until the next run
     finishes, so a level-triggered entity would fire on every publish —
@@ -98,6 +98,6 @@ async def test_a_hung_autofocus_fires_once_and_not_on_every_publish(
     await hass.async_block_till_done()
     fired_at = state_of(hass, ERROR).state
 
-    push(nina_responses("live_image_save_push.json"))
+    push(load_fixture("live_image_save_push.json"))
     await hass.async_block_till_done()
     assert state_of(hass, ERROR).state == fired_at

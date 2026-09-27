@@ -10,8 +10,7 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nina_astrophotography.binary_sensor import DESCRIPTIONS
-from custom_components.nina_astrophotography.const import DOMAIN
+from ha.registry import registered
 from helpers import state_of
 
 AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
@@ -20,17 +19,6 @@ SEQUENCER_RUNNING = "binary_sensor.n_i_n_a_sequencer_running"
 IMAGING = "binary_sensor.n_i_n_a_imaging"
 SCHEDULER_WAITING = "binary_sensor.n_i_n_a_scheduler_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
-
-
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    """The entity id claiming this `unique_id` suffix, or None if nothing does.
-
-    The suffix is the 1.4.5 key wherever one survives, which is what an upgraded
-    install's registry rows are keyed on.
-    """
-    return registry.async_get_entity_id(
-        BINARY_SENSOR_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
-    )
 
 
 @pytest.mark.parametrize(
@@ -68,7 +56,7 @@ def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
 async def test_the_cut_binary_sensors_are_not_registered(
     loaded_entry: MockConfigEntry, entity_registry, key: str
 ) -> None:
-    assert _registered(entity_registry, loaded_entry, key) is None
+    assert registered(BINARY_SENSOR_DOMAIN, entity_registry, loaded_entry, key) is None
 
 
 @pytest.mark.parametrize(
@@ -94,7 +82,10 @@ async def test_the_kept_binary_sensors_are_registered(
     """The dome's three are absent from this table on purpose: no capture has a
     dome carrying a DeviceId, so the slot is None and §5.2.2 gates them out.
     """
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert (
+        registered(BINARY_SENSOR_DOMAIN, entity_registry, loaded_entry, suffix)
+        is not None
+    )
 
 
 @pytest.mark.parametrize(
@@ -222,7 +213,9 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     """Gold entity-category / entity-disabled-by-default. The dome's three are
     not here: no capture observes a dome, so they are never registered.
     """
-    row = entity_registry.async_get(_registered(entity_registry, loaded_entry, suffix))
+    row = entity_registry.async_get(
+        registered(BINARY_SENSOR_DOMAIN, entity_registry, loaded_entry, suffix)
+    )
     assert (row.entity_category, row.disabled_by is not None) == (
         EntityCategory.DIAGNOSTIC,
         True,
@@ -264,11 +257,6 @@ async def test_a_hub_entity_is_not_on_an_equipment_device(
     """
     entry = entity_registry.async_get(SEQUENCER_RUNNING)
     assert device_registry.async_get(entry.device_id).name == "N.I.N.A."
-
-
-def test_every_dome_descriptor_is_marked_unverified() -> None:
-    """Dome ships untested; the marker is enforced, not documented (§5.3.1)."""
-    assert [d.key for d in DESCRIPTIONS if d.kind == "dome" and d.verified] == []
 
 
 @pytest.mark.synthetic

@@ -18,7 +18,7 @@ from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nina_astrophotography.const import DOMAIN
+from ha.registry import registered
 from helpers import state_of
 
 pytestmark = pytest.mark.usefixtures("inside_the_dawn_session")
@@ -30,13 +30,6 @@ SESSION_INTEGRATION_TIME = "sensor.n_i_n_a_session_integration_time"
 SESSION_START = "sensor.n_i_n_a_session_start"
 
 RIG = timezone(timedelta(hours=-5))
-
-
-def _registered(registry, entry: MockConfigEntry, suffix: str) -> str | None:
-    """The entity id claiming this `unique_id` suffix, or None if nothing does."""
-    return registry.async_get_entity_id(
-        SENSOR_DOMAIN, DOMAIN, f"{entry.entry_id}_{suffix}"
-    )
 
 
 async def test_the_last_image_sensors_ignore_calibration_frames(
@@ -180,7 +173,7 @@ async def test_the_session_start_sensor_is_the_most_recent_local_noon(
 async def test_a_surviving_session_sensor_keeps_its_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    assert _registered(entity_registry, loaded_entry, suffix) is not None
+    assert registered(SENSOR_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 @pytest.mark.parametrize(
@@ -212,4 +205,4 @@ async def test_a_surviving_session_sensor_keeps_its_1_4_5_unique_id(
 async def test_the_cut_session_sensors_are_not_registered(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    assert _registered(entity_registry, loaded_entry, suffix) is None
+    assert registered(SENSOR_DOMAIN, entity_registry, loaded_entry, suffix) is None

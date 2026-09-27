@@ -18,7 +18,6 @@ mutes the twelve-hour daytime wait was never once executed.
 import asyncio
 from datetime import datetime, timedelta
 
-from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 import pytest
@@ -142,19 +141,7 @@ async def watching(hass: HomeAssistant, installed, freezer):
         assert await async_setup_component(hass, "persistent_notification", {})
         if notify:
             assert await async_setup_component(hass, "notify", {})
-        assert await async_setup_component(
-            hass,
-            AUTOMATION_DOMAIN,
-            {
-                AUTOMATION_DOMAIN: {
-                    "use_blueprint": {
-                        "path": f"nina_astrophotography/{BLUEPRINT}",
-                        "input": INPUTS | overrides,
-                    }
-                }
-            },
-        )
-        await hass.async_block_till_done()
+        await installed(BLUEPRINT, INPUTS | overrides)
         return freezer
 
     return _set_up

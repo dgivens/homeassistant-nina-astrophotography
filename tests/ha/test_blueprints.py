@@ -14,7 +14,6 @@ from pathlib import Path
 
 from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
 import pytest
 
 from helpers import state_of
@@ -121,19 +120,7 @@ async def test_a_blueprint_builds_an_automation(
     hass: HomeAssistant, installed, path: Path, configured: bool
 ) -> None:
     inputs = REQUIRED[path.name] | (OPTIONAL[path.name] if configured else {})
-    assert await async_setup_component(
-        hass,
-        AUTOMATION_DOMAIN,
-        {
-            AUTOMATION_DOMAIN: {
-                "use_blueprint": {
-                    "path": f"nina_astrophotography/{path.name}",
-                    "input": inputs,
-                },
-            },
-        },
-    )
-    await hass.async_block_till_done()
+    await installed(path.name, inputs)
 
     # A blueprint Home Assistant rejects still yields an automation entity —
     # an `unavailable` one. `on` is what says the config was accepted.
