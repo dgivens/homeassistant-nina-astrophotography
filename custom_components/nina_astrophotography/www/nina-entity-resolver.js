@@ -77,6 +77,44 @@ export function resolveEntities(hass, configuredDeviceId) {
 }
 
 /**
+ * One card's entity ids: resolved from the registry, else `prefix` templated
+ * onto a slug. A new config builds a new one, which re-resolves on the next
+ * `refresh`.
+ */
+export class RigEntities {
+  /**
+   * @param {string} prefix the configured instance prefix, the fallback
+   * @param {string} [deviceId] only consulted for two or more rigs
+   */
+  constructor(prefix, deviceId) {
+    this._prefix = prefix;
+    this._deviceId = deviceId;
+    this._map = {};
+    this._from = null;
+  }
+
+  /**
+   * Re-resolve if the registry changed; `true` when it did.
+   *
+   * The frontend replaces `hass.entities` only when the registry itself
+   * changes, so this walks it on a rename, not on every state tick.
+   * `hass.devices` needs no second memo key: every device change that alters
+   * the map arrives with an entity-registry change too.
+   */
+  refresh(hass) {
+    if (hass.entities === this._from) return false;
+    this._from = hass.entities;
+    this._map = resolveEntities(hass, this._deviceId);
+    return true;
+  }
+
+  /** The entity id for `translation_key` `key`, else `<domain>.<prefix>_<slug>`. */
+  id(domain, key, slug = key) {
+    return this._map[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
+  }
+}
+
+/**
  * This integration's entity ids on the hub, for `linkLostSince`; `null` when
  * the rig cannot be identified.
  *
