@@ -29,9 +29,8 @@ const VERSION = "2.0.0";
 const DEFAULT_TRAIL_LENGTH = 60;
 const DEFAULT_MAP_SIZE = 320;
 
-/* ── Notable stars with alt/az computed at runtime from RA/Dec + observer lat ──
-   We store as { name, ra_h, dec_deg } and project at render time using
-   the mount's current sidereal time so the star field rotates correctly.     */
+// Projected at render time from RA/Dec and the mount's sidereal time, so the
+// field rotates correctly.
 const BRIGHT_STARS = [
   { name: "Sirius",    ra: 6.7525,  dec: -16.7161 },
   { name: "Canopus",   ra: 6.3992,  dec: -52.6956 },
@@ -77,18 +76,16 @@ const BRIGHT_STARS = [
   { name: "Mintaka",   ra: 5.5333,  dec: -0.2990  },
 ];
 
-/* ── Constellation lines as pairs of star indices into BRIGHT_STARS ── */
 const ORION_BELT = [39, 40, 41]; // Alnitak, Alnilam, Mintaka
 const BIG_DIPPER = [22, 23, 25, 33, 34, 35, 36]; // approximate subset
 
-/* ── Math helpers ──────────────────────────────────────────────────── */
 const DEG = Math.PI / 180;
 const RAD = 180 / Math.PI;
 
 function hmsToRad(h) { return h * 15 * DEG; }
 
-/** Convert equatorial (ra_hours, dec_deg) → horizontal (alt_deg, az_deg)
-    given observer latitude (lat_deg) and local sidereal time (lst_hours). */
+/** Equatorial (ra_hours, dec_deg) → horizontal (alt_deg, az_deg), given
+    observer latitude and local sidereal time. */
 function equToHoriz(ra_h, dec_deg, lat_deg, lst_h) {
   const ha  = ((lst_h - ra_h + 24) % 24) * 15 * DEG;  // hour angle in radians
   const dec = dec_deg * DEG;
@@ -104,8 +101,8 @@ function equToHoriz(ra_h, dec_deg, lat_deg, lst_h) {
   return { alt, az };
 }
 
-/** Stereographic projection: alt/az → canvas (x,y) in unit circle [-1,1].
-    Zenith = centre, horizon = edge.  Az 0° = North = top.               */
+/** Stereographic projection: alt/az → unit circle (x,y), [-1,1].
+    Zenith is centre, horizon the edge; az 0° (north) is up. */
 function project(alt_deg, az_deg) {
   const r = Math.cos(alt_deg * DEG) / (1 + Math.sin(alt_deg * DEG));
   const a = (az_deg - 180) * DEG;   // rotate so N is up (canvas y increases down)
@@ -115,7 +112,6 @@ function project(alt_deg, az_deg) {
   };
 }
 
-/* ── Styles ─────────────────────────────────────────────────────────── */
 const STYLE = `
   :host {
     --bg: var(--ha-card-background, var(--card-background-color, #12121e));
@@ -197,12 +193,11 @@ const STYLE = `
   .no-mount .icon { font-size: 2.2rem; margin-bottom: 8px; }
 `;
 
-/* ── Card class ──────────────────────────────────────────────────────── */
 class NinaSkyMapCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._trail = [];        // [{x,y,az,alt,ts}]  recent pointing history
+    this._trail = []; // {alt, az, ts}, recent pointing history
     this._lastAlt = null;
     this._lastAz  = null;
     this._animFrame = null;
@@ -249,13 +244,8 @@ class NinaSkyMapCard extends HTMLElement {
     this._updateStatusBar();
   }
 
-  // The resolved entity id for a `translation_key`, falling back to a prefixed
-  // `slug` when there is nothing to resolve: an entity with no translation key,
-  // a disabled one, or a rig the resolver cannot identify.
-  //
-  // `slug` is the entity-id suffix — the device name plus the entity name — so
-  // it is not always the key. Every read this card makes happens to be a mount
-  // entity whose name matches its key; pass the suffix where it does not.
+  // Falls back to a prefixed `slug` when nothing resolves; every read here is
+  // a mount entity whose name matches its key.
   _eid(domain, key, slug = key) {
     return this._resolved[`${domain}.${key}`] ?? `${domain}.${this._prefix}_${slug}`;
   }
@@ -274,10 +264,8 @@ class NinaSkyMapCard extends HTMLElement {
     return quantityIn(this._hass, id, "min") || 999;
   }
 
-  // A device that is disconnected makes its entities unavailable rather than
-  // publishing an off state, so availability is what "connected" reads from.
-  // `unknown` counts as disconnected too: a state Home Assistant has never
-  // had a value for is not evidence of a connection.
+  // A disconnected device makes its entities unavailable, so availability is
+  // "connected". `unknown` also counts as disconnected.
   _available(id) {
     const value = this._s(id);
     return value !== null && value !== "unavailable" && value !== "unknown";
@@ -287,13 +275,9 @@ class NinaSkyMapCard extends HTMLElement {
     return this._available(id) && this._s(id) !== "Stopped";
   }
 
-  // The latitude the whole star field is projected from, in preference order:
-  // an explicit `latitude:`, the site N.I.N.A. is configured for, then Home
+  // The star field's latitude: an explicit `latitude:`, else N.I.N.A.'s
+  // configured site (readable with the mount disconnected), else Home
   // Assistant's own location.
-  //
-  // The rig outranks Home Assistant because a hosted rig is nowhere near it,
-  // and N.I.N.A.'s configured site is readable with the mount disconnected —
-  // which is when a sky map is most useful.
   _latitude() {
     if (this._config.latitude !== undefined) return this._config.latitude;
     // Not `_f`: it folds a genuine 0 into its fallback, and the equator is a
@@ -310,7 +294,7 @@ class NinaSkyMapCard extends HTMLElement {
     if (alt === this._lastAlt && az === this._lastAz) return;
     this._lastAlt = alt;
     this._lastAz  = az;
-    if (alt > 0) {  // only record when above horizon
+    if (alt > 0) {
       this._trail.push({ alt, az, ts: Date.now() });
       const maxLen = this._config.trail_length;
       if (this._trail.length > maxLen) this._trail.shift();
@@ -359,8 +343,8 @@ class NinaSkyMapCard extends HTMLElement {
       if (el) el.textContent = v;
     };
 
-    // A down driver publishes `unavailable`, which parses to 0 — and 0° is a
-    // pointing at the horizon, not a blank. Keep the dash instead.
+    // A down driver's `unavailable` parses to 0°, a pointing at the horizon,
+    // not a blank; keep the dash instead.
     const raId = this._eid("sensor", "mount_right_ascension");
     if (this._available(raId)) {
       const alt = this._f(this._eid("sensor", "mount_altitude"));
@@ -374,8 +358,8 @@ class NinaSkyMapCard extends HTMLElement {
       for (const cell of ["inf-alt", "inf-az", "inf-ra", "inf-dec"]) set(cell, "—");
     }
 
-    // Gated on its own availability, not the mount's: the target hangs off the
-    // hub, and a sequence outlives a driver dropping out.
+    // Gated on its own availability, not the mount's: the sequence outlives a
+    // driver dropping out.
     const targetId = this._eid("sensor", "sequence_target");
     const target = this._available(targetId) ? this._s(targetId, "") : "";
     const ttf = this._flipMinutes(this._eid("sensor", "mount_time_to_meridian_flip"));
@@ -417,10 +401,8 @@ class NinaSkyMapCard extends HTMLElement {
     const ny = (cy - R) / R;
     const r  = Math.sqrt(nx * nx + ny * ny);
     if (r > 1) return null;
-    // Inverse stereographic: r = cos(alt)/(1+sin(alt)) → alt
     const sinAlt = (1 - r * r) / (1 + r * r);
     const alt = Math.asin(sinAlt) * RAD;
-    // az: atan2(x, -y) with N=top correction
     const az  = ((Math.atan2(nx, -ny) * RAD) + 360 + 180) % 360;
     return { alt: alt.toFixed(1), az: az.toFixed(1) };
   }
@@ -429,15 +411,10 @@ class NinaSkyMapCard extends HTMLElement {
     const rect  = this._canvas.getBoundingClientRect();
     const coord = this._canvasCoordToAltAz(e.clientX - rect.left, e.clientY - rect.top);
     if (!coord) return;
-    // Could trigger a slew — for now just show in console
     console.info(`[NINA Sky Map] Clicked: Alt ${coord.alt}° Az ${coord.az}°`);
   }
 
-  _onCanvasHover(e) {
-    // Future: tooltip showing star name on hover
-  }
-
-  // ── Animation loop ────────────────────────────────────────────────────
+  _onCanvasHover(e) {}
 
   _startAnimation() {
     const loop = () => {
@@ -449,8 +426,6 @@ class NinaSkyMapCard extends HTMLElement {
     loop();
   }
 
-  // ── Main draw ─────────────────────────────────────────────────────────
-
   _drawFrame() {
     const ctx  = this._ctx;
     const size = this._config.map_size;
@@ -459,11 +434,10 @@ class NinaSkyMapCard extends HTMLElement {
     const H    = size * dpr;
     const cx   = W / 2;
     const cy   = H / 2;
-    const R    = (size / 2 - 4) * dpr;   // usable radius (leave 4px margin)
+    const R    = (size / 2 - 4) * dpr; // 4px margin
 
     ctx.clearRect(0, 0, W, H);
 
-    // ── Sky background (deep radial) ───────────────────────────────────
     const skyGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
     skyGrad.addColorStop(0,   "#0d1b2e");
     skyGrad.addColorStop(0.6, "#091525");
@@ -473,7 +447,6 @@ class NinaSkyMapCard extends HTMLElement {
     ctx.fillStyle = skyGrad;
     ctx.fill();
 
-    // ── Clip everything to the sky circle ─────────────────────────────
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
@@ -484,7 +457,6 @@ class NinaSkyMapCard extends HTMLElement {
       return { x: cx + p.x * R, y: cy + p.y * R };
     };
 
-    // ── Altitude rings ─────────────────────────────────────────────────
     for (const alt of [0, 15, 30, 45, 60, 75]) {
       const r_ring = Math.cos(alt * DEG) / (1 + Math.sin(alt * DEG)) * R;
       ctx.beginPath();
@@ -492,7 +464,6 @@ class NinaSkyMapCard extends HTMLElement {
       ctx.strokeStyle = alt === 0 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)";
       ctx.lineWidth   = alt === 0 ? 1.5 * dpr : 0.5 * dpr;
       ctx.stroke();
-      // Label
       if (alt > 0 && alt < 75) {
         const lx = cx + 4 * dpr;
         const ly = cy - r_ring + 10 * dpr;
@@ -502,7 +473,6 @@ class NinaSkyMapCard extends HTMLElement {
       }
     }
 
-    // ── Azimuth spokes (every 45°) ─────────────────────────────────────
     for (let az = 0; az < 360; az += 45) {
       const p = proj(0, az);
       ctx.beginPath();
@@ -517,9 +487,7 @@ class NinaSkyMapCard extends HTMLElement {
       ctx.setLineDash([]);
     }
 
-    // ── Meridian line (azimuth 0° N–S through zenith) ─────────────────
-    // (Max - Min) from the profile, published by the sensor: the reading at
-    // which N.I.N.A. actually flips is not zero, and not the same on two rigs.
+    // The flip fires at the sensor's own published offset, not zero.
     const flipId = this._eid("sensor", "mount_time_to_meridian_flip");
     const ttf = this._flipMinutes(flipId);
     const firesAt = parseFloat(
@@ -536,31 +504,28 @@ class NinaSkyMapCard extends HTMLElement {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // ── Milky Way (rough elliptical band for visual context) ───────────
     this._drawMilkyWay(ctx, cx, cy, R);
 
-    // ── Stars ──────────────────────────────────────────────────────────
     const lat = this._latitude();
     const siderealId = this._eid("sensor", "mount_sidereal_time");
-    const lst = this._f(siderealId, 12);  // fallback to noon
+    const lst = this._f(siderealId, 12); // noon fallback
     const connectedST = this._available(siderealId);
 
     if (connectedST) {
       for (const star of BRIGHT_STARS) {
         const h = equToHoriz(star.ra, star.dec, lat, lst);
-        if (h.alt < -5) continue;  // below horizon
+        if (h.alt < -5) continue;
         const p = proj(h.alt, h.az);
-        // Size by brightness (rough approximation — brighter stars listed first)
+        // Brighter stars are listed first.
         const idx = BRIGHT_STARS.indexOf(star);
         const size_px = idx < 5 ? 2.5 : idx < 15 ? 1.8 : 1.2;
         const alpha = h.alt < 5
           ? 0.2 + (h.alt / 5) * 0.5
-          : 0.3 + Math.random() * 0.05;  // subtle twinkle
+          : 0.3 + Math.random() * 0.05; // twinkle
         ctx.beginPath();
         ctx.arc(p.x, p.y, size_px * dpr, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(220, 230, 255, ${alpha})`;
         ctx.fill();
-        // Label the 8 brightest
         if (idx < 8 && h.alt > 10) {
           ctx.font = `${8 * dpr}px sans-serif`;
           ctx.fillStyle = "rgba(180,190,255,0.45)";
@@ -569,14 +534,12 @@ class NinaSkyMapCard extends HTMLElement {
       }
     }
 
-    // ── Horizon (thick outer ring with ground fill) ────────────────────
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI * 2);
     ctx.strokeStyle = "rgba(87, 204, 153, 0.6)";
     ctx.lineWidth   = 2 * dpr;
     ctx.stroke();
 
-    // ── Pointing trail ─────────────────────────────────────────────────
     if (this._trail.length > 1) {
       ctx.beginPath();
       for (let i = 0; i < this._trail.length; i++) {
@@ -592,7 +555,6 @@ class NinaSkyMapCard extends HTMLElement {
       ctx.stroke();
     }
 
-    // ── Current pointing dot ───────────────────────────────────────────
     const alt = this._f(this._eid("sensor", "mount_altitude"));
     const az  = this._f(this._eid("sensor", "mount_azimuth"));
     const isParked   = this._on(this._eid("binary_sensor", "mount_at_park"));
@@ -602,7 +564,6 @@ class NinaSkyMapCard extends HTMLElement {
     if (isMounted && alt >= 0) {
       const p = proj(alt, az);
 
-      // Outer glow
       const glowR = 14 * dpr;
       const glow  = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, glowR);
       const glowColor = isParked ? "244,162,97"
@@ -615,7 +576,6 @@ class NinaSkyMapCard extends HTMLElement {
       ctx.fillStyle = glow;
       ctx.fill();
 
-      // Reticle cross-hair
       const crossSize = 10 * dpr;
       ctx.strokeStyle = `rgba(${glowColor},0.7)`;
       ctx.lineWidth   = 1 * dpr;
@@ -624,34 +584,29 @@ class NinaSkyMapCard extends HTMLElement {
       ctx.moveTo(p.x, p.y - crossSize); ctx.lineTo(p.x, p.y + crossSize);
       ctx.stroke();
 
-      // Circle reticle
       ctx.beginPath();
       ctx.arc(p.x, p.y, 6 * dpr, 0, Math.PI * 2);
       ctx.strokeStyle = `rgba(${glowColor},0.9)`;
       ctx.lineWidth   = 1.5 * dpr;
       ctx.stroke();
 
-      // Inner dot
       ctx.beginPath();
       ctx.arc(p.x, p.y, 2.5 * dpr, 0, Math.PI * 2);
       ctx.fillStyle   = `rgba(${glowColor},1)`;
       ctx.fill();
 
-      // Alt label next to dot
       ctx.font      = `bold ${9 * dpr}px sans-serif`;
       ctx.fillStyle = `rgba(${glowColor},0.9)`;
       ctx.fillText(`${alt.toFixed(1)}°`, p.x + 10 * dpr, p.y - 8 * dpr);
     }
 
-    // ── Zenith dot ─────────────────────────────────────────────────────
     ctx.beginPath();
     ctx.arc(cx, cy, 2.5 * dpr, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(255,255,255,0.3)";
     ctx.fill();
 
-    ctx.restore();  // end clip
+    ctx.restore();
 
-    // ── Meridian flip warning label outside clip ───────────────────────
     if (ttf < 15 + firesAt && ttf > 0) {
       ctx.font      = `bold ${10 * dpr}px sans-serif`;
       ctx.fillStyle = "rgba(244,162,97,0.9)";
@@ -662,8 +617,7 @@ class NinaSkyMapCard extends HTMLElement {
   }
 
   _drawMilkyWay(ctx, cx, cy, R) {
-    // Simplified Milky Way band as a tilted elliptical arc
-    // Galactic plane runs roughly NE–SW in the sky — drawn as translucent smear
+    // A tilted, translucent ellipse; the galactic plane runs roughly NE–SW.
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(35 * DEG);
@@ -708,7 +662,6 @@ class NinaSkyMapCard extends HTMLElement {
   }
 }
 
-/* ── Formatting helpers ──────────────────────────────────────────────── */
 function raToString(ra_h) {
   if (!ra_h && ra_h !== 0) return "—";
   const h  = Math.floor(ra_h);
@@ -727,9 +680,8 @@ function decToString(dec) {
   return `${sign}${d}° ${m.toString().padStart(2,"0")}′ ${s.toString().padStart(2,"0")}″`;
 }
 
-/* ── Register ─────────────────────────────────────────────────────────── */
-// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
-// defining the same tag would otherwise throw and abort this whole module.
+// Guarded: a stale 1.4.5 `/local/` resource defining the same tag would
+// otherwise throw and abort the rest of this module.
 if (!customElements.get("nina-sky-map-card")) {
   customElements.define("nina-sky-map-card", NinaSkyMapCard);
 }
