@@ -212,7 +212,7 @@
     }),
     dict({
       'enabled_default': False,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': <EntityCategory.CONFIG: 'config'>,
       'entity_id': 'number.n_i_n_a_camera_usb_limit',
       'original_name': 'USB limit',
       'unique_id': '01JTESTENTRY0000000000000_camera_usb_limit',
@@ -233,7 +233,7 @@
     }),
     dict({
       'enabled_default': False,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': <EntityCategory.CONFIG: 'config'>,
       'entity_id': 'number.n_i_n_a_rotator_mechanical_position',
       'original_name': 'Mechanical position',
       'unique_id': '01JTESTENTRY0000000000000_rotator_mechanical_position',
@@ -749,7 +749,7 @@
     }),
     dict({
       'enabled_default': False,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': <EntityCategory.CONFIG: 'config'>,
       'entity_id': 'switch.n_i_n_a_rotator_reverse',
       'original_name': 'Reverse',
       'unique_id': '01JTESTENTRY0000000000000_rotator_reverse',
