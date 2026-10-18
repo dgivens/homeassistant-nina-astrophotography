@@ -577,7 +577,7 @@
     }),
     dict({
       'enabled_default': True,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': None,
       'entity_id': 'sensor.n_i_n_a_mount_side_of_pier',
       'original_name': 'Side of pier',
       'unique_id': '01JTESTENTRY0000000000000_mount_side_of_pier',
