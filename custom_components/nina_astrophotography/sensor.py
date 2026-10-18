@@ -489,9 +489,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
     NinaSensorDescription(
         key="mount_side_of_pier",
         translation_key="mount_side_of_pier",
-        entity_category=EntityCategory.DIAGNOSTIC,
         kind="mount",
-        # Not whether a flip has happened: that needs ASCOM's
+        # Not whether a flip is due: that needs ASCOM's
         # `DestinationSideOfPier`, which this API does not expose.
         value=read_field("mount", "side_of_pier"),
     ),
