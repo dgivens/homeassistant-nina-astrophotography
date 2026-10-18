@@ -38,7 +38,7 @@ async def _set(hass: HomeAssistant, entity_id: str, value: float) -> None:
 
 @pytest.fixture
 async def usb_limit_enabled(hass, entity_registry, loaded_entry):
-    """The USB limit ships DIAGNOSTIC and disabled, so a test that reads or
+    """The USB limit ships disabled, so a test that reads or
     sets it has to enable the registry row and reload first.
     """
     entity_registry.async_update_entity(USB_LIMIT, disabled_by=None)
@@ -169,7 +169,7 @@ async def test_the_focuser_position_number_exists(
 
 
 @pytest.mark.parametrize("key", ["camera_usb_limit", "rotator_mechanical_position"])
-async def test_the_long_tail_ships_diagnostic_and_disabled(
+async def test_the_long_tail_ships_config_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry, key: str
 ) -> None:
     """The dome's is absent from this table: no capture observes a dome, so
@@ -179,7 +179,7 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
         registered(NUMBER_DOMAIN, entity_registry, loaded_entry, key)
     )
     assert (entry.entity_category, entry.disabled_by is not None) == (
-        EntityCategory.DIAGNOSTIC,
+        EntityCategory.CONFIG,
         True,
     )
 
