@@ -35,31 +35,36 @@ PHD Config 1
 /profile/2/guider/StarMaxHFD	1	20
 /profile/2/guider/StarMinSNR	1	6
 /profile/2/guider/AutoSelDownsample	3	0
-/profile/2/rotator/LastMenuChoice	1	ASCOM OmniSim Rotator
-/profile/2/scope/calibration/timestamp	1	10/20/2026 4:08:12 PM
-/profile/2/scope/calibration/xAngle	1	-2.88918
-/profile/2/scope/calibration/yAngle	1	1.83175
-/profile/2/scope/calibration/xRate	1	0.000440518
-/profile/2/scope/calibration/yRate	1	0.000481542
+/profile/2/overlay/slit/center.x	3	376
+/profile/2/overlay/slit/center.y	3	290
+/profile/2/overlay/slit/width	3	8
+/profile/2/overlay/slit/height	3	100
+/profile/2/overlay/slit/angle	3	0
+/profile/2/rotator/LastMenuChoice	1	None
+/profile/2/scope/calibration/timestamp	1	10/20/2026 6:28:43 PM
+/profile/2/scope/calibration/xAngle	1	-2.89063
+/profile/2/scope/calibration/yAngle	1	1.83025
+/profile/2/scope/calibration/xRate	1	0.000437358
+/profile/2/scope/calibration/yRate	1	0.000481433
 /profile/2/scope/calibration/binning	3	1
 /profile/2/scope/calibration/declination	1	997
-/profile/2/scope/calibration/pierSide	3	4294967295
 /profile/2/scope/calibration/raGuideParity	3	0
 /profile/2/scope/calibration/decGuideParity	3	0
-/profile/2/scope/calibration/rotatorAngle	1	0
+/profile/2/scope/calibration/rotatorAngle	1	-888
 /profile/2/scope/calibration/focal_length	3	160
 /profile/2/scope/calibration/image_scale	1	30.9397
 /profile/2/scope/calibration/ra_guide_rate	1	-1
 /profile/2/scope/calibration/dec_guide_rate	1	-1
-/profile/2/scope/calibration/ortho_error	1	0.489303
+/profile/2/scope/calibration/ortho_error	1	0.486629
 /profile/2/scope/calibration/orig_binning	1	1
-/profile/2/scope/calibration/orig_timestamp	1	10/20/2026 4:08:12 PM
-/profile/2/scope/calibration/orig_pierside	3	4294967295
-/profile/2/scope/calibration/ra_steps	1	{0.0 0.0}, {-1.9 -0.4}, {-3.6 -0.9}, {-5.5 -1.3}, {-7.3 -1.9}, {-9.1 -2.3}, {-11.0 -2.8}, {-12.9 -3.3}, {-14.6 -3.8}, {-16.5 -4.3}, {-18.2 -4.7}, {-20.1 -5.2}, {-22.0 -5.7}, {-23.9 -6.1}, {-25.7 -6.6}, {-25.7 -6.6}, {-23.9 -6.1}, {-22.1 -5.6}, {-20.2 -5.2}, {-18.4 -4.5}, {-16.5 -4.1}, {-14.7 -3.6}, {-12.9 -3.1}, {-11.0 -2.6}, {-9.2 -2.1}, {-7.4 -1.5}, {-5.6 -1.1}, {-3.8 -0.6}, {-2.0 -0.1}, {-0.1 0.5}
-/profile/2/scope/calibration/dec_steps	1	{0.0 0.0}, {0.6 -2.0}, {1.1 -4.0}, {1.7 -6.0}, {2.2 -8.0}, {2.8 -10.0}, {3.2 -12.0}, {3.8 -14.0}, {4.3 -16.0}, {4.9 -18.0}, {5.3 -20.1}, {5.9 -22.0}, {6.4 -24.0}, {6.9 -26.0}, {6.9 -26.0}, {6.5 -24.1}, {5.9 -22.1}, {5.3 -20.1}, {4.8 -18.0}, {4.2 -16.0}, {3.8 -14.0}, {3.1 -12.0}, {2.6 -10.0}, {2.1 -7.9}, {1.5 -5.9}, {0.9 -3.9}, {0.4 -1.9}, {-0.1 0.1}
+/profile/2/scope/calibration/orig_timestamp	1	10/20/2026 6:28:43 PM
+/profile/2/scope/calibration/ra_steps	1	{0.0 0.0}, {-1.8 -0.5}, {-3.7 -1.0}, {-5.5 -1.4}, {-7.3 -1.9}, {-9.1 -2.4}, {-11.0 -2.8}, {-12.8 -3.4}, {-14.7 -3.8}, {-16.4 -4.3}, {-18.2 -4.7}, {-20.0 -5.2}, {-21.9 -5.6}, {-23.8 -6.2}, {-25.5 -6.5}, {-25.5 -6.5}, {-23.7 -6.2}, {-21.9 -5.5}, {-20.0 -5.1}, {-18.1 -4.6}, {-16.4 -4.1}, {-14.5 -3.5}, {-12.8 -3.1}, {-10.9 -2.5}, {-9.1 -2.1}, {-7.2 -1.6}, {-5.4 -1.1}, {-3.7 -0.5}, {-1.8 -0.1}, {0.0 0.5}
+/profile/2/scope/calibration/dec_steps	1	{0.0 0.0}, {0.5 -2.0}, {1.0 -4.0}, {1.6 -6.0}, {2.1 -8.0}, {2.7 -10.0}, {3.1 -12.0}, {3.8 -14.0}, {4.2 -16.0}, {4.8 -18.0}, {5.2 -20.0}, {5.8 -22.0}, {6.3 -24.0}, {6.9 -26.0}, {6.9 -26.0}, {6.4 -24.1}, {5.8 -22.1}, {5.3 -20.1}, {4.7 -18.0}, {4.1 -16.0}, {3.6 -14.0}, {3.1 -12.0}, {2.6 -10.0}, {2.0 -7.9}, {1.4 -5.9}, {0.9 -3.9}, {0.4 -1.9}, {-0.1 0.2}
 /profile/2/scope/calibration/ra_step_count	3	14
 /profile/2/scope/calibration/dec_step_count	3	13
 /profile/2/scope/calibration/last_issue	3	0
+/profile/2/scope/calibration/pierSide	3	4294967295
+/profile/2/scope/calibration/orig_pierside	3	4294967295
 /profile/2/scope/GuideAlgorithm/X/Hysteresis/minMove	1	0.157504
 /profile/2/scope/GuideAlgorithm/X/Hysteresis/hysteresis	1	0.1
 /profile/2/scope/GuideAlgorithm/X/Hysteresis/aggression	1	0.7
@@ -80,14 +85,13 @@ PHD Config 1
 /profile/2/scope/LastMenuChoice	1	On-camera
 /profile/2/scope/LastAuxMenuChoice	1	None
 /profile/2/scope/HiResEncoders	3	0
-/profile/2/stepguider/calibration/timestamp	1	10/20/2026 4:03:04 PM
+/profile/2/stepguider/calibration/timestamp	1	10/20/2026 5:05:34 PM
 /profile/2/stepguider/calibration/xAngle	1	0.619242
 /profile/2/stepguider/calibration/yAngle	1	2.18089
 /profile/2/stepguider/calibration/xRate	1	0.100278
 /profile/2/stepguider/calibration/yRate	1	0.098836
 /profile/2/stepguider/calibration/binning	3	1
 /profile/2/stepguider/calibration/declination	1	997
-/profile/2/stepguider/calibration/pierSide	3	4294967295
 /profile/2/stepguider/calibration/raGuideParity	3	0
 /profile/2/stepguider/calibration/decGuideParity	3	0
 /profile/2/stepguider/calibration/rotatorAngle	1	0
@@ -104,13 +108,14 @@ PHD Config 1
 /profile/2/stepguider/calibration/ra_step_count	3	22
 /profile/2/stepguider/calibration/dec_step_count	3	22
 /profile/2/stepguider/calibration/last_issue	3	0
+/profile/2/stepguider/calibration/pierSide	3	4294967295
 /profile/2/stepguider/GuideAlgorithm/X/Hysteresis/minMove	1	0.156503
 /profile/2/stepguider/GuideAlgorithm/X/Hysteresis/hysteresis	1	0.1
 /profile/2/stepguider/GuideAlgorithm/X/Hysteresis/aggression	1	0.7
 /profile/2/stepguider/GuideAlgorithm/Y/Hysteresis/minMove	1	0.156503
 /profile/2/stepguider/GuideAlgorithm/Y/Hysteresis/hysteresis	1	0.1
 /profile/2/stepguider/GuideAlgorithm/Y/Hysteresis/aggression	1	0.7
-/profile/2/stepguider/LastMenuChoice	1	Simulator
+/profile/2/stepguider/LastMenuChoice	1	None
 /profile/2/stepguider/SamplesToAverage	3	3
 /profile/2/stepguider/BumpPercentage	3	80
 /profile/2/stepguider/BumpMaxStepsPerCycle	1	1
@@ -128,5 +133,5 @@ PHD Config 1
 /LoggingMode	3	1
 /currentProfile	3	2
 /ServerMode	3	1
-/perspective	1	layout2|name=MainToolBar;caption=Main tool bar;state=2106108;dir=3;layer=10;row=0;pos=0;prop=100000;bestw=567;besth=42;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Guider;caption=Guider;state=768;dir=5;layer=0;row=0;pos=0;prop=100000;bestw=640;besth=512;minw=640;minh=512;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=GraphLog;caption=History;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=534;besth=233;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Stats;caption=Guide Stats;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=244;besth=424;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=AOPosition;caption=AO Position;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=293;besth=207;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Profile;caption=Star Profile;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=20;besth=20;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Target;caption=Target;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=320;besth=207;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|dock_size(3,10,0)=44|dock_size(5,0,0)=642|
-/geometry	1	0;800;702;169;0
+/perspective	1	layout2|name=MainToolBar;caption=Main tool bar;state=2106108;dir=3;layer=10;row=0;pos=0;prop=100000;bestw=567;besth=42;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Guider;caption=Guider;state=256;dir=5;layer=0;row=0;pos=0;prop=100000;bestw=640;besth=512;minw=640;minh=512;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=GraphLog;caption=History;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=534;besth=233;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Stats;caption=Guide Stats;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=244;besth=424;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=AOPosition;caption=AO Position;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=293;besth=207;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Profile;caption=Star Profile;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=20;besth=20;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Target;caption=Target;state=2099198;dir=4;layer=0;row=0;pos=0;prop=100000;bestw=320;besth=207;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|dock_size(3,10,0)=44|dock_size(5,0,0)=642|
+/geometry	1	1;978;570;-8;-8

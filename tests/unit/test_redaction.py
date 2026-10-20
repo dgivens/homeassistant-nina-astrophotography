@@ -232,6 +232,25 @@ def test_a_nina_profile_reads_as_nested_dicts(tmp_path: Path) -> None:
     }
 
 
+def test_a_serialized_dictionary_reads_as_its_entries(tmp_path: Path) -> None:
+    fixture = tmp_path / "x.profile"
+    fixture.write_text(
+        '<Profile xmlns="urn:nina" xmlns:i="urn:i"><pluginStorage>'
+        "<KeyValueOfguidArray><Key>65ca9fd7-8984-4609-b206-86f3f9e8c19d</Key><Value>"
+        "<KeyValueOfstringanyType><Key>Type</Key>"
+        '<Value i:type="string">SKYSURVEY</Value></KeyValueOfstringanyType>'
+        "<KeyValueOfstringanyType><Key>ApiKey</Key>"
+        '<Value i:type="string">abc</Value></KeyValueOfstringanyType>'
+        "</Value></KeyValueOfguidArray></pluginStorage></Profile>",
+        encoding="utf-8",
+    )
+    storage = read_fixture(fixture)["pluginStorage"]
+    assert storage == {
+        "65ca9fd7-8984-4609-b206-86f3f9e8c19d": {"Type": "SKYSURVEY", "ApiKey": "abc"}
+    }
+    assert scan(storage) == ["65ca9fd7-8984-4609-b206-86f3f9e8c19d.ApiKey"]
+
+
 def test_phd2_settings_read_as_nested_dicts(tmp_path: Path) -> None:
     fixture = tmp_path / "x.phdcfg"
     fixture.write_text(
@@ -251,6 +270,7 @@ def test_phd2_settings_read_as_nested_dicts(tmp_path: Path) -> None:
         ("C:\\rig\\images\\", True),
         ("localhost", True),
         (RIG_PROFILE_ID, True),
+        ("4C0BBF74-0D95-41F6-AAD8-D6D58668CF2C", True),
         ("C:\\Users\\dan\\Documents\\N.I.N.A", False),
         ("obs-pc.lan", False),
     ],

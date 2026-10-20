@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Capture N.I.N.A. Advanced API fixtures from a live rig, redacted.
 
-    scripts/capture_fixtures.py --host H --port 1888 --state <slug> [--dry-run]
+    scripts/capture_fixtures.py --host H --port 1888 --state <slug> [--out DIR] [--dry-run]
       → tests/fixtures/<state-slug>_<endpoint-slug>.json, the raw envelope
+      → or DIR/..., for a capture that is not a committed fixture: the test
+        VM's, compared between channels (docs/test-vm.md §4.6)
       → re-running against an unchanged rig produces a byte-identical file
 
 READ-ONLY. Every endpoint below reports state. NEVER add one that commands
@@ -79,7 +81,9 @@ def _serialize(envelope: dict, target: Path) -> str:
     return json.dumps(envelope, indent=2, sort_keys=False) + "\n"
 
 
-async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
+async def capture(
+    host: str, port: int, state: str, dry_run: bool, out: Path = FIXTURES
+) -> int:
     base = f"http://{host}:{port}/v2/api"
     written = 0
     versions: dict[str, str] = {}
@@ -112,11 +116,12 @@ async def capture(host: str, port: int, state: str, dry_run: bool) -> int:
                 "endpoint": path,
                 "params": params,
             }
-            target = FIXTURES / f"{state}_{slug}.json"
+            target = out / f"{state}_{slug}.json"
             body = _serialize(envelope, target)
             if dry_run:
                 print(f"would write {target} ({len(body)} B)")
             else:
+                out.mkdir(parents=True, exist_ok=True)
                 target.write_text(body, encoding="utf-8")
                 written += 1
     print(f"wrote {written} fixture(s) for state {state!r}")
@@ -128,9 +133,12 @@ def main() -> int:
     parser.add_argument("--host", required=True)
     parser.add_argument("--port", type=int, default=1888)
     parser.add_argument("--state", required=True, help="state slug, e.g. dawn_flats")
+    parser.add_argument("--out", type=Path, default=FIXTURES)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-    return asyncio.run(capture(args.host, args.port, args.state, args.dry_run))
+    return asyncio.run(
+        capture(args.host, args.port, args.state, args.dry_run, args.out)
+    )
 
 
 if __name__ == "__main__":

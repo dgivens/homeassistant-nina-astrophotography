@@ -277,9 +277,12 @@ def _differing_paths(
 # is a GUID minted for the fixture. The hosts are N.I.N.A.'s shipped defaults.
 RIG_PATH_PREFIX = "C:\\rig\\"
 RIG_PROFILE_ID = "660fe38b-4d3a-458e-b25a-beadb6f9c83c"
+# N.I.N.A.'s built-in simulator camera, whose device id is fixed in its source.
+NINA_SIMULATOR_CAMERA_ID = "4C0BBF74-0D95-41F6-AAD8-D6D58668CF2C"
 _RIG_KEPT = frozenset(
     {
         RIG_PROFILE_ID,
+        NINA_SIMULATOR_CAMERA_ID,
         "localhost",
         "nova.astrometry.net",
         "http://nova.astrometry.net",
@@ -314,13 +317,27 @@ def _xml_element(element: ET.Element) -> Any:
     """An element as a dict keyed by local name; repeated children as a list.
 
     The serializer writes booleans as `true`/`false` text, read back as bools
-    so they pass the key rules as JSON's do.
+    so they pass the key rules as JSON's do. Its `i:type` attributes annotate
+    a value's type and are not data. A dictionary is written as a run of
+    `KeyValueOf…` entries, each a `Key` and a `Value`; it reads back as the
+    dict it was, so the key rules see the setting's name, not "Key".
     """
     node: dict[str, Any] = {
         f"@{_local_name(name)}": _xml_text(value)
         for name, value in element.attrib.items()
+        if _local_name(name) != "type"
     }
     children = list(element)
+    if children and all(
+        _local_name(child.tag).startswith("KeyValueOf") for child in children
+    ):
+        entries = (
+            {_local_name(part.tag): part for part in child} for child in children
+        )
+        return {
+            str(_xml_element(entry["Key"])): _xml_element(entry["Value"])
+            for entry in entries
+        }
     if not children:
         text = _xml_text(element.text or "")
         if not node:
