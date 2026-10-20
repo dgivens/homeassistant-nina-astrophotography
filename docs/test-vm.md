@@ -1028,8 +1028,11 @@ producing behaviour no real rig shows:
 | PHD2 and the rotator | PHD2 turns its calibration as the rotator moves, but its simulated camera does not turn. After a 56° move, guiding wandered and every dither failed to settle | PHD2's rotator is **None** |
 
 PHD2 guides with camera **Simulator** and mount **On Camera**, without its AO
-simulator. Its simulated guide camera has 24 µm pixels behind a 160 mm guide
-scope, 30.9″ a pixel, so a five-pixel dither is larger than on a real rig.
+simulator. Its simulated guide camera is set to 3.75 µm pixels behind a 135 mm
+guide scope, 5.73″ a pixel, which is a real guide camera on a short guide scope.
+PHD2's own defaults, 24 µm pixels behind 160 mm, give 30.9″ a pixel, so a
+five-pixel dither moved the frame far more than on a real rig. A change of
+either value needs a new calibration.
 
 ### The dome
 
