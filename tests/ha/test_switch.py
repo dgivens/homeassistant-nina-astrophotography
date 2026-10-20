@@ -352,7 +352,7 @@ async def test_the_cut_switches_are_not_registered(
     assert registered(SWITCH_DOMAIN, entity_registry, loaded_entry, key) is None
 
 
-async def test_the_long_tail_ships_diagnostic_and_disabled(
+async def test_the_long_tail_ships_config_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry
 ) -> None:
     """`dome_following` is absent from this assertion: no capture observes a
@@ -362,6 +362,6 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
         registered(SWITCH_DOMAIN, entity_registry, loaded_entry, "rotator_reverse")
     )
     assert (entry.entity_category, entry.disabled_by is not None) == (
-        EntityCategory.DIAGNOSTIC,
+        EntityCategory.CONFIG,
         True,
     )

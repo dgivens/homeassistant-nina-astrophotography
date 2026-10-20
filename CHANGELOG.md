@@ -4,6 +4,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Camera USB limit, rotator mechanical position and rotator reverse move
+  from the device page's Diagnostic section to Configuration.** Each changes
+  the device rather than only reporting it. They still ship disabled, and
+  their entity ids are unchanged.
+- **Mount side of pier is a primary sensor**, no longer under Diagnostic: it is
+  the mount's state an imager reads, beside the time to meridian flip.
+
+---
+
 ## [2.0.0] - 2026-09-27
 
 ### Breaking

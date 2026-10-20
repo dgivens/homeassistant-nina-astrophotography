@@ -181,7 +181,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
     NinaSwitchDescription(
         key="rotator_reverse",
         translation_key="rotator_reverse",
-        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         kind="rotator",
         value=read_field("rotator", "reverse"),
