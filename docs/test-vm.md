@@ -520,3 +520,139 @@ This is input to a future design. Nothing here is decided.
 [phd-supp]: https://openphdguiding.org/man-dev/Supplemental_Info.htm
 [ninaapi-rel]: https://github.com/christian-photo/ninaAPI/releases
 [ninaapi-b1]: https://github.com/christian-photo/ninaAPI/releases/tag/3.0.0.0-b.1
+
+---
+
+## 2026-10-19 — Windows media, and profiles made in the rig
+
+This revision replaces:
+- W-03 and W-12;
+- the glossary's *Evaluation ISO* and *the operator*;
+- §3.1's finding on the Evaluation ISO;
+- where §4.4 takes the profiles from;
+- the order of stages 0 and 1 in §6, and both of their texts;
+- §7, where one question is answered, one moves to stage 0, and two are added.
+
+It also adds an entry to §10.
+
+### Windows media
+
+| # | Decision | Choice |
+|---|---|---|
+| W-03 | Windows media | **Windows 11 IoT Enterprise LTSC 2024 Evaluation, ARM64** (build 26100), downloaded by each user |
+
+The glossary's *Evaluation ISO* now means this image. It is still free, needs no
+product key and lasts 90 days, so W-14 is unchanged.
+
+These findings replace §3.1's bullet on the Evaluation ISO:
+
+- **The Windows 11 Enterprise evaluation offers no ARM64 download.** Its landing
+  page lists "version 26H2 | x64 ISO and Arm64 ISO", but the download page
+  reached after registering offers x64 only ([Q&A][q-arm64]). The same page says
+  the 26H2 evaluation has to be signed into with a Microsoft account.
+- **The IoT Enterprise LTSC 2024 evaluation publishes an ISO for each of x64 and
+  ARM64** ([download][iot-eval]), behind the same registration form. It lasts 90
+  days, needs no product key, and expires the same way: a black desktop and an
+  hourly shutdown.
+- **Its ARM64 ISO:**
+
+  | | |
+  |---|---|
+  | File | `26100.1742.240906-0331.ge_release_svc_refresh_CLIENT_IOT_LTSC_EVAL_A64FRE_en-us.iso` |
+  | SHA256 | `3dcdba9c9c0aa0430d4332b60c9afcb3cd613d648a49cbba2d4ef7b5978f32e8` |
+  | Images in `install.wim` | one, index 1 |
+  | `/IMAGE/NAME` | `Windows 11 IoT Enterprise LTSC 2024 Evaluation` |
+  | EditionID, channel | `IoTEnterpriseSEval`, `eval` (`sources\EI.CFG`) |
+  | Architecture, build | ARM64, 26100.1742 |
+
+- **Microsoft publishes no hash for it that resolves.** The download page's
+  `Windows11IOTEnterpriseLTSCHashValues.pdf` link redirects to the Evaluation
+  Center's home page ([Q&A][q-hash]). The SHA256 above was computed from a
+  download of the ISO. It matches the hash a user posted for this file in that
+  thread, and it is the default for the ISO's SHA256 Packer variable (§4.2).
+- **Prism's AVX and AVX2 translation is not in this build.** It reached every
+  x64 app on 24H2 and later with a Prism update in December 2025
+  ([Microsoft][prism]). Build 26100.1742 dates from September 2024. The guest
+  has to take cumulative updates past that point before it emulates AVX.
+- **LTSC has no Microsoft Store, and so no inbox `winget`.** `provision/*.ps1`
+  installs from direct downloads, which W-08's "any clean Windows 11" already
+  requires.
+- **virtio-win 0.1.302** carries ARM64 builds of `viostor`, `vioscsi` and
+  `NetKVM` under `w11\ARM64`.
+
+> *Rationale.* LTSC keeps the evaluation licence: no key, no cost, no
+> redistribution. With it the rest of the design stands, W-14 included. The
+> Store and the inbox apps LTSC leaves out are not things the rig uses.
+
+**The answer file (W-05)** selects image index 1 through W-05's index
+variable; the name in the table above is what that index holds on this ISO. It
+has no `<ProductKey>` block. mac-vms's file selects `Windows 11 Pro` by name and
+supplies a generic key. Both of those change in stage 1, which is otherwise
+still built from mac-vms unmodified.
+
+**§10 gains an alternative:**
+
+- **Microsoft's consumer ARM64 ISO with a generic key**, which is how mac-vms
+  installs Windows 11 Pro. It never expires, which would remove W-14. But it
+  means running unactivated retail Windows, which the rig should not ask of a
+  contributor. It is the fallback if the IoT LTSC evaluation loses its ARM64
+  download too, as the Enterprise evaluation already has (§8, *Evaluation
+  access*).
+
+### Profiles made in the rig
+
+There is no existing simulator machine to export the profiles from, so they are
+made in the rig.
+
+| # | Decision | Choice |
+|---|---|---|
+| W-12 | Profiles | The simulator N.I.N.A. profile and PHD2 settings are **created in the stage 1 VM** and committed as fixtures in `tests/fixtures/rig/` |
+
+- **§4.4:** `nina-simulator.profile` comes from the stage 1 VM's
+  `%LOCALAPPDATA%\NINA\Profiles\`, and `phd2-simulator.phdcfg` is `phd2.exe -s`
+  run there. Every device slot is set to its OmniSim COM driver when the profile
+  is made (W-10).
+- **Stage 1 uses the `C:\rig\` layout** for every path a profile records: image
+  output, PHD2's executable, the plate solver. The exported profiles then
+  already point where stage 2's provisioning installs things, so normalising
+  paths changes almost nothing. The other redaction rules in §4.4 are
+  unchanged: the `Id` is replaced, credentials are blanked, and both files are
+  read by eye.
+- **Glossary:** *the operator* is whoever runs the live rig. The operator no
+  longer supplies the simulator profile.
+
+The stages now run in the order 1, 0, 2, 3, 4, 5. Stages 2 to 5 are unchanged.
+
+- **Stage 1, feasibility spike.** Build mac-vms' image with the Evaluation ISO
+  and the answer-file changes above, and bring the guest up to date through
+  Windows Update. Install everything by hand under the `C:\rig\` layout, then
+  create the simulator profile in N.I.N.A. and PHD2's settings, and export both.
+  - *Gate:* under emulation, all eleven devices connect, PHD2 guides on its
+    simulator, and the host reaches `/v2/api/*` and `/v2/socket`.
+- **Stage 0, profile fixtures.** The exported files are redacted per §4.4, the
+  guard learns their formats, and they are committed.
+  - *Gate:* `just ci` is green, and both files read clean by eye. Loaded back
+    into the stage 1 VM (the N.I.N.A. profile imported, then `phd2.exe -l`), the
+    redacted files still connect all eleven devices.
+
+> *Rationale.* A profile made in the rig names the drivers and paths the rig
+> actually has, so nothing about another machine has to be stripped out of it.
+> Loading the redacted files in stage 0, while the stage 1 VM still exists,
+> finds a redaction that breaks loading before stage 2 automates anything.
+
+### Open questions
+
+- **Answered:** the image index is 1, and the SKU label is the `/IMAGE/NAME`
+  above.
+- **Moved to stage 0:** whether the N.I.N.A. profile loads with normalised paths
+  and a new `Id`. Stage 0's gate answers it.
+- **Added for stage 1:**
+  - Whether LTSC's setup accepts a local account without mac-vms's
+    `BYPASSNRO` registry writes.
+  - Whether N.I.N.A., OmniSim and PHD2 run on this edition under Prism once it
+    is updated, and whether any of them needs AVX. Stage 1 records the build the
+    gate passed on.
+
+[iot-eval]: https://www.microsoft.com/en-us/evalcenter/download-windows-11-iot-enterprise-ltsc-eval
+[q-arm64]: https://learn.microsoft.com/en-us/answers/questions/5996955/need-windows-11-enterprise-version-25h2-arm64-iso
+[q-hash]: https://learn.microsoft.com/en-us/answers/questions/2181328/issue-broken-windows-11-iot-hashes-pdf-link
