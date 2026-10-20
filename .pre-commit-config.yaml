@@ -16,5 +16,5 @@ repos:
         name: fixtures carry no unredacted secrets
         entry: uv run python scripts/check_fixtures.py
         language: system
-        files: ^tests/fixtures/.*\.json$
+        files: ^tests/fixtures/(.*\.json|rig/.*)$
         pass_filenames: true

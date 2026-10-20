@@ -1,6 +1,6 @@
 # Test VM — design
 
-**Status:** accepted; stage 1 done, stage 0 next · 2026-10-20
+**Status:** accepted; stages 1 and 0 done, stage 2 next · 2026-10-20
 
 The simulated rig is a disposable Windows VM running N.I.N.A., the Advanced API
 and PHD2 against simulated equipment. It lets the integration be tested end to end,
@@ -865,3 +865,112 @@ Both were exported from the stage 1 VM for stage 0:
 - **Carried to stage 3:** which plugin folder nightly N.I.N.A. reads, and
   whether the 3.0 plugin starts with authentication and SSL off. Stage 1 ran
   the stable channel only.
+
+---
+
+## 2026-10-20 — Stage 0: profile fixtures and the start-up sequence
+
+Stage 0's gate passed. This revision:
+- replaces §4.4's list of what the guard allows, and its list of fixtures;
+- adds a third fixture, a start-up sequence that N.I.N.A. runs at logon,
+  which refines W-11;
+- adds the Connector plugin to W-09;
+- adds a requirement on provisioning.
+
+### The gate
+
+| Condition | Result |
+|---|---|
+| `just ci` is green | Yes, with the guard reading every file in `tests/fixtures/rig/` |
+| Both files read clean by eye | Yes. Neither held a credential, an address or a personal path before redaction |
+| Loaded back into the stage 1 VM, the redacted files connect all eleven devices | Yes. PHD2 started without its first-light wizard and guided on the loaded calibration, without recalibrating |
+
+The profile's site, 51.07861° N, 0.29444° W, 708 m, is the ASCOM telescope
+simulator's. N.I.N.A. copies the mount's site into the profile when it
+connects.
+
+### The fixtures
+
+`tests/fixtures/rig/` holds three files:
+
+| File | What it is | Where provisioning puts it |
+|---|---|---|
+| `nina-simulator.profile` | The N.I.N.A. profile `Simulator`, `Id` `660fe38b-4d3a-458e-b25a-beadb6f9c83c` | `%LOCALAPPDATA%\NINA\Profiles\<Id>.profile` |
+| `phd2-simulator.phdcfg` | `phd2.exe -s`, with the calibration | loaded with `phd2.exe -l` |
+| `test-sequence.json` | The start-up sequence (below) | `C:\rig\sequences\Test Sequence.json` |
+
+`.gitattributes` marks them `-text`, so they keep the bytes the guest
+wrote. PHD2's export has CRLF line endings.
+
+### What the guard allows
+
+`scripts/check_fixtures.py` reads JSON, N.I.N.A.'s XML and PHD2's
+`key<TAB>type<TAB>value` lines. Pre-commit and CI run it over
+`tests/fixtures/rig/*` as well as the JSON corpus.
+
+A file in `rig/` may hold these values as they are (`rig_value_kept` in
+`tests/redaction.py`):
+- a path under `C:\rig\`;
+- the profile's `Id`;
+- `localhost`, `nova.astrometry.net` and `http://nova.astrometry.net`,
+  N.I.N.A.'s defaults for its PHD2, planetarium and plate-solving hosts.
+
+The hosts are an addition to §4.4: a `PHD2ServerUrl` of `"REDACTED"` stops
+N.I.N.A. reaching PHD2.
+
+**An empty string is never redacted**, in any fixture. It holds nothing, and
+a blanked credential is how a profile the rig loads carries one.
+
+> *Rationale.* The profiles were made in the rig, so before redaction they
+> held nothing to remove: their keys were empty and their paths were the VM's.
+> The guard is for the next export, which may carry a key someone set to test
+> a feature.
+
+### N.I.N.A. resets a folder that does not exist
+
+When N.I.N.A. loads a profile, it replaces each folder that does not exist
+with its default under the user's profile. It does not report doing so, and
+saves the default the next time it saves the profile. Provisioning creates
+these folders before N.I.N.A. first starts:
+
+- `C:\rig\images\`
+- `C:\rig\sequences\`, with `Targets\` and `Templates\` inside it
+- `C:\rig\FramingAssistantCache\`
+
+### The start-up sequence
+
+At logon, `C:\rig\start-nina.cmd`, in Administrator's Startup folder, runs:
+
+```
+NINA.exe --profileid 660fe38b-4d3a-458e-b25a-beadb6f9c83c --sequencefile "C:\rig\sequences\Test Sequence.json" --runsequence
+```
+
+The sequence:
+1. connects all equipment;
+2. unparks the scope, finds home on the scope and the dome, and opens the
+   dome;
+3. starts guiding, and waits five minutes;
+4. stops guiding, parks the scope and the dome, closes the dome;
+5. disconnects all equipment.
+
+Connecting and disconnecting all equipment are the Connector plugin's
+instructions.
+
+This is how W-11's logon task starts N.I.N.A. The rig's tests build on this
+sequence. How `wait` (§4.5) and `tests/rig/` (§5) relate to it is settled in
+stages 3 and 5.
+
+From a restart, the Advanced API answered in 45 s. N.I.N.A. started 34 s
+after the restart, then OmniSim 17 s later, then PHD2 13 s after that, and
+by then the sequence had connected all eleven devices. It ran to the end
+unattended, and `/event-history` recorded each step: 44 events from the
+devices connecting to `SEQUENCE-FINISHED`.
+
+### W-09 adds the Connector plugin
+
+| Plugin | Version | Archive | SHA256 |
+|---|---|---|---|
+| Connector | 2.1.1.0 (needs N.I.N.A. 3.2.0.9001) | `https://github.com/isbeorn/nina.plugin.connector/releases/download/2.1.1.0/NINA.Plugins.Connector.2.1.1.0.zip` | `10CC54238C9F0E345C4414969583E54FFE7A85A07488A16F2FB4612EB02D3196` |
+
+It installs like the other plugins, into
+`%LOCALAPPDATA%\NINA\Plugins\3.0.0\Connector\`.

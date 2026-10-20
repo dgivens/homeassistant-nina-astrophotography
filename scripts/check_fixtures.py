@@ -5,18 +5,20 @@ CI is the backstop, not the guard: it fires after the push, by which time a
 leaked credential is permanent.
 """
 
-import json
 from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tests"))
-from redaction import scan
+from redaction import read_fixture, rig_value_kept, scan
 
 
 def main(paths: list[str]) -> int:
     failures = 0
     for name in paths:
-        findings = scan(json.loads(Path(name).read_text(encoding="utf-8")))
+        path = Path(name)
+        # The test VM loads what is in tests/fixtures/rig/ as it is.
+        kept = rig_value_kept if path.parent.name == "rig" else None
+        findings = scan(read_fixture(path), kept=kept)
         if findings:
             print(f"{name}: unredacted {findings}", file=sys.stderr)
             failures += 1

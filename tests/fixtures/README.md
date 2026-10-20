@@ -42,6 +42,21 @@ Excluding the endpoint entirely would leave a polled endpoint with no fixture,
 no drift coverage and no mapper test. Never denylist it — its secret surface
 is too large to redact confidently.
 
+## The test VM's profiles (`rig/`)
+
+`rig/` holds the simulator profiles the test VM loads (`docs/test-vm.md` §4.4),
+not captures: `nina-simulator.profile` (N.I.N.A.'s XML) and
+`phd2-simulator.phdcfg` (`phd2.exe -s`). They were made in the VM, against
+OmniSim, so every device is simulated.
+
+The same guard reads both formats, with one difference: a value the VM needs
+stays as it is, since a profile with a dead path or a `"REDACTED"` host does
+not work. Paths are normalised under `C:\rig\`, the profile `Id` is a GUID
+minted for the fixture, and the hosts are N.I.N.A.'s defaults (`localhost`,
+astrometry.net). Credentials are blank. `tests/redaction.py`'s
+`rig_value_kept` is the list. Read both files by eye before committing a
+change to either.
+
 ## Inventory
 
 ### Mid-session, dawn (a complete imaging night)
