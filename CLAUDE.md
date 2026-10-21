@@ -28,7 +28,7 @@ uv run --group test-ha coverage run -m pytest tests/ha -q
 uv run coverage combine && uv run coverage json
 uv run python scripts/coverage_floors.py
 
-uv run python scripts/check_fixtures.py tests/fixtures/*.json   # the redaction guard
+uv run python scripts/check_fixtures.py tests/fixtures/*.json tests/fixtures/rig/*   # the redaction guard
 uv run --group dev --group test-ha pyright                      # custom_components/, scripts/, tests/, tools/
 uv run --group dev ruff check --fix . && uv run --group dev ruff format .   # lint and format
 ```

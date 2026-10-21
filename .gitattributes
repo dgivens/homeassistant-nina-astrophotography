@@ -1,0 +1,2 @@
+# The rig's profiles are loaded into Windows as they are; PHD2's export is CRLF.
+tests/fixtures/rig/* -text

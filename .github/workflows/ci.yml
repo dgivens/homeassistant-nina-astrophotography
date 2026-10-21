@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: uv sync
-      - run: uv run python scripts/check_fixtures.py tests/fixtures/*.json
+      - run: uv run python scripts/check_fixtures.py tests/fixtures/*.json tests/fixtures/rig/*
 
   hassfest:
     name: hassfest

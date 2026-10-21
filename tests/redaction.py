@@ -10,9 +10,13 @@ the drift guard checks this module's output rather than N.I.N.A.'s.
 formula with no fixture to test against.
 """
 
+from collections.abc import Callable
 import hashlib
+import json
+from pathlib import Path
 import re
 from typing import Any
+import xml.etree.ElementTree as ET
 
 REDACTED = "REDACTED"
 
@@ -165,8 +169,12 @@ def _digest(value: str, prefix: str, legacy_width: int, suffix: str = "") -> str
 
 
 def _typed_redaction(value: Any) -> Any:
-    """Replace a value while preserving its JSON type, containers included."""
-    if value is None or isinstance(value, bool):
+    """Replace a value while preserving its JSON type, containers included.
+
+    An empty string is kept: it holds nothing, and a blanked credential is how
+    a profile the rig loads carries one.
+    """
+    if value is None or isinstance(value, bool) or value == "":
         return value
     if isinstance(value, (int, float)):
         return 0
@@ -224,7 +232,7 @@ def redact(value: Any) -> Any:
     return _walk("", value)
 
 
-def scan(value: Any) -> list[str]:
+def scan(value: Any, kept: Callable[[Any], bool] | None = None) -> list[str]:
     """Dotted paths redact() would still change. Empty means clean.
 
     Expressed as a diff against redact() rather than as a second rule set: that
@@ -232,23 +240,135 @@ def scan(value: Any) -> list[str]:
     the two can never disagree. It relies on redact() being idempotent, which
     every rule above is — a digest of a digest is stable because the digest
     forms are themselves kept by their key rules.
+
+    `kept` exempts values a fixture must hold as they are: `rig_value_kept`
+    for the rig's profiles.
     """
-    return _differing_paths(value, redact(value))
+    return _differing_paths(value, redact(value), kept or (lambda _: False))
 
 
-def _differing_paths(before: Any, after: Any, prefix: str = "") -> list[str]:
+def _differing_paths(
+    before: Any, after: Any, kept: Callable[[Any], bool], prefix: str = ""
+) -> list[str]:
     if isinstance(before, dict) and isinstance(after, dict):
         return [
             path
             for key in before
             for path in _differing_paths(
-                before[key], after.get(key), f"{prefix}.{key}" if prefix else key
+                before[key],
+                after.get(key),
+                kept,
+                f"{prefix}.{key}" if prefix else key,
             )
         ]
     if isinstance(before, list) and isinstance(after, list):
         return [
             path
             for index, item in enumerate(before)
-            for path in _differing_paths(item, after[index], f"{prefix}[{index}]")
+            for path in _differing_paths(item, after[index], kept, f"{prefix}[{index}]")
         ]
-    return [] if before == after else [prefix]
+    return [] if before == after or kept(before) else [prefix]
+
+
+# The rig's profiles (`tests/fixtures/rig/`) are loaded into the test VM, so
+# the values it needs cannot become "REDACTED": a dead path stops the profile
+# loading, and a PHD2 host of "REDACTED" stops N.I.N.A. reaching PHD2. Paths
+# are normalised under the VM's own `C:\rig\` instead, and the profile's `Id`
+# is a GUID minted for the fixture. The hosts are N.I.N.A.'s shipped defaults.
+RIG_PATH_PREFIX = "C:\\rig\\"
+RIG_PROFILE_ID = "660fe38b-4d3a-458e-b25a-beadb6f9c83c"
+# N.I.N.A.'s built-in simulator camera, whose device id is fixed in its source.
+NINA_SIMULATOR_CAMERA_ID = "4C0BBF74-0D95-41F6-AAD8-D6D58668CF2C"
+_RIG_KEPT = frozenset(
+    {
+        RIG_PROFILE_ID,
+        NINA_SIMULATOR_CAMERA_ID,
+        "localhost",
+        "nova.astrometry.net",
+        "http://nova.astrometry.net",
+    }
+)
+
+
+def rig_value_kept(value: Any) -> bool:
+    """Whether a rig profile may hold this value as it is."""
+    return isinstance(value, str) and (
+        value in _RIG_KEPT or value.startswith(RIG_PATH_PREFIX)
+    )
+
+
+def read_fixture(path: Path) -> Any:
+    """A fixture decoded into the shape `scan` takes, by its file suffix.
+
+    `.json` is a captured envelope; `.profile` is a N.I.N.A. profile (XML);
+    `.phdcfg` is PHD2's `phd2.exe -s` export, one `key<TAB>type<TAB>value`
+    line per setting under a `PHD Config` header.
+    """
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".profile":
+        # A profile committed to this repository, not untrusted input.
+        return _xml_element(ET.fromstring(text))  # noqa: S314
+    if path.suffix == ".phdcfg":
+        return _phd2_settings(text)
+    return json.loads(text)
+
+
+def _xml_element(element: ET.Element) -> Any:
+    """An element as a dict keyed by local name; repeated children as a list.
+
+    The serializer writes booleans as `true`/`false` text, read back as bools
+    so they pass the key rules as JSON's do. Its `i:type` attributes annotate
+    a value's type and are not data. A dictionary is written as a run of
+    `KeyValueOf…` entries, each a `Key` and a `Value`; it reads back as the
+    dict it was, so the key rules see the setting's name, not "Key".
+    """
+    node: dict[str, Any] = {
+        f"@{_local_name(name)}": _xml_text(value)
+        for name, value in element.attrib.items()
+        if _local_name(name) != "type"
+    }
+    children = list(element)
+    if children and all(
+        _local_name(child.tag).startswith("KeyValueOf") for child in children
+    ):
+        entries = (
+            {_local_name(part.tag): part for part in child} for child in children
+        )
+        return {
+            str(_xml_element(entry["Key"])): _xml_element(entry["Value"])
+            for entry in entries
+        }
+    if not children:
+        text = _xml_text(element.text or "")
+        if not node:
+            return text
+        return node | ({"#text": text} if text != "" else {})
+    for child in children:
+        name, value = _local_name(child.tag), _xml_element(child)
+        if name not in node:
+            node[name] = value
+        elif isinstance(node[name], list):
+            node[name].append(value)
+        else:
+            node[name] = [node[name], value]
+    return node
+
+
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1]
+
+
+def _xml_text(text: str) -> str | bool:
+    return {"true": True, "false": False}.get(text, text)
+
+
+def _phd2_settings(text: str) -> dict[str, Any]:
+    settings: dict[str, Any] = {}
+    for line in text.splitlines()[1:]:
+        key, _kind, value = line.split("\t", 2)
+        *parents, leaf = [part for part in key.split("/") if part]
+        node = settings
+        for part in parents:
+            node = node.setdefault(part, {})
+        node[leaf] = value
+    return settings

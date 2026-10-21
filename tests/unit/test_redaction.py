@@ -1,8 +1,18 @@
 """Redaction rules — one module, shared by the capture script and the guard."""
 
+from pathlib import Path
+
 import pytest
 
-from redaction import PROFILE_ALLOWLIST, project, redact, scan
+from redaction import (
+    PROFILE_ALLOWLIST,
+    RIG_PROFILE_ID,
+    project,
+    read_fixture,
+    redact,
+    rig_value_kept,
+    scan,
+)
 
 
 @pytest.mark.parametrize(
@@ -10,6 +20,8 @@ from redaction import PROFILE_ALLOWLIST, project, redact, scan
     [
         ({"WeatherUndergroundAPIKey": "abc"}, {"WeatherUndergroundAPIKey": "REDACTED"}),
         ({"apikey": "abc"}, {"apikey": "REDACTED"}),
+        # A blanked credential has nothing left to redact.
+        ({"AstrometryAPIKey": ""}, {"AstrometryAPIKey": ""}),
         ({"ImageFilePath": "C:\\Astro"}, {"ImageFilePath": "REDACTED"}),
         ({"Note": "C:\\Users\\dan\\N.I.N.A."}, {"Note": "REDACTED"}),
         ({"Note": "192.168.1.40"}, {"Note": "REDACTED"}),
@@ -202,3 +214,66 @@ def test_profile_projection_keeps_only_the_allowlist() -> None:
             "Elevation": 1509,
         },
     }
+
+
+def test_a_nina_profile_reads_as_nested_dicts(tmp_path: Path) -> None:
+    fixture = tmp_path / "x.profile"
+    fixture.write_text(
+        '<Profile xmlns="urn:nina" xmlns:i="urn:i">'
+        "<Id>abc</Id><Enabled>false</Enabled><Folder i:nil='true'/>"
+        "<Filter>Red</Filter><Filter>Blue</Filter></Profile>",
+        encoding="utf-8",
+    )
+    assert read_fixture(fixture) == {
+        "Id": "abc",
+        "Enabled": False,
+        "Folder": {"@nil": True},
+        "Filter": ["Red", "Blue"],
+    }
+
+
+def test_a_serialized_dictionary_reads_as_its_entries(tmp_path: Path) -> None:
+    fixture = tmp_path / "x.profile"
+    fixture.write_text(
+        '<Profile xmlns="urn:nina" xmlns:i="urn:i"><pluginStorage>'
+        "<KeyValueOfguidArray><Key>65ca9fd7-8984-4609-b206-86f3f9e8c19d</Key><Value>"
+        "<KeyValueOfstringanyType><Key>Type</Key>"
+        '<Value i:type="string">SKYSURVEY</Value></KeyValueOfstringanyType>'
+        "<KeyValueOfstringanyType><Key>ApiKey</Key>"
+        '<Value i:type="string">abc</Value></KeyValueOfstringanyType>'
+        "</Value></KeyValueOfguidArray></pluginStorage></Profile>",
+        encoding="utf-8",
+    )
+    storage = read_fixture(fixture)["pluginStorage"]
+    assert storage == {
+        "65ca9fd7-8984-4609-b206-86f3f9e8c19d": {"Type": "SKYSURVEY", "ApiKey": "abc"}
+    }
+    assert scan(storage) == ["65ca9fd7-8984-4609-b206-86f3f9e8c19d.ApiKey"]
+
+
+def test_phd2_settings_read_as_nested_dicts(tmp_path: Path) -> None:
+    fixture = tmp_path / "x.phdcfg"
+    fixture.write_text(
+        "PHD Config 1\n/profile/2/camera/LastMenuchoice\t1\tSimulator\n"
+        "/currentProfile\t3\t2\n",
+        encoding="utf-8",
+    )
+    assert read_fixture(fixture) == {
+        "profile": {"2": {"camera": {"LastMenuchoice": "Simulator"}}},
+        "currentProfile": "2",
+    }
+
+
+@pytest.mark.parametrize(
+    ("value", "kept"),
+    [
+        ("C:\\rig\\images\\", True),
+        ("localhost", True),
+        (RIG_PROFILE_ID, True),
+        ("4C0BBF74-0D95-41F6-AAD8-D6D58668CF2C", True),
+        ("C:\\Users\\dan\\Documents\\N.I.N.A", False),
+        ("obs-pc.lan", False),
+    ],
+)
+def test_the_rig_fixtures_keep_only_what_the_vm_needs(value: str, kept: bool) -> None:
+    assert (scan({"ImagePath": value}, kept=rig_value_kept) == []) is kept

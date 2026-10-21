@@ -1,6 +1,6 @@
 # Test VM — design
 
-**Status:** accepted; stage 1 done, stage 0 next · 2026-10-20
+**Status:** accepted; stages 1 and 0 done, stage 2 next · 2026-10-20
 
 The simulated rig is a disposable Windows VM running N.I.N.A., the Advanced API
 and PHD2 against simulated equipment. It lets the integration be tested end to end,
@@ -865,3 +865,269 @@ Both were exported from the stage 1 VM for stage 0:
 - **Carried to stage 3:** which plugin folder nightly N.I.N.A. reads, and
   whether the 3.0 plugin starts with authentication and SSL off. Stage 1 ran
   the stable channel only.
+
+---
+
+## 2026-10-20 — Stage 0: profile fixtures, and a simulated night
+
+Stage 0's gate passed. This revision:
+- replaces §4.4's list of what the guard allows, and its list of fixtures;
+- adds a start-up sequence that N.I.N.A. runs at logon, which refines W-11,
+  and a second sequence that simulates a night;
+- replaces W-10 for the camera slot, which takes N.I.N.A.'s own simulator
+  camera so that frames carry real star fields;
+- adds the Connector plugin and ASTAP to W-09;
+- adds requirements on provisioning;
+- records the events and sentinels the simulated night shows.
+
+### The gate
+
+| Condition | Result |
+|---|---|
+| `just ci` is green | Yes, with the guard reading every file in `tests/fixtures/rig/` |
+| Both files read clean by eye | Yes. Neither held a credential, an address or a personal path before redaction |
+| Loaded back into the stage 1 VM, the redacted files connect all eleven devices | Yes. PHD2 started without its first-light wizard and guided on the loaded calibration, without recalibrating |
+
+The profile's site, 51.07861° N, 0.29444° W, 708 m, is the ASCOM telescope
+simulator's. N.I.N.A. copies the mount's site into the profile when it
+connects.
+
+### The fixtures
+
+`tests/fixtures/rig/` holds four files:
+
+| File | What it is | Where provisioning puts it |
+|---|---|---|
+| `nina-simulator.profile` | The N.I.N.A. profile `Simulator`, `Id` `660fe38b-4d3a-458e-b25a-beadb6f9c83c` | `%LOCALAPPDATA%\NINA\Profiles\<Id>.profile` |
+| `phd2-simulator.phdcfg` | `phd2.exe -s`, with the calibration | loaded with `phd2.exe -l` |
+| `test-sequence.json` | The start-up sequence (below) | `C:\rig\sequences\Test Sequence.json` |
+| `simulated-night.json` | The simulated night (below) | `C:\rig\sequences\Simulated Night.json` |
+
+`.gitattributes` marks them `-text`, so they keep the bytes the guest
+wrote. PHD2's export has CRLF line endings.
+
+### What the guard allows
+
+`scripts/check_fixtures.py` reads JSON, N.I.N.A.'s XML and PHD2's
+`key<TAB>type<TAB>value` lines. Pre-commit and CI run it over
+`tests/fixtures/rig/*` as well as the JSON corpus.
+
+A file in `rig/` may hold these values as they are (`rig_value_kept` in
+`tests/redaction.py`):
+- a path under `C:\rig\`;
+- the profile's `Id`;
+- the simulator camera's device id, `4C0BBF74-0D95-41F6-AAD8-D6D58668CF2C`,
+  which is fixed in N.I.N.A.'s source;
+- `localhost`, `nova.astrometry.net` and `http://nova.astrometry.net`,
+  N.I.N.A.'s defaults for its PHD2, planetarium and plate-solving hosts.
+
+The profile stores a plugin's settings, the simulator camera's among them,
+as a serialized dictionary: a run of `KeyValueOf…` elements, each a `Key`
+and a `Value`. The guard reads it back as a dictionary, so its key rules see
+each setting's name (`Type`, `RAError`) and not the literal element `Key`.
+
+The hosts are an addition to §4.4: a `PHD2ServerUrl` of `"REDACTED"` stops
+N.I.N.A. reaching PHD2.
+
+**An empty string is never redacted**, in any fixture. It holds nothing, and
+a blanked credential is how a profile the rig loads carries one.
+
+> *Rationale.* The profiles were made in the rig, so before redaction they
+> held nothing to remove: their keys were empty and their paths were the VM's.
+> The guard is for the next export, which may carry a key someone set to test
+> a feature.
+
+### N.I.N.A. resets a folder that does not exist
+
+When N.I.N.A. loads a profile, it replaces each folder that does not exist
+with its default under the user's profile. It does not report doing so, and
+saves the default the next time it saves the profile. Provisioning creates
+these folders before N.I.N.A. first starts:
+
+- `C:\rig\images\`
+- `C:\rig\sequences\`, with `Targets\` and `Templates\` inside it
+- `C:\rig\FramingAssistantCache\`
+
+### The start-up sequence
+
+At logon, `C:\rig\start-nina.cmd`, in Administrator's Startup folder, runs:
+
+```
+NINA.exe --profileid 660fe38b-4d3a-458e-b25a-beadb6f9c83c --sequencefile "C:\rig\sequences\Test Sequence.json" --runsequence
+```
+
+The sequence:
+1. connects all equipment;
+2. unparks the scope, finds home on the scope and the dome, and opens the
+   dome;
+3. starts guiding, and waits five minutes;
+4. stops guiding, parks the scope and the dome, closes the dome;
+5. disconnects all equipment.
+
+Connecting and disconnecting all equipment are the Connector plugin's
+instructions.
+
+This is how W-11's logon task starts N.I.N.A. The rig's tests build on this
+sequence. How `wait` (§4.5) and `tests/rig/` (§5) relate to it is settled in
+stages 3 and 5.
+
+From a restart, the Advanced API answered in 45 s. N.I.N.A. started 34 s
+after the restart, then OmniSim 17 s later, then PHD2 13 s after that, and
+by then the sequence had connected all eleven devices. It ran to the end
+unattended, and `/event-history` recorded each step: 44 events from the
+devices connecting to `SEQUENCE-FINISHED`.
+
+### W-09 adds the Connector plugin and ASTAP
+
+| Software | Version | Archive | SHA256 |
+|---|---|---|---|
+| Connector plugin | 2.1.1.0 (needs N.I.N.A. 3.2.0.9001) | `https://github.com/isbeorn/nina.plugin.connector/releases/download/2.1.1.0/NINA.Plugins.Connector.2.1.1.0.zip` | `10CC54238C9F0E345C4414969583E54FFE7A85A07488A16F2FB4612EB02D3196` |
+| ASTAP, command line, ARM64 | CLI-2026.09.01 | `https://downloads.sourceforge.net/project/astap-program/windows_installer/astap_command-line_version_win11_aarch64.zip` | `C2E1B21B23B85B9A903A930D7273425829F044873EB682AAAB4FD5D0BDD3EC59` |
+| ASTAP's D05 star database | — | `https://downloads.sourceforge.net/project/astap-program/star_databases/d05_star_database.zip` | `39D59B73CB960FA0956C35162E70B09A8AF10EF20A1E8F5CAE7B77D48BE5CE31` |
+
+- The plugin installs like the others, into
+  `%LOCALAPPDATA%\NINA\Plugins\3.0.0\Connector\`.
+- Both ASTAP archives unzip into `C:\rig\ASTAP\`, and the profile points
+  N.I.N.A. at `C:\rig\ASTAP\astap_cli.exe`. That build is native ARM64 and
+  needs no installer. D05 suits fields of about 0.6° and wider; the simulated
+  camera's is 1°.
+- SourceForge publishes no checksum that resolves. The SHA256s above were
+  computed from the downloads.
+
+### The camera slot: N.I.N.A.'s simulator camera
+
+OmniSim's camera produces synthetic frames that do not follow the mount, so
+star counts and HFR say nothing about pointing. The camera slot instead
+takes **N.I.N.A. Simulator Camera** in its `SKYSURVEY` mode, which replaces
+W-10 for that slot.
+
+- **What it does.** On each exposure it takes the mount's coordinates, adds
+  a configured pointing error, and downloads that patch of sky from ESO's
+  online survey, 2500 × 2500 pixels across a 1° field. It writes a pixel size
+  of 3.8 µm and the matching focal length (783 mm) into the profile.
+  N.I.N.A. then measures HFR and star counts on real stars, and ASTAP solves
+  real fields.
+- **Its settings** live in the profile's plugin storage: `Type` `SKYSURVEY`,
+  `RAError` 300″, `DecError` 120″. The error gives centring one correction
+  to make.
+- **It needs the internet**, as the guest has through QEMU's NAT. It
+  downloads an image when the mount's coordinates change, and reuses it
+  while they do not.
+- **Its device id** is `4C0BBF74-0D95-41F6-AAD8-D6D58668CF2C`. §5's check
+  that a rig is simulated accepts it alongside OmniSim's ProgIDs.
+
+### Settings that keep the simulators apart
+
+The simulators do not see one another. Three settings stop that from
+producing behaviour no real rig shows:
+
+| Interaction | Without the setting | Setting |
+|---|---|---|
+| Centring with a pointing error | The camera renders the mount's *reported* position plus the error. A sync moves the reported position, so the error returns after every sync and centring never converges | **Do not sync** (`TelescopeSettings.NoSync`). N.I.N.A. corrects with an offset, and centring converges |
+| Rotating to a position angle | The survey image never turns, so a solve measures the same angle (4.38°) after every move, and "Slew, center and rotate" fails after ten attempts | The sequence uses **Slew and Center**. The rotator is still driven by its own instructions |
+| PHD2 and the rotator | PHD2 turns its calibration as the rotator moves, but its simulated camera does not turn. After a 56° move, guiding wandered and every dither failed to settle | PHD2's rotator is **None** |
+
+PHD2 guides with camera **Simulator** and mount **On Camera**, without its AO
+simulator. Its simulated guide camera is set to 3.75 µm pixels behind a 135 mm
+guide scope, 5.73″ a pixel, which is a real guide camera on a short guide scope.
+PHD2's own defaults, 24 µm pixels behind 160 mm, give 30.9″ a pixel, so a
+five-pixel dither moved the frame far more than on a real rig. A change of
+either value needs a new calibration.
+
+### The dome
+
+The profile describes a 2.2 m dome around a German equatorial mount at its
+centre: radius 1100 mm, the mount's axes at the dome's centre and equator
+(offsets 0 mm), GEM axis 250 mm, lateral offset 0 mm, azimuth tolerance 2°.
+
+- It finds home before parking, and synchronises during mount slews.
+- It closes on unsafe. It refuses an unsafe shutter move, and an open
+  shutter with no safety device.
+- OmniSim's dome cannot slave itself (`CanSlave` false), so N.I.N.A. turns
+  it. The sequence enables dome synchronisation after opening the shutter.
+
+### The simulated night
+
+`simulated-night.json`, loaded and started through the Advanced API:
+
+1. connects all equipment, opens the flat panel's cover, unparks and homes
+   the scope, homes the dome, opens it and starts following;
+2. slews to M81, centres, and runs an autofocus;
+3. starts Livestack and guiding, then takes four rounds of one 30 s LIGHT
+   frame through each of Red, Green and Blue, dithering every two frames;
+4. stops both, closes the dome, then takes ten 2 s FLAT frames through each
+   filter with the panel's cover closed and its light at 50 of its 100;
+5. parks the scope and the dome, and disconnects.
+
+M81 never sets at the simulated site (51° N), so the sequence runs at any
+hour.
+
+### What a simulated night produces
+
+A run in a fresh N.I.N.A. took 14 minutes and produced:
+
+| Source | Result |
+|---|---|
+| `/image-history` | 42 frames: 12 LIGHT at HFR 3.40, 873 stars; 30 FLAT at `HFR "NaN"`, `Stars -1` |
+| `/event-history` | 127 events: one `MOUNT-CENTER`, `AUTOFOCUS-STARTING` with 5 `AUTOFOCUS-POINT-ADDED` and no finish, `GUIDER-START`, 5 `GUIDER-DITHER`, `GUIDER-STOP`, 42 `IMAGE-SAVE`, 14 `FILTERWHEEL-CHANGED`, 11 `STACK-UPDATED`, the dome's and the flat panel's events, then `SEQUENCE-FINISHED` |
+| `/equipment/focuser/last-af` | `No AF available`, status 500 |
+| `/livestack/status` | `Stopped` |
+| `/flats/status` | `Finished`, `-1` / `-1`: flats taken by a sequence leave it idle, as on the live rig |
+
+`capture_fixtures.py --out tools/windows-rig/.run/captures/stable --state
+sim_night` records all fourteen read-only endpoints after a run. Those
+captures stay outside `tests/fixtures/`; they are the input to the channel
+comparison (§4.6), and never stand in for a live-rig capture.
+
+### Starting a sequence unattended
+
+| Path | With devices disconnected | Notes |
+|---|---|---|
+| `NINA.exe --profileid … --sequencefile … --runsequence` | Runs | Emits no `SEQUENCE-STARTING`. Only at N.I.N.A.'s start |
+| `/sequence/load`, then `/sequence/start` | **Waits on a confirmation dialog** | Answers `"Sequence started"`, `Success: true`, all the same |
+
+- **Before an API start, `tests/rig/` connects every device through the
+  API**, which is what `wait` does (§4.5). N.I.N.A. validates a sequence
+  before running it and asks before running one whose devices are
+  disconnected, even when its first instruction connects them.
+- **A start is confirmed from `SEQUENCE-STARTING` or `/sequence/state`, never
+  from the response** (CLAUDE.md: an action must not confirm from a
+  command's own response).
+- **A sequence file carries its progress.** N.I.N.A. saves each loop's
+  `CompletedIterations` and each exposure's `ExposureCount` into the file. A
+  sequence saved after a run loads with its loops complete and skips them,
+  by either path. The fixtures are saved with progress reset, and
+  `tests/unit/test_rig_sequences.py` checks it.
+
+### What the simulators cannot produce
+
+- **A successful autofocus.** The camera ignores the focuser, so the curve is
+  flat and every autofocus fails. `/equipment/focuser/last-af` answers
+  `No AF available`, and the event history shows `AUTOFOCUS-STARTING` with
+  no `AUTOFOCUS-FINISHED`: the failure case.
+- **Auto-brightness flats.** "Auto Brightness Flat" fails ("light source is
+  too bright"): the frame's histogram never responds to the panel. The
+  sequence sets the brightness and takes fixed-exposure flats.
+- **Different frames.** A dither moves PHD2's lock position on its own
+  simulated mount, not OmniSim's mount, so the camera renders the same field
+  after it. Every LIGHT frame of a run, through every filter, is the same
+  image: the same HFR and star count. Only centring changes the field.
+
+Captures from the live rig cover these, and stay the record of what a real
+night sends (stage 1 findings).
+
+### Events and sentinels the integration must tolerate
+
+The simulated runs show N.I.N.A. behaviour that a real rig shows too:
+
+- **Connector's "connect all" emits `<DEVICE>-DISCONNECTED` before each
+  `<DEVICE>-CONNECTED`**, a second or two apart.
+- **`GUIDER-STOP` can arrive twice** for one stop.
+- **Disconnecting the safety monitor emits `SAFETY-CHANGED` with
+  `IsSafe: false`** before `SAFETY-DISCONNECTED`. Anything keyed on that
+  event alone treats every shutdown as unsafe.
+- **A FLAT frame can carry `HFR: "NaN"`** with `Stars: -1`. The live rig's
+  flats carry `HFR 0`. The mapper discards both: it drops HFR, stars and
+  guide RMS from every calibration frame.
+- **Flat panels' ranges differ.** OmniSim's runs 0–100, alongside the
+  operator's panels at 0–256 and 0–4096.

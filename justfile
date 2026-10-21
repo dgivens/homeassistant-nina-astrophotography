@@ -48,7 +48,7 @@ coverage:
 
 # The fixture redaction guard.
 fixtures-check:
-    uv run python scripts/check_fixtures.py tests/fixtures/*.json
+    uv run python scripts/check_fixtures.py tests/fixtures/*.json tests/fixtures/rig/*
 
 # Everything CI checks, run locally.
 ci: lint typecheck test-all coverage fixtures-check
