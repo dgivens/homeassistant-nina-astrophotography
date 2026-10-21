@@ -15,3 +15,6 @@ coverage.json
 
 # tools/upgrade-harness: the throwaway Home Assistant's config, token and snapshots.
 tools/upgrade-harness/.run/
+
+# git worktrees, one per feature branch
+.worktrees/

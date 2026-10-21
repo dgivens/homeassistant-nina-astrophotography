@@ -9,7 +9,7 @@
  * slugify(entity name)`, so a card that templates a configured prefix onto a
  * hardcoded suffix breaks whenever either name is not what it assumed — a
  * renamed device, or ids generated under a different area (see the README's
- * troubleshooting table). `translation_key` survives both.
+ * troubleshooting section). `translation_key` survives both.
  *
  * `frontend.py` serves this with no cache headers and no version query, so a
  * card and this module can skew across an upgrade — as any two cards already
