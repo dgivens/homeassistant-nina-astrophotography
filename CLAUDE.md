@@ -42,7 +42,8 @@ git ref to another against a N.I.N.A. and holds the result to
 `docs/test-vm.md` designs the simulated rig: a disposable
 Windows VM on macOS/Apple silicon running stable or nightly N.I.N.A. against
 simulators. It also defines the `tests/rig/` tier. Host-specific code belongs
-only in its host backend (§4.1 there).
+only in its host backend (§4.1 there). `tools/windows-rig/` builds and runs
+it; its README has the commands, and a build needs `dangerouslyDisableSandbox`.
 
 **A bare `uv run pytest` collects both suites** and loads Home Assistant before
 collection; always name the suite.

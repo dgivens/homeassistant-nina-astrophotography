@@ -251,6 +251,20 @@ def test_a_serialized_dictionary_reads_as_its_entries(tmp_path: Path) -> None:
     assert scan(storage) == ["65ca9fd7-8984-4609-b206-86f3f9e8c19d.ApiKey"]
 
 
+def test_omnisim_settings_read_as_their_pairs(tmp_path: Path) -> None:
+    fixture = tmp_path / "x.xml"
+    fixture.write_text(
+        '﻿<?xml version="1.0" encoding="utf-8"?><ArrayOfSettingsPair>'
+        "<SettingsPair><Key>Elevation</Key><Value>708</Value></SettingsPair>"
+        "<SettingsPair><Key>ApiKey</Key><Value>abc</Value></SettingsPair>"
+        "</ArrayOfSettingsPair>",
+        encoding="utf-8",
+    )
+    settings = read_fixture(fixture)
+    assert settings == {"Elevation": "708", "ApiKey": "abc"}
+    assert scan(settings) == ["ApiKey"]
+
+
 def test_phd2_settings_read_as_nested_dicts(tmp_path: Path) -> None:
     fixture = tmp_path / "x.phdcfg"
     fixture.write_text(

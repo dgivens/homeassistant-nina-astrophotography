@@ -1,0 +1,30 @@
+# What `rig.py install <channel>` puts on top of the base image. Changing a pin
+# here makes the next `up` reinstall that channel.
+#
+# Each plugin unzips into %LOCALAPPDATA%\NINA\Plugins\<plugins>\<name>\.
+
+[stable]
+plugins = "3.0.0"
+
+[stable.nina]
+version = "3.2.0.9001"
+url = "https://f002.backblazeb2.com/file/ninasetup/Releases/3.2.0.9001/NINASetupBundle_3.2.0.9001.zip"
+sha256 = "4273B75194B20E57B967BFE1A48A5391F144E56083FC987D4F4779D11D6B2182"
+
+[[stable.plugin]]
+name = "Advanced API"
+version = "2.2.15.2"
+url = "https://github.com/christian-photo/ninaAPI/releases/download/2.2.15.2/ninaAPI.zip"
+sha256 = "0E05F382348AD7B7489C909299528CFB38CE161CB248ECCB904384F759CED379"
+
+[[stable.plugin]]
+name = "Livestack"
+version = "1.1.5.1"
+url = "https://github.com/isbeorn/nina.plugin.livestack/releases/download/1.1.5.1/nina.plugin.livestack.1.1.5.1.zip"
+sha256 = "4D15D997B371CB8CBE412B8CB12B9BFAB8B50E265C676153D96CD4BD19C42572"
+
+[[stable.plugin]]
+name = "Connector"
+version = "2.1.1.0"
+url = "https://github.com/isbeorn/nina.plugin.connector/releases/download/2.1.1.0/NINA.Plugins.Connector.2.1.1.0.zip"
+sha256 = "10CC54238C9F0E345C4414969583E54FFE7A85A07488A16F2FB4612EB02D3196"

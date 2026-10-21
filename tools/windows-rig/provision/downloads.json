@@ -1,0 +1,31 @@
+{
+  "windows-update": {
+    "arch": "ARM64",
+    "url": "https://catalog.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/3750a920-b998-4242-8fed-32423df59284/public/windows11.0-kb5129195-arm64_e6b0a7f8c8cacdf87e8da1a01fe073934a0002b4.msu",
+    "sha256": "A48F1300108ED2F264D23576781F01607B8B5206128BAB4552B1CEFF2350F302"
+  },
+  "ascom": {
+    "url": "https://github.com/ASCOMInitiative/ASCOMPlatform/releases/download/v7.1.3/ASCOMPlatform713.4851.exe",
+    "sha256": "307B8E32699BC75F12BCAA52F79EA2EDCD245EE40066F0271AE47ACE8411FEA0"
+  },
+  "phd2": {
+    "url": "https://openphdguiding.org/phd2-2.6.14-installer.exe",
+    "sha256": "D7A21F67DE32B901C6D173DA9A27D765A0D98874798F898DF6CA51CD5453B5FF"
+  },
+  "astap": [
+    {
+      "arch": "ARM64",
+      "url": "https://downloads.sourceforge.net/project/astap-program/windows_installer/astap_command-line_version_win11_aarch64.zip",
+      "sha256": "C2E1B21B23B85B9A903A930D7273425829F044873EB682AAAB4FD5D0BDD3EC59"
+    },
+    {
+      "arch": "AMD64",
+      "url": "https://downloads.sourceforge.net/project/astap-program/windows_installer/astap_command-line_version_win64.zip",
+      "sha256": "E9B94A44BD0F7B60E6E1BEEB75951D955815445B965D04C4A61FC6F4C398A3CA"
+    }
+  ],
+  "astap-d05": {
+    "url": "https://downloads.sourceforge.net/project/astap-program/star_databases/d05_star_database.zip",
+    "sha256": "39D59B73CB960FA0956C35162E70B09A8AF10EF20A1E8F5CAE7B77D48BE5CE31"
+  }
+}
