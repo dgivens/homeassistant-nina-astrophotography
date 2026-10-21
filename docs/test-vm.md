@@ -1,6 +1,6 @@
 # Test VM — design
 
-**Status:** accepted, not yet implemented · 2026-09-27
+**Status:** accepted; stage 1 done, stage 0 next · 2026-10-20
 
 The simulated rig is a disposable Windows VM running N.I.N.A., the Advanced API
 and PHD2 against simulated equipment. It lets the integration be tested end to end,
@@ -656,3 +656,212 @@ The stages now run in the order 1, 0, 2, 3, 4, 5. Stages 2 to 5 are unchanged.
 [iot-eval]: https://www.microsoft.com/en-us/evalcenter/download-windows-11-iot-enterprise-ltsc-eval
 [q-arm64]: https://learn.microsoft.com/en-us/answers/questions/5996955/need-windows-11-enterprise-version-25h2-arm64-iso
 [q-hash]: https://learn.microsoft.com/en-us/answers/questions/2181328/issue-broken-windows-11-iot-hashes-pdf-link
+
+---
+
+## 2026-10-20 — Stage 1 findings
+
+Stage 1's gate passed. This revision records what stage 2 has to build to
+reproduce it.
+
+It replaces:
+- W-07's account, W-09's PHD2 architecture and W-10's ProgIDs;
+- §3.2's bullets on OmniSim's COM registration and on PHD2's x64 installer;
+- the stage 1 open questions in §7 and in the 2026-10-19 revision, which it
+  answers or carries forward.
+
+It adds findings on the host, on servicing Windows from a remote session, and
+on installing the equipment software, and two terms to the glossary.
+
+### Glossary additions
+
+| Term | Meaning |
+|---|---|
+| console session | The desktop session autologon starts. N.I.N.A., OmniSim and PHD2 run in it |
+| remote session | A logon over SSH or WinRM. It has no desktop, and Windows refuses some servicing from it |
+
+### The gate
+
+| Condition | Result |
+|---|---|
+| All eleven devices connect under emulation | Yes. Each reports its `ASCOM.OmniSim.<Type>` ProgID as `DeviceId`; PHD2 reports `PHD2_Single` |
+| PHD2 guides on its simulator | Yes, at 1.5–2.2″ RMS after a calibration of about five minutes |
+| The host reaches `/v2/api/*` | Yes: `/version`, `/equipment/info`, `/equipment/guider/info` |
+| The host reaches `/v2/socket` | Yes: the upgrade succeeds, and a commanded filter change arrives as `FILTERWHEEL-CHANGED` |
+
+It passed with this setup:
+
+| | |
+|---|---|
+| Host | MacBook Pro, M4 Max, macOS 26.6.2 |
+| Tools | QEMU 11.1.2, Packer 1.16.1 with its QEMU plugin 1.1.7, swtpm from Homebrew |
+| Guest | 8 vCPUs, 16 GB, a 100 GB disk |
+| Windows | IoT Enterprise LTSC 2024 Evaluation, build **26100.9457** |
+| Software | ASCOM Platform 7.1.3.4851, N.I.N.A. 3.2.0.9001, Advanced API 2.2.15.2, Livestack 1.1.5.1, PHD2 2.6.14 |
+
+### The host
+
+mac-vms' template, adapted, built the base in about eight minutes. Stage 2's
+Packer source and `rig.py`'s backend carry these differences from it, besides
+the answer file's (2026-10-19 revision):
+
+- **The TPM device sets `ppi=off`.** QEMU 11.1's `tpm-tis-device` defaults
+  to `ppi=on`, which adds a RAM region smaller than a 16 KiB host page.
+  Hypervisor.framework refuses to map it, and QEMU exits at start-up with
+  `HV_BAD_ARGUMENT` from `accel/hvf/hvf-all.c`. Neither Windows on ARM nor
+  the `virt` machine's firmware uses PPI.
+- **The swtpm socket lives in a short temporary directory.** macOS limits a
+  Unix socket path to 104 bytes, and a path under the repository exceeds it.
+- **No seed, no sysprep** (W-07). On a client edition, `sysprep /generalize
+  /oobe` disables the built-in Administrator, which leaves only the seeded
+  account to log in with. Packer shuts the guest down with a
+  `shutdown_command` instead.
+- **The rig runs with `virtio-gpu-pci`, and the build with `ramfb`.**
+  `ramfb` has no resolution properties and shows the firmware's 800×600.
+  Windows Setup has no driver for a virtio GPU, so the build keeps `ramfb`.
+  Provisioning installs virtio-win's `viogpudo` (`viogpudo\w11\ARM64`) while
+  the guest still has `ramfb`. Display settings then offer any resolution.
+- **The forwards are SSH (22), RDP (3389) and the Advanced API (1888)**,
+  each on the host's loopback interface.
+
+### The guest
+
+**The rig runs as the built-in Administrator**, which replaces W-07's
+unnamed autologon user. The VM is reachable only through forwards on the
+host's loopback interface, so a separate user protects nothing.
+
+Provisioning applies these settings, none of which mac-vms makes:
+
+- Administrator's autologon, made permanent. The answer file's `LogonCount`
+  of 1 is spent during the build.
+- The host's SSH key, in `administrators_authorized_keys`.
+- PowerShell as OpenSSH's default shell
+  (`HKLM:\SOFTWARE\OpenSSH\DefaultShell`).
+- No display sleep, standby or lock screen.
+- The `RemoteSigned` execution policy for the machine.
+- Windows Firewall off on every profile. PHD2 and OmniSim each raise a
+  firewall prompt when they first listen.
+
+### Windows updates
+
+**Stage 2 installs one pinned cumulative update** with `DISM /Add-Package`,
+its URL and SHA256 Packer variables. Build 26100.1742 is 24H2's checkpoint,
+so the current update applies directly to it.
+
+The gate passed after Windows Update installed:
+
+| Update | What it is |
+|---|---|
+| KB5129195 | 2026-09 cumulative security update, build 26100.9457 |
+| KB5050575 | 2025-01 update for 24H2 ARM64 |
+| KB5127690 | .NET Framework security update |
+
+Whether KB5129195 needs KB5050575 is for stage 2 to find out.
+
+> *Rationale.* A pinned update makes every 80-day rebuild the same, and
+> costs one download and one restart. Running Windows Update until nothing is
+> left (the `rgl/windows-update` Packer plugin) needs no pin, but each
+> rebuild would differ, and the build gets much slower.
+
+### Servicing from a remote session
+
+**Downloading a Windows feature from Windows Update fails from a remote
+session.** `DISM /Online /Enable-Feature /FeatureName:NetFx3` over SSH ends
+with `E_ACCESSDENIED` ("Failed to get uup features from WU"). A scheduled
+task that runs as Administrator without a stored password fails the same
+way. The same command succeeds when typed into an elevated console in the
+console session.
+
+mac-vms installs OpenSSH, which comes from Windows Update too, through
+Packer's `elevated_user`, whose scheduled task stores the password. Stage 2
+uses `elevated_user` for every step that enables a feature or runs an
+installer.
+
+### The equipment software
+
+| Software | Installer | Silent install | Notes |
+|---|---|---|---|
+| ASCOM Platform 7.1.3.4851 | InstallAware | `/s` | Needs .NET 3.5 enabled first. Afterwards, check that `OmniSim.Camera` has a class registered (below) |
+| PHD2 2.6.14 | Inno Setup | `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR=C:\rig\PHD2` | x86 |
+| N.I.N.A. 3.2.0.9001 | WiX bundle, `NINASetupBundle.exe` inside the published zip | `/quiet /norestart` | x64, with its own .NET runtime |
+| Advanced API 2.2.15.2, Livestack 1.1.5.1 | zip | unzip into `%LOCALAPPDATA%\NINA\Plugins\3.0.0\<plugin name>\` | Both match the SHA256s in N.I.N.A.'s plugin manifest |
+
+- **ASCOM's installer enables .NET 3.5 itself, through a script that ends in
+  `pause`.** From a remote session DISM fails, and the script then waits for
+  a key that never comes. With .NET 3.5 already on, the installer skips the
+  script.
+- **ASCOM's own registration of the simulators can be missing after an
+  install.** Here `OmniSim.<Type>` named CLSIDs that were not registered, and
+  every device failed in N.I.N.A. with `MissingMethodException: .ctor`.
+  Running the installer's Repair in the console session registered them. The
+  install had been interrupted once and then run from a remote session, and
+  it is not known which of the two left the registration out.
+- **PHD2's Windows download is x86 only.** openphdguiding.org publishes one
+  Windows installer, and it and `phd2.exe` are both x86. Prism runs x86 as
+  it runs x64. This replaces W-09's "PHD2 x64" and the last bullet of §3.2's
+  PHD2 findings.
+
+### OmniSim's ProgIDs
+
+COM reaches OmniSim through three families of ProgID:
+
+| ProgID | In ASCOM's chooser | Served by |
+|---|---|---|
+| `ASCOM.OmniSim.<Type>` | yes, as "ASCOM OmniSim <Type>" | `OmniSim.COMProxy.exe`, an x86 .NET Framework local server |
+| `ASCOM.Simulator.<Type>` | yes, under the Platform 6 simulators' names | the same proxy, when `SetSimulators` selects the OmniSims |
+| `OmniSim.<Type>` | no | `ascom.alpaca.simulators.exe`, x64, OmniSim itself |
+
+The proxy serves each device by opening `OmniSim.<Type>`, so OmniSim starts
+when N.I.N.A. connects its first device.
+
+- **W-10's ProgIDs are `ASCOM.OmniSim.<Type>`.** N.I.N.A. offers only drivers
+  listed in ASCOM's chooser, and `OmniSim.<Type>` is not listed. This replaces
+  §3.2's first bullet, whose ProgIDs are the unlisted family.
+- **OmniSim needs the console session.** Started from a remote session, it
+  exits at once: it cannot create its tray icon. It is started by COM on
+  N.I.N.A.'s behalf, in the console session, so this never arises on the rig.
+- **N.I.N.A. shows each device by OmniSim's name**, such as "Alpaca Camera
+  Simulator". `tests/rig/`'s check that the rig is simulated (§5) keys on
+  `DeviceId`, the ProgID.
+
+### PHD2
+
+- **Its first-light wizard asked for a camera and a mount.** The profile
+  uses camera **Simulator** and mount **On Camera**. PHD2 also connected its
+  AO simulator, which guides with the mount behind it, and the OmniSim
+  rotator.
+- **"Scope pointing information not available"** follows calibration. The On
+  Camera mount cannot report declination or pier side. It needs nothing.
+- **`phd2.exe -s` works from a remote session.** It needs no desktop and
+  exits at once. The export includes the calibration, so a rig that loads it
+  can start guiding without calibrating.
+
+### The profiles
+
+Both were exported from the stage 1 VM for stage 0:
+
+- **`nina-simulator.profile`** is named `Simulator`. Its devices are the ten
+  `ASCOM.OmniSim.<Type>` and PHD2 at `C:\rig\PHD2\phd2.exe`, and it saves
+  images to `C:\rig\images\`. The sequence folders stay at their default,
+  under Administrator's `Documents\N.I.N.A`. Stage 0's redaction treats
+  them like any other `*Folder` path.
+- **`phd2-simulator.phdcfg`** holds one profile, plus the global keys `-s`
+  writes. It records no paths and no credentials.
+
+### Open questions
+
+- **Answered.** LTSC's Setup accepted the build's local Administrator
+  without mac-vms's `BYPASSNRO` registry writes.
+- **Answered.** N.I.N.A., OmniSim and PHD2 run on build 26100.9457 under
+  Prism. Whether any of them needs AVX was not tested, since nothing ran on
+  the ISO's build.
+- **Answered.** The silent-install switches are in the table above.
+- **Answered.** N.I.N.A. loads both plugins 5–8 s after it starts, and shows
+  no first-run dialog. The device connections, not N.I.N.A., set `wait`'s
+  timeout.
+- **Answered.** PHD2 needs nothing outside `-s` and `-l` except the
+  firewall, which is off. Its first-light wizard is what loading the settings
+  before its first start avoids (§3.2). Stage 0's reload confirms it.
+- **Carried to stage 3:** which plugin folder nightly N.I.N.A. reads, and
+  whether the 3.0 plugin starts with authentication and SSL off. Stage 1 ran
+  the stable channel only.
