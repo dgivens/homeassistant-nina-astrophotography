@@ -159,6 +159,48 @@ def test_a_disconnected_device_reports_no_readings(field) -> None:
     assert getattr(focuser, field) is None
 
 
+@pytest.mark.parametrize(
+    ("fixture", "expected"),
+    [
+        pytest.param(
+            "imaging_guiding_equipment_info.json",
+            (0.412946401876425, 0.3694972447638671, 0.18438144411680046),
+            id="guiding",
+        ),
+        # The `LostLock` a `GUIDER-STOP` leaves, holding the stopped run's RMS.
+        pytest.param(
+            "scheduler_waiting_lost_lock_equipment_info.json",
+            (None, None, None),
+            id="lost_lock_after_stop",
+        ),
+        # Simulator captures: calibrating holds the previous run's RMS, and a
+        # guider that has not guided since connecting reports 0.
+        pytest.param(
+            "simulator_guider_calibrating_equipment_info.json",
+            (None, None, None),
+            id="calibrating",
+        ),
+        pytest.param(
+            "simulator_guider_connected_equipment_info.json",
+            (None, None, None),
+            id="just_connected",
+        ),
+    ],
+)
+def test_guide_rms_is_a_reading_only_while_phd2_guides(fixture, expected) -> None:
+    guider = map_equipment_info(load(fixture)).guider
+    assert guider is not None
+    assert (guider.rms_total, guider.rms_ra, guider.rms_dec) == expected
+
+
+@pytest.mark.synthetic
+def test_a_state_phd2_does_not_report_keeps_its_rms() -> None:
+    """MetaGuide's guiding state, on the guiding capture."""
+    wire = load("imaging_guiding_equipment_info.json")["Guider"]
+    guider = map_guider({**wire, "State": "Locked and Guiding"})
+    assert guider.rms_total == 0.412946401876425
+
+
 @pytest.mark.synthetic
 def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
     """No capture has a connected guider, so the dawn guider is re-flagged."""

@@ -411,6 +411,12 @@ STATES: dict[str, State] = {
     "guider_restarting_after_stop": _with_readings(
         _LOST_LOCK_AFTER_STOP, "Guider", State="Looping"
     ),
+    # Captured from the simulator rig (`docs/test-vm.md`): real wire data from
+    # simulated devices, with no frame taken. PHD2 calibrating at a guider
+    # start, N.I.N.A. still reporting the RMS of the run before it; and a
+    # guider just reconnected, which reports an RMS of 0 until it guides.
+    "simulator_guider_calibrating": _captured("simulator_guider_calibrating"),
+    "simulator_guider_connected": _captured("simulator_guider_connected"),
     # 20:49, ten seconds after SEQUENCE-STARTING: every container still CREATED
     # on a sequence that IS running. The tree lags the start, so it cannot be
     # the only running signal either.
