@@ -19,8 +19,13 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN, TrackingMode
 from .coordinator import NinaConfigEntry, NinaData
-from .device import observed, read_field
-from .entity import NinaDescribedEntity, NinaEntityDescription, async_add_observed
+from .device import read_field
+from .entity import (
+    NinaDescribedEntity,
+    NinaEntityDescription,
+    async_add_observed,
+    usable,
+)
 
 # One in-flight command per platform: these move hardware.
 PARALLEL_UPDATES = 1
@@ -122,6 +127,6 @@ async def async_setup_entry(
         lambda data: (
             (d.key, partial(NinaSelect, coordinator, entry, d))
             for d in DESCRIPTIONS
-            if observed(data, d.kind)
+            if usable(data, d)
         ),
     )

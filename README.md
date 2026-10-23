@@ -124,7 +124,7 @@ type: custom:nina-observatory-card
 
 | Card | Shows | Options (all optional) |
 |---|---|---|
-| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, guiding, last frame, and controls. Stop, park and dome close ask for confirmation. | — |
+| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, guiding, last frame, and controls. Stop, park, and opening or closing the dome ask for confirmation; Open Dome is disabled while the safety monitor reads unsafe. | — |
 | `custom:nina-frame-stats-card` | HFR, star count and ADU trends for the session's frames, and a per-filter breakdown | — |
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, and their statistics | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85) |
@@ -286,6 +286,8 @@ others. Cards aren't affected, but your automations are.
 **`Last Image HFR` doesn't change during flats.** That's intended: the
 `last_image_*` sensors show the last light frame.
 
-**Dome problems.** The dome support hasn't been tested on real hardware.
-Please [open an issue](https://github.com/dgivens/homeassistant-nina-astrophotography/issues)
+**Dome problems.** The dome support has been tested against a simulated dome,
+not real hardware. A dome only gets the controls its driver says it supports, so
+a roll-off roof gets the shutter status and the open and close buttons. Please
+[open an issue](https://github.com/dgivens/homeassistant-nina-astrophotography/issues)
 with what you see.

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.core import callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity, EntityDescription
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -16,7 +16,7 @@ from .api.errors import NinaError
 from .api.models import SwitchChannelModel
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channel_name, channel_of, device_identifiers
+from .device import channel_key, channel_name, channel_of, device_identifiers, observed
 
 
 @contextmanager
@@ -41,12 +41,15 @@ def refusals_raised() -> Iterator[None]:
 class NinaEntityDescription(EntityDescription):
     """What every descriptor carries besides how to read it.
 
-    `kind` names the child device; `None` puts it on the hub. `verified` is
-    False only for the dome, which no hardware has validated.
+    `kind` names the child device; `None` puts it on the hub. `supported` gates
+    creation on a capability the driver reports, such as a flat panel's cover.
+    `refusal` names the exception to raise instead of sending the command,
+    `None` when it may be sent.
     """
 
     kind: str | None
-    verified: bool = True
+    supported: Callable[[NinaData], bool] | None = None
+    refusal: Callable[[NinaData], str | None] | None = None
     attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
     unique_id_suffix: str | None = None
     """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
@@ -120,6 +123,23 @@ class NinaDescribedEntity(NinaEntity):
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         build = self.entity_description.attributes
         return None if build is None else build(self.coordinator.data)
+
+    def _raise_if_refused(self) -> None:
+        refusal = self.entity_description.refusal
+        key = None if refusal is None else refusal(self.coordinator.data)
+        if key is not None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key=key,
+                translation_placeholders={"entity_id": self.entity_id},
+            )
+
+
+def usable(data: NinaData, description: NinaEntityDescription) -> bool:
+    """The device has been seen, and reports the capability the entity needs."""
+    return observed(data, description.kind) and (
+        description.supported is None or description.supported(data)
+    )
 
 
 class NinaChannelEntity(NinaEntity):

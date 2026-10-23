@@ -172,8 +172,8 @@ async def test_the_focuser_position_number_exists(
 async def test_the_long_tail_ships_config_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry, key: str
 ) -> None:
-    """The dome's is absent from this table: no capture observes a dome, so
-    §5.2.2 gates `dome_azimuth` out entirely.
+    """The dome's is in `test_dome.py`: the reference rig has none, so §5.2.2
+    gates `dome_azimuth` out here.
     """
     entry = entity_registry.async_get(
         registered(NUMBER_DOMAIN, entity_registry, loaded_entry, key)

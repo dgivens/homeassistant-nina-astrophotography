@@ -11,7 +11,7 @@ seen, and it has to be reconciled against `docs/2.0-renames.md`.
 
 The rig is walked to `imaging_guiding` first — the one state whose every
 endpoint is captured, with the guider up. What no capture can show is still
-missing: the dome's entities, which need hardware nobody has, and the switch
+missing: the dome's entities, which only the simulator rig has, and the switch
 device's `number` and `sensor` channels, which need a driver richer than this
 rig's two-outlet bridge.
 """

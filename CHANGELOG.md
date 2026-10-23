@@ -6,7 +6,37 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Breaking
+
+- **`sensor.<instance>_dome_shutter_status` reads `open`, `closed`,
+  `opening`, `closing` or `error`**, an enum with translated states, rather
+  than N.I.N.A.'s `ShutterOpen`, `ShutterClosed` and so on. An automation
+  comparing against the old values has to use the new ones. A driver with no
+  shutter reads `unknown`.
+
+### Fixed
+
+- **The observatory card shows a dome again** (#93). It probed for the dome on
+  an entity that ships disabled, so a dome owner never saw the Dome chip or its
+  buttons; and it compared the shutter against `Open`, so it never offered
+  Close Dome. It now probes the shutter status, offers Open Dome only with the
+  shutter closed and Close Dome otherwise, shows a shutter error on the chip,
+  and asks before opening as well as closing — warning when the mount is not
+  parked. Open Dome is disabled while the safety monitor reads unsafe.
+
 ### Changed
+
+- **The dome is verified against a simulated dome, and its entities ship
+  enabled**: shutter status, open, close, park, at park, slewing, following and
+  the new `binary_sensor.<instance>_dome_synchronized`. Updating re-enables
+  those rows where 2.0.0 had disabled them, unless you disabled one yourself.
+  At home, home and the azimuth number stay disabled: N.I.N.A. slaves the dome
+  to the mount, and a hand move fights it.
+- **A dome gets only the controls its driver supports.** A roll-off roof with
+  no azimuth, park or home gets the shutter status, open, close and slewing.
+- **Homing the dome or setting its azimuth is refused while it follows the
+  mount.** N.I.N.A. answers either by quietly turning following off, which
+  takes the slit off the scope.
 
 - **Camera USB limit, rotator mechanical position and rotator reverse move
   from the device page's Diagnostic section to Configuration.** Each changes
