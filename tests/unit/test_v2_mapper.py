@@ -159,6 +159,28 @@ def test_a_disconnected_device_reports_no_readings(field) -> None:
     assert getattr(focuser, field) is None
 
 
+@pytest.mark.parametrize(
+    ("fixture", "expected"),
+    [
+        (
+            "imaging_guiding_equipment_info.json",
+            (0.412946401876425, 0.3694972447638671, 0.18438144411680046),
+        ),
+        # The `LostLock` a `GUIDER-STOP` leaves, holding the stopped run's RMS.
+        ("scheduler_waiting_lost_lock_equipment_info.json", (None, None, None)),
+        # Simulator captures: calibrating holds the previous run's RMS, and a
+        # guider that has not guided since connecting reports 0.
+        ("simulator_guider_calibrating_equipment_info.json", (None, None, None)),
+        ("simulator_guider_connected_equipment_info.json", (None, None, None)),
+    ],
+    ids=lambda value: value.split("_equipment")[0] if isinstance(value, str) else "",
+)
+def test_guide_rms_is_a_reading_only_while_guiding(fixture, expected) -> None:
+    guider = map_equipment_info(load(fixture)).guider
+    assert guider is not None
+    assert (guider.rms_total, guider.rms_ra, guider.rms_dec) == expected
+
+
 @pytest.mark.synthetic
 def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
     """No capture has a connected guider, so the dawn guider is re-flagged."""

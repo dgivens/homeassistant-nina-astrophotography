@@ -15,6 +15,16 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Mount side of pier is a primary sensor**, no longer under Diagnostic: it is
   the mount's state an imager reads, beside the time to meridian flip.
 
+### Fixed
+
+- **Guider RMS total, RA and declination read `unknown` unless the guider is
+  `Guiding`.** N.I.N.A. keeps reporting the last run's RMS after guiding
+  stops, through a lost lock and while PHD2 loops or calibrates, and reports 0
+  for a guider that has not guided since it connected — so long-term
+  statistics recorded guiding that never happened. A run's first minutes
+  still average in the previous run's guide steps; N.I.N.A. does not clear
+  them on a start.
+
 ---
 
 ## [2.0.0] - 2026-09-27

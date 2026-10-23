@@ -325,15 +325,24 @@ def map_filter_wheel(wire: dict) -> FilterWheelModel:
 def map_guider(wire: dict) -> GuiderModel:
     """RMSError is reported in both pixels and arcseconds; arcseconds is the
     figure that means the same thing on every rig.
+
+    **It is a reading only while `State` is `Guiding`.** N.I.N.A. computes it
+    over its recent guide steps, which PHD2 sends only while guiding, so it
+    holds the last run's figures through a stop, a lost lock, looping and
+    calibration, and reads 0 on a guider that has not guided since it
+    connected. A start does not clear it: the first minutes of a run still
+    average in steps from the one before.
     """
     readings = _readings(wire)
+    state = _text(readings, "State")
+    rms = readings.get("RMSError") if state == "Guiding" else None
     return GuiderModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        state=_text(readings, "State"),
-        rms_total=_number(readings, "RMSError", "Total", "Arcseconds"),
-        rms_ra=_number(readings, "RMSError", "RA", "Arcseconds"),
-        rms_dec=_number(readings, "RMSError", "Dec", "Arcseconds"),
+        state=state,
+        rms_total=_number(rms, "Total", "Arcseconds"),
+        rms_ra=_number(rms, "RA", "Arcseconds"),
+        rms_dec=_number(rms, "Dec", "Arcseconds"),
         # A plate scale of 0 is never a reading, connected or not.
         pixel_scale=_number(readings, "PixelScale") or None,
     )

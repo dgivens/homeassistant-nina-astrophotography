@@ -28,6 +28,11 @@ SEQUENCE_PROGRESS = "sensor.n_i_n_a_sequence_progress"
 WAIT_ENDS_AT = "sensor.n_i_n_a_wait_ends_at"
 LAST_FRAME_AT = "sensor.n_i_n_a_last_frame_at"
 SITE_LATITUDE = "sensor.n_i_n_a_site_latitude"
+GUIDER_RMS = (
+    "sensor.n_i_n_a_guider_rms_total",
+    "sensor.n_i_n_a_guider_rms_ra",
+    "sensor.n_i_n_a_guider_rms_declination",
+)
 
 
 async def test_the_meridian_sentinel_is_unknown_but_a_real_reading_is_minutes(
@@ -117,6 +122,26 @@ async def test_the_kept_sensors_keep_their_1_4_5_unique_id(
     """
     await advance("imaging_guiding")
     assert registered(SENSOR_DOMAIN, entity_registry, loaded_entry, suffix) is not None
+
+
+@pytest.mark.parametrize(
+    ("state", "guided"),
+    [
+        ("imaging_guiding", True),
+        ("scheduler_waiting_lost_lock", False),
+        ("simulator_guider_calibrating", False),
+        ("simulator_guider_connected", False),
+    ],
+)
+async def test_guide_rms_reads_unknown_unless_the_guider_is_guiding(
+    hass: HomeAssistant, config_entry, rig, set_up_at, state: str, guided: bool
+) -> None:
+    """Outside `Guiding`, N.I.N.A. reports the last run's RMS or 0, and either
+    in long-term statistics is guiding that never happened.
+    """
+    await set_up_at(hass, config_entry, rig, state)
+    readings = [state_of(hass, entity_id).state for entity_id in GUIDER_RMS]
+    assert "unknown" not in readings if guided else readings == ["unknown"] * 3
 
 
 async def test_the_sequence_target_is_the_one_the_scheduler_announced(
