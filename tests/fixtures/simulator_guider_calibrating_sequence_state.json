@@ -1,0 +1,42 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": []
+    },
+    {
+      "Iterations": 0,
+      "Name": "Start_Container",
+      "Triggers": [],
+      "Items": [],
+      "Conditions": [],
+      "Status": "CREATED"
+    },
+    {
+      "Iterations": 0,
+      "Name": "Targets_Container",
+      "Triggers": [],
+      "Items": [],
+      "Conditions": [],
+      "Status": "CREATED"
+    },
+    {
+      "Iterations": 0,
+      "Name": "End_Container",
+      "Triggers": [],
+      "Items": [],
+      "Conditions": [],
+      "Status": "CREATED"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-10-23T15:11:52+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/sequence/state",
+    "params": {}
+  }
+}

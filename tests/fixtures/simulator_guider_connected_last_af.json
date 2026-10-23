@@ -1,0 +1,14 @@
+{
+  "Response": "",
+  "Error": "No AF available",
+  "StatusCode": 500,
+  "Success": false,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-10-23T15:13:45+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/equipment/focuser/last-af",
+    "params": {}
+  }
+}

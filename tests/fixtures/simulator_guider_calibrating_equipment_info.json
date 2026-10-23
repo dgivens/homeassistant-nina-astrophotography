@@ -1,0 +1,467 @@
+{
+  "Response": {
+    "Camera": {
+      "TargetTemp": 0,
+      "AtTargetTemp": false,
+      "CanSetTemperature": false,
+      "HasShutter": false,
+      "Temperature": "NaN",
+      "Gain": -1,
+      "DefaultGain": -1,
+      "ElectronsPerADU": "NaN",
+      "BinX": 1,
+      "BitDepth": 16,
+      "BinY": 1,
+      "CanSetOffset": true,
+      "CanGetGain": true,
+      "OffsetMin": 0,
+      "OffsetMax": 1000,
+      "Offset": -1,
+      "DefaultOffset": -1,
+      "USBLimit": 0,
+      "IsSubSampleEnabled": false,
+      "CameraState": "NoState",
+      "XSize": 640,
+      "YSize": 480,
+      "PixelSize": 3.8,
+      "HasBattery": false,
+      "Battery": -1,
+      "GainMin": 0,
+      "GainMax": 10000,
+      "CanSetGain": true,
+      "Gains": [],
+      "CoolerOn": false,
+      "CoolerPower": "NaN",
+      "HasDewHeater": true,
+      "DewHeaterOn": false,
+      "CanSubSample": true,
+      "SubSampleX": 0,
+      "SubSampleY": 0,
+      "SubSampleWidth": 0,
+      "SubSampleHeight": 0,
+      "TemperatureSetPoint": "NaN",
+      "ReadoutModes": [
+        "Default"
+      ],
+      "ReadoutMode": 0,
+      "ReadoutModeForSnapImages": 0,
+      "ReadoutModeForNormalImages": 0,
+      "IsExposing": false,
+      "ExposureEndTime": "2026-10-23T14:55:53.2745023+00:00",
+      "LastDownloadTime": -1,
+      "SensorType": "Monochrome",
+      "BayerOffsetX": 0,
+      "BayerOffsetY": 0,
+      "BinningModes": [
+        {
+          "Name": "1x1",
+          "X": 1,
+          "Y": 1
+        }
+      ],
+      "ExposureMax": 1.7976931348623157e+308,
+      "ExposureMin": 0,
+      "LiveViewEnabled": false,
+      "CanShowLiveView": true,
+      "SupportedActions": [],
+      "CanSetUSBLimit": true,
+      "USBLimitMin": 0,
+      "USBLimitMax": 100,
+      "Connected": true,
+      "Name": "N.I.N.A. Simulator Camera",
+      "DisplayName": "N.I.N.A. Simulator Camera",
+      "DeviceId": "device-7a51c119"
+    },
+    "Dome": {
+      "IsFollowing": false,
+      "IsSynchronized": false,
+      "FollowingType": "Off",
+      "AzimuthDMS": "180\u00b0 00' 00\"",
+      "AltitudeDMS": "",
+      "ShutterStatus": "ShutterClosed",
+      "DriverCanFollow": false,
+      "CanSetShutter": true,
+      "CanSetPark": true,
+      "CanSetAzimuth": true,
+      "CanSyncAzimuth": true,
+      "CanPark": true,
+      "CanFindHome": true,
+      "AtPark": true,
+      "AtHome": false,
+      "DriverFollowing": false,
+      "ApplicationFollowing": false,
+      "Slewing": false,
+      "Azimuth": 180,
+      "Altitude": "NaN",
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Alpaca Dome Simulator",
+      "DisplayName": "Alpaca Dome Simulator (ASCOM)",
+      "Description": "ASCOM Dome Simulator .NET",
+      "DriverInfo": "ASCOM OmniSim Dome simulation",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-5a80c51e"
+    },
+    "FilterWheel": {
+      "Connected": true,
+      "Name": "Alpaca Filter Wheel Simulator",
+      "DisplayName": "Alpaca Filter Wheel Simulator (ASCOM)",
+      "Description": "A simulator for the ASCOM FilterWheel API usable with Alpaca and COM",
+      "DriverInfo": "ASCOM filter wheel driver simulator",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-f2774851",
+      "SupportedActions": [],
+      "IsMoving": false,
+      "SelectedFilter": {
+        "Name": "Red",
+        "Id": 0
+      },
+      "AvailableFilters": [
+        {
+          "Name": "Red",
+          "Id": 0
+        },
+        {
+          "Name": "Green",
+          "Id": 1
+        },
+        {
+          "Name": "Blue",
+          "Id": 2
+        },
+        {
+          "Name": "Clear",
+          "Id": 3
+        },
+        {
+          "Name": "Ha",
+          "Id": 4
+        },
+        {
+          "Name": "OIII",
+          "Id": 5
+        }
+      ]
+    },
+    "FlatDevice": {
+      "CoverState": "Closed",
+      "LocalizedCoverState": "Closed",
+      "LocalizedLightOnState": "Off",
+      "LightOn": false,
+      "Brightness": 0,
+      "SupportsOpenClose": true,
+      "MinBrightness": 0,
+      "MaxBrightness": 100,
+      "SupportsOnOff": true,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Alpaca Cover Calibrator Simulator",
+      "DisplayName": "Alpaca Cover Calibrator Simulator (ASCOM)",
+      "Description": "Alpaca CoverCalibrator Simulator",
+      "DriverInfo": "REDACTED",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-be99b4aa"
+    },
+    "Focuser": {
+      "Position": 25000,
+      "StepSize": 20,
+      "Temperature": 13.37,
+      "IsMoving": false,
+      "IsSettling": false,
+      "TempComp": false,
+      "TempCompAvailable": true,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Alpaca Focuser Simulator",
+      "DisplayName": "Alpaca Focuser Simulator (ASCOM)",
+      "Description": "A simulator for the ASCOM Focuser API usable with Alpaca and COM",
+      "DriverInfo": "ASCOM focuser simulator",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-7379956d"
+    },
+    "Guider": {
+      "Connected": true,
+      "Name": "PHD2",
+      "DisplayName": "PHD2",
+      "Description": "PHD2 Guider",
+      "DriverInfo": "PHD2 Guider",
+      "DriverVersion": "1.0",
+      "DeviceId": "device-fea1effb",
+      "CanClearCalibration": true,
+      "CanSetShiftRate": true,
+      "CanGetLockPosition": true,
+      "SupportedActions": [],
+      "RMSError": {
+        "RA": {
+          "Pixel": 0.12458357432883765,
+          "Arcseconds": 0.7138115558030217
+        },
+        "Dec": {
+          "Pixel": 0.10610224518163801,
+          "Arcseconds": 0.6079213019478096
+        },
+        "Total": {
+          "Pixel": 0.16364215051487635,
+          "Arcseconds": 0.9376007927470253
+        },
+        "PeakRA": {
+          "Pixel": 0.613,
+          "Arcseconds": 3.5122325400000003
+        },
+        "PeakDec": {
+          "Pixel": 0.452,
+          "Arcseconds": 2.58977016
+        }
+      },
+      "PixelScale": 5.72958,
+      "LastGuideStep": {
+        "RADistanceRaw": -0.128,
+        "DECDistanceRaw": -0.138,
+        "RADuration": 0,
+        "DECDuration": 0
+      },
+      "State": "Calibrating"
+    },
+    "Mount": {
+      "TrackingMode": "Stopped",
+      "SiderealTime": 17.31464581314648,
+      "RightAscension": 17.31463774450724,
+      "Declination": 0,
+      "SiteLatitude": 51.07861,
+      "SiteLongitude": -0.29444,
+      "SiteElevation": 708,
+      "RightAscensionString": "17:18:53",
+      "DeclinationString": "00\u00b0 00' 00\"",
+      "Coordinates": {
+        "RA": 17.31463774450724,
+        "RAString": "17:18:53",
+        "RADegrees": 259.7195661676086,
+        "Dec": 0,
+        "DecString": "00\u00b0 00' 00\"",
+        "Epoch": "JNOW",
+        "DateTime": {
+          "Now": "2026-10-23T15:11:51.3484084+00:00",
+          "UtcNow": "2026-10-23T15:11:51.3485479Z"
+        }
+      },
+      "TimeToMeridianFlip": 24,
+      "SideOfPier": "pierEast",
+      "Altitude": 38.92138999989678,
+      "AltitudeString": "38\u00b0 55' 17\"",
+      "Azimuth": 180.0001555632926,
+      "AzimuthString": "180\u00b0 00' 01\"",
+      "SiderealTimeString": "17:18:53",
+      "HoursToMeridianString": "24:00:00",
+      "AtPark": false,
+      "TrackingRate": {},
+      "TrackingEnabled": false,
+      "TrackingModes": [
+        "Sidereal",
+        "King",
+        "Lunar",
+        "Solar",
+        "Custom",
+        "Stopped"
+      ],
+      "AtHome": false,
+      "CanFindHome": true,
+      "CanPark": true,
+      "CanSetPark": true,
+      "CanSetTrackingEnabled": true,
+      "CanSetDeclinationRate": true,
+      "CanSetRightAscensionRate": true,
+      "EquatorialSystem": "JNOW",
+      "HasUnknownEpoch": false,
+      "TimeToMeridianFlipString": "24:00:00",
+      "Slewing": false,
+      "GuideRateRightAscensionArcsecPerSec": 15.041068619585433,
+      "GuideRateDeclinationArcsecPerSec": 15.041068619585433,
+      "CanMovePrimaryAxis": true,
+      "CanMoveSecondaryAxis": true,
+      "PrimaryAxisRates": [
+        {},
+        {}
+      ],
+      "SecondaryAxisRates": [
+        {},
+        {}
+      ],
+      "SupportedActions": [
+        "AssemblyVersionNumber",
+        "SlewToHA",
+        "AvailableTimeInThisPointingState",
+        "TimeUntilPointingStateCanChange"
+      ],
+      "AlignmentMode": "GermanPolar",
+      "CanPulseGuide": true,
+      "IsPulseGuiding": false,
+      "CanSetPierSide": true,
+      "CanSlew": true,
+      "CanSlewAltAz": true,
+      "UTCDate": "2026-10-23T15:11:51.25",
+      "Connected": true,
+      "Name": "Alpaca Telescope Simulator",
+      "DisplayName": "Alpaca Telescope Simulator (ASCOM)",
+      "DeviceId": "device-f4210c3e"
+    },
+    "Rotator": {
+      "CanReverse": true,
+      "Reverse": false,
+      "MechanicalPosition": 0,
+      "Position": 0,
+      "StepSize": 0.75,
+      "IsMoving": false,
+      "Synced": false,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Alpaca Rotator Simulator",
+      "DisplayName": "Alpaca Rotator Simulator (ASCOM)",
+      "Description": "ASCOM Rotator Driver for RotatorSimulator",
+      "DriverInfo": "ASCOM.Simulator.Rotator",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-ab18ef2e"
+    },
+    "SafetyMonitor": {
+      "IsSafe": true,
+      "SupportedActions": [],
+      "Connected": true,
+      "Name": "Alpaca Safety Monitor Simulator",
+      "DisplayName": "Alpaca Safety Monitor Simulator (ASCOM)",
+      "Description": "ASCOM SafetyMonitor Simulator Driver",
+      "DriverInfo": "SafetyMonitor Simulator Drivers",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-b5ac2aa8"
+    },
+    "Switch": {
+      "WritableSwitches": [
+        {
+          "Maximum": 1,
+          "Minimum": 0,
+          "StepSize": 1,
+          "TargetValue": 0,
+          "Id": 0,
+          "Name": "Asynchronous switch",
+          "Description": "Asynchronous switch",
+          "Value": 0
+        },
+        {
+          "Maximum": 1,
+          "Minimum": 0,
+          "StepSize": 1,
+          "TargetValue": 0,
+          "Id": 1,
+          "Name": "Generic Power switch",
+          "Description": "Generic Power switch",
+          "Value": 0
+        },
+        {
+          "Maximum": 100,
+          "Minimum": 0,
+          "StepSize": 10,
+          "TargetValue": 0,
+          "Id": 2,
+          "Name": "Light box , 0 to 100%",
+          "Description": "Light box , 0 to 100%",
+          "Value": 0
+        },
+        {
+          "Maximum": 255,
+          "Minimum": 0,
+          "StepSize": 1,
+          "TargetValue": 0,
+          "Id": 3,
+          "Name": "Flat panel , 0 to 255",
+          "Description": "Flat panel , 0 to 255",
+          "Value": 0
+        }
+      ],
+      "ReadonlySwitches": [
+        {
+          "Id": 4,
+          "Name": "Scope cover switch.",
+          "Description": "Scope cover switch.",
+          "Value": 0
+        },
+        {
+          "Id": 5,
+          "Name": "Scope parked switch.",
+          "Description": "Scope parked switch.",
+          "Value": 0
+        },
+        {
+          "Id": 6,
+          "Name": "Cloud cover (okta)",
+          "Description": "Cloud cover (okta)",
+          "Value": 0
+        },
+        {
+          "Id": 7,
+          "Name": "Temperature in deg C",
+          "Description": "Temperature in deg C",
+          "Value": 12
+        },
+        {
+          "Id": 8,
+          "Name": "Relative humidity %",
+          "Description": "Relative humidity %",
+          "Value": 50
+        },
+        {
+          "Id": 9,
+          "Name": "Rain monitor, true if raining",
+          "Description": "Rain monitor, true if raining",
+          "Value": 0
+        }
+      ],
+      "SupportedActions": [
+        "OCHTag",
+        "OCHTestPowerReport"
+      ],
+      "Connected": true,
+      "Name": "Alpaca Switch Simulator",
+      "DisplayName": "Alpaca Switch Simulator (ASCOM)",
+      "Description": "ASCOM SwitchV2 Simulator Driver.",
+      "DriverInfo": "REDACTED",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-d974d447"
+    },
+    "WeatherData": {
+      "AveragePeriod": 0,
+      "CloudCover": 1.333333333333333,
+      "DewPoint": -2.6976429138046147,
+      "Humidity": 52.50000000000007,
+      "Pressure": 1026.5000000000014,
+      "RainRate": 0,
+      "SkyBrightness": 90.00000000000014,
+      "SkyQuality": 19.00000000000005,
+      "SkyTemperature": -26.49999999999998,
+      "StarFWHM": 0.9833333333333328,
+      "Temperature": 6.306666666666667,
+      "WindDirection": 195.57333333333318,
+      "WindGust": 3.894999999999995,
+      "WindSpeed": 0.8473333333333328,
+      "SupportedActions": [
+        "OCHTag",
+        "OCHTestWeatherReport"
+      ],
+      "Connected": true,
+      "Name": "Alpaca Observing Conditions Simulator",
+      "DisplayName": "Alpaca Observing Conditions Simulator (ASCOM)",
+      "Description": "Alpaca Observing Conditions Simulator",
+      "DriverInfo": "REDACTED",
+      "DriverVersion": "0.5",
+      "DeviceId": "device-63cc9a32"
+    }
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-10-23T15:11:52+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/equipment/info",
+    "params": {}
+  }
+}
