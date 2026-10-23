@@ -125,23 +125,30 @@ async def test_the_kept_sensors_keep_their_1_4_5_unique_id(
 
 
 @pytest.mark.parametrize(
-    ("state", "guided"),
+    "state",
     [
-        ("imaging_guiding", True),
-        ("scheduler_waiting_lost_lock", False),
-        ("simulator_guider_calibrating", False),
-        ("simulator_guider_connected", False),
+        "scheduler_waiting_lost_lock",
+        "simulator_guider_calibrating",
+        "simulator_guider_connected",
     ],
 )
 async def test_guide_rms_reads_unknown_unless_the_guider_is_guiding(
-    hass: HomeAssistant, config_entry, rig, set_up_at, state: str, guided: bool
+    hass: HomeAssistant, config_entry, rig, set_up_at, state: str
 ) -> None:
     """Outside `Guiding`, N.I.N.A. reports the last run's RMS or 0, and either
     in long-term statistics is guiding that never happened.
     """
     await set_up_at(hass, config_entry, rig, state)
     readings = [state_of(hass, entity_id).state for entity_id in GUIDER_RMS]
-    assert "unknown" not in readings if guided else readings == ["unknown"] * 3
+    assert readings == ["unknown"] * 3
+
+
+async def test_guide_rms_reads_the_reported_figures_while_guiding(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    readings = [float(state_of(hass, entity_id).state) for entity_id in GUIDER_RMS]
+    assert readings == pytest.approx([0.413, 0.369, 0.184], abs=0.001)
 
 
 async def test_the_sequence_target_is_the_one_the_scheduler_announced(

@@ -17,13 +17,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
-- **Guider RMS total, RA and declination read `unknown` unless the guider is
-  `Guiding`.** N.I.N.A. keeps reporting the last run's RMS after guiding
-  stops, through a lost lock and while PHD2 loops or calibrates, and reports 0
-  for a guider that has not guided since it connected — so long-term
-  statistics recorded guiding that never happened. A run's first minutes
-  still average in the previous run's guide steps; N.I.N.A. does not clear
-  them on a start.
+- **Guider RMS total, RA and declination read `unknown` while PHD2 is not
+  guiding.** N.I.N.A. keeps reporting the last run's RMS after guiding stops,
+  through a lost lock and while PHD2 loops or calibrates, and reports 0 for a
+  guider that has not guided since it connected — so long-term statistics
+  recorded guiding that never happened. N.I.N.A. does not clear the figure on a
+  start, so a run's first 100 guide steps (its guide graph's history size)
+  still average in the run before, a meridian flip's included. The guiding
+  alert blueprint's sustained window now restarts on a lost star.
 
 ---
 

@@ -64,6 +64,10 @@ _MERIDIAN_IDLE_SENTINEL = 24.0
 _IDLE_ITERATIONS_SENTINEL = -1
 _NO_STARS_SENTINEL = -1
 _CALIBRATION_TYPES = frozenset({"FLAT", "DARK", "BIAS", "DARKFLAT"})
+# Every PHD2 app state but `Guiding`.
+_PHD2_NOT_GUIDING = frozenset(
+    {"Stopped", "Selected", "Calibrating", "LostLock", "Paused", "Looping"}
+)
 # Far above any plausible ASCOM switch id, so a synthesized read-only index
 # can never collide with a real one from either list.
 _READONLY_INDEX_BASE = 10_000
@@ -326,16 +330,18 @@ def map_guider(wire: dict) -> GuiderModel:
     """RMSError is reported in both pixels and arcseconds; arcseconds is the
     figure that means the same thing on every rig.
 
-    **It is a reading only while `State` is `Guiding`.** N.I.N.A. computes it
-    over its recent guide steps, which PHD2 sends only while guiding, so it
-    holds the last run's figures through a stop, a lost lock, looping and
-    calibration, and reads 0 on a guider that has not guided since it
-    connected. A start does not clear it: the first minutes of a run still
-    average in steps from the one before.
+    **In PHD2's other states it is the last run's figure, not a reading.**
+    N.I.N.A. computes it over its last `HistorySize` guide steps (100 by
+    default), which PHD2 sends only while guiding, so it is held through a stop,
+    a lost lock, looping and calibration, and reads 0 on a guider that has not
+    guided since it connected. A start does not clear it: a run's first
+    `HistorySize` steps still average in the run before, a meridian flip's
+    included. Other drivers name their states differently — MetaGuide guides as
+    `Locked and Guiding` — so their RMS passes through.
     """
     readings = _readings(wire)
     state = _text(readings, "State")
-    rms = readings.get("RMSError") if state == "Guiding" else None
+    rms = None if state in _PHD2_NOT_GUIDING else readings.get("RMSError")
     return GuiderModel(
         connected=_connected(wire),
         meta=_meta(wire),

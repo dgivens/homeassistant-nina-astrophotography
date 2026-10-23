@@ -4,12 +4,10 @@ blueprint:
     Notifies when total guiding RMS stays above a threshold while the guider is
     actually guiding. Catches cloud, wind and seeing degradation mid-session.
 
-    Guiding is a condition rather than a trigger source, and it keys on the
-    guider's own status: RMS is reported through calibration, looping and a
-    lost lock too, where a spike means nothing. A paused guider is excluded by
-    the same gate — PHD2's pause suspends guide output while exposures keep
-    looping, and the condition keys on `Guiding`, so no RMS is reported while
-    paused.
+    The RMS sensor reads unknown whenever PHD2 is not guiding — looping,
+    calibrating, paused, or after a lost lock — so a lost star restarts the
+    sustained window: cloud that keeps losing the star can hold the alert off.
+    Guiding is also a condition, keyed on the guider's own status.
   domain: automation
   author: dgivens
   source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/guiding_alert.yaml
