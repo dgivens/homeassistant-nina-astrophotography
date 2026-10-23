@@ -1,6 +1,6 @@
 # Test VM — design
 
-**Status:** accepted; stages 1 and 0 done, stage 2 next · 2026-10-20
+**Status:** accepted; stages 1, 0 and 2 done, stage 3 next · 2026-10-21
 
 The simulated rig is a disposable Windows VM running N.I.N.A., the Advanced API
 and PHD2 against simulated equipment. It lets the integration be tested end to end,
@@ -1131,3 +1131,201 @@ The simulated runs show N.I.N.A. behaviour that a real rig shows too:
   guide RMS from every calibration frame.
 - **Flat panels' ranges differ.** OmniSim's runs 0–100, alongside the
   operator's panels at 0–256 and 0–4096.
+
+---
+
+## 2026-10-21 — Stage 2: provisioning and the Packer template
+
+Stage 2's gate passed. This revision:
+- records the layout stage 2 built, which replaces §4.2's;
+- replaces the stage 0 revision's start-up sequence: the logon starts
+  N.I.N.A. on the simulator profile and runs no sequence;
+- moves the cumulative update's pin from Packer variables (stage 1
+  revision) into `provision/downloads.json`;
+- adds a fifth fixture, OmniSim's telescope settings;
+- brings `rig.py`'s stable path into stage 2, which §6 placed in stage 3;
+- replaces the stage 1 revision's autologon of one logon during the build;
+- answers what the pinned update brings with it.
+
+### The gate
+
+| Condition | Result |
+|---|---|
+| `rig-build`, from the ISO, with no manual step | Yes, in 33 minutes |
+| `rig-install stable`, with no manual step | Yes. `rig-up` ran it, the layer being missing, and was up 69 s after it started |
+| `rig-up stable` reaches a green `wait` | Yes: `wait` had the Advanced API after 23 s and all eleven devices connected after 154 s. After `down`, a second `up` took 2 s, installed nothing, and went green again, on a build that differed only in leaving out the discard settings below |
+
+It passed on stage 1's host and tools, with the API on 1889 because the
+stage 1 VM held 1888. The base image is 16.3 GB, at build 26100.9457, with
+PHD2 open on its simulator profile and no dialog on the desktop.
+
+### What stage 2 builds
+
+The gate runs `rig-install`, `rig-up` and `wait`, so stage 2 built
+`rig.py`'s stable path as well as the image: `build`, `install stable`,
+`up stable`, `wait` and `down`, the expiry check (W-14), and channel layers
+that are reused while their base, their pins and `install-nina.ps1` are
+unchanged. That last one is stage 3's second gate condition, met on stable.
+
+- **A channel layer is kept only after a clean shutdown.** If the guest has
+  to be killed, its disk may lack writes, and `install` fails instead.
+- **An installer that asks for a restart gets one** before the layer is
+  sealed, so its pending work does not run again in every session.
+- **`up` warns when `packer/`, `provision/` or `tests/fixtures/rig/` changed**
+  after the base image was built: `built.json` records a hash of them.
+- **A record outlives its processes.** `rig.py` writes what it starts as
+  soon as it starts it, and signals a recorded process only when its command
+  line names the layer or TPM state it was started on. Stage 3 keeps the nightly
+channel and `nightly-urls`; `rig-test` waits for `tests/rig/` in stage 5.
+
+```
+tools/windows-rig/
+  packer/rig.pkr.hcl         the QEMU source and the build
+  packer/variables.pkr.hcl   packer/autounattend.xml.pkrtpl
+  provision/provision.ps1    runs the numbered steps in order (W-08)
+  provision/NN-*.ps1         common.ps1, which every step dot-sources
+  provision/downloads.json   URL and SHA256 of everything provisioning downloads
+  provision/windows-update.ps1  the pinned cumulative update
+  install-nina.ps1           installs a channel file that rig.py writes from channels.toml
+  channels.toml  scripts/qemu-with-tpm.sh  rig.py  README.md  NOTICE
+  .run/                      git-ignored: base/, channels/, session/, downloads/, ssh/
+```
+
+| Step | Does |
+|---|---|
+| `windows-update.ps1` | Installs KB5129195. Packer restarts the guest after it |
+| `10-windows` | No sleep, lock screen or screen saver; no automatic updates; telemetry off; RemoteSigned; RDP; firewall off |
+| `20-openssh` | OpenSSH Server, PowerShell as its shell, the host's key for administrators |
+| `30-ascom` | .NET 3.5, ASCOM Platform, OmniSim's COM registration, OmniSim's telescope settings |
+| `40-phd2` | PHD2 under `C:\rig\PHD2\`, then `phd2.exe -l` with the fixture |
+| `50-astap` | ASTAP's command-line solver and D05 under `C:\rig\ASTAP\` |
+| `60-nina-profile` | The folders N.I.N.A. would otherwise reset, the profile, the two sequences |
+| `70-logon` | Permanent autologon, and `start-nina.cmd` in the Startup folder |
+
+`rig.py` forwards SSH, RDP and the Advanced API from the host's loopback
+interface: 2022, 3390 and 1888 by default, each changeable on `up`. The key
+SSH authorises is generated into `.run/ssh/` on the first build.
+
+### Pins, and a mirror of them
+
+`provision/downloads.json` pins every download provisioning makes. An entry
+with an `arch` applies to that guest architecture only.
+
+| Entry | File | SHA256 |
+|---|---|---|
+| `windows-update` (ARM64) | `windows11.0-kb5129195-arm64_e6b0a7f8c8cacdf87e8da1a01fe073934a0002b4.msu`, 4.4 GB | `A48F1300108ED2F264D23576781F01607B8B5206128BAB4552B1CEFF2350F302` |
+| `ascom` | `ASCOMPlatform713.4851.exe` | `307B8E32699BC75F12BCAA52F79EA2EDCD245EE40066F0271AE47ACE8411FEA0` |
+| `phd2` | `phd2-2.6.14-installer.exe` | `D7A21F67DE32B901C6D173DA9A27D765A0D98874798F898DF6CA51CD5453B5FF` |
+| `astap` (ARM64), `astap-d05` | as in the stage 0 revision | |
+| `astap` (AMD64) | `astap_command-line_version_win64.zip`, for an x64 guest | `E9B94A44BD0F7B60E6E1BEEB75951D955815445B965D04C4A61FC6F4C398A3CA` |
+
+- **The update's URL and SHA256 come from the Microsoft Update Catalog**,
+  whose download dialog lists them for 24H2 ARM64 along with KB5043080, the
+  24H2 checkpoint. The ISO's build, 26100.1742, is that checkpoint, so
+  KB5129195 is installed alone. **Its package brings KB5050575 and
+  KB5042098 with it**: the stage 1 revision's question is moot. The .NET
+  Framework update KB5127690 is not on the rig, which runs without it.
+- **`rig.py build` mirrors every entry into `.run/downloads/`** and checks
+  each SHA256. Packer serves that folder over HTTP on the host's loopback
+  interface. Provisioning fetches each file from the mirror when `RIG_MIRROR`
+  is set, from its own URL otherwise, and checks its SHA256 either way. A
+  rebuild downloads nothing.
+- **The guest reaches the mirror at `10.0.2.2`**, QEMU's user-mode gateway
+  to the host's loopback interface. Packer's `PackerHTTPAddr` names the bind
+  address, `127.0.0.1`, which in the guest is the guest.
+- **N.I.N.A. and its plugins are pinned in `channels.toml`**: N.I.N.A.
+  3.2.0.9001 and the Advanced API, Livestack and Connector at the versions
+  and SHA256s of the stage 1 and stage 0 revisions.
+
+### The logon starts N.I.N.A. without a sequence
+
+This replaces the stage 0 revision's start-up sequence. At logon,
+`start-nina.cmd` runs
+
+```
+NINA.exe --profileid 660fe38b-4d3a-458e-b25a-beadb6f9c83c
+```
+
+and `wait` connects the equipment through the API (§4.5). Test Sequence
+stays a fixture, for a test to load and run.
+
+> *Rationale.* The start-up sequence disconnects every device at its end,
+> minutes after `wait` has connected them, and it made every `up` about
+> seven minutes long.
+
+**`wait` sends each connect again every ten seconds until the device's info
+reads connected.** A connect sent while N.I.N.A. is still listing drivers,
+in its first minute, answers `Invalid Id` and does nothing.
+
+### OmniSim registers only from the desktop session
+
+OmniSim creates its tray icon before it reads its arguments, `/regserver`
+included. Outside a desktop session that fails (`InvalidOperationException:
+TryCreate failed`, in `H.NotifyIcon.Core.TrayIcon.Create`), and OmniSim
+exits. ASCOM's installer runs OmniSim to register both of its ProgID
+families, so an install from a remote session or from Packer's scheduled
+task leaves all twenty classes unregistered. This is what the stage 1
+revision found after its install from SSH.
+
+- **`30-ascom` checks both families for each of the ten device types**, and
+  when any class is missing runs `ascom.alpaca.simulators.exe /regserver` in
+  the console session, through a scheduled task whose principal logs on
+  interactively. It waits until every class is registered.
+- **The build keeps Administrator logged on at the console.** The answer
+  file's autologon has a `LogonCount` of 999, so every restart of the build
+  logs on; `70-logon` makes it permanent. This replaces the stage 1
+  revision's single logon, spent during the build.
+
+### OmniSim's telescope settings are a fixture
+
+OmniSim's telescope writes 21 of its settings on its first start, none of
+them its capabilities, and then reports no site (`CanLatLongElev` false).
+N.I.N.A. connecting the mount sees a site of −1°, −1°, 0 m against the
+profile's, opens *Synchronize site settings*, and waits for an answer.
+
+`tests/fixtures/rig/omnisim-telescope.xml` is the stage 1 VM's telescope
+settings: all of them, with the site the profile records (51.07861° N,
+0.29444° W, 708 m). Its `UniqueID`, a GUID OmniSim generates, is removed;
+OmniSim makes another. `30-ascom` copies it to
+`%USERPROFILE%\.ascom\Alpaca\ASCOM-Alpaca-Simulator\Telescope\v1\Instance-0.xml`.
+
+The guard reads OmniSim's settings, a run of `SettingsPair` entries, as the
+dictionary they are, like N.I.N.A.'s `KeyValueOf…` runs.
+
+### What a build has to get right
+
+- **Setup's install page focuses Cancel.** The firmware boots the ISO only
+  on a key press, so Packer presses Enter as the VM starts. Enter pressed
+  after Setup's window opens cancels the install, and the guest restarts
+  into an empty EFI partition and the UEFI shell. Packer presses Enter six
+  times in the first six seconds.
+- **virtio-win's drivers are hard links** into the ISO's other folders, and
+  extract read-only. `rig.py` extracts the whole ISO and makes it writable.
+- **`Set-ExecutionPolicy -Scope LocalMachine` throws** under Packer's
+  process-scope Bypass, though it has written the setting. `10-windows`
+  writes the registry value itself.
+- **`New-Item -Force` on a registry key that exists empties it.** Two
+  policies written to one key that way leave only the second.
+- **Packer's QEMU port forwards bind every interface**, and the build's
+  WinRM takes Basic authentication with a published password. The QEMU
+  wrapper rewrites them to bind the loopback interface.
+- **Windows' discards keep the image small.** With `disk_discard` and
+  `disk_detect_zeroes` set to `unmap`, what Windows deletes is left out when
+  Packer compacts the image: 16.3 GB with them, 27 GB without. An explicit
+  `Optimize-Volume -ReTrim` fails with code 40004 and frees nothing, so the
+  build does not run one.
+- **`rig.py` downloads with curl.** Python's `urllib` tries a host's
+  addresses one at a time with no timeout, and hung on an IPv6 route that
+  connected nowhere.
+
+### How long it takes
+
+| Stage | Time |
+|---|---|
+| Windows Setup, to WinRM | 4–10 min |
+| KB5129195, from the mirror, and its restart | about 11 min |
+| `provision.ps1` | about 9 min, of which OpenSSH 3.5 and ASCOM 5 |
+| The whole build, with compaction | 30–33 min |
+| `up stable`, installing the channel | 53–69 s |
+| `up stable` on an installed channel | 2 s |
+| `wait`, from the guest's start | 154–158 s |

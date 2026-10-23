@@ -300,12 +300,13 @@ def rig_value_kept(value: Any) -> bool:
 def read_fixture(path: Path) -> Any:
     """A fixture decoded into the shape `scan` takes, by its file suffix.
 
-    `.json` is a captured envelope; `.profile` is a N.I.N.A. profile (XML);
-    `.phdcfg` is PHD2's `phd2.exe -s` export, one `key<TAB>type<TAB>value`
-    line per setting under a `PHD Config` header.
+    `.json` is a captured envelope; `.profile` is a N.I.N.A. profile and
+    `.xml` an OmniSim device's settings, both XML; `.phdcfg` is PHD2's
+    `phd2.exe -s` export, one `key<TAB>type<TAB>value` line per setting under
+    a `PHD Config` header. OmniSim writes a byte-order mark.
     """
-    text = path.read_text(encoding="utf-8")
-    if path.suffix == ".profile":
+    text = path.read_text(encoding="utf-8-sig")
+    if path.suffix in {".profile", ".xml"}:
         # A profile committed to this repository, not untrusted input.
         return _xml_element(ET.fromstring(text))  # noqa: S314
     if path.suffix == ".phdcfg":
@@ -319,8 +320,9 @@ def _xml_element(element: ET.Element) -> Any:
     The serializer writes booleans as `true`/`false` text, read back as bools
     so they pass the key rules as JSON's do. Its `i:type` attributes annotate
     a value's type and are not data. A dictionary is written as a run of
-    `KeyValueOf…` entries, each a `Key` and a `Value`; it reads back as the
-    dict it was, so the key rules see the setting's name, not "Key".
+    entries, each a `Key` and a `Value` (`KeyValueOf…` from N.I.N.A.,
+    `SettingsPair` from OmniSim); it reads back as the dict it was, so the key
+    rules see the setting's name, not "Key".
     """
     node: dict[str, Any] = {
         f"@{_local_name(name)}": _xml_text(value)
@@ -328,9 +330,7 @@ def _xml_element(element: ET.Element) -> Any:
         if _local_name(name) != "type"
     }
     children = list(element)
-    if children and all(
-        _local_name(child.tag).startswith("KeyValueOf") for child in children
-    ):
+    if children and all(_is_entry(child) for child in children):
         entries = (
             {_local_name(part.tag): part for part in child} for child in children
         )
@@ -352,6 +352,11 @@ def _xml_element(element: ET.Element) -> Any:
         else:
             node[name] = [node[name], value]
     return node
+
+
+def _is_entry(element: ET.Element) -> bool:
+    name = _local_name(element.tag)
+    return name.startswith("KeyValueOf") or name == "SettingsPair"
 
 
 def _local_name(tag: str) -> str:

@@ -53,6 +53,26 @@ fixtures-check:
 # Everything CI checks, run locally.
 ci: lint typecheck test-all coverage fixtures-check
 
+# The test VM (docs/test-vm.md, tools/windows-rig/README.md). The build reads
+# RIG_WINDOWS_ISO and RIG_VIRTIO_ISO unless given --iso and --virtio.
+rig := "uv run python tools/windows-rig/rig.py"
+
+rig-build *args:
+    {{ rig }} build {{ args }}
+
+rig-install channel="stable":
+    {{ rig }} install {{ channel }}
+
+# Starts a session, installing the channel first if its layer is missing or stale.
+rig-up channel="stable" *args:
+    {{ rig }} up {{ channel }} {{ args }}
+
+rig-wait:
+    {{ rig }} wait
+
+rig-down:
+    {{ rig }} down
+
 # Remove caches and coverage output.
 clean:
     find . -type d -name __pycache__ -not -path './.venv/*' -not -path './.worktrees/*' -exec rm -rf {} +

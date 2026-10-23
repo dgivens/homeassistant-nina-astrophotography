@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Rendered by rig.pkr.hcl with templatefile(): ${arch} is the guest's
+  processorArchitecture, ${image_index} the install.wim index, and the password
+  the build Administrator's. No product key: the Evaluation needs none.
+
+  Packer's CD carries this file and the virtio drivers at \drivers\<driver>\.
+  The CD's drive letter differs between WinPE and the installed system, so
+  both passes try several.
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+
+  <settings pass="windowsPE">
+    <!-- WinPE has no driver for QEMU's virtio disk or NIC. -->
+    <component name="Microsoft-Windows-PnpCustomizationsWinPE" processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <DriverPaths>
+%{ for letter in ["D", "E", "F", "G"] ~}
+%{ for driver in ["viostor", "vioscsi", "NetKVM"] ~}
+        <PathAndCredentials wcm:action="add" wcm:keyValue="${driver}-${letter}">
+          <Path>${letter}:\drivers\${driver}</Path>
+        </PathAndCredentials>
+%{ endfor ~}
+%{ endfor ~}
+      </DriverPaths>
+    </component>
+
+    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>en-US</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>en-US</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>en-US</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Setup" processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <DiskConfiguration>
+        <Disk wcm:action="add">
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+          <CreatePartitions>
+            <CreatePartition wcm:action="add">
+              <Order>1</Order>
+              <Type>EFI</Type>
+              <Size>300</Size>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>2</Order>
+              <Type>MSR</Type>
+              <Size>16</Size>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>3</Order>
+              <Type>Primary</Type>
+              <Extend>true</Extend>
+            </CreatePartition>
+          </CreatePartitions>
+          <ModifyPartitions>
+            <ModifyPartition wcm:action="add">
+              <Order>1</Order>
+              <PartitionID>1</PartitionID>
+              <Format>FAT32</Format>
+              <Label>System</Label>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>2</Order>
+              <PartitionID>2</PartitionID>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>3</Order>
+              <PartitionID>3</PartitionID>
+              <Format>NTFS</Format>
+              <Label>Windows</Label>
+              <Letter>C</Letter>
+            </ModifyPartition>
+          </ModifyPartitions>
+        </Disk>
+      </DiskConfiguration>
+
+      <ImageInstall>
+        <OSImage>
+          <InstallTo>
+            <DiskID>0</DiskID>
+            <PartitionID>3</PartitionID>
+          </InstallTo>
+          <InstallFrom>
+            <MetaData wcm:action="add">
+              <Key>/IMAGE/INDEX</Key>
+              <Value>${image_index}</Value>
+            </MetaData>
+          </InstallFrom>
+        </OSImage>
+      </ImageInstall>
+
+      <UserData>
+        <AcceptEula>true</AcceptEula>
+        <FullName>rig</FullName>
+        <Organization>rig</Organization>
+      </UserData>
+
+      <!-- `-cpu host` shows Setup an Apple CPU, which is not on Windows 11's
+           list. The other checks pass, and are bypassed so that a stricter
+           Setup cannot halt the build on them. -->
+      <RunSynchronous>
+%{ for i, check in ["TPM", "SecureBoot", "RAM", "CPU", "Storage"] ~}
+        <RunSynchronousCommand wcm:action="add">
+          <Order>${i + 1}</Order>
+          <Path>reg add HKLM\System\Setup\LabConfig /v Bypass${check}Check /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+%{ endfor ~}
+      </RunSynchronous>
+    </component>
+  </settings>
+
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <!-- At most 15 characters, or the specialize pass fails. -->
+      <ComputerName>nina-rig</ComputerName>
+      <TimeZone>UTC</TimeZone>
+    </component>
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>en-US</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>en-US</UserLocale>
+    </component>
+  </settings>
+
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="${arch}"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <NetworkLocation>Work</NetworkLocation>
+        <ProtectYourPC>3</ProtectYourPC>
+        <SkipUserOOBE>true</SkipUserOOBE>
+        <SkipMachineOOBE>true</SkipMachineOOBE>
+      </OOBE>
+
+      <UserAccounts>
+        <AdministratorPassword>
+          <Value>${password}</Value>
+          <PlainText>true</PlainText>
+        </AdministratorPassword>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <Name>Administrator</Name>
+            <Group>Administrators</Group>
+            <Password>
+              <Value>${password}</Value>
+              <PlainText>true</PlainText>
+            </Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+
+      <!-- Every boot of the build logs on: provisioning needs the desktop
+           session, and makes autologon permanent. -->
+      <AutoLogon>
+        <Username>Administrator</Username>
+        <Password>
+          <Value>${password}</Value>
+          <PlainText>true</PlainText>
+        </Password>
+        <Enabled>true</Enabled>
+        <LogonCount>999</LogonCount>
+      </AutoLogon>
+
+      <!-- In order: register every driver on the CD with the installed system,
+           whose image carries no virtio NIC driver (viogpudo waits there for
+           the rig's virtio GPU); wait for the network and make it Private,
+           since WinRM refuses unencrypted traffic on a Public network; then
+           open WinRM for Packer. -->
+      <FirstLogonCommands>
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Description>Register the virtio drivers</Description>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "foreach ($l in 'D','E','F','G','H','I') { $p = $l + ':\drivers'; if (Test-Path $p) { Get-ChildItem $p -Recurse -Filter *.inf | ForEach-Object { pnputil.exe /add-driver $_.FullName /install | Out-Null }; exit 0 } }; exit 1"</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <Description>Wait for the network and make it Private</Description>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "for ($i = 0; $i -lt 60; $i++) { if (Get-NetConnectionProfile -ErrorAction SilentlyContinue) { break }; Start-Sleep 2 }; Get-NetConnectionProfile | Set-NetConnectionProfile -NetworkCategory Private"</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>3</Order>
+          <Description>Open WinRM for Packer</Description>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Set-Service WinRM -StartupType Automatic; Start-Service WinRM; winrm quickconfig -quiet; winrm set winrm/config/service '@{AllowUnencrypted=\"true\"}'; winrm set winrm/config/service/auth '@{Basic=\"true\"}'; New-NetFirewallRule -Name WinRM-HTTP-In -DisplayName 'WinRM HTTP-In' -Profile Any -LocalPort 5985 -Protocol TCP -Action Allow"</CommandLine>
+        </SynchronousCommand>
+      </FirstLogonCommands>
+    </component>
+  </settings>
+</unattend>

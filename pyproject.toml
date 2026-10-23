@@ -280,8 +280,8 @@ property-decorators = ["propcache.api.cached_property"]
 include = ["custom_components", "scripts", "tests", "tools"]
 # pytest's `pythonpath` puts tests/ first; the unit suite imports the
 # integration as the top-level `nina_astrophotography`, and the scripts and
-# their tests reach each other through sys.path inserts.
-extraPaths = ["tests", "custom_components", "scripts"]
+# their tests reach each other through sys.path inserts, as rig.py and its tests do.
+extraPaths = ["tests", "custom_components", "scripts", "tools/windows-rig"]
 pythonVersion = "3.14"
 # Home Assistant declares `entity_description`, `available`, `is_on` and the
 # rest as cached properties on its base classes; every ordinary override of one
