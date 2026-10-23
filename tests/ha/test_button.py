@@ -3,10 +3,10 @@
 A press awaits the HTTP round trip and nothing more (§3.5), so every command
 test asserts what reached the wire — `rig.sent` — and never a state read back.
 
-No capture observes a dome, so the four dome buttons are never created (§5.2.2).
-The path-per-button table therefore drives the descriptors' `press` callables
-through a real client, which is the only way to cover all twelve; the entity
-wiring above them is proved separately through `button.press`.
+The reference rig has no dome, so the four dome buttons are not created here
+(§5.2.2; `test_dome.py` has them). The path-per-button table therefore drives the
+descriptors' `press` callables through a real client, which covers all twelve;
+the entity wiring above them is proved separately through `button.press`.
 """
 
 from homeassistant.components.button.const import DOMAIN as BUTTON_DOMAIN, SERVICE_PRESS
@@ -110,7 +110,7 @@ async def test_every_button_lands_on_the_device_its_entity_id_names(
     promises these ids — but `unique_id` is independent of both, so a descriptor
     pointing at the wrong `kind` would move the entity and rename it silently.
 
-    The dome's four are absent: no capture observes a dome.
+    The dome's four are absent: the reference rig has none.
     """
     await advance("imaging_guiding")
     assert sorted(
@@ -151,8 +151,8 @@ async def test_clearing_the_guider_calibration_ships_config(
 async def test_the_kept_buttons_keep_their_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    """The dome's four keep theirs too, but no capture observes a dome, so
-    they are never registered to assert on.
+    """The dome's four keep theirs too; the reference rig has no dome to
+    register them on.
     """
     assert registered(BUTTON_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 

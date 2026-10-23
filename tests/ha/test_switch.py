@@ -355,8 +355,8 @@ async def test_the_cut_switches_are_not_registered(
 async def test_the_long_tail_ships_config_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry
 ) -> None:
-    """`dome_following` is absent from this assertion: no capture observes a
-    dome, so §5.2.2 gates it out entirely.
+    """`dome_following` is in `test_dome.py`: the reference rig has none, so
+    §5.2.2 gates it out here.
     """
     entry = entity_registry.async_get(
         registered(SWITCH_DOMAIN, entity_registry, loaded_entry, "rotator_reverse")

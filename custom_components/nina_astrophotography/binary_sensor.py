@@ -24,8 +24,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import NinaConfigEntry, NinaData
-from .device import observed, read_field
-from .entity import NinaDescribedEntity, NinaEntityDescription, async_add_observed
+from .device import read_field, supports
+from .entity import (
+    NinaDescribedEntity,
+    NinaEntityDescription,
+    async_add_observed,
+    usable,
+)
 
 PARALLEL_UPDATES = 0
 
@@ -199,30 +204,37 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         # The sky position angle means nothing until the rotator is synced.
         value=read_field("rotator", "synced"),
     ),
-    # From the spec alone; no hardware has validated the dome.
     NinaBinarySensorDescription(
         key="dome_at_park",
         translation_key="dome_at_park",
-        entity_registry_enabled_default=False,
         kind="dome",
-        verified=False,
+        supported=supports("dome", "can_park"),
         value=read_field("dome", "at_park"),
     ),
     NinaBinarySensorDescription(
         key="dome_at_home",
         translation_key="dome_at_home",
+        entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="dome",
-        verified=False,
+        supported=supports("dome", "can_find_home"),
         value=read_field("dome", "at_home"),
     ),
     NinaBinarySensorDescription(
         key="dome_slewing",
         translation_key="dome_slewing",
-        entity_registry_enabled_default=False,
+        device_class=BinarySensorDeviceClass.MOVING,
         kind="dome",
-        verified=False,
         value=read_field("dome", "slewing"),
+    ),
+    NinaBinarySensorDescription(
+        key="dome_synchronized",
+        translation_key="dome_synchronized",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind="dome",
+        supported=supports("dome", "can_set_azimuth"),
+        # Unknown unless following; false for a moment after every mount slew.
+        value=read_field("dome", "synchronized"),
     ),
 )
 
@@ -253,6 +265,6 @@ async def async_setup_entry(
         lambda data: (
             (d.key, partial(NinaBinarySensor, coordinator, entry, d))
             for d in DESCRIPTIONS
-            if observed(data, d.kind)
+            if usable(data, d)
         ),
     )

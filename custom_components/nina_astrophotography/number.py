@@ -35,12 +35,19 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_for, observed, read_field
+from .device import (
+    channel_key,
+    channels_for,
+    read_field,
+    refused_while_following,
+    supports,
+)
 from .entity import (
     NinaChannelEntity,
     NinaDescribedEntity,
     NinaEntityDescription,
     async_add_observed,
+    usable,
 )
 
 # One in-flight command per platform: these move hardware.
@@ -145,7 +152,6 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         value=read_field("rotator", "mechanical_position"),
         command=lambda client, value: client.move_rotator_mechanical(value),
     ),
-    # From the spec alone; no hardware has validated it.
     NinaNumberDescription(
         key="dome_azimuth",
         translation_key="dome_azimuth",
@@ -154,9 +160,12 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         native_step=0.1,
         native_unit_of_measurement=DEGREE,
         mode=NumberMode.BOX,
+        entity_category=EntityCategory.CONFIG,
+        # N.I.N.A. slaves the dome to the mount; a hand slew is the exception.
         entity_registry_enabled_default=False,
         kind="dome",
-        verified=False,
+        supported=supports("dome", "can_set_azimuth"),
+        refusal=refused_while_following,
         value=read_field("dome", "azimuth"),
         command=lambda client, value: client.slew_dome(value),
     ),
@@ -197,6 +206,7 @@ class NinaNumber(NinaDescribedEntity, NumberEntity):
                 translation_key="no_driver_range",
                 translation_placeholders={"entity_id": self.entity_id},
             )
+        self._raise_if_refused()
         await self._async_send(
             self.entity_description.command(self.coordinator.client, value)
         )
@@ -240,7 +250,7 @@ async def async_setup_entry(
 
     def _observed(data: NinaData) -> Iterator[tuple[str, Callable[[], NumberEntity]]]:
         for description in DESCRIPTIONS:
-            if observed(data, description.kind):
+            if usable(data, description):
                 yield (
                     description.key,
                     partial(NinaNumber, coordinator, entry, description),

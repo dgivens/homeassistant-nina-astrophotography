@@ -55,6 +55,7 @@ from ..models import (
     RotatorModel,
     SafetyMonitorModel,
     SequenceNode,
+    ShutterState,
     SwitchChannelModel,
     SwitchDeviceModel,
     WeatherModel,
@@ -352,18 +353,35 @@ def map_rotator(wire: dict) -> RotatorModel:
     )
 
 
+_SHUTTER_STATES: Mapping[str, ShutterState] = MappingProxyType(
+    {
+        "ShutterOpen": "open",
+        "ShutterClosed": "closed",
+        "ShutterOpening": "opening",
+        "ShutterClosing": "closing",
+        "ShutterError": "error",
+    }
+)
+
+
 def map_dome(wire: dict) -> DomeModel:
     readings = _readings(wire)
+    following = _flag(readings, "IsFollowing")
     return DomeModel(
         connected=_connected(wire),
         meta=_meta(wire),
         azimuth=_number(readings, "Azimuth"),
-        shutter_status=_text(readings, "ShutterStatus"),
+        shutter_status=_SHUTTER_STATES.get(_text(readings, "ShutterStatus") or ""),
         at_park=_flag(readings, "AtPark"),
         at_home=_flag(readings, "AtHome"),
         driver_following=_flag(readings, "DriverFollowing"),
-        following=_flag(readings, "IsFollowing"),
+        following=following,
+        synchronized=_flag(readings, "IsSynchronized") if following else None,
         slewing=_flag(readings, "Slewing"),
+        can_set_shutter=_flag(wire, "CanSetShutter"),
+        can_set_azimuth=_flag(wire, "CanSetAzimuth"),
+        can_park=_flag(wire, "CanPark"),
+        can_find_home=_flag(wire, "CanFindHome"),
     )
 
 

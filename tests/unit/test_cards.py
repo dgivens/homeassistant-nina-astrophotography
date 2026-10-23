@@ -43,8 +43,8 @@ assert CARDS, "no cards found"
 UNRESOLVABLE = {("switch", "guider")}
 
 # Entities the reference rig cannot produce, so the snapshot cannot carry them
-# (docs/2.0-renames.md): every dome entity, since nobody involved has the
-# hardware, and the three weather channels this source reports as "NaN".
+# (docs/2.0-renames.md): every dome entity, which only the simulator rig
+# reports, and the three weather channels this source reports as "NaN".
 ABSENT_FROM_THE_SNAPSHOT = {
     "weather_cloud_cover",
     "weather_sky_quality",

@@ -14,7 +14,10 @@ Add a field only when something consumes it.
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
+
+ShutterState = Literal["open", "closed", "opening", "closing", "error"]
+"""ASCOM's `ShutterState`, as N.I.N.A. reports it without its `Shutter` prefix."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,18 +151,31 @@ class RotatorModel:
 
 @dataclass(frozen=True, slots=True)
 class DomeModel:
-    """A dome, from the spec alone; no hardware has validated it."""
+    """A dome, validated against a simulator and not yet against hardware.
+
+    `slewing` is the azimuth only on the simulator: its shutter moves with
+    `slewing` false. A real driver may count the shutter too.
+    """
 
     connected: bool
     meta: DeviceMeta
     azimuth: float | None
-    shutter_status: str | None
+    shutter_status: ShutterState | None
+    """`None` for `ShutterNone`, which a driver with no shutter reports."""
     at_park: bool | None
     at_home: bool | None
     driver_following: bool | None
     """The driver's own slaving flag, distinct from N.I.N.A.'s `following`."""
     following: bool | None
+    synchronized: bool | None
+    """The slit is on the scope; `None` unless following, since N.I.N.A. keeps
+    the last value after following stops."""
     slewing: bool | None
+    can_set_shutter: bool | None
+    can_set_azimuth: bool | None
+    """Also what following needs: N.I.N.A. follows by slewing the dome."""
+    can_park: bool | None
+    can_find_home: bool | None
 
 
 @dataclass(frozen=True, slots=True)

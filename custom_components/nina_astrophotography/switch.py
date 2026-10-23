@@ -34,12 +34,13 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_for, observed, read_field
+from .device import channel_key, channels_for, read_field, supports
 from .entity import (
     NinaChannelEntity,
     NinaDescribedEntity,
     NinaEntityDescription,
     async_add_observed,
+    usable,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,18 +54,11 @@ class NinaSwitchDescription(NinaEntityDescription, SwitchEntityDescription):
     """A switch, plus how to read it and how to send both directions.
 
     `command` gets the snapshot too, since the cooler sends the camera's own
-    setpoint. `supported` gates on a capability the driver reports, such as a
-    flat panel's cover.
+    setpoint.
     """
 
     value: Callable[[NinaData], bool | None]
     command: Callable[[NinaClientV2, NinaData, bool], Awaitable[None]]
-    supported: Callable[[NinaData], bool] | None = None
-
-
-def _supports(kind: str, field: str) -> Callable[[NinaData], bool]:
-    read = read_field(kind, field)
-    return lambda data: bool(read(data))
 
 
 def _guider_running(data: NinaData) -> bool | None:
@@ -165,7 +159,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         key="flat_panel_cover",
         translation_key="flat_panel_cover",
         kind="flat_device",
-        supported=_supports("flat_device", "supports_open_close"),
+        supported=supports("flat_device", "supports_open_close"),
         value=_cover_open,
         command=_either("open_flat_cover", "close_flat_cover"),
     ),
@@ -187,13 +181,13 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         value=read_field("rotator", "reverse"),
         command=_toggle("set_rotator_reverse"),
     ),
-    # From the spec alone; no hardware has validated it.
     NinaSwitchDescription(
         key="dome_following",
         translation_key="dome_following",
-        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.CONFIG,
         kind="dome",
-        verified=False,
+        # N.I.N.A. follows by slewing the dome, and refuses with it closed.
+        supported=supports("dome", "can_set_azimuth"),
         value=read_field("dome", "following"),
         command=_toggle("set_dome_follow"),
     ),
@@ -253,13 +247,6 @@ class NinaSwitchChannel(NinaChannelEntity, SwitchEntity):
         await self._async_set_channel(self._off_value)
 
 
-def _usable(data: NinaData, description: NinaSwitchDescription) -> bool:
-    """The device has been seen, and reports the capability the switch drives."""
-    return observed(data, description.kind) and (
-        description.supported is None or description.supported(data)
-    )
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: NinaConfigEntry,
@@ -288,7 +275,7 @@ async def async_setup_entry(
 
     def _observed(data: NinaData) -> Iterator[tuple[str, Callable[[], SwitchEntity]]]:
         for description in DESCRIPTIONS:
-            if _usable(data, description):
+            if usable(data, description):
                 yield (
                     description.key,
                     partial(NinaSwitch, coordinator, entry, description),

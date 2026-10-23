@@ -22,7 +22,7 @@ from homeassistant.exceptions import (
     ConfigEntryNotReady,
     ServiceValidationError,
 )
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.service import async_extract_config_entry_ids
@@ -220,6 +220,37 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     await events.start()
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+    return True
+
+
+# The dome entities minor version 2 ships enabled, by `unique_id` suffix.
+_DOME_NOW_ENABLED = (
+    "dome_shutter_status",
+    "dome_at_park",
+    "dome_slewing",
+    "dome_following",
+    "btn_dome_open",
+    "btn_dome_close",
+    "btn_dome_park",
+)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
+    """1.2: enable the dome rows that were registered disabled by default.
+
+    Only rows the integration disabled: one a user disabled stays so. A row
+    exists only where a dome once reported, so a rig without one is untouched.
+    """
+    if entry.minor_version < 2:
+        registry = er.async_get(hass)
+        wanted = {f"{entry.entry_id}_{suffix}" for suffix in _DOME_NOW_ENABLED}
+        for row in er.async_entries_for_config_entry(registry, entry.entry_id):
+            if (
+                row.unique_id in wanted
+                and row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+            ):
+                registry.async_update_entity(row.entity_id, disabled_by=None)
+        hass.config_entries.async_update_entry(entry, minor_version=2)
     return True
 
 
