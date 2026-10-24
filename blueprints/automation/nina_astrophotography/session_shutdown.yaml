@@ -44,6 +44,19 @@ blueprint:
             entity:
               integration: nina_astrophotography
               domain: binary_sensor
+        dome_shutter:
+          name: Dome shutter status
+          description: >
+            Optional. After closing the dome, wait for this to read closed, and
+            notify if it does not: a close is only sent, and N.I.N.A. answers it
+            before the roof has moved.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              device_class: enum
+              multiple: true
 
     schedule:
       name: Schedule
@@ -74,6 +87,17 @@ blueprint:
           default: false
           selector:
             boolean:
+        close_timeout_minutes:
+          name: Time for the dome to close
+          description: >
+            How long to wait for the shutter status to read closed before
+            raising the alarm. Allow for the slowest roof travel.
+          default: 5
+          selector:
+            number:
+              min: 1
+              max: 30
+              unit_of_measurement: min
         warming_ramp_minutes:
           name: Camera warming time
           default: 20
@@ -96,6 +120,7 @@ max_exceeded: silent
 
 # Inputs must be bound here before templates can reference them.
 variables:
+  dome_shutter: !input dome_shutter
   mount_parked: !input mount_parked
   nina_rig: !input nina_rig
   sequence_running: !input sequence_running
@@ -162,6 +187,32 @@ actions:
         target:
           device_id: !input nina_rig
         continue_on_error: true
+      # The close is only sent: N.I.N.A. answers before the roof moves, and
+      # it raises no event when the shutter has closed. Only the polled
+      # shutter status confirms it.
+      - alias: "Wait for the shutter to report closed"
+        if:
+          - condition: template
+            value_template: "{{ dome_shutter | count > 0 }}"
+        then:
+          - wait_template: "{{ is_state(dome_shutter | first, 'closed') }}"
+            timeout:
+              minutes: !input close_timeout_minutes
+            continue_on_timeout: true
+          - if:
+              - condition: template
+                value_template: "{{ not wait.completed }}"
+            then:
+              - action: notify.send_message
+                target:
+                  entity_id: !input notify_target
+                data:
+                  title: "🚨 Roof did not close"
+                  message: >
+                    The dome was told to close, but its shutter reads
+                    {{ states(dome_shutter | first) }}. Manual intervention
+                    needed.
+                continue_on_error: true
     else:
       - action: notify.send_message
         target:
