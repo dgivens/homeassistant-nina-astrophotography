@@ -121,6 +121,15 @@ PROFILE_ALLOWLIST: tuple[str, ...] = (
     "AstrometrySettings.Latitude",
     "AstrometrySettings.Longitude",
     "AstrometrySettings.Elevation",
+    # N.I.N.A.'s own dome interlocks. Field by field: the section also names
+    # the dome driver (`Id`, `LastDeviceName`).
+    "DomeSettings.CloseOnUnsafe",
+    "DomeSettings.RefuseUnsafeShutterMove",
+    "DomeSettings.RefuseUnsafeShutterOpenSansSafetyDevice",
+    "DomeSettings.RefuseUnparkWithoutShutterOpen",
+    "DomeSettings.ParkMountBeforeShutterMove",
+    "DomeSettings.ParkDomeBeforeShutterMove",
+    "DomeSettings.FindHomeBeforePark",
 )
 
 

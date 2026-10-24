@@ -548,3 +548,12 @@ class ProfileSettings:
     """Degrees east."""
     site_elevation: float | None
     """Metres."""
+    dome_close_on_unsafe: bool | None
+    """N.I.N.A.'s own dome interlocks, which it enforces whatever Home
+    Assistant does. This one closes the shutter when the monitor reads unsafe."""
+    dome_refuse_unsafe_shutter_move: bool | None
+    dome_refuse_open_without_safety_monitor: bool | None
+    dome_refuse_unpark_while_shut: bool | None
+    dome_park_mount_before_shutter_move: bool | None
+    dome_park_before_shutter_move: bool | None
+    dome_find_home_before_park: bool | None

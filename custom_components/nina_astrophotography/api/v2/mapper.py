@@ -864,4 +864,21 @@ def map_profile(wire: dict) -> ProfileSettings:
         site_latitude=_number(wire, "AstrometrySettings", "Latitude"),
         site_longitude=_number(wire, "AstrometrySettings", "Longitude"),
         site_elevation=_number(wire, "AstrometrySettings", "Elevation"),
+        dome_close_on_unsafe=_flag(wire, "DomeSettings", "CloseOnUnsafe"),
+        dome_refuse_unsafe_shutter_move=_flag(
+            wire, "DomeSettings", "RefuseUnsafeShutterMove"
+        ),
+        dome_refuse_open_without_safety_monitor=_flag(
+            wire, "DomeSettings", "RefuseUnsafeShutterOpenSansSafetyDevice"
+        ),
+        dome_refuse_unpark_while_shut=_flag(
+            wire, "DomeSettings", "RefuseUnparkWithoutShutterOpen"
+        ),
+        dome_park_mount_before_shutter_move=_flag(
+            wire, "DomeSettings", "ParkMountBeforeShutterMove"
+        ),
+        dome_park_before_shutter_move=_flag(
+            wire, "DomeSettings", "ParkDomeBeforeShutterMove"
+        ),
+        dome_find_home_before_park=_flag(wire, "DomeSettings", "FindHomeBeforePark"),
     )

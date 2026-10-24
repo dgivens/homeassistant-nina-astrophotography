@@ -96,6 +96,13 @@ _NO_PROFILE = ProfileSettings(
     site_latitude=None,
     site_longitude=None,
     site_elevation=None,
+    dome_close_on_unsafe=None,
+    dome_refuse_unsafe_shutter_move=None,
+    dome_refuse_open_without_safety_monitor=None,
+    dome_refuse_unpark_while_shut=None,
+    dome_park_mount_before_shutter_move=None,
+    dome_park_before_shutter_move=None,
+    dome_find_home_before_park=None,
 )
 
 
