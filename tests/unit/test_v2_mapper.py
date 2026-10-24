@@ -625,7 +625,7 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
 
 
 def test_the_dome_interlocks_map_from_a_captured_profile() -> None:
-    """The simulator rig's profile, as N.I.N.A. ships the defaults."""
+    """The simulator rig's profile."""
     profile = map_profile(load("simulator_dome_parked_profile.json"))
     assert (
         profile.dome_close_on_unsafe,
