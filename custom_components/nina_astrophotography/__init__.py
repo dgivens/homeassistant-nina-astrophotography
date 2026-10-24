@@ -221,11 +221,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     # Before the platforms: `via_device` needs the hub to exist, and equipment
     # with no entities still gets a device.
     async_sync_devices(hass, entry, coordinator.data)
-    # Before the platforms too, so an enabled row's entity is created now.
+    # Before the platforms too, so an enabled row's entity is created now; and
+    # on every publish, for a dome N.I.N.A. connects later.
     _enable_dome_rows(hass, entry, coordinator.data)
     entry.async_on_unload(
         coordinator.async_add_listener(
             lambda: async_sync_devices(hass, entry, coordinator.data)
+        )
+    )
+    entry.async_on_unload(
+        coordinator.async_add_listener(
+            lambda: _enable_dome_rows(hass, entry, coordinator.data)
         )
     )
 
@@ -248,9 +254,9 @@ def _enable_dome_rows(
 
     Only rows the integration disabled, and not on an entry whose system
     options disable new entities, which Home Assistant records the same way. A
-    row a user disabled is left alone. Home Assistant reloads the entry once,
-    30 s on, for the rows enabled; the rows are enabled by then, so it is the
-    last time.
+    row a user disabled is left alone. Home Assistant reloads the entry 30 s
+    after a row is enabled, which creates an entity enabled after setup; the
+    rows are enabled by then, so it happens once.
     """
     if entry.pref_disable_new_entities:
         return

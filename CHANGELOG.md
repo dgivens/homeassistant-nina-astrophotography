@@ -29,10 +29,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The dome is verified against a simulated dome, and its entities ship
   enabled**: shutter status, open, close, park, at park, slewing, following and
   the new `binary_sensor.<instance>_dome_synchronized`. Updating re-enables
-  those rows where 2.0.0 had disabled them, once the dome reports and only for
-  what its driver supports, unless you disabled one yourself or the entry's
-  system options disable new entities. Home Assistant reloads the entry once,
-  30 seconds after that first start.
+  those rows where 2.0.0 had disabled them — once N.I.N.A. reports the dome
+  connected, and only for what its driver supports — unless you disabled one
+  yourself or the entry's system options disable new entities. Home Assistant
+  reloads the entry once, 30 seconds later, to create them.
   At home, home and the azimuth number stay disabled: N.I.N.A. slaves the dome
   to the mount, and a hand move fights it.
 - **A dome gets only the controls its driver supports.** A roll-off roof with
