@@ -443,12 +443,11 @@ STATES: dict[str, State] = {
     "sequence_stopped": _captured("sequence_stopped"),
     # Captured from the simulator rig (`docs/test-vm.md`): real wire data from
     # an OmniSim dome. Parked with the shutter closed, and open following the
-    # mount. The next three swap in the dome block of a later /equipment/info:
-    # mid-slew, at home, and dropped after having connected.
+    # mount. The next two swap in the dome block of a later /equipment/info:
+    # mid-slew, and dropped after having connected.
     "simulator_dome_parked": dict(_DOME_PARKED),
     "simulator_dome_following": _captured("simulator_dome_following"),
     "simulator_dome_slewing": _dome_from("slewing"),
-    "simulator_dome_at_home": _dome_from("at_home"),
     "simulator_dome_disconnected": _dome_from("disconnected"),
     # Synthetic in `ShutterStatus` alone. Opening finishes between two of
     # N.I.N.A.'s refreshes too often to capture; the simulator cannot fail.
@@ -457,6 +456,14 @@ STATES: dict[str, State] = {
     ),
     "simulator_dome_shutter_error": _with_readings(
         _DOME_PARKED, "Dome", ShutterStatus="ShutterError"
+    ),
+    # Synthetic in `IsSafe` alone: the simulator's monitor reads safe.
+    "simulator_dome_unsafe": _with_readings(
+        _DOME_PARKED, "SafetyMonitor", IsSafe=False
+    ),
+    # A dome whose driver cannot move its shutter. Synthetic in `CanSetShutter`.
+    "dome_without_shutter_control": _with_readings(
+        _DOME_PARKED, "Dome", CanSetShutter=False
     ),
     # A roll-off roof: a shutter and nothing else. Synthetic in the capability
     # flags and the azimuth, which such a driver cannot report.

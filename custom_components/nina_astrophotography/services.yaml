@@ -282,7 +282,7 @@ guider_stop:
 
 dome_open:
   name: Open Dome
-  description: Open the dome shutter.
+  description: Open the dome shutter. Refused while the safety monitor reports unsafe.
   fields:
     device_id:
       name: Rig

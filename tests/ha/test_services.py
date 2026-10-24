@@ -272,7 +272,6 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
         ("focuser_auto_focus", "/equipment/focuser/auto-focus"),
         ("guider_start", "/equipment/guider/start"),
         ("guider_stop", "/equipment/guider/stop"),
-        ("dome_open", "/equipment/dome/open"),
         ("dome_close", "/equipment/dome/close"),
         ("dome_park", "/equipment/dome/park"),
         ("sequence_start", "/sequence/start"),
@@ -285,7 +284,8 @@ async def test_every_remaining_service_reaches_its_own_endpoint(
 ) -> None:
     """The handlers that differ only in the endpoint they send. `dome_close` is
     the roof: the abort blueprint calls it, and a handler pointed at the wrong
-    path is answered `Success: true`.
+    path is answered `Success: true`. `dome_open` is refused on this rig's
+    unsafe monitor, so `test_dome.py` sends it.
     """
     data = {"temperature": -10} if service == "camera_cool" else {}
     await _call(hass, service, **data)

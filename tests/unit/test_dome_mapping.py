@@ -29,7 +29,7 @@ def _dome(state: str):
         ("slewing", "slewing", True),
         ("at_home", "at_home", True),
         ("disconnected", "shutter_status", None),  # ShutterNone, down
-        ("disconnected", "azimuth", None),  # "NaN"
+        ("disconnected", "azimuth", None),  # down, so no reading at all
     ],
 )
 def test_each_capture_maps_its_readings(state, field, expected) -> None:
@@ -46,8 +46,10 @@ def test_synchronized_is_none_unless_following() -> None:
 @pytest.mark.parametrize(
     "field", ["can_set_shutter", "can_set_azimuth", "can_park", "can_find_home"]
 )
-def test_capabilities_survive_a_disconnect(field) -> None:
-    """Read from the block, not the readings, as the flat panel's are."""
+def test_capability_flags_read_off_the_block(field) -> None:
+    """Off the block, not the readings, as the flat panel's are: a dropped dome
+    reports its own false flags rather than none.
+    """
     assert getattr(_dome("parked"), field) is True
     assert getattr(_dome("disconnected"), field) is False
 

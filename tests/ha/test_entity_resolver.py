@@ -227,7 +227,7 @@ async def test_every_dome_read_resolves_on_a_rig_with_a_dome(
     hass: HomeAssistant, config_entry, rig, hass_ws_client, set_up_at
 ) -> None:
     """Each dome entity the observatory card reads ships enabled, so none is
-    left out of what a dashboard receives (#93).
+    left out of what a dashboard receives.
     """
     await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
 
