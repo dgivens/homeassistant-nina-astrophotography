@@ -4830,7 +4830,9 @@
    },
    "sensor.n_i_n_a_dome_shutter_status": {
     "attributes": {
+     "close_on_unsafe": true,
      "device_class": "enum",
+     "find_home_before_park": true,
      "friendly_name": "N.I.N.A. Dome Shutter status",
      "options": [
       "open",
@@ -4838,7 +4840,12 @@
       "opening",
       "closing",
       "error"
-     ]
+     ],
+     "park_dome_before_shutter_move": false,
+     "park_mount_before_shutter_move": false,
+     "refuse_open_without_safety_monitor": true,
+     "refuse_unpark_while_shut": false,
+     "refuse_unsafe_shutter_move": false
     },
     "state": "open"
    },
@@ -6467,7 +6474,9 @@
    },
    "sensor.n_i_n_a_dome_shutter_status": {
     "attributes": {
+     "close_on_unsafe": true,
      "device_class": "enum",
+     "find_home_before_park": true,
      "friendly_name": "N.I.N.A. Dome Shutter status",
      "options": [
       "open",
@@ -6475,7 +6484,12 @@
       "opening",
       "closing",
       "error"
-     ]
+     ],
+     "park_dome_before_shutter_move": false,
+     "park_mount_before_shutter_move": false,
+     "refuse_open_without_safety_monitor": true,
+     "refuse_unpark_while_shut": false,
+     "refuse_unsafe_shutter_move": false
     },
     "state": "closed"
    },
