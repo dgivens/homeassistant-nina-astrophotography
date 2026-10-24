@@ -135,6 +135,25 @@ async def test_a_safety_event_refetches_without_waiting_for_a_tier(
     assert rig.reads("/equipment/info") == 1
 
 
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        "simulator_dome_shutter_opened_push.json",
+        "simulator_dome_slewed_push.json",
+        "simulator_dome_parked_push.json",
+    ],
+)
+async def test_a_dome_event_refetches_the_dome(hass, tiers, push, fixture) -> None:
+    """A dome event announces a move and carries none of the readings it
+    changed — `DOME-SLEWED`'s azimuths aside — so the shutter is read back.
+    Captured from the simulator rig's socket.
+    """
+    rig = await tiers()
+    push(load_fixture(fixture))
+    await hass.async_block_till_done()
+    assert rig.reads("/equipment/info") == 1
+
+
 async def test_ts_targetstart_never_refetches_the_sequence(
     hass, tiers, push, freezer
 ) -> None:

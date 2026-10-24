@@ -320,13 +320,15 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._schedule.add_pending("/livestack/status")
         elif (
             name == "SAFETY-CHANGED"
-            or name.startswith("FLAT-")
+            or name.startswith(("FLAT-", "DOME-"))
             or name.endswith(("-CONNECTED", "-DISCONNECTED"))
         ):
             # Safety must not wait for a tier; a connection change moves every
             # device block; FLAT-* payloads are empty or unreliable through a
-            # ramp. The debounced refresh coalesces the burst of connection
-            # events a N.I.N.A. start emits.
+            # ramp; DOME-* carry none of the readings a move changed, and not
+            # every move raises one, so the poll stays the backstop. The
+            # debounced refresh coalesces the burst of connection events a
+            # N.I.N.A. start emits.
             self.config_entry.async_create_task(
                 self.hass, self.async_request_refresh(), "nina_event_refresh"
             )

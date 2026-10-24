@@ -1,0 +1,18 @@
+{
+  "Response": {
+    "From": 180.0,
+    "To": 230.61817383040216,
+    "Event": "DOME-SLEWED"
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "Socket",
+  "_meta": {
+    "captured_at": "2026-10-23T23:54:00+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "socket",
+    "params": {}
+  }
+}
