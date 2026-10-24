@@ -20,8 +20,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   them the dome's shutter status (`dome_shutter`) and they wait for it to read
   `closed` after closing, up to `close_timeout_minutes` (5 by default for the
   shutdown, 3 for the abort). A shutter error ends the wait at once. Either way
-  the close is sent once more — many drivers clear an error on a new command —
-  and if the roof still has not closed, they notify "Roof did not close". A
+  they notify "Roof not closed yet" and send the close once more — many
+  drivers clear an error on a new command — and if the roof still has not
+  closed, they notify "Roof did not close". A
   close is only sent: N.I.N.A. answers it before the roof moves, and not every
   close raises an event.
 

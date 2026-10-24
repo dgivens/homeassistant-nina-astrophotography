@@ -206,6 +206,15 @@ actions:
               - condition: template
                 value_template: "{{ not is_state(dome_shutter | first, 'closed') }}"
             then:
+              - action: notify.send_message
+                target:
+                  entity_id: !input notify_target
+                data:
+                  title: "⚠️ Roof not closed yet"
+                  message: >
+                    The dome's shutter reads {{ states(dome_shutter | first) }};
+                    closing it again.
+                continue_on_error: true
               - action: nina_astrophotography.dome_close
                 target:
                   device_id: !input nina_rig
@@ -223,16 +232,15 @@ actions:
                       entity_id: !input notify_target
                     data:
                       title: "🚨 Roof did not close"
-                      message: >
-                        {% set shutter = states(dome_shutter | first) %}
-                        {% if shutter in ['unavailable', 'unknown'] %}
+                      message: >-
+                        {%- set shutter = states(dome_shutter | first) -%}
+                        {%- if shutter in ['unavailable', 'unknown'] -%}
                         Home Assistant has lost contact with the dome, so it
                         cannot tell whether the roof closed.
-                        {% else %}
+                        {%- else -%}
                         The dome was told to close twice, but its shutter reads
                         {{ shutter }}.
-                        {% endif %}
-                        Manual intervention needed.
+                        {%- endif %} Manual intervention needed.
                     continue_on_error: true
     else:
       - action: notify.send_message
