@@ -8,6 +8,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
+- **A dome event refreshes the dome at once**, as a safety or connection event
+  already did, rather than waiting up to a poll. N.I.N.A. does not raise one
+  for every move, so the poll still catches the rest.
 - **Camera USB limit, rotator mechanical position and rotator reverse move
   from the device page's Diagnostic section to Configuration.** Each changes
   the device rather than only reporting it. They still ship disabled, and
