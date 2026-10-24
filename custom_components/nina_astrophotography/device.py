@@ -71,6 +71,19 @@ def refused_while_following(data: NinaData) -> str | None:
     return "dome_following" if read_field("dome", "following")(data) else None
 
 
+def refused_while_unsafe(data: NinaData) -> str | None:
+    """Refuse opening the dome while the safety monitor reports unsafe.
+
+    N.I.N.A.'s own refusal is a profile option, off by default. A monitor that
+    is absent or not reporting refuses nothing here.
+    """
+    return (
+        "dome_unsafe"
+        if read_field("safety_monitor", "is_safe")(data) is False
+        else None
+    )
+
+
 def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
     """Every channel the N.I.N.A. switch device reports; empty while absent."""
     device = data.snapshot.switch_device

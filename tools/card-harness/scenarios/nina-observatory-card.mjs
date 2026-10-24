@@ -61,7 +61,7 @@ export const scenarios = {
   // A Dome chip and Open Dome.
   dome_closed: { hass: (dump) => rig(dump, DOME).build() },
 
-  // Close Dome, which asks whether to close over the unparked mount.
+  // Close Dome, which warns that the mount is not confirmed parked.
   dome_open: { hass: (dump) => rig(dump, "simulator_dome_following").build() },
 
   // Close Dome while the shutter is still opening. Seen on the wire, but over
@@ -73,6 +73,26 @@ export const scenarios = {
 
   // Open Dome disabled. The simulator's safety monitor reads safe throughout.
   dome_unsafe: { hass: (dump) => rig(dump, DOME).override(UNSAFE, "on").build() },
+
+  // The monitor not reporting is not a safe reading: Open Dome disabled.
+  dome_safety_unknown: {
+    hass: (dump) => rig(dump, DOME).override(UNSAFE, "unavailable").build(),
+  },
+
+  // The dome's driver down under a live hub: no chip and no dome button.
+  dome_driver_down: {
+    hass: (dump) => {
+      const r = rig(dump, DOME);
+      for (const id of [SHUTTER, "button.n_i_n_a_dome_open", "button.n_i_n_a_dome_close"]) {
+        r.override(id, "unavailable");
+      }
+      return r.build();
+    },
+  },
+
+  // A connected dome whose shutter reads nothing: still a dome, and Close
+  // stays, since a shutter not known closed may be open.
+  dome_shutter_unknown: { hass: (dump) => rig(dump, DOME).override(SHUTTER, "unknown").build() },
 
   // A driver with no shutter control: the chip and no button.
   dome_without_shutter_control: {

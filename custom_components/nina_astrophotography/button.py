@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api.v2.client import NinaClientV2
 from .coordinator import NinaConfigEntry
-from .device import refused_while_following, supports
+from .device import refused_while_following, refused_while_unsafe, supports
 from .entity import (
     NinaDescribedEntity,
     NinaEntityDescription,
@@ -99,6 +99,7 @@ DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
         unique_id_suffix="btn_dome_open",
         kind="dome",
         supported=supports("dome", "can_set_shutter"),
+        refusal=refused_while_unsafe,
         press=lambda client: client.open_dome(),
     ),
     NinaButtonDescription(
@@ -115,7 +116,8 @@ DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
         unique_id_suffix="btn_dome_park",
         kind="dome",
         supported=supports("dome", "can_park"),
-        # N.I.N.A. homes first, parks, then closes the shutter.
+        # N.I.N.A. closes the shutter too, after homing when the profile's
+        # `FindHomeBeforePark` asks for it.
         press=lambda client: client.park_dome(),
     ),
     NinaButtonDescription(

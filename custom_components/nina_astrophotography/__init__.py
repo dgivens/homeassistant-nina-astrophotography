@@ -29,6 +29,7 @@ from homeassistant.helpers.service import async_extract_config_entry_ids
 from homeassistant.helpers.typing import ConfigType
 import voluptuous as vol
 
+from . import binary_sensor, button, number, sensor, switch
 from .api.errors import (
     NinaCommandError,
     NinaConnectionError,
@@ -69,9 +70,9 @@ from .const import (
     SERVICE_SEQUENCE_STOP,
     TrackingMode,
 )
-from .coordinator import NinaConfigEntry, NinaCoordinator, NinaRuntimeData
-from .device import async_sync_devices, kind_of
-from .entity import refusals_raised
+from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData, NinaRuntimeData
+from .device import async_sync_devices, kind_of, refused_while_unsafe
+from .entity import NinaEntityDescription, refusals_raised, usable
 from .frontend import (
     async_ensure_frontend_resources,
     async_register_frontend_resources,
@@ -94,6 +95,20 @@ PLATFORMS: list[Platform] = [
 ]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+# Every dome entity that ships enabled. 2.0.0 shipped them all disabled.
+_DOME_ENABLED: tuple[tuple[Platform, NinaEntityDescription], ...] = tuple(
+    (platform, description)
+    for platform, descriptions in (
+        (Platform.BINARY_SENSOR, binary_sensor.DESCRIPTIONS),
+        (Platform.BUTTON, button.DESCRIPTIONS),
+        (Platform.NUMBER, number.DESCRIPTIONS),
+        (Platform.SENSOR, sensor.DESCRIPTIONS),
+        (Platform.SWITCH, switch.DESCRIPTIONS),
+    )
+    for description in descriptions
+    if description.kind == "dome" and description.entity_registry_enabled_default
+)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -206,6 +221,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     # Before the platforms: `via_device` needs the hub to exist, and equipment
     # with no entities still gets a device.
     async_sync_devices(hass, entry, coordinator.data)
+    # Before the platforms too, so an enabled row's entity is created now.
+    _enable_dome_rows(hass, entry, coordinator.data)
     entry.async_on_unload(
         coordinator.async_add_listener(
             lambda: async_sync_devices(hass, entry, coordinator.data)
@@ -223,35 +240,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     return True
 
 
-# The dome entities minor version 2 ships enabled, by `unique_id` suffix.
-_DOME_NOW_ENABLED = (
-    "dome_shutter_status",
-    "dome_at_park",
-    "dome_slewing",
-    "dome_following",
-    "btn_dome_open",
-    "btn_dome_close",
-    "btn_dome_park",
-)
+def _enable_dome_rows(
+    hass: HomeAssistant, entry: NinaConfigEntry, data: NinaData
+) -> None:
+    """Enable the dome rows 2.0.0 registered disabled, once the dome reports the
+    capability each needs: a roll-off roof's park row stays as it is.
 
-
-async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
-    """1.2: enable the dome rows that were registered disabled by default.
-
-    Only rows the integration disabled: one a user disabled stays so. A row
-    exists only where a dome once reported, so a rig without one is untouched.
+    Only rows the integration disabled, and not on an entry whose system
+    options disable new entities, which Home Assistant records the same way. A
+    row a user disabled is left alone. Home Assistant reloads the entry once,
+    30 s on, for the rows enabled; the rows are enabled by then, so it is the
+    last time.
     """
-    if entry.minor_version < 2:
-        registry = er.async_get(hass)
-        wanted = {f"{entry.entry_id}_{suffix}" for suffix in _DOME_NOW_ENABLED}
-        for row in er.async_entries_for_config_entry(registry, entry.entry_id):
-            if (
-                row.unique_id in wanted
-                and row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
-            ):
-                registry.async_update_entity(row.entity_id, disabled_by=None)
-        hass.config_entries.async_update_entry(entry, minor_version=2)
-    return True
+    if entry.pref_disable_new_entities:
+        return
+    registry = er.async_get(hass)
+    for platform, description in _DOME_ENABLED:
+        unique_id = (
+            f"{entry.entry_id}_{description.unique_id_suffix or description.key}"
+        )
+        entity_id = registry.async_get_entity_id(platform, DOMAIN, unique_id)
+        row = registry.async_get(entity_id) if entity_id else None
+        if (
+            row is not None
+            and row.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+            and usable(data, description)
+        ):
+            registry.async_update_entity(row.entity_id, disabled_by=None)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
@@ -436,13 +451,21 @@ def _register_services(hass: HomeAssistant) -> None:
         (SERVICE_MOUNT_UNPARK, NinaClientV2.unpark_mount),
         (SERVICE_FOCUSER_AUTO_FOCUS, NinaClientV2.auto_focus),
         (SERVICE_GUIDER_STOP, NinaClientV2.stop_guiding),
-        (SERVICE_DOME_OPEN, NinaClientV2.open_dome),
         (SERVICE_DOME_CLOSE, NinaClientV2.close_dome),
         (SERVICE_DOME_PARK, NinaClientV2.park_dome),
         (SERVICE_SEQUENCE_START, NinaClientV2.start_sequence),
         (SERVICE_SEQUENCE_STOP, NinaClientV2.stop_sequence),
     ):
         register_command(service, command)
+
+    async def handle_dome_open(call: ServiceCall) -> None:
+        entry = await _entry_for_target(hass, call)
+        coordinator = entry.runtime_data.coordinator
+        if (key := refused_while_unsafe(coordinator.data)) is not None:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key=key)
+        await coordinator.client.open_dome()
+
+    register(SERVICE_DOME_OPEN, handle_dome_open)
 
     # ── Camera ──────────────────────────────────────────────────────────────
 

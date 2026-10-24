@@ -225,6 +225,9 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         translation_key="dome_slewing",
         device_class=BinarySensorDeviceClass.MOVING,
         kind="dome",
+        # The azimuth: a simulated dome's shutter moves with it off, and a
+        # roll-off roof has no azimuth to slew.
+        supported=supports("dome", "can_set_azimuth"),
         value=read_field("dome", "slewing"),
     ),
     NinaBinarySensorDescription(

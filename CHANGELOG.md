@@ -22,21 +22,30 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   Close Dome. It now probes the shutter status, offers Open Dome only with the
   shutter closed and Close Dome otherwise, shows a shutter error on the chip,
   and asks before opening as well as closing — warning when the mount is not
-  parked. Open Dome is disabled while the safety monitor reads unsafe.
+  parked. Open Dome is disabled unless the safety monitor reads safe.
 
 ### Changed
 
 - **The dome is verified against a simulated dome, and its entities ship
   enabled**: shutter status, open, close, park, at park, slewing, following and
   the new `binary_sensor.<instance>_dome_synchronized`. Updating re-enables
-  those rows where 2.0.0 had disabled them, unless you disabled one yourself.
+  those rows where 2.0.0 had disabled them, once the dome reports and only for
+  what its driver supports, unless you disabled one yourself or the entry's
+  system options disable new entities. Home Assistant reloads the entry once,
+  30 seconds after that first start.
   At home, home and the azimuth number stay disabled: N.I.N.A. slaves the dome
   to the mount, and a hand move fights it.
 - **A dome gets only the controls its driver supports.** A roll-off roof with
-  no azimuth, park or home gets the shutter status, open, close and slewing.
+  no azimuth, park or home gets the shutter status, open and close. Slewing
+  needs azimuth: on the simulator it ignores the shutter, so on a roof it
+  would read still while the roof rolls. A 2.0.0 install on a roll-off roof
+  keeps the unsupported rows it registered, disabled.
 - **Homing the dome or setting its azimuth is refused while it follows the
   mount.** N.I.N.A. answers either by quietly turning following off, which
   takes the slit off the scope.
+- **Opening the dome is refused while the safety monitor reports unsafe**,
+  from the button and the `dome_open` action alike. N.I.N.A.'s own refusal is
+  a profile option, off by default; open from N.I.N.A. to override.
 
 - **Camera USB limit, rotator mechanical position and rotator reverse move
   from the device page's Diagnostic section to Configuration.** Each changes

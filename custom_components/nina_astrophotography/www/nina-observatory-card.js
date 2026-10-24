@@ -27,8 +27,9 @@ const CONFIRM = {
   dome_open: "Open the dome?",
   dome_close: "Close the dome?",
 };
-// A closing roll-off roof can strike a telescope that is not parked.
-const CONFIRM_CLOSE_UNPARKED = "Close the dome? The mount is not parked.";
+// A closing roll-off roof can strike a telescope that is not parked, and a
+// mount that cannot be read may be anywhere.
+const CONFIRM_CLOSE_UNPARKED = "Close the dome? The mount is not confirmed parked.";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -387,9 +388,11 @@ class NinaObservatoryCard extends HTMLElement {
     const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
     const gdrStatusId  = this._eid("sensor", "guider_status");
     const gdrConnected = available(h, gdrStatusId);
-    // Probed on the shutter, which every dome reports, roll-off roofs included.
+    // Probed on the shutter status, which every dome has, roll-off roofs
+    // included. `unknown` is still a dome: a shutter not known closed keeps
+    // Close.
     const shutterId    = this._eid("sensor", "dome_shutter_status");
-    const domeConnected = available(h, shutterId);
+    const domeConnected = !!h.states[shutterId] && state(h, shutterId) !== "unavailable";
     // Each button exists only on a driver that can do it. Any row, even
     // `unavailable`: Close Dome must survive a lost link.
     const canOpen      = !!h.states[this._eid("button", "dome_open")];
@@ -409,8 +412,11 @@ class NinaObservatoryCard extends HTMLElement {
     // shutter in error, which a retried close is the answer to.
     const shutter      = state(h, shutterId);
     const domeShut     = shutter === "closed";
-    const unsafe       = isOn(h, this._eid("binary_sensor", "safety_unsafe", "safety_monitor_unsafe"));
-    this._mountUnparked = available(h, parkedId) && !parked;
+    // A monitor that is not reporting is not a safe reading; no monitor at all
+    // leaves Open to N.I.N.A.
+    const unsafeId     = this._eid("binary_sensor", "safety_unsafe", "safety_monitor_unsafe");
+    const notSafe      = !!h.states[unsafeId] && state(h, unsafeId) !== "off";
+    this._mountUnparked = !parked;
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
@@ -490,7 +496,7 @@ class NinaObservatoryCard extends HTMLElement {
           : !domeShut
             ? (canClose ? btn("btn-dome-close", "🔒 Close Dome") : "")
             : canOpen
-              ? btn("btn-dome-open", "🔓 Open Dome", "primary", unsafe ? "Conditions are unsafe" : "")
+              ? btn("btn-dome-open", "🔓 Open Dome", "primary", notSafe ? "The safety monitor does not report safe" : "")
               : "",
       ],
       // Neither cooling nor guiding is an emergency to end, so with no state
