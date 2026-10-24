@@ -1,16 +1,17 @@
 """Both closing blueprints wait for the shutter to report closed, run rather
 than schema-checked.
 
-A close is answered before the roof moves and raises no event when it has
-closed (`docs/v2.0-design.md`, the dated dome section), so the polled shutter
+A close is answered before the roof moves, and not every close raises an
+event (`docs/v2.0-design.md`, the dated dome sections), so the polled shutter
 status is the only confirmation, and a roof stuck open has to say so.
 """
 
 import asyncio
 from datetime import timedelta
+from typing import NamedTuple
 
 from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import (
@@ -41,22 +42,41 @@ INPUTS = {
 }
 
 
-@pytest.fixture
-async def closing(hass: HomeAssistant, installed):
-    """Run `blueprint` up to its wait for the shutter, over a parked mount and
-    an open shutter. Returns the notify calls.
+class Run(NamedTuple):
+    """What a run sent: the closes, and the notifications."""
+
+    closes: list[ServiceCall]
+    notified: list[ServiceCall]
+
+
+async def _settle() -> None:
+    """Let the run take its next steps.
 
     Not `async_block_till_done` while the run waits: the run is a task it
     waits on, and it would wait out the timeout with it.
     """
+    for _ in range(20):
+        await asyncio.sleep(0)
 
-    async def _run(blueprint: str):
-        closed = None
-        for service in ("sequence_stop", "mount_park", "dome_close", "camera_warm"):
-            calls = async_mock_service(hass, DOMAIN, service)
-            if service == "dome_close":
-                closed = calls
-        sent = async_mock_service(hass, "notify", "send_message")
+
+async def _minutes_later(hass: HomeAssistant, minutes: float) -> None:
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=minutes))
+    await _settle()
+
+
+@pytest.fixture
+async def closing(hass: HomeAssistant, installed):
+    """Run `blueprint` up to its wait for the shutter, over a parked mount and
+    an open shutter.
+    """
+
+    async def _run(blueprint: str, shutter: tuple[str, ...] = (SHUTTER,)) -> Run:
+        for service in ("sequence_stop", "mount_park", "camera_warm"):
+            async_mock_service(hass, DOMAIN, service)
+        run = Run(
+            async_mock_service(hass, DOMAIN, "dome_close"),
+            async_mock_service(hass, "notify", "send_message"),
+        )
         hass.states.async_set(PARKED, "on")
         hass.states.async_set(SHUTTER, "open")
         await installed(
@@ -64,7 +84,7 @@ async def closing(hass: HomeAssistant, installed):
             INPUTS[blueprint]
             | {
                 "close_dome": True,
-                "dome_shutter": [SHUTTER],
+                "dome_shutter": list(shutter),
                 "close_timeout_minutes": TIMEOUT_MINUTES,
                 "notify_target": ["notify.phone"],
             },
@@ -76,45 +96,99 @@ async def closing(hass: HomeAssistant, installed):
             {"entity_id": automation, "skip_condition": True},
         )
         for _ in range(100):
-            if closed:
+            if run.closes:
                 break
             await asyncio.sleep(0)
-        assert closed, "the run never closed the dome"
-        await asyncio.sleep(0)
-        return sent
+        assert run.closes, "the run never closed the dome"
+        await _settle()
+        return run
 
     return _run
 
 
-async def _minutes_later(hass: HomeAssistant, minutes: float) -> None:
-    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=minutes))
-    for _ in range(20):
-        await asyncio.sleep(0)
-
-
-async def _titles(hass: HomeAssistant, sent) -> list[str]:
-    """Every notification, once the run has ended: past the camera warming,
-    whose delay starts only after the steps before it have run.
+async def _finished(hass: HomeAssistant, run: Run) -> tuple[int, list[str]]:
+    """How many closes, and every notification's title, once the run has ended:
+    past both waits and the camera warming, whose delays each start only after
+    the steps before them.
     """
-    for _ in range(3):
+    for _ in range(4):
         await _minutes_later(hass, 120)
     await hass.async_block_till_done()
-    return [call.data["title"] for call in sent]
+    return len(run.closes), [call.data["title"] for call in run.notified]
+
+
+def _alarm(run: Run) -> str:
+    (call,) = [c for c in run.notified if c.data["title"] == ALARM]
+    return " ".join(call.data["message"].split())
 
 
 @pytest.mark.parametrize("blueprint", INPUTS)
-async def test_a_roof_that_closes_raises_no_alarm(
+async def test_a_roof_that_closes_is_closed_once_and_raises_no_alarm(
     hass: HomeAssistant, closing, blueprint: str
 ) -> None:
-    sent = await closing(blueprint)
+    run = await closing(blueprint)
     hass.states.async_set(SHUTTER, "closed")
-    assert ALARM not in await _titles(hass, sent)
+    closes, titles = await _finished(hass, run)
+    assert (closes, ALARM in titles) == (1, False)
 
 
 @pytest.mark.parametrize("blueprint", INPUTS)
-async def test_a_roof_still_open_after_the_timeout_raises_the_alarm(
+async def test_a_shutter_error_is_closed_again_at_once(
     hass: HomeAssistant, closing, blueprint: str
 ) -> None:
-    sent = await closing(blueprint)
+    """An error ends the first wait without its timeout; the second close
+    clears it here.
+    """
+    run = await closing(blueprint)
+    hass.states.async_set(SHUTTER, "error")
+    await _settle()
+    assert len(run.closes) == 2
+    hass.states.async_set(SHUTTER, "closed")
+    closes, titles = await _finished(hass, run)
+    assert (closes, ALARM in titles) == (2, False)
+
+
+@pytest.mark.parametrize(
+    ("shutter", "says"),
+    [
+        ("open", "its shutter reads open"),
+        ("error", "its shutter reads error"),
+        ("unavailable", "lost contact with the dome"),
+    ],
+)
+@pytest.mark.parametrize("blueprint", INPUTS)
+async def test_a_roof_that_will_not_close_raises_the_alarm(
+    hass: HomeAssistant, closing, blueprint: str, shutter: str, says: str
+) -> None:
+    """Closed twice, then the alarm, saying what the shutter last read."""
+    run = await closing(blueprint)
+    hass.states.async_set(SHUTTER, shutter)
+    closes, titles = await _finished(hass, run)
+    assert (closes, ALARM in titles) == (2, True)
+    assert says in _alarm(run)
+
+
+@pytest.mark.parametrize("blueprint", INPUTS)
+async def test_each_wait_is_the_configured_timeout(
+    hass: HomeAssistant, closing, blueprint: str
+) -> None:
+    """The second close at the first timeout, the alarm at the second."""
+    run = await closing(blueprint)
+    await _minutes_later(hass, TIMEOUT_MINUTES - 0.5)
+    assert len(run.closes) == 1
     await _minutes_later(hass, TIMEOUT_MINUTES + 0.1)
-    assert ALARM in await _titles(hass, sent)
+    assert len(run.closes) == 2
+    await _minutes_later(hass, TIMEOUT_MINUTES - 0.5)
+    assert ALARM not in [call.data["title"] for call in run.notified]
+    await _minutes_later(hass, TIMEOUT_MINUTES + 0.1)
+    assert ALARM in [call.data["title"] for call in run.notified]
+
+
+@pytest.mark.parametrize("blueprint", INPUTS)
+async def test_without_a_shutter_status_the_dome_is_closed_once(
+    hass: HomeAssistant, closing, blueprint: str
+) -> None:
+    """The default, which every upgraded automation has: no wait, no alarm."""
+    run = await closing(blueprint, shutter=())
+    closes, titles = await _finished(hass, run)
+    assert (closes, ALARM in titles) == (1, False)
