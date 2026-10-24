@@ -44,7 +44,7 @@ SHIPPED = {
 }
 
 
-# The simulator profile's interlocks, which are N.I.N.A.'s defaults.
+# The simulator profile's interlocks.
 INTERLOCKS = {
     "close_on_unsafe": True,
     "refuse_unsafe_shutter_move": False,
