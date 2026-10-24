@@ -16,6 +16,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
+- **The shutter status carries N.I.N.A.'s own dome interlocks** as attributes —
+  whether it closes on unsafe, refuses an unsafe open or one with no safety
+  monitor, refuses an unpark with the shutter shut, parks the mount or the dome
+  before moving the shutter, and homes before parking — so you can see what
+  N.I.N.A. does on its own, whatever Home Assistant does.
 - **The shutdown and abort blueprints can wait for the roof to close.** Give
   them the dome's shutter status (`dome_shutter`) and they wait for it to read
   `closed` after closing, up to `close_timeout_minutes` (5 by default for the
