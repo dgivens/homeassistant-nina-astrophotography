@@ -25,6 +25,7 @@ SHUTTER = "sensor.rig_dome_shutter_status"
 PARKED = "binary_sensor.rig_mount_at_park"
 TIMEOUT_MINUTES = 5
 ALARM = "🚨 Roof did not close"
+RETRYING = "⚠️ Roof not closed yet"
 
 INPUTS = {
     "session_shutdown.yaml": {
@@ -172,16 +173,22 @@ async def test_a_roof_that_will_not_close_raises_the_alarm(
 async def test_each_wait_is_the_configured_timeout(
     hass: HomeAssistant, closing, blueprint: str
 ) -> None:
-    """The second close at the first timeout, the alarm at the second."""
+    """A warning and the second close at the first timeout, the alarm at the
+    second: in rain the first warning is the one that matters.
+    """
     run = await closing(blueprint)
+
+    def titles() -> list[str]:
+        return [call.data["title"] for call in run.notified]
+
     await _minutes_later(hass, TIMEOUT_MINUTES - 0.5)
-    assert len(run.closes) == 1
+    assert (len(run.closes), RETRYING in titles()) == (1, False)
     await _minutes_later(hass, TIMEOUT_MINUTES + 0.1)
-    assert len(run.closes) == 2
+    assert (len(run.closes), RETRYING in titles()) == (2, True)
     await _minutes_later(hass, TIMEOUT_MINUTES - 0.5)
-    assert ALARM not in [call.data["title"] for call in run.notified]
+    assert ALARM not in titles()
     await _minutes_later(hass, TIMEOUT_MINUTES + 0.1)
-    assert ALARM in [call.data["title"] for call in run.notified]
+    assert ALARM in titles()
 
 
 @pytest.mark.parametrize("blueprint", INPUTS)
