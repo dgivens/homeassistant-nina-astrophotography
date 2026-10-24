@@ -93,7 +93,12 @@ OPTIONAL: dict[str, dict[str, object]] = {
         "escalations": 3,
     },
     "meridian_flip_warning.yaml": {},
-    "session_shutdown.yaml": {"close_dome": True, "notify_target": ["notify.phone"]},
+    "session_shutdown.yaml": {
+        "close_dome": True,
+        "dome_shutter": ["sensor.rig_dome_shutter_status"],
+        "close_timeout_minutes": 10,
+        "notify_target": ["notify.phone"],
+    },
     "session_startup.yaml": {
         "open_dome": True,
         "sequence_name": "Autumn",
@@ -101,6 +106,8 @@ OPTIONAL: dict[str, dict[str, object]] = {
     },
     "weather_abort.yaml": {
         "close_dome": True,
+        "dome_shutter": ["sensor.rig_dome_shutter_status"],
+        "close_timeout_minutes": 10,
         "auto_resume": True,
         "notify_target": ["notify.phone"],
         "resume_conditions": [
