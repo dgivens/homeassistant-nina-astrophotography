@@ -4926,7 +4926,7 @@
      "state_class": "measurement",
      "unit_of_measurement": "arcsec"
     },
-    "state": "0.0"
+    "state": "unknown"
    },
    "sensor.n_i_n_a_guider_rms_ra": {
     "attributes": {
@@ -4934,7 +4934,7 @@
      "state_class": "measurement",
      "unit_of_measurement": "arcsec"
     },
-    "state": "0.0"
+    "state": "unknown"
    },
    "sensor.n_i_n_a_guider_rms_total": {
     "attributes": {
@@ -4942,7 +4942,7 @@
      "state_class": "measurement",
      "unit_of_measurement": "arcsec"
     },
-    "state": "0.0"
+    "state": "unknown"
    },
    "sensor.n_i_n_a_guider_status": {
     "attributes": {
@@ -6563,7 +6563,7 @@
      "state_class": "measurement",
      "unit_of_measurement": "arcsec"
     },
-    "state": "0.0"
+    "state": "unknown"
    },
    "sensor.n_i_n_a_guider_rms_ra": {
     "attributes": {
@@ -6571,7 +6571,7 @@
      "state_class": "measurement",
      "unit_of_measurement": "arcsec"
     },
-    "state": "0.0"
+    "state": "unknown"
    },
    "sensor.n_i_n_a_guider_rms_total": {
     "attributes": {
@@ -6579,7 +6579,7 @@
      "state_class": "measurement",
      "unit_of_measurement": "arcsec"
     },
-    "state": "0.0"
+    "state": "unknown"
    },
    "sensor.n_i_n_a_guider_status": {
     "attributes": {
