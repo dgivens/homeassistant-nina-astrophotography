@@ -260,3 +260,35 @@ async def test_an_upgrade_honours_an_entry_that_disables_new_entities(
     hass.config_entries.async_update_entry(config_entry, pref_disable_new_entities=True)
     await _reload(hass, config_entry)
     assert _enabled(hass, config_entry) == set()
+
+
+@pytest.mark.synthetic
+async def test_opening_is_sent_when_the_monitor_is_not_reporting(
+    hass, config_entry, rig, set_up_at
+) -> None:
+    """Only a monitor reporting unsafe refuses; one that is down refuses
+    nothing, as on a rig without one. The monitor's block is derived down.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_monitor_down")
+    await hass.services.async_call(DOMAIN, SERVICE_DOME_OPEN, {}, blocking=True)
+    assert "/equipment/dome/open" in [p for p, _ in rig.sent]
+
+
+async def test_an_upgrade_enables_the_rows_of_a_dome_connected_later(
+    hass, config_entry, rig, set_up_at
+) -> None:
+    """N.I.N.A. may connect the dome only when a sequence starts, long after
+    Home Assistant has set up.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+    _disable_every_dome_row(hass, config_entry, user_disabled="")
+    rig.goto("imaging")
+    await _reload(hass, config_entry)
+    assert _enabled(hass, config_entry) == set()
+
+    rig.goto("simulator_dome_parked")
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert _enabled(hass, config_entry) == {
+        entity_id for entity_id, (_, enabled) in SHIPPED.items() if enabled
+    }

@@ -455,6 +455,8 @@ STATES: dict[str, State] = {
     "simulator_dome_unsafe": _with_readings(
         _DOME_PARKED, "SafetyMonitor", IsSafe=False
     ),
+    # The monitor's driver down, derived as `disconnect` derives one.
+    "simulator_dome_monitor_down": disconnect(_DOME_PARKED, "SafetyMonitor"),
     # A dome whose driver cannot move its shutter. Synthetic in `CanSetShutter`.
     "dome_without_shutter_control": _with_readings(
         _DOME_PARKED, "Dome", CanSetShutter=False
