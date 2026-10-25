@@ -83,8 +83,8 @@ export const scenarios = {
     after: (dump) => [rig(dump, NIGHT).build()],
   },
 
-  // The same with `refresh_on_save` off: the new thumbnail only, and the
-  // frame on screen stays.
+  // The same with `refresh_on_save` off. With a frame on screen that frame
+  // stays; here every load fails, so the panel, showing none, takes the new one.
   saved_without_refresh: {
     hass: (dump) => before(dump).build(),
     after: (dump) => [rig(dump, NIGHT).build()],

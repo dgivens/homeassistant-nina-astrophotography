@@ -142,7 +142,7 @@ async def test_an_entity_whose_entry_is_unloaded_answers_404(
         "date-without-offset",
     ],
 )
-async def test_an_invalid_index_quality_or_width_answers_400(
+async def test_an_invalid_query_answers_400(
     hass, loaded_entry, rig, hass_client, path: str
 ) -> None:
     client = await hass_client()
@@ -235,6 +235,34 @@ async def test_a_date_finds_its_frame_past_one_saved_since(
     resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
     assert await resp.read() == FRAME
     assert rig.last_params("/image/4") is None
+
+
+async def test_a_date_with_nothing_saved_since_is_served_where_counted(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    newest, date = _captured(-1)
+    rig.respond("/image-history?count=true", ok(5))
+    rig.respond("/image-history?index=4", ok([newest]))
+    rig.respond("/image/4", FakeResponse(FRAME, content_type="image/jpeg"))
+    client = await hass_client()
+    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    assert await resp.read() == FRAME
+
+
+@pytest.mark.parametrize(("saved_since", "status"), [(10, 200), (11, 404)])
+async def test_a_date_is_looked_for_past_ten_frames_saved_since(
+    hass, loaded_entry, rig, hass_client, saved_since: int, status: int
+) -> None:
+    """A burst of short calibration frames can outrun the card's list."""
+    history = load_envelope("imaging_guiding_image_history_all.json")["Response"]
+    _, date = _captured(0)
+    rig.respond("/image-history?count=true", ok(saved_since + 1))
+    for index in range(saved_since + 1):
+        rig.respond(f"/image-history?index={index}", ok([history[index]]))
+    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    client = await hass_client()
+    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    assert resp.status == status
 
 
 async def test_a_date_no_frame_was_saved_at_answers_404(

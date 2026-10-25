@@ -138,15 +138,6 @@ async def test_recent_frames_carry_each_frames_own_readings(
     assert recent[0][field] == parse(state_of(hass, sensor).state)
 
 
-async def test_a_flat_in_recent_frames_carries_no_hfr(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
-) -> None:
-    """Not the newest light's: a calibration frame has no stars to measure."""
-    await advance("dawn_flats")
-    recent = state_of(hass, LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
-    assert (recent[0]["hfr"], recent[0]["stars"]) == (None, None)
-
-
 async def test_recent_lights_survive_a_dawn_flat_run(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:

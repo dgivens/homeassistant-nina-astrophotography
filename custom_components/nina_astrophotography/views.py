@@ -47,10 +47,11 @@ class NinaImageProxyView(HomeAssistantView):
     """`GET /api/nina_astrophotography/image/{entity_id}/{index}`.
 
     `index` 0 is the newest frame, as in `recent_frames`, and `date` that
-    entry's own `date`: with it the proxy serves that frame or none, however
+    entry's own `date`: with it a render is of that frame or none, however
     many the rig saved since the card's list. `width` scales the frame down to
-    that many pixels across, and `thumbnail=true` asks for the rig's own
-    thumbnail before a render.
+    that many pixels across. `thumbnail=true` asks for the rig's own thumbnail
+    before a render, which `get_thumbnail_bytes` says is not always that
+    frame's: a preview only, never what a frame's readings are shown over.
     """
 
     url = "/api/nina_astrophotography/image/{entity_id}/{index}"

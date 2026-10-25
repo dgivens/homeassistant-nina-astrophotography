@@ -58,6 +58,9 @@ const SIGNED_URL_TTL_SECONDS = 30;
 // A strip tile's width in CSS pixels, as `.strip-thumb` draws it.
 const THUMB_WIDTH = 64;
 
+// Device pixels across for a preview the card could not measure.
+const FALLBACK_PREVIEW_WIDTH = 1600;
+
 // An absent field is undefined; the integration publishes no reading as null.
 function finite(value) {
   return Number.isFinite(value) ? value : null;
@@ -337,9 +340,11 @@ class NinaImagePanelCard extends HTMLElement {
       this._imageEntity = imageEntity;
       this._newest = newest?.date;
       this._load(newest);
-    } else if (newest?.date !== this._newest) {
-      this._newest = newest?.date;
-      if (newest && this._config.refresh_on_save) this._load(newest);
+    } else if (newest && newest.date !== this._newest) {
+      // An emptied list (a lost link drops the attribute) is not a save, so
+      // the same newest coming back loads nothing.
+      this._newest = newest.date;
+      if (this._config.refresh_on_save || !this._hasImage) this._load(newest);
     }
 
     // The histogram too: before a frame loads, it describes the newest.
@@ -419,6 +424,16 @@ class NinaImagePanelCard extends HTMLElement {
   // frame than is drawn; `null` before layout.
   _devicePixels(css) {
     return css ? Math.ceil(css * (window.devicePixelRatio || 1)) : null;
+  }
+
+  // The preview's width in device pixels. Lovelace hands a card `hass` before
+  // attaching it, in the same task, so an unmeasured card waits one task; one
+  // still unmeasured — off-DOM, or in a hidden view — gets a cap, not the
+  // full frame.
+  async _previewWidth() {
+    const wrap = () => this.shadowRoot.getElementById("img-wrap")?.clientWidth;
+    if (!wrap()) await new Promise((resolve) => setTimeout(resolve));
+    return this._devicePixels(wrap()) ?? FALLBACK_PREVIEW_WIDTH;
   }
 
   // Signed right before use: `auth/sign_path` is Home Assistant's mechanism
@@ -512,15 +527,19 @@ class NinaImagePanelCard extends HTMLElement {
 
   // One main load at a time: a frame asked for meanwhile replaces any still
   // waiting, so a burst of saves costs N.I.N.A. two renders, not one each.
-  // `picked` is a strip click, which shows the spinner and, failing, leaves
-  // the frame on screen.
+  // `picked` is a strip click, which shows the spinner at once, even while
+  // it waits, and failing leaves the frame on screen.
   _load(frame, picked = false) {
+    if (picked) {
+      this.shadowRoot?.getElementById("main-img")?.classList.add("loading");
+      this.shadowRoot?.getElementById("spinner")?.classList.add("active");
+    }
     if (this._loading) {
       this._queued = { frame, picked };
       return;
     }
     this._loading = true;
-    this._loadImage(frame, picked).finally(() => {
+    this._loadImage(frame, picked).catch(() => {}).finally(() => {
       this._loading = false;
       const next = this._queued;
       this._queued = null;
@@ -533,16 +552,16 @@ class NinaImagePanelCard extends HTMLElement {
     const spinner = this.shadowRoot?.getElementById("spinner");
     const noImg  = this.shadowRoot?.getElementById("no-image");
     if (!img) return;
-    const described = this._frame();
-
-    if (picked) {
-      img.classList.add("loading");
-      spinner?.classList.add("active");
-    }
+    // A picked frame still waiting keeps its spinner.
+    const settle = () => {
+      if (this._queued?.picked) return;
+      img.classList.remove("loading");
+      spinner?.classList.remove("active");
+    };
 
     try {
       if (!frame) throw new Error("no frame to load");
-      const width = this._devicePixels(this.shadowRoot.getElementById("img-wrap")?.clientWidth);
+      const width = await this._previewWidth();
       const url = await this._signedUrl(this._imagePath(frame, { width }));
       await new Promise((resolve, reject) => {
         const probe = new Image();
@@ -555,13 +574,11 @@ class NinaImagePanelCard extends HTMLElement {
       // and everything describing it must stay on it too.
       this._shown = frame;
       this._hasImage = true;
-      img.classList.remove("loading");
-      spinner?.classList.remove("active");
+      settle();
       noImg && (noImg.style.display = "none");
       img.style.display = "block";
     } catch (err) {
-      img.classList.remove("loading");
-      spinner?.classList.remove("active");
+      settle();
       // Held: the lost link is the likely cause; keep the frame on screen.
       if (this._grace.holding) return;
       // A strip click leaves the frame shown; the newest failing clears it.
@@ -572,7 +589,6 @@ class NinaImagePanelCard extends HTMLElement {
         noImg && (noImg.style.display = "flex");
       }
     }
-    if (this._frame() === described) return;
     if (this._config.show_histogram) this._drawHistogram();
     this._updateStripActive();
     // Held: the readings are `unavailable`; keep the ones on screen.
@@ -590,6 +606,11 @@ class NinaImagePanelCard extends HTMLElement {
     if (!strip) return;
 
     const frames = this._recentFrames().slice(0, this._config.strip_count);
+    // Emptied by a lost link: the tiles are kept for the frames' return.
+    if (frames.length === 0) {
+      strip.innerHTML = "";
+      return;
+    }
     const kept = this._tiles;
     this._tiles = new Map();
     strip.innerHTML = "";

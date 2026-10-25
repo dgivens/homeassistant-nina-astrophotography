@@ -65,8 +65,9 @@ REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
 # A quality makes `/image` answer JPEG rather than a far larger PNG.
 IMAGE_QUALITY = 85
 
-# How many frames saved since a caller counted are looked past for its frame.
-_FRAME_SEARCH = 5
+# How many frames saved since a caller counted are looked past for its frame:
+# a burst of short calibration frames can outrun the caller's list.
+_FRAME_SEARCH = 10
 
 # Pre-handler statuses meaning the path itself is not served.
 _NOT_SERVED = (404, 405, 501)
@@ -309,18 +310,22 @@ class NinaClientV2:
     ) -> bytes:
         """N.I.N.A.'s own thumbnail of a frame, else a render `width` across.
 
-        The plugin writes one JPEG per saved frame from the preview it prepared,
-        256 px across or a tenth of the frame if wider, so serving it renders
-        nothing. It does so only while its "Create
-        Thumbnails" setting is on, and keys each by its place among the
-        thumbnailed frames: turned on mid-session, it answers for the wrong one.
-        The render answers whatever the thumbnail route refused or lacked.
+        The plugin writes one JPEG per saved frame from the preview N.I.N.A.
+        prepared, 256 px across or a tenth of the frame if wider, so serving it
+        renders nothing. That preview follows N.I.N.A.'s own display settings,
+        not `auto_prepare` or `quality`. The plugin writes them only while its
+        "Create Thumbnails" setting is on, and keys each by its place among the
+        thumbnailed frames rather than in the history: after any stretch with
+        the setting off, it answers for a newer frame, undetectably, and the
+        newest frames have none. The render answers whatever the thumbnail
+        route refused or lacked.
         """
         try:
             return await self._image_bytes(f"/image/thumbnail/{index}", {})
         except NinaConnectionError:
             raise
-        except NinaError:
+        except NinaError as exc:
+            _LOGGER.debug("No thumbnail for frame %s, rendering it: %s", index, exc)
             return await self.get_image_bytes(
                 index, quality=quality, auto_prepare=auto_prepare, width=width
             )
@@ -358,7 +363,7 @@ class NinaClientV2:
         An index never changes within a process and the history only grows, so
         each frame saved since the caller counted puts its frame one lower.
         """
-        for index in range(guess, max(guess - _FRAME_SEARCH, -1), -1):
+        for index in range(guess, max(guess - _FRAME_SEARCH - 1, -1), -1):
             frames = await self.get_frames(index=index)
             if not frames or frames[0].date < date:
                 break

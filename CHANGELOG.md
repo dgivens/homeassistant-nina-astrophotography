@@ -17,14 +17,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   frame used to cost seven JPEG renders on the imaging PC for every open
   dashboard: the frame, then all six thumbnails again. Now it costs one for the
   frame and one for its thumbnail, while the older thumbnails stay as they
-  were. A save arriving while a frame loads waits for that load and replaces
-  any save already waiting. A run of dawn flats therefore never queues renders
-  faster than N.I.N.A. finishes them.
+  were. A save arriving while the main frame loads waits for that load and
+  replaces any save already waiting, so a run of dawn flats never queues main
+  renders faster than N.I.N.A. finishes them.
 - **Thumbnails are N.I.N.A.'s own** when the Advanced API plugin keeps them
-  (its "Create Thumbnails" setting, on by default), so they cost no render at
-  all. Otherwise they are rendered small. The main preview is rendered no
-  wider than the card draws it, and the full-size frame is fetched only for
-  the zoomed view.
+  (its "Create Thumbnails" setting, on by default), so they cost no render.
+  They look like N.I.N.A.'s own preview, star annotations included where it
+  draws them. Where the plugin has none, they are rendered small. The main
+  preview is rendered no wider than the card draws it, and the full-size frame
+  is fetched only for the zoomed view.
 - **The image panel never shows one frame under another's readings.** The card
   asks for each frame by when it was saved, so a frame saved in the meantime
   cannot take its place.
