@@ -131,8 +131,8 @@ async def test_only_equipment_the_rig_no_longer_reports_can_be_deleted(
 ) -> None:
     """Gold stale-devices: dynamic creation is paired with removal.
 
-    `entry_id:kind` was `wip/v2.0`'s identifier scheme; nothing will ever claim
-    one again, so an upgrade can clear it.
+    `entry_id:kind` is the `wip/v2.0` pre-release's identifier scheme; nothing
+    claims one, so such a device can always be cleared.
     """
     device = dr.async_get(hass).async_get_or_create(
         config_entry_id=loaded_entry.entry_id,

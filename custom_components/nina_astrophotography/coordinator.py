@@ -459,7 +459,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             return
         except Exception:
             # A wire shape the mapper did not anticipate. Broad on purpose: one
-            # slow endpoint must not take every device unavailable.
+            # tier endpoint must not take every device unavailable.
             if endpoint not in self._tier_warned:
                 self._tier_warned.add(endpoint)
                 _LOGGER.warning(
@@ -514,7 +514,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def _generation_frames(self) -> int:
         """Frames held for the current process, which is what `?count=true` counts.
 
-        So the set is never pruned within a process: a pruned set would
+        The set is therefore never pruned within a process: a pruned set would
         disagree with the count and reseed forever. A week of Target Scheduler
         is a few thousand frames.
         """

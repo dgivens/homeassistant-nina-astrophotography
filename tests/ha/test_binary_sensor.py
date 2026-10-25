@@ -48,8 +48,8 @@ UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
         "livestack_running",
         # No `Slewing` on MountModel: nothing above the seam can compute it.
         "mount_slewing",
-        # Retired: 1.4.5's `_sequence_running` published the imaging heuristic,
-        # and `sequencer_running` answers a different question.
+        # Not reused: 1.4.5's `_sequence_running` published the imaging
+        # heuristic, and `sequencer_running` answers a different question.
         "sequence_running",
     ],
 )
@@ -323,7 +323,7 @@ async def test_a_run_that_fitted_well_has_no_reason(
 async def test_a_report_older_than_the_session_is_not_tonights_problem(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
-    """The report file outlives a restart, and without the real clock this test
+    """The report file outlives a restart, and with no frozen clock this test
     runs a day or more after the capture — so the same rejected report reads
     `off`. Believing an old one would raise a problem every time Home Assistant
     started.

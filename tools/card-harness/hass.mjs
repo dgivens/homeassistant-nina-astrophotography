@@ -40,9 +40,9 @@ export class Rig {
   }
 
   /**
-   * Serve no registry, so every lookup falls back to the templated prefix.
-   * What a card does on an instance that cannot be identified — two rigs and no
-   * `device_id:` — and the comparison that says a conversion changed nothing.
+   * Serve no registry, so every lookup falls back to the templated prefix:
+   * what a card does on an instance it cannot identify (two rigs and no
+   * `device_id:`), and a run whose output must match the resolved one's.
    */
   unresolvable() {
     this._entities = null;

@@ -1,4 +1,4 @@
-"""The flat panel light — §5.3.4's three fixes, on real hardware numbers."""
+"""The flat panel light (§5.3.4), on real hardware numbers."""
 
 from dataclasses import replace
 
@@ -47,9 +47,8 @@ async def test_brightness_scales_into_the_drivers_own_range(
 async def test_the_reported_brightness_is_scaled_back_into_ha_units(
     hass: HomeAssistant, flat_panel_entry
 ) -> None:
-    """The raw driver value handed HA 4096 into a property defined as 0-255.
-
-    The fixture panel sits at driver 2048 of 4096, so HA should read 128.
+    """HA's brightness is 0-255 whatever the driver's range: the fixture panel
+    sits at driver 2048 of 4096, so HA reads 128.
     """
     assert state_of(hass, ENTITY).attributes[ATTR_BRIGHTNESS] == 128
 
@@ -59,7 +58,7 @@ async def test_a_bare_turn_on_does_not_go_to_full_output(
 ) -> None:
     """THE safety test on this entity.
 
-    A bare set-light?on=true jumps to MaxBrightness — measured 0 to 4096 — and a
+    A bare set-light?on=true jumps to MaxBrightness — 0 to 4096 here — and a
     light that comes on at full output is a hazard in a shared observatory. The
     panel's ordinary idle state is Brightness 0, which is exactly the state that
     tempts a falsy-fallback implementation into sending 255.
@@ -89,7 +88,7 @@ async def test_turn_on_sends_the_brightness_before_switching_the_light_on(
 # schema clamps a brightness outside 0-255 before our code runs, so such a test
 # would be testing Home Assistant. The driver-range clamp that matters —
 # set-brightness?brightness=99999 silently clamping and answering Success: true —
-# is covered on number.flat_panel_brightness in phase C Task C2.
+# is covered on the flat panel brightness number in `test_number.py`.
 
 
 async def test_the_idle_panel_reads_off(

@@ -10,17 +10,13 @@ Every state carries the same endpoints, so advancing never changes which routes
 exist — an endpoint one state serves and another does not reads to the client
 as a build that dropped a route.
 
-The three tier-polled endpoints — `/livestack/status`,
-`/profile/show?active=true` and `/equipment/focuser/last-af` — are served by
-the whole captures alone (`imaging_guiding` and the three `_captured` states).
-The dawn family deliberately leaves them unregistered: an unregistered path
-answers 404, which is what a build without the livestack plugin sends, and that
-keeps the coordinator's not-served latch exercised.
-
-Which makes those two groups the exception to the paragraph above, and the
-reason a test enters a whole capture with the `set_up_at` fixture rather than
-`advance`: advancing from a dawn state has the latch already fired, and one
-refresh does not retry.
+The exception is the three tier-polled endpoints — `/livestack/status`,
+`/profile/show?active=true` and `/equipment/focuser/last-af` — which only the
+whole captures (`_captured`) serve. The dawn family leaves them unregistered:
+they answer 404, as a build without the livestack plugin does, which keeps the
+coordinator's not-served latch exercised. Advancing from a dawn state arrives
+with that latch fired and one refresh does not retry, so a test enters a whole
+capture with the `set_up_at` fixture, not `advance`.
 
 Adding a state: build it from captured envelopes, never from a hand-written
 document. A state the corpus cannot show belongs in `AWAITING_CAPTURE`.
@@ -71,9 +67,8 @@ def _captured(slug: str) -> State:
 
     A capture is whole when `capture_fixtures.py --state <slug>` wrote all
     fourteen files, which needs none of the assembly a partial corpus does.
-    `/version` and `/version/nina` come from `_meta` rather than their own
-    files, for the reason `_versions` gives — the captured `{slug}_version.json`
-    is unreadable by anything but the drift guard, its `Response` redacted.
+    `/version` and `/version/nina` come from `_meta`, for the reason `_versions`
+    gives; the captured `{slug}_version.json` serves only the drift guard.
 
     `/image/0` defaults to the bare path's envelope: a capture never calls it —
     it answers bytes — and this is only ever read where the history is empty
@@ -120,12 +115,11 @@ def _truncated_after_the_last_autofocus_start(name: str) -> dict:
 def _newest_frame(name: str) -> dict:
     """Bare `/image-history`: the newest frame of a captured `?all=true` list.
 
-    The bytes are captured; only the envelope around them is assembled, for a
-    rig state whose own bare path was never captured. The frame is the wire's
-    own newest by `Date`, wrapped in a ONE-ELEMENT LIST — which is what the
-    captured `imaging_guiding_image_history_latest.json` holds, so that is the
-    shape. One frame is one frame either way: reseeding the session from this
-    path is what leaves `Session Image Count` reading 1.
+    The frame is captured; only the envelope is assembled, for the dawn family
+    whose bare path has no capture. It is the wire's own newest by `Date`,
+    wrapped in a ONE-ELEMENT LIST — the shape
+    `imaging_guiding_image_history_latest.json` captures. Reseeding the session
+    from this path leaves `Session Image Count` reading 1.
     """
     frames = load_envelope(name)["Response"]
     return ok([max(frames, key=lambda frame: frame["Date"])])
@@ -227,8 +221,8 @@ def _rangeless(channel: dict) -> dict:
 def _degenerate(channel: dict) -> dict:
     """A channel reporting `Min 0 / Max 0 / Step 0`.
 
-    What a DISCONNECTED device sends for a range, which `number.py` already
-    documents for the flat panel. `Max - Min == Step` holds, so without a
+    What a DISCONNECTED device sends for a range, as `number.py` documents for
+    the flat panel. `Max - Min == Step` holds, so without a
     zero-step guard it reads as binary and mints a switch whose on and off
     values are both 0.
     """
@@ -293,8 +287,7 @@ _IMAGING: State = {
 }
 
 # 01:45 rig-local, 4.2 h into a session that began with a restart at 17:27: the
-# camera exposing, the guider locked, 27 frames down, livestack running. The
-# only state whose every endpoint is captured.
+# camera exposing, the guider locked, 27 frames down, livestack running.
 _IMAGING_GUIDING: State = {
     **_captured("imaging_guiding"),
     # This state HAS frames, so both image routes answer bytes.
@@ -545,10 +538,6 @@ STATES: dict[str, State] = {
         **_IMAGING,
         "/application-start": {**ok(), "Response": None},
     },
-    # The guider connected but no longer locked on, and the guider stopped.
-    # `GuiderInfo.State` is Looping | LostLock | Guiding | Stopped | Calibrating
-    # and the corpus holds only `Guiding` — a guider that is down carries no
-    # `State` at all — so both are synthetic in that one string.
     # An autofocus that FINISHED and was rejected on its curve fit: the profile
     # threshold is 0.7 and this run fitted 0.42. Invisible in the event stream
     # — the only evidence is the report's own R².
@@ -563,6 +552,9 @@ STATES: dict[str, State] = {
     "site_configured": _with_site(
         _IMAGING_GUIDING, Latitude=31.5478, Longitude=-110.2977, Elevation=1509
     ),
+    # `imaging_guiding` with the guider's lock lost, and with the guider
+    # stopped. Synthetic in `State` alone; a guider that is down carries no
+    # `State` at all.
     "guider_lost_lock": _with_readings(_IMAGING_GUIDING, "Guider", State="LostLock"),
     "guider_stopped": _with_readings(_IMAGING_GUIDING, "Guider", State="Stopped"),
     # A camera with no cooling, which reports the setpoint as "NaN" and so
@@ -695,5 +687,5 @@ SEQUENCES: dict[str, list[str]] = {
 # - camera_warm_at_setup: CoolerPower "NaN" with the camera connected, proving
 #   a transiently-NaN field does not become a dynamic channel.
 #
-# No ENDPOINT awaits capture any more — `imaging_guiding` serves all of them.
+# No ENDPOINT awaits capture: `imaging_guiding` serves all of them.
 AWAITING_CAPTURE = frozenset({"camera_warm_at_setup"})

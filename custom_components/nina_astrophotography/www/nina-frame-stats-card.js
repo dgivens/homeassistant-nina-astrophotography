@@ -85,12 +85,11 @@ function passband(name) {
   return last && found.filter(Boolean).length === 1 ? last : null;
 }
 
-// Any other filter. Eight, so that an 8-position wheel of filters matching no
-// passband still draws every slot apart. Chosen for perceptual distance from
-// each other and the passband hues on the card's background, weighing hue and
-// saturation over lightness since a thin line shows those most, with and
-// without a colour-vision deficiency, and none pale enough to pass for L's
-// white. Ordered most distinct first.
+// Any other filter. Eight, so an 8-position wheel matching no passband still
+// draws every slot apart. Chosen to stay distinct from each other and from the
+// passband hues on the card's background, with and without a colour-vision
+// deficiency, weighing hue and saturation over lightness as a thin line shows
+// those most; none pale enough to pass for L's white. Most distinct first.
 const OTHER_COLOURS = [
   "#daff24", "#ff00bf", "#24ffc8", "#da886c",
   "#0db9f2", "#ff6a00", "#e1da89", "#9c6bff",

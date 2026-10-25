@@ -471,10 +471,10 @@ conditions:
       {% set rig = device_attr(nina_rig, 'config_entries') %}
       {{ entry is none or rig is not iterable or entry in rig | list }}
 
-  # These gates live HERE rather than in the actions, and the difference is not
-  # cosmetic. A bare condition that fails inside a `choose` branch raises
-  # `_ConditionFail`, which Home Assistant catches at that branch's own script
-  # boundary and — unlike `stop:` — does NOT re-raise into the parent. The
+  # These gates live HERE, not in the actions. A bare condition that fails
+  # inside a `choose` branch raises `_ConditionFail`, which Home Assistant
+  # catches at that branch's own script boundary and — unlike `stop:` — does
+  # NOT re-raise into the parent. The
   # parent sequence then carries on to the next action, so gates written inside
   # a branch are not gates at all: they abort the branch and alert anyway. At
   # the automation's top level a false condition genuinely stops the run.

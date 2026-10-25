@@ -96,7 +96,7 @@ PLATFORMS: list[Platform] = [
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-# Every dome entity that ships enabled. 2.0.0 shipped them all disabled.
+# Every dome entity that ships enabled; `_enable_dome_rows` enables its row.
 _DOME_ENABLED: tuple[tuple[Platform, NinaEntityDescription], ...] = tuple(
     (platform, description)
     for platform, descriptions in (
@@ -221,8 +221,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     # Before the platforms: `via_device` needs the hub to exist, and equipment
     # with no entities still gets a device.
     async_sync_devices(hass, entry, coordinator.data)
-    # Before the platforms too, so an enabled row's entity is created now; and
-    # on every publish, for a dome N.I.N.A. connects later.
+    # Before the platforms too, so an enabled row's entity is created at setup;
+    # and on every publish, for a dome N.I.N.A. connects later.
     _enable_dome_rows(hass, entry, coordinator.data)
     entry.async_on_unload(
         coordinator.async_add_listener(
@@ -303,7 +303,7 @@ async def async_remove_config_entry_device(
     try:
         kind = kind_of(entry.entry_id, device)
     except LookupError:
-        # An identifier scheme nothing writes any more.
+        # An identifier this integration does not write: nothing recreates it.
         return True
     if kind is None:
         return False
@@ -481,8 +481,8 @@ def _register_services(hass: HomeAssistant) -> None:
             call.data["temperature"], minutes=call.data.get("minutes", -1)
         )
 
-    # `minutes` is unset by default rather than 10: the client sends -1, which
-    # asks N.I.N.A. for the ramp the profile specifies for this camera.
+    # `minutes` has no default: the client then sends -1, which asks N.I.N.A.
+    # for the ramp the profile specifies for this camera.
     register(
         SERVICE_CAMERA_COOL,
         handle_camera_cool,

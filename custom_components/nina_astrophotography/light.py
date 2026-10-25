@@ -34,8 +34,7 @@ class NinaFlatLight(NinaEntity, LightEntity):
     _attr_supported_color_modes = {ColorMode.BRIGHTNESS}
     _attr_translation_key = "flat_panel_light"
 
-    # A bare turn_on restores the level last requested this run; before any
-    # request it comes on dim, never full.
+    # A bare turn_on's level when there is none to restore: dim, never full.
     _DEFAULT_ON_BRIGHTNESS = 1
 
     def __init__(self, coordinator: NinaCoordinator, entry: NinaConfigEntry) -> None:
@@ -54,7 +53,9 @@ class NinaFlatLight(NinaEntity, LightEntity):
 
     @property
     def _last_on_brightness(self) -> int:
-        """The level a bare turn_on restores. Dim by default, never full."""
+        """The level a bare turn_on sends: the last requested this run, else
+        the current one, else dim.
+        """
         if self._remembered is not None:
             return self._remembered
         current = self.brightness if self.is_on else None

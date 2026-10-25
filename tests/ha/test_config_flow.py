@@ -174,8 +174,8 @@ async def test_the_options_flow_moves_the_session_rollover_hour(
 ) -> None:
     """A rig on a UTC clock needs the boundary off local noon (§4.4)."""
     await _set_option(hass, loaded_entry, **{CONF_ROLLOVER_HOUR: 3})
-    # Phase C exposes this as `sensor.session_start` (§5.4); assert through the
-    # entity once it exists.
+    # Read from the model: `sensor.session_start` (§5.4) ships disabled, and
+    # states the boundary in UTC, where the rig's 03:00 is not hour 3.
     session = loaded_entry.runtime_data.coordinator.data.session
     assert session.session_start.hour == 3
 

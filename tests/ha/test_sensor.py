@@ -81,7 +81,7 @@ async def test_the_cut_sensors_are_not_registered(
 ) -> None:
     """§5.2.3's read-only mirrors, the driver names §5.1 moved onto the device
     registry, and `sequence_status` — node status persists from prior runs, so
-    it reported RUNNING on an idle rig (§6.2).
+    it reads RUNNING on an idle rig (§6.2).
     """
     await advance("imaging_guiding")
     assert registered(SENSOR_DOMAIN, entity_registry, loaded_entry, suffix) is None
@@ -164,8 +164,9 @@ async def test_the_sequence_target_is_the_one_the_scheduler_announced(
 async def test_sequence_progress_is_unknown_where_no_node_counts_iterations(
     hass: HomeAssistant, loaded_entry, entity_registry
 ) -> None:
-    """The truth about what this API exposes on a Target Scheduler rig.
-    Inventing a percentage from node statuses would be worse (§6.2).
+    """No node on a Target Scheduler rig counts iterations, so there is no
+    percentage to report; inventing one from node statuses would be worse
+    (§6.2).
     """
     entity_registry.async_update_entity(SEQUENCE_PROGRESS, disabled_by=None)
     await hass.config_entries.async_reload(loaded_entry.entry_id)
@@ -178,7 +179,7 @@ async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
 ) -> None:
     """`meridian_flip_warning.yaml` reads this attribute by name to place its
     early warning. Rename or drop it and the blueprint silently falls back to
-    warning AT the flip — which is the bug the attribute exists to fix.
+    warning AT the flip.
     """
     flip = state_of(hass, FLIP)
 

@@ -171,8 +171,9 @@ async def test_the_livestack_switch_exists_and_reads_off_without_the_plugin(
 async def test_a_commands_own_response_never_sets_the_state(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
-    """Measured: set-light?on=true answered success while an immediate re-read
-    still showed LightOn false; it changed seconds later.
+    """A command answers success before the equipment moves — after
+    set-light?on=true an immediate re-read still shows LightOn false — so the
+    state waits for the poll.
     """
     await _call(hass, SERVICE_TURN_ON, LIVESTACK)
     assert rig.sent == [("/livestack/start", None)]
@@ -241,8 +242,8 @@ async def test_the_cooler_sends_the_setpoint_the_camera_reports(
     hass: HomeAssistant, advance, rig
 ) -> None:
     """/cool has no "resume at the existing target" form, so starting the
-    cooler has to name a temperature: the captured -5 °C, not the -10 °C 1.4.5
-    hardcoded whatever the camera was set to.
+    cooler has to name a temperature: the camera's own captured -5 °C, never a
+    hardcoded default.
     """
     await advance("imaging_guiding")
     await _call(hass, SERVICE_TURN_ON, COOLER)

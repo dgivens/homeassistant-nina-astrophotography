@@ -78,7 +78,7 @@ def test_calibration_frames_do_not_drag_the_hfr_aggregate(night) -> None:
 
 
 def test_the_last_frame_is_the_last_light_not_the_last_flat(night) -> None:
-    """A dawn flat run left `Last Image Mean ADU` reading 33,139 on 1.4.4."""
+    """The night ends in dawn flats, whose mean ADU says nothing about the sky."""
     stats = fold(night, [], generation="g1")
     assert stats.last_frame is not None
     assert stats.last_frame.image_type == "LIGHT"

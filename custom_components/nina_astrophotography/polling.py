@@ -85,8 +85,8 @@ class RestartDetector:
     """Detects a N.I.N.A. restart.
 
     `/application-start` changing is authoritative; the frame count going
-    backwards also reports one when `/application-start` reads null. A first
-    read has no baseline, so it is never a restart.
+    backwards also reports one, which covers an `/application-start` that
+    reads null. A first read has no baseline, so it is never a restart.
     """
 
     generation: str | None = None

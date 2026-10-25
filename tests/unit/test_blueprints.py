@@ -53,8 +53,7 @@ def bound(doc: dict) -> set[str]:
     """Names a template can resolve.
 
     `trigger_variables` is included because a template *trigger* sees only
-    that block, not `variables:` — no blueprint uses one yet, but the next
-    one to add a template trigger needs this to be right.
+    that block, not `variables:`.
     """
     return set(doc.get("variables") or {}) | set(doc.get("trigger_variables") or {})
 
@@ -135,8 +134,7 @@ ENTITY_ID = re.compile(
 @pytest.mark.parametrize("path", BLUEPRINTS, ids=lambda p: p.name)
 def test_no_blueprint_names_an_entity_id(path: Path) -> None:
     """Every 2.0 entity id carries the instance name, so a hardcoded one is
-    wrong on every install but the author's — and the five shipped blueprints
-    hardcoded ids that phases B and C renamed or deleted outright.
+    wrong on every install but the author's.
     """
     named = set(ENTITY_ID.findall(path.read_text()))
 

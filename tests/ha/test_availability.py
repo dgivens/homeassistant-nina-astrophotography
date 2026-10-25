@@ -6,7 +6,7 @@ this integration's entity, by
 `test_coordinator.test_an_unreachable_rig_makes_the_entities_unavailable`.
 
 Level 3 — a sentinel reading as `unknown` rather than `unavailable` — is a
-value concern of the sensor platforms and is pinned in phase C.
+value concern of the sensor platforms and is pinned in their tests.
 """
 
 import logging
@@ -25,11 +25,9 @@ async def test_a_disconnected_device_makes_its_entities_unavailable(
 ) -> None:
     """Level 2 alone, isolated from the panel's own range condition.
 
-    The mapper blanks every reading of a block reporting `Connected: false`, so
-    a disconnected panel maps to a zero range and the platform's own condition
-    accounts for it. The captured range is restored here deliberately: with
-    `_span > 0` and `SupportsOnOff` true, nothing but `connected` can produce
-    `unavailable`.
+    On the wire a disconnected block maps to a zero range, which the platform's
+    own condition also turns `unavailable`. Only `connected` is varied here, so
+    with the captured range and `SupportsOnOff` true nothing else can.
     """
     await set_up_with_flat_device(connected=False)
     assert state_of(hass, LIGHT).state == "unavailable"

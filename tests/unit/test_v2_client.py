@@ -352,8 +352,7 @@ async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) 
 
 # ── request parameters ───────────────────────────────────────────────────────
 #
-# Request parameter names are verified by live probe and pinned here.
-#
+# Request parameter names are pinned to what the wire accepts, not the spec.
 # The spec declares set-light's parameter as literally `True`; the wire reads
 # `on`. `set-light?True=true` answers Success: true and leaves the panel alone.
 # Never generate these from the spec.

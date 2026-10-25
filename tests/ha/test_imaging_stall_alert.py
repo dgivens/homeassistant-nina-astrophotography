@@ -1,18 +1,16 @@
 """The stall alert's gates and clocks, run rather than schema-checked.
 
-`test_blueprints.py` proves Home Assistant ACCEPTS this blueprint. It cannot
-prove the config does anything, and two defects here were valid YAML that suite
-was happy with: gates written inside a `choose` branch, where a failing
-condition aborts only the branch and the parent sequence alerts anyway, and
-clocks that started before the sequence did. Both made the blueprint alert
-every minute of every night while the suite stayed green.
-
-So these tests fire the triggers and read the notification that comes out.
+`test_blueprints.py` proves Home Assistant ACCEPTS this blueprint, not that the
+config does anything. A gate written inside a `choose` branch, where a failing
+condition aborts only the branch and the parent sequence alerts anyway, or a
+clock that starts before the sequence does, is valid YAML that alerts every
+minute of every night. So these tests fire the triggers and read the
+notification that comes out.
 
 The inputs are this file's own, and every tuning input is left at its shipped
-default, read from the blueprint itself. Borrowing `test_blueprints.py`'s map
-made cases silently vacuous: it pins `night_only` off, so the default that
-mutes the twelve-hour daytime wait was never once executed.
+default, read from the blueprint itself. `test_blueprints.py`'s map pins
+`night_only` off, so the default that mutes the twelve-hour daytime wait would
+never run under it.
 """
 
 import asyncio
@@ -184,7 +182,7 @@ async def test_a_gate_suppresses_the_alert(
     nothing, a safety hold belongs to the abort blueprint, and a daytime wait
     for darkness is the twelve-hour case `night_only` exists for.
 
-    These fail if the gates move back inside a `choose` branch, where a failing
+    These fail if a gate sits inside a `choose` branch, where a failing
     condition aborts the branch and the run alerts regardless.
     """
     clock = await watching()
@@ -244,8 +242,8 @@ async def test_the_safety_gate(
     hass: HomeAssistant, watching, wired: list, state: str, alerts: bool
 ) -> None:
     """Empty means no gate — a rig with no safety monitor has no such entity,
-    and the earlier `not` over a state condition made that vacuously-true
-    condition into a permanently-false gate that muted the blueprint.
+    and a `not` over a state condition with no entities is a permanently-false
+    gate that mutes the blueprint.
 
     Wired, it reads "not `on`", never "is `off`": a monitor that has dropped
     out reads `unknown`, and that is not evidence the silence is legitimate.

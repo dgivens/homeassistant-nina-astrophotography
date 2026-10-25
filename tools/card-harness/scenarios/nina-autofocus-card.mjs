@@ -13,9 +13,8 @@ const UP = "site_configured";
 const VERDICT = "binary_sensor.n_i_n_a_focuser_autofocus_failed";
 
 // `override` replaces an attribute map wholesale, so a verdict is patched onto
-// the rig's own rather than written from scratch: the profile's R² threshold
-// then stays whatever the capture holds, instead of drifting away from the
-// report charted beneath it at the next re-capture.
+// the rig's own: the profile's R² threshold stays whatever the capture holds,
+// and in step with the report charted beneath it.
 const verdict = (dump, changes) => ({
   ...dump[UP].states[VERDICT].attributes,
   ...changes,

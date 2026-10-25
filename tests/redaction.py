@@ -162,10 +162,9 @@ def _digest(value: str, prefix: str, legacy_width: int, suffix: str = "") -> str
     `(Date, Filename)` and the fold spans fixtures, so a per-file counter both
     collides distinct frames across files and splits identical ones.
 
-    8 hex digits (32 bits) of the digest; a positional decimal form collided
-    too often at the widths tried. Already-pseudonymised input, in the current
-    form or the legacy `legacy_width`-digit one, passes through unchanged, or
-    `scan()` would report every committed fixture as dirty forever.
+    8 hex digits (32 bits) of the digest. Already-pseudonymised input — this
+    form, or the `legacy_width`-digit decimal one older fixtures still carry —
+    passes through unchanged, or `scan()` would report those fixtures dirty.
     """
     if re.fullmatch(rf"{re.escape(prefix)}[0-9a-f]{{8}}{re.escape(suffix)}", value):
         return value
@@ -222,9 +221,8 @@ def _redact_scalar(key: str, value: Any) -> Any:
 def _walk(key: str, value: Any) -> Any:
     """Redact by key at every depth.
 
-    The key travels with the recursion so a container is redacted as a
-    container; applying _redact_scalar to a dict is what flattens a settings
-    subtree into the string "REDACTED".
+    A key a rule matches redacts its whole subtree, types preserved; a list's
+    items are judged by the key that holds the list.
     """
     replaced = _redact_scalar(key, value)
     if replaced is not value:

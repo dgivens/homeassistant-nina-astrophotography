@@ -1,4 +1,4 @@
-"""The services: device targeting, and the three redesigns.
+"""The actions: device targeting, and what each one sends.
 
 What is pinned here is device targeting and the call sites where the service's
 field name and the API's parameter name differ, because each of those is a
@@ -45,8 +45,8 @@ def _hub(hass: HomeAssistant, entry) -> str:
 async def test_a_service_reaches_the_rig_its_device_belongs_to(
     hass: HomeAssistant, two_rigs
 ) -> None:
-    """1.4.5 returned the first loaded entry, so a second rig was unreachable
-    from the services however it was targeted.
+    """The targeted device, not the first loaded entry, picks the rig, so a
+    second rig is reachable.
     """
     first, second = two_rigs.rigs
     await _call(hass, "mount_park", device_id=_hub(hass, two_rigs.entries[1]))
@@ -65,7 +65,7 @@ async def test_an_untargeted_call_is_refused_when_two_rigs_are_configured(
 async def test_a_target_that_names_no_nina_instance_is_refused(
     hass: HomeAssistant, loaded_entry, rig
 ) -> None:
-    """Never widened back to "the only rig": a device of some other
+    """Never widened to "the only rig": a device of some other
     integration must not park this mount, and neither must a typo.
     """
     other = MockConfigEntry(domain="other")
@@ -141,8 +141,8 @@ async def test_an_entity_of_a_rig_targets_that_rig(
             "/sequence/load",
             {"sequenceName": "Autumn"},
         ),
-        # `duration`, not `time`. 1.4.5 sent `time`, so the exposure length was
-        # ignored and the API defaulted it.
+        # `duration`, not `time`: the API ignores `time` and defaults the
+        # exposure length.
         (
             "camera_capture",
             {"duration": 30},
@@ -208,7 +208,7 @@ async def test_the_documented_fields_are_the_fields_the_schema_binds(
     hass: HomeAssistant, service: str
 ) -> None:
     """A field documented but not bound does nothing; a field bound but not
-    documented is invisible. Both were shipped in 1.4.5.
+    documented is invisible.
 
     No entry: the actions register in `async_setup`, so the schema cannot
     depend on one being loaded.

@@ -18,8 +18,8 @@ default-groups = ["test"]
 
 [dependency-groups]
 # The fast suite. Deliberately Home-Assistant-free: the modules it covers have
-# no `homeassistant` imports, so `uv run pytest` completes in well under a
-# second. Keep it that way — see CLAUDE.md.
+# no `homeassistant` imports, so tests/unit completes in well under a second.
+# Keep it that way.
 test = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -33,7 +33,7 @@ test = [
     "hypothesis>=6.100",
 ]
 
-# The Home-Assistant-dependent suite, added in v2.0 phase A. Pinned exactly:
+# The Home-Assistant-dependent suite. Pinned exactly:
 # this package releases near-daily and hard-pins homeassistant, pytest,
 # pytest-asyncio and syrupy, so an unpinned range breaks CI on an unrelated day.
 # Installing it deliberately overrides the `test` group's pytest range.
@@ -64,9 +64,9 @@ asyncio_mode = "auto"
 # tests/ on sys.path so `from helpers import ...` works under any import mode;
 # "." so tests/ha can import custom_components.nina_astrophotography as HA does.
 pythonpath = ["tests", "."]
-# No testpaths: `pytest` with no argument must not mix the two suites. The unit
-# suite runs HA-free, the ha suite runs under PHACC, and loading PHACC's
-# pytest11 entry point imports Home Assistant before collection.
+# No testpaths: always name the suite. The unit suite runs HA-free and the ha
+# suite under PHACC, whose pytest11 entry point imports Home Assistant before
+# collection, so a bare `pytest` collects both under Home Assistant.
 markers = [
     "slow: shells out to a generator; deselect with -m 'not slow'",
     "synthetic: wire data constructed for a branch the corpus cannot show",

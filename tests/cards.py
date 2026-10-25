@@ -4,8 +4,7 @@ Both suites parse the cards the same way and must not disagree about it:
 `tests/unit/test_cards.py` checks the names against the committed entity list,
 `tests/ha/test_entity_resolver.py` against a live registry.
 
-Free of Home Assistant, because the unit suite imports it — which is why this
-is not in `tests/helpers.py`.
+Free of Home Assistant, because the unit suite imports it.
 """
 
 from pathlib import Path

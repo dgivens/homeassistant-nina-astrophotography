@@ -1,7 +1,7 @@
 """Push, poll and `/event-history` replay are one idempotent fold.
 
-Asserted through `coordinator.data` and the light: phase B has no session
-sensors yet, and `data` is the published snapshot every phase-C entity reads.
+Asserted through `coordinator.data`, the published snapshot every entity reads,
+and the light.
 """
 
 from datetime import datetime

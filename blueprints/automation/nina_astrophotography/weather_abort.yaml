@@ -236,11 +236,11 @@ conditions:
       {% set entry = config_entry_id(safety_unsafe) %}
       {% set rig = device_attr(nina_rig, 'config_entries') %}
       {{ entry is none or rig is not iterable or entry in rig | list }}
-  # A monitor the rig has not reported since the entry last loaded has no live
-  # entity, only a restored registry row — `unavailable`, `restored: true` —
-  # while N.I.N.A. answers — after a restart or reload with the monitor
-  # disconnected, or removed for good. Restored under a LOADED entry is that
-  # row; restored under an entry that failed to load is the rig unreachable.
+  # While N.I.N.A. answers, a monitor not reported since the entry last loaded
+  # (after a restart or reload with it disconnected, or removed for good) has
+  # no live entity, only a restored registry row: `unavailable`,
+  # `restored: true`. Restored under a LOADED entry is that row; restored under
+  # an entry that failed to load is the rig unreachable.
   # Up here, not inside the action's `if`: a failing condition in a branch
   # ends only the branch, and the run would go on to park the mount.
   - alias: "An unreachable rig is not a monitor this load has not seen"

@@ -149,8 +149,8 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.RUNNING,
         kind=None,
         # The sequencer, not the camera: waiting out a target's start window is
-        # running and not imaging. Deliberately not 1.4.5's `sequence_running`
-        # `unique_id`, which meant `imaging`.
+        # running and not imaging. Not 1.4.5's `sequence_running` `unique_id`,
+        # which meant `imaging`.
         value=lambda data: data.running,
     ),
     NinaBinarySensorDescription(

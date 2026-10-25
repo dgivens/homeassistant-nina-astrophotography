@@ -96,8 +96,8 @@ async def test_a_small_state_snapshot_pins_the_value_contracts(
 async def test_entity_id_inventory_is_current(hass: HomeAssistant, registered) -> None:
     """A committed, plain-text list of every 2.0 entity id.
 
-    Phase D's blueprint and card tests read this rather than scraping syrupy's
-    `.ambr` format, which would couple them to a snapshot serialization.
+    The card tests read this rather than scraping syrupy's `.ambr` format,
+    which would couple them to a snapshot serialization.
     Regenerating it is part of the snapshot commit.
     """
     registry = er.async_get(hass)

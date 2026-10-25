@@ -1,14 +1,13 @@
 # The quality-scale register, in the form Home Assistant reads it. Hassfest
-# validates this file for core integrations only, so nothing checks it here —
-# which is exactly why a status in it has to be earned rather than asserted.
+# validates this file for core integrations only, so nothing checks it here:
+# mark a rule done only once it is.
 #
 # Bronze and Silver are recorded in full. Gold and Platinum list only the rules
-# actually decided; the rest are covered by §10's "not pursued".
+# decided; the rest are covered by §10's "not pursued".
 # `docs/v2.0-design.md` §10 is the same register with a pointer to the section
 # that implements each rule; keep the two in step.
 #
-# An exemption is recorded rather than left looking unimplemented: "we decided
-# this does not apply, and here is why" is information, and a blank is not.
+# An exemption carries its reason, so it does not read as unimplemented.
 rules:
   # Bronze
   action-setup: done

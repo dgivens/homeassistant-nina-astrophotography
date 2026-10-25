@@ -20,11 +20,9 @@ import { interval, inUnit, quantity, quantityIn, shown } from "./nina-units.js";
 const VERSION = "2.1.0";
 
 // How far the focuser temperature may drift from the run's before the card
-// says so. There is no right answer to publish here — it belongs to the
-// sequence's own refocus trigger — so this is only a default to override, and
-// the card names the number it used rather than claiming it is yours. Set
-// above 1 °C deliberately: a site that swings ten degrees overnight would
-// spend most of the night flagged, which teaches the operator to ignore it.
+// flags it. Only a default: the real threshold is the sequence's own refocus
+// trigger, and the card prints the number it used. Above 1 °C so a site that
+// swings ten degrees overnight is not flagged most of the night.
 const DEFAULT_TEMPERATURE_DELTA = 2.0;
 
 const CURVE = "#5bcfcf";      // the measured sweep
@@ -59,15 +57,10 @@ function pretty(name) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-// The chart's y axis: the MEASURED points and nothing else, error bars
-// included, with a little padding. Two trend lines extrapolate the V's wings
-// until they cross, and that crossing sits well below any star the optics can
-// produce — letting it set the floor spends most of the chart on empty sky and
-// squashes the vertex, which is the part worth reading.
-//
-// One function because the legend and the chart have to agree on it: the
-// legend is what says a minimum is below the axis, and the chart is what puts
-// it there.
+// The chart's y axis: the measured points and their error bars, padded. The
+// trend lines' crossing sits well below any star the optics can produce, so
+// letting it set the floor would squash the vertex, the part worth reading.
+// The legend reads it too, to say which minima fall below the axis.
 function axisRange(curve) {
   const measured = curve.filter((point) => Number.isFinite(point.value));
   const low = Math.min(...measured.map((point) => point.value - (point.error || 0)));
@@ -345,9 +338,9 @@ class NinaAutofocusCard extends HTMLElement {
     if (!this._hass) return;
     const run = this._read();
 
-    // The signature is everything the card renders, not a few stand-in
-    // fields: a `hass` batch can carry the new run's timestamp beside the
-    // previous run's HFR, and a narrower signature could then never update.
+    // The signature is everything the card renders: a `hass` batch can carry
+    // the new run's timestamp beside the previous run's HFR, and the HFR's
+    // later update must still re-render.
     const signature = JSON.stringify(run);
     if (signature === this._signature) return;
     this._run = run;

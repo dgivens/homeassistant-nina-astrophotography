@@ -258,8 +258,9 @@ async def test_an_upgrade_enables_the_dome_rows_that_now_ship_enabled(
 async def test_an_upgrade_leaves_a_roll_off_roofs_unusable_rows_disabled(
     hass, config_entry, rig, set_up_at
 ) -> None:
-    """2.0.0 registered every dome row whatever the driver could do. The roof is
-    the parked capture with every capability flag but the shutter's off.
+    """An install upgraded from 2.0.0 holds a row for every dome entity,
+    whatever the driver can do. The roof is the parked capture with every
+    capability flag but the shutter's off.
     """
     await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
     _disable_every_dome_row(hass, config_entry, user_disabled="")

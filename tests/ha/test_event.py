@@ -92,7 +92,7 @@ async def test_a_hung_autofocus_fires_once_and_not_on_every_publish(
 ) -> None:
     """The EDGE, not the level. The verdict stays true until the next run
     finishes, so a level-triggered entity would fire on every publish —
-    hundreds a night — and every existing test would stay green.
+    hundreds a night.
     """
     push({"Event": "AUTOFOCUS-STARTING", "Time": "2026-09-04T11:00:00+00:00"})
     await hass.async_block_till_done()

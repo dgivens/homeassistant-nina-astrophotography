@@ -126,9 +126,7 @@ def _minutes_to_meridian_flip(data: NinaData) -> float | None:
 
 
 def _flip_bounds(data: NinaData) -> Mapping[str, Any]:
-    """The reading at which N.I.N.A. actually flips: (Max − Min), not zero,
-    and per profile.
-    """
+    """`flip_fires_at_minutes`: see `derive.flip_offset_minutes`."""
     minimum = data.profile.min_minutes_after_meridian
     maximum = data.profile.max_minutes_after_meridian
     return {
@@ -210,9 +208,9 @@ _BY_FILTER = _breakdown("by_filter")
 def _recent_frames(data: NinaData) -> tuple[Mapping[str, Any], ...]:
     """Recent frames of every type, newest first, for the image panel card.
 
-    Hand-picked fields rather than `asdict(frame)`: this is the card's
-    contract, not `Frame`'s. Each frame carries its own readings, which the
-    `last_image_*` sensors hold only for the newest light.
+    The fields are hand-picked: this is the card's contract, not `Frame`'s.
+    Each frame carries its own readings, which the `last_image_*` sensors hold
+    only for the newest light.
     """
     return tuple(
         {

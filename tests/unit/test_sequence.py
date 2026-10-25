@@ -83,7 +83,9 @@ def test_the_last_named_target_in_pre_order_wins() -> None:
 
 
 def test_a_deeper_target_does_not_outrank_a_later_shallow_one() -> None:
-    """The behaviour the docstring used to claim the opposite of."""
+    """Walk order decides, not depth: a later shallow target beats an earlier
+    deep one.
+    """
     tree = _node(
         "Sequence",
         _node("A", _node("B", target="deep")),

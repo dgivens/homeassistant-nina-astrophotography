@@ -1,9 +1,9 @@
 """Stand up a throwaway Home Assistant in Docker, install one version of the
 integration against a N.I.N.A., and upgrade it in place to another.
 
-    uv run python tools/upgrade-harness/harness.py up --ref origin/main
+    uv run python tools/upgrade-harness/harness.py up --ref v1.4.5
     uv run python tools/upgrade-harness/harness.py snapshot before
-    uv run python tools/upgrade-harness/harness.py upgrade --ref origin/v2
+    uv run python tools/upgrade-harness/harness.py upgrade --ref origin/main
     uv run python tools/upgrade-harness/harness.py snapshot after
     uv run python tools/upgrade-harness/harness.py check before after
     uv run python tools/upgrade-harness/harness.py down
@@ -360,8 +360,8 @@ def check(before_name: str, after_name: str) -> None:
 
 
 def _clear() -> None:
-    """Empty `.run/` but keep the directory: sharing a freshly recreated parent
-    into a container is what Docker Desktop gets wrong.
+    """Empty `.run/` but keep the directory: Docker Desktop can fail to share a
+    freshly recreated parent into a container.
     """
     RUN.mkdir(exist_ok=True)
     for child in RUN.iterdir():

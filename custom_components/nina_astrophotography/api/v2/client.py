@@ -60,7 +60,7 @@ _LOGGER = logging.getLogger(__name__)
 _TIMEOUT = aiohttp.ClientTimeout(total=10)
 _IMAGE_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
-REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
+REPLAY_CAP = 2000  # a full night emits ~600; a long-lived process, more
 
 # A quality makes `/image` answer JPEG rather than a far larger PNG.
 IMAGE_QUALITY = 85
@@ -207,8 +207,8 @@ class NinaClientV2:
         index: int | None = None,
         generation: str | None = None,
     ) -> list[Frame]:
-        """`include_all`, not `all` — the wire parameter stays `all`; only the
-        keyword differs, to leave the builtin unshadowed.
+        """`include_all` sends the wire's `all`; the keyword differs only to
+        leave the builtin unshadowed.
 
         Bare /image-history answers the latest frame as a single object;
         ?all=true answers the list, and `index` the frame there.
@@ -242,8 +242,7 @@ class NinaClientV2:
         N.I.N.A.'s list is unbounded: no cap, eviction or pagination for the
         life of the process. This feeds the setup replay, which runs inside
         `async_config_entry_first_refresh`, so anything escaping here fails the
-        entry over one bad stored event — and the same widths guard `get_frames`
-        and the socket's own dispatch.
+        entry over one bad stored event.
         """
         raw = await self._get("/event-history") or []
         if not isinstance(raw, list):
@@ -385,7 +384,7 @@ class NinaClientV2:
         return await self._image_bytes(path, {"stream": "true", "quality": quality})
 
     async def _image_bytes(self, path: str, params: dict[str, Any]) -> bytes:
-        """The shared body of the two image routes: content type separates a
+        """The shared body of the image routes: content type separates a
         rendered frame from a refusal, since both answer 200.
         """
         url = self.base_url + path
@@ -414,7 +413,7 @@ class NinaClientV2:
 
     # ── commands ─────────────────────────────────────────────────────────────
     #
-    # Parameter names are verified by live probe and pinned by test. The
+    # Parameter names are the wire's, pinned by test. The
     # PUBLISHED documentation renames set-light's parameter to `True` — the
     # committed spec and the wire both read `on` — and `set-light?True=true`
     # answers Success: true and leaves the panel alone. Never generate these.

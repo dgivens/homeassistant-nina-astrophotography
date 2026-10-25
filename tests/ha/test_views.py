@@ -39,9 +39,9 @@ async def test_a_real_image_proxies_through_with_its_content_type(
 async def test_index_0_is_translated_to_ninas_newest_index(
     hass, loaded_entry, rig, hass_client
 ) -> None:
-    """N.I.N.A. counts the other way — 0 is its OLDEST frame, confirmed
-    against a live rig — so asking this proxy for index 0 (newest, matching
-    `recent_frames`) must reach N.I.N.A.'s `count - 1`, never its own 0.
+    """N.I.N.A. counts the other way — 0 is its OLDEST frame — so asking this
+    proxy for index 0 (newest, matching `recent_frames`) must reach N.I.N.A.'s
+    `count - 1`, never its own 0.
     """
     rig.respond("/image-history?count=true", ok(5))
     rig.respond("/image/4", ok({"Image": "irrelevant"}))  # proves 4 was asked
@@ -82,8 +82,7 @@ async def test_an_envelope_arriving_at_200_is_never_served_as_an_image(
 async def test_the_rig_being_unreachable_for_the_count_answers_502(
     hass, loaded_entry, rig, hass_client
 ) -> None:
-    """The count fetch can fail independently of the image fetch it gates —
-    covered separately, since it is a distinct request the view makes. A
+    """The count fetch is a request of its own and can fail on its own. A
     handler exception (5xx) is the one failure shape that is never a
     disguised "no data yet" refusal.
     """

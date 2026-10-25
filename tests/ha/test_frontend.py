@@ -88,9 +88,8 @@ async def test_whatever_a_card_imports_is_served_at_that_path(
 async def test_setup_does_not_crash_when_lovelace_is_not_set_up(
     hass, loaded_entry
 ) -> None:
-    """The default, HA-free-of-lovelace test instance is the case this
-    guards: `async_setup` must not raise just because nothing configured
-    dashboards.
+    """`async_setup` must not raise on an instance with no lovelace set up,
+    which is this suite's default.
     """
     assert "lovelace" not in hass.data
     assert loaded_entry.state is ConfigEntryState.LOADED
@@ -215,7 +214,7 @@ def test_every_shipped_card_file_is_in_card_filenames() -> None:
     }
 
 
-# ─── Removal (#70) ───────────────────────────────────────────────────────────
+# ─── Removal ─────────────────────────────────────────────────────────────────
 
 
 async def test_removing_the_last_entry_deletes_its_resources(

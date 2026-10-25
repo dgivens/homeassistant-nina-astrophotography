@@ -73,9 +73,9 @@ async def test_a_real_failure_is_raised_naming_the_route_that_failed(
 ) -> None:
     """A swallowed failure leaves a fresh timestamp beside a permanently blank
     card, and Home Assistant's own message says only "unable to get image" —
-    nothing naming N.I.N.A., the route or the reason. `stream` no longer
-    binding is exactly this shape: the route answers a success envelope, and
-    the bytes never come.
+    nothing naming N.I.N.A., the route or the reason. A build where `stream`
+    does not bind has exactly this shape: the route answers a success envelope,
+    and the bytes never come.
     """
     rig.respond(NEWEST_ROUTE, ok({"Image": "<base64>"}))
     with pytest.raises(HomeAssistantError, match=NEWEST_ROUTE):

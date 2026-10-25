@@ -5,13 +5,10 @@
 # pinned in pyproject's `dev` group. Never hand-edit schema.py.
 #
 # Source: ninaAPI 2.2.15.2 OpenAPI document, committed at
-# docs/v2.0/ninaapi-v2-openapi.yaml.
-#
-# Fetched from
+# docs/v2.0/ninaapi-v2-openapi.yaml, from the release rather than the running
+# plugin:
 # https://raw.githubusercontent.com/christian-photo/ninaAPI/2.2.15.2/ninaAPI/api_spec.yaml
-# (tag 2.2.15.2, blob sha 6c877086c42a644dbdb4acfea326ae4b75892267) — the rig is
-# unreachable from the machine that generated this, so the spec was taken from
-# the release rather than the running plugin.
+# (tag 2.2.15.2, blob sha 6c877086c42a644dbdb4acfea326ae4b75892267)
 #
 # The spec is reliable about response field NAMES and unreliable about types,
 # enum values and request parameter names — see design §3.2. Generated types are

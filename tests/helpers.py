@@ -1,13 +1,6 @@
 """Test doubles for the N.I.N.A. HTTP API, the captured-fixture loader, and a
 runner for the shipped `www/` modules under node.
 
-`responses` maps a path fragment to a payload, a FakeResponse, or an exception
-to raise; the first fragment found in the URL wins, so register the more
-specific fragment first. `default` covers everything else.
-
-`run_node` runs a shipped `www/` module under node, through a driver script that
-reads its input from a JSON file and prints its result as JSON.
-
 Imports neither Home Assistant nor the integration at runtime, so both suites
 can use it.
 """
@@ -66,7 +59,8 @@ class FakeSession:
     """Minimal aiohttp.ClientSession stand-in.
 
     `responses` maps a path fragment to a payload, a FakeResponse, or an
-    exception to raise. `default` covers everything else.
+    exception to raise; the first fragment found in the URL wins, so register
+    the more specific fragment first. `default` covers everything else.
     """
 
     def __init__(self, responses=None, default=None):
@@ -143,7 +137,10 @@ def state_of(hass: HomeAssistant, entity_id: str) -> State:
 
 
 def run_node(driver: Path, payload: Any, *args: str) -> Any:
-    """`node driver <payload.json> *args`, its stdout parsed as JSON."""
+    """`node driver <payload.json> *args`, its stdout parsed as JSON.
+
+    The driver reads its input from the JSON file and prints its result as JSON.
+    """
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "payload.json"
         path.write_text(json.dumps(payload), encoding="utf-8")

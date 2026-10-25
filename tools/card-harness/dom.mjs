@@ -182,8 +182,8 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     get innerHTML() {
       return html;
     },
-    // A canvas is whatever the card's own markup declares as one, rather than
-    // a list of ids to keep in step with six cards.
+    // An id the card's own markup puts on a `<canvas>` is the canvas; any
+    // other id is a recorded node.
     getElementById(id) {
       const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       if (new RegExp(`<canvas[^>]*\\sid="${escaped}"`).test(html)) return canvas;
@@ -216,10 +216,9 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     }
   };
   // Held rather than run: node fires no frames, so the runner decides when the
-  // ones a render queued go off. Kept as a list against its handles, and not as
-  // one slot: a render that queues two frames would otherwise record only the
-  // second, and a card cancelling a stale handle would wipe a live callback —
-  // both of which read as "the card stopped drawing" in a diff.
+  // ones a render queued go off. Each is kept under its own handle, so a render
+  // that queues two keeps both, and cancelling a stale handle leaves a live
+  // callback in place.
   globalThis.requestAnimationFrame = (callback) => {
     queued.set(++handle, callback);
     return handle;

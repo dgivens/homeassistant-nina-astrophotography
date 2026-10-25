@@ -137,5 +137,5 @@ def test_nothing_above_the_seam_imports_the_wire_layer() -> None:
     ],
 )
 def test_the_wire_guard_reads_every_import_form(source: str, offends: bool) -> None:
-    """A guard that only matched one spelling is why this one reads the AST."""
+    """Every spelling of a wire-layer import offends; the client type alone does not."""
     assert _imports_the_wire_layer(ast.parse(source)) is offends

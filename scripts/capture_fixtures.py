@@ -50,7 +50,7 @@ ENDPOINTS: tuple[tuple[str, str, dict[str, str]], ...] = (
 def _as_envelope(slug: str, body: str) -> dict:
     """The decoded envelope, or the raw body recorded as one.
 
-    The sequence-serialization failure answers an empty body with no envelope.
+    A sequence that fails to serialize answers an empty body with no envelope.
     That is a state worth keeping, not a reason to abandon the other endpoints.
     """
     try:
@@ -68,10 +68,8 @@ def _as_envelope(slug: str, body: str) -> dict:
 
 
 def _serialize(envelope: dict, target: Path) -> str:
-    """The file body, keeping the existing `_meta` when nothing else changed.
-
-    That is what makes a re-capture against an unchanged rig byte-identical, so
-    a capture run produces no diff of timestamps alone.
+    """The file body, keeping the existing `_meta` when nothing else changed,
+    so a re-capture against an unchanged rig is byte-identical.
     """
     if target.exists():
         previous = json.loads(target.read_text(encoding="utf-8"))
