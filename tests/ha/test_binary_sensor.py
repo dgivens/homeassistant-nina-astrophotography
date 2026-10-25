@@ -320,6 +320,17 @@ async def test_a_run_that_fitted_well_has_no_reason(
     assert attributes["r_squared_threshold"] == 0.7
 
 
+async def test_the_sequences_refocus_threshold_is_published_for_the_card(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """The autofocus card flags drift against it rather than asking the
+    operator to copy the trigger's setting into the card.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
+    assert attributes["refocus_temperature_delta"] == 2.0
+
+
 async def test_a_report_older_than_the_session_is_not_tonights_problem(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:

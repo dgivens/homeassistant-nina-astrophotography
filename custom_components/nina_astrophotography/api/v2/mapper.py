@@ -643,6 +643,11 @@ def _sequence_node(wire: dict, fallback: str) -> SequenceNode:
         status=_text(wire, "Status"),
         iterations=None if iterations is None else str(iterations),
         target_name=_text(wire, "TargetName"),
+        # Recognised by the trigger's own pair of fields rather than its Name,
+        # which is display text.
+        refocus_temperature=_number(wire, "TargetTemperature")
+        if "DeltaTemperature" in wire
+        else None,
         children=tuple(
             _sequence_node(child, key)
             for key in _SEQUENCE_CHILDREN
@@ -663,6 +668,7 @@ def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
         status=None,
         iterations=None,
         target_name=None,
+        refocus_temperature=None,
         children=tuple(
             _sequence_node(node, "GlobalTriggers")
             for node in wire

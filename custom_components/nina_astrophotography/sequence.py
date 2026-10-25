@@ -88,3 +88,19 @@ def progress_percent(root: SequenceNode | None) -> float | None:
     if expected <= 0:
         return None
     return min(max(completed / expected * 100.0, 0.0), 100.0)
+
+
+def refocus_temperature(root: SequenceNode | None) -> float | None:
+    """The smallest "AF After Temperature Change" threshold anywhere in the
+    tree, in °C.
+
+    Every trigger in scope fires on its own, so the smallest one decides. Which
+    are in scope cannot be told: only the root containers' status is live.
+    Taking the smallest across the whole tree errs towards refocusing early.
+    """
+    thresholds = [
+        node.refocus_temperature
+        for node in _walk(root)
+        if node.refocus_temperature is not None
+    ]
+    return min(thresholds) if thresholds else None

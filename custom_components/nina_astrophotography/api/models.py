@@ -488,6 +488,9 @@ class SequenceNode:
     iterations: str | None
     """The wire's progress text, e.g. "3/10"."""
     target_name: str | None
+    refocus_temperature: float | None
+    """°C of focuser drift past which an "AF After Temperature Change"
+    trigger refocuses; `None` on every other node."""
     children: tuple[SequenceNode, ...]
 
 
