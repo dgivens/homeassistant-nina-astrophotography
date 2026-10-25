@@ -4,6 +4,25 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **The cards show the meridian flip as a range, "Flip in 12–22 min".** The
+  time-to-flip sensor counts down to the latest flip, meridian plus the
+  profile's Max minutes, but N.I.N.A. can slew as early as meridian plus Min.
+  The observatory card's banner and mount metric and the sky map's header and
+  canvas now print both ends instead of the latest alone, and "≤ 6 min" once
+  the window is open. The sensor itself is unchanged.
+
+### Fixed
+
+- **The sky map's "Flip in" warning is drawn inside the map**, where it can be
+  seen, on the side away from the telescope. It used to be placed below the
+  bottom edge of the canvas.
+
+---
+
 ## [2.1.0] - 2026-10-24
 
 ### Breaking

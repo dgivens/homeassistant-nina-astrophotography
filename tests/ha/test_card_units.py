@@ -7,6 +7,8 @@ sensors in has to come back to that unit as core would convert it.
 table would only prove itself right.
 """
 
+from collections.abc import Sequence
+import json
 from pathlib import Path
 
 from homeassistant.components.sensor.const import DEVICE_CLASS_UNITS, UNIT_CONVERTERS
@@ -39,7 +41,7 @@ CONVERTIBLE = sorted(
 )
 
 
-def _run(cases: list[list[str | float | None]]) -> list[float | None]:
+def _run(cases: Sequence[Sequence[object]]) -> list[object]:
     return run_node(DRIVER, cases)
 
 
@@ -78,3 +80,64 @@ def test_units_that_measure_different_things_do_not_convert() -> None:
         ["convert", 3.0, "°C", "s"],
     ]
     assert _run(cases) == [None] * len(cases)
+
+
+FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip"
+CARD_STATES = json.loads(
+    (Path(__file__).parent / "snapshots" / "card_states.json").read_text(
+        encoding="utf-8"
+    )
+)
+
+
+def _flip_hass(dump: str, state: str, unit: str = "min") -> dict[str, object]:
+    """The captured flip row, with only its reading and unit changed: a card
+    reads `flip_fires_at_minutes` as the sensor publishes it.
+    """
+    row = CARD_STATES[dump]["states"][FLIP]
+    attributes = {**row["attributes"], "unit_of_measurement": unit}
+    return {"states": {FLIP: {"state": state, "attributes": attributes}}}
+
+
+@pytest.mark.parametrize(
+    ("dump", "state", "unit", "window"),
+    [
+        # A profile with Min 5 and Max 15: the window is ten minutes wide.
+        ("site_configured", "22", "min", {"earliest": 12, "latest": 22}),
+        ("site_configured", "6", "min", {"earliest": 0, "latest": 6}),
+        ("site_configured", "0.5", "h", {"earliest": 20, "latest": 30}),
+        # The profile not read yet: the countdown is all there is.
+        ("dawn_flats", "22", "min", {"earliest": 22, "latest": 22}),
+        ("site_configured", "unknown", "min", None),
+    ],
+)
+def test_the_flip_window_runs_from_the_earliest_slew_to_the_countdown(
+    dump: str, state: str, unit: str, window: dict[str, float] | None
+) -> None:
+    assert _run([["flipWindow", _flip_hass(dump, state, unit), FLIP]]) == [
+        None if window is None else pytest.approx(window)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("earliest", "latest", "shown"),
+    [(12.4, 22.4, "12–22"), (0, 6, "≤ 6"), (22.2, 22.4, "22"), (0, 0.2, "0")],
+)
+def test_a_flip_window_prints_in_whole_minutes(
+    earliest: float, latest: float, shown: str
+) -> None:
+    assert _run([["flipRange", {"earliest": earliest, "latest": latest}]]) == [shown]
+
+
+@pytest.mark.parametrize(
+    ("earliest", "latest", "soon"),
+    [(10, 20, True), (15, 25, False), (0, 6, True), (0, 0, False), (14.9, 14.9, True)],
+)
+def test_a_flip_is_soon_inside_fifteen_minutes_of_the_earliest_slew(
+    earliest: float, latest: float, soon: bool
+) -> None:
+    assert _run([["flipSoon", {"earliest": earliest, "latest": latest}]]) == [soon]
+
+
+def test_no_flip_window_is_never_soon() -> None:
+    assert _run([["flipSoon", None]]) == [False]

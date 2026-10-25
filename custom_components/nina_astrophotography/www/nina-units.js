@@ -1,5 +1,6 @@
 /**
- * Readings in the unit Home Assistant shows them in.
+ * Readings in the unit Home Assistant shows them in, and the meridian flip
+ * window read from them.
  *
  * Not a card, so not in `frontend.py`'s `CARD_FILENAMES`.
  *
@@ -128,6 +129,36 @@ export function inUnit(q, unit) {
 /** An entity's state in `unit`, or `null` if it has none or cannot be. */
 export function quantityIn(hass, id, unit) {
   return inUnit(quantity(hass, id), unit);
+}
+
+/**
+ * The meridian flip as `{earliest, latest}` minutes from now, or `null` with no
+ * countdown. The sensor counts down to the latest flip, meridian + the
+ * profile's Max. N.I.N.A. slews no earlier than meridian + Min,
+ * `flip_fires_at_minutes` (Max − Min) sooner, and otherwise at the first item
+ * that ends after it.
+ */
+export function flipWindow(hass, id) {
+  const latest = quantityIn(hass, id, "min");
+  if (latest === null) return null;
+  const firesAt = parseFloat(hass.states[id].attributes?.flip_fires_at_minutes) || 0;
+  return { earliest: Math.max(0, latest - Math.max(0, firesAt)), latest };
+}
+
+/**
+ * A flip window in whole minutes: "12–22", one number where both ends round
+ * alike, or "≤ 6" once the window is open and the flip waits only on the item
+ * running.
+ */
+export function flipRange({ earliest, latest }) {
+  const [from, to] = [earliest.toFixed(0), latest.toFixed(0)];
+  if (from === to) return to;
+  return from === "0" ? `≤ ${to}` : `${from}–${to}`;
+}
+
+/** Whether a flip window is due inside `lead` minutes, and not already past. */
+export function flipSoon(window, lead = 15) {
+  return window !== null && window.latest > 0 && window.earliest < lead;
 }
 
 /**
