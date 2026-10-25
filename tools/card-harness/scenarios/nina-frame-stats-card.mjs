@@ -12,6 +12,11 @@
  * Every captured light has a filter from one wheel of single letters, so the
  * filter scenarios relabel that night rather than invent one.
  *
+ * The newest run — the lights since the last target change sharing the newest
+ * light's filter and exposure — scales the star and ADU charts and bounds the
+ * trend. The night truncated at earlier lights reaches a run of one and a run
+ * read across interleaved filters.
+ *
  * Not reached: a gap in a series, since no captured light lacks a reading,
  * nor a trend that reads Improving or Degrading, since the newest ten S frames
  * hold steady.
@@ -30,6 +35,45 @@ const HFR = "sensor.n_i_n_a_last_image_hfr";
 const AVG_HFR = "sensor.n_i_n_a_session_avg_hfr";
 const FILTER = "sensor.n_i_n_a_last_image_filter";
 const WHEEL = "select.n_i_n_a_filter_wheel_filter";
+const STARS = "sensor.n_i_n_a_last_image_star_count";
+const TARGET = "sensor.n_i_n_a_last_image_target";
+const MEAN = "sensor.n_i_n_a_last_image_mean_adu";
+const COUNT = "sensor.n_i_n_a_session_image_count";
+const BEST_HFR = "sensor.n_i_n_a_session_best_hfr";
+
+// The night as it stood after its first `n` lights, before the flats: the
+// lights after them taken away, and every last-image and session reading the
+// card shows put back to what those lights make it. Each value is one a
+// captured light carried, or a count, sum or mean of them.
+function asOf(dump, n) {
+  const states = dump[NIGHT].states;
+  const lights = states[HFR].attributes.recent_lights.slice(0, n);
+  const newest = lights[lights.length - 1];
+  const mean = (values) => values.reduce((total, v) => total + v, 0) / values.length;
+  const hours = (some) => some.reduce((total, light) => total + light.exposure, 0) / 3600;
+  const rows = (key) => Object.fromEntries(
+    [...new Set(lights.map((light) => light[key]))].sort().map((name) => {
+      const own = lights.filter((light) => light[key] === name);
+      return [name, {
+        count: own.length,
+        hfr_mean: Number(mean(own.map((light) => light.hfr)).toFixed(3)),
+        integration_hours: Number(hours(own).toFixed(2)),
+      }];
+    }));
+  const hfrs = lights.map((light) => light.hfr);
+  return rig(dump, NIGHT)
+    .override(HFR, newest.hfr, { ...states[HFR].attributes, recent_lights: lights })
+    .override(STARS, newest.stars)
+    .override(FILTER, newest.filter)
+    .override(EXPOSURE, newest.exposure.toFixed(1))
+    .override(TARGET, newest.target)
+    .override(MEAN, newest.mean)
+    .override(COUNT, n, { ...states[COUNT].attributes, light_count: n })
+    .override(INTEGRATION, hours(lights).toFixed(1))
+    .override(AVG_HFR, mean(hfrs),
+      { ...states[AVG_HFR].attributes, by_filter: rows("filter"), by_target: rows("target") })
+    .override(BEST_HFR, Math.min(...hfrs));
+}
 
 // The night with its filters renamed by `names`, captured name to new, where
 // null takes the name away. Only labels change: each light, breakdown row and
@@ -131,6 +175,35 @@ export const scenarios = {
       relabelled(dump, { B: null, L: null, O: null, R: null, S: null })
         .without("filter_wheel_filter")
         .build(),
+  },
+
+  // The first S light, after the Dark Shark's R run: a run of one, so the
+  // star and ADU charts are scaled with the whole night and nothing is faded.
+  first_of_run: { hass: (dump) => asOf(dump, 32).build() },
+
+  // Midway through the Dark Shark's L and B pairs, the newest an L: the run is
+  // the fourteen L lights since the target changed, read across the B lights
+  // between them, so the trend has its ten.
+  interleaved: { hass: (dump) => asOf(dump, 27).build() },
+
+  // Earlier in the same pairs, the newest a B: seven B lights, too few for a
+  // trend.
+  interleaved_short: { hass: (dump) => asOf(dump, 21).build() },
+
+  // Target Scheduler moving one filter between targets: the S run's first
+  // sixteen lights relabelled to another of the night's targets, so NGC 281's
+  // run is the newest eight. Too few for a trend, and the star and ADU charts
+  // scale to those eight. A label only, as with the filter relabels; the card
+  // reads no per-target breakdown.
+  target_rotation: {
+    hass: (dump) => {
+      const states = dump[NIGHT].states;
+      const lights = states[HFR].attributes.recent_lights.map((light, i) =>
+        (i >= 31 && i < 47 ? { ...light, target: "Wizard Nebula" } : light));
+      return rig(dump, NIGHT)
+        .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
+        .build();
+    },
   },
 
   // No lights in the session, so no charts: the waiting panel under the
