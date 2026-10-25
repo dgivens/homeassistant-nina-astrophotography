@@ -649,7 +649,8 @@
      "friendly_name": "N.I.N.A. Focuser Autofocus failed",
      "r_squared": null,
      "r_squared_threshold": null,
-     "reason": null
+     "reason": null,
+     "refocus_temperature_delta": 2.0
     },
     "state": "off"
    },
@@ -4651,7 +4652,8 @@
      "friendly_name": "N.I.N.A. Focuser Autofocus failed",
      "r_squared": null,
      "r_squared_threshold": 0.7,
-     "reason": null
+     "reason": null,
+     "refocus_temperature_delta": null
     },
     "state": "off"
    },
@@ -6295,7 +6297,8 @@
      "friendly_name": "N.I.N.A. Focuser Autofocus failed",
      "r_squared": null,
      "r_squared_threshold": 0.7,
-     "reason": null
+     "reason": null,
+     "refocus_temperature_delta": null
     },
     "state": "off"
    },
@@ -9388,7 +9391,8 @@
      "friendly_name": "N.I.N.A. Focuser Autofocus failed",
      "r_squared": 0.9710548595560263,
      "r_squared_threshold": 0.7,
-     "reason": null
+     "reason": null,
+     "refocus_temperature_delta": 2.0
     },
     "state": "off"
    },
@@ -11096,7 +11100,8 @@
      "friendly_name": "N.I.N.A. Focuser Autofocus failed",
      "r_squared": 0.9710548595560263,
      "r_squared_threshold": 0.7,
-     "reason": null
+     "reason": null,
+     "refocus_temperature_delta": 2.0
     },
     "state": "off"
    },
