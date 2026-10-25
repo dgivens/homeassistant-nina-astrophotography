@@ -6,6 +6,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Added
+
+- **The weather card's limits are card options** (#113), under Limits in its
+  visual editor: the dew margin, the warm and cold temperatures, and the
+  warning and danger levels for humidity, wind, cloud cover and seeing. Each
+  defaults to the limit the card used before. Temperatures and the dew margin
+  are in °C and wind in m/s whatever unit Home Assistant shows the reading in,
+  so a limit does not move when the display unit changes.
+
 ### Changed
 
 - **The cards show the meridian flip as a range, "Flip in 12–22 min".** The
