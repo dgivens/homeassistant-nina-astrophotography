@@ -44,6 +44,18 @@ SHIPPED = {
 }
 
 
+# The simulator profile's interlocks.
+INTERLOCKS = {
+    "close_on_unsafe": True,
+    "refuse_unsafe_shutter_move": False,
+    "refuse_open_without_safety_monitor": True,
+    "refuse_unpark_while_shut": False,
+    "park_mount_before_shutter_move": False,
+    "park_dome_before_shutter_move": False,
+    "find_home_before_park": True,
+}
+
+
 def _dome_rows(hass: HomeAssistant, entry) -> list[er.RegistryEntry]:
     device = get_device(hass, entry, "dome")
     return er.async_entries_for_device(
@@ -92,6 +104,15 @@ async def test_a_dome_gets_only_what_its_driver_can_do(
     """The parked capture with capability flags turned off."""
     await set_up_at(hass, config_entry, rig, state)
     assert {row.entity_id for row in _dome_rows(hass, config_entry)} == created
+
+
+async def test_the_shutter_carries_ninas_own_interlocks(
+    hass, config_entry, rig, set_up_at
+) -> None:
+    """What N.I.N.A. enforces whatever Home Assistant does, off the profile."""
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+    attributes = state_of(hass, SHUTTER).attributes
+    assert {key: attributes[key] for key in INTERLOCKS} == INTERLOCKS
 
 
 async def test_a_dome_connected_after_setup_gets_its_entities(

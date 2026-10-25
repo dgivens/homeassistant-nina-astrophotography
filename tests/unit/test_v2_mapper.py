@@ -614,7 +614,28 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
         site_latitude=31.5478,
         site_longitude=-110.2977,
         site_elevation=1509.0,
+        dome_close_on_unsafe=None,
+        dome_refuse_unsafe_shutter_move=None,
+        dome_refuse_open_without_safety_monitor=None,
+        dome_refuse_unpark_while_shut=None,
+        dome_park_mount_before_shutter_move=None,
+        dome_park_before_shutter_move=None,
+        dome_find_home_before_park=None,
     )
+
+
+def test_the_dome_interlocks_map_from_a_captured_profile() -> None:
+    """The simulator rig's profile."""
+    profile = map_profile(load("simulator_dome_parked_profile.json"))
+    assert (
+        profile.dome_close_on_unsafe,
+        profile.dome_refuse_unsafe_shutter_move,
+        profile.dome_refuse_open_without_safety_monitor,
+        profile.dome_refuse_unpark_while_shut,
+        profile.dome_park_mount_before_shutter_move,
+        profile.dome_park_before_shutter_move,
+        profile.dome_find_home_before_park,
+    ) == (True, False, True, False, False, False, True)
 
 
 def test_an_absent_profile_section_is_no_reading() -> None:

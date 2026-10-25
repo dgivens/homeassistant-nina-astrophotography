@@ -138,6 +138,24 @@ def _flip_bounds(data: NinaData) -> Mapping[str, Any]:
     }
 
 
+def _dome_interlocks(data: NinaData) -> Mapping[str, Any]:
+    """N.I.N.A.'s own dome interlocks, from the profile: what it enforces
+    whatever Home Assistant does. `None` until the profile is read.
+    """
+    profile = data.profile
+    return {
+        "close_on_unsafe": profile.dome_close_on_unsafe,
+        "refuse_unsafe_shutter_move": profile.dome_refuse_unsafe_shutter_move,
+        "refuse_open_without_safety_monitor": (
+            profile.dome_refuse_open_without_safety_monitor
+        ),
+        "refuse_unpark_while_shut": profile.dome_refuse_unpark_while_shut,
+        "park_mount_before_shutter_move": profile.dome_park_mount_before_shutter_move,
+        "park_dome_before_shutter_move": profile.dome_park_before_shutter_move,
+        "find_home_before_park": profile.dome_find_home_before_park,
+    }
+
+
 def _autofocus(field: str) -> Callable[[NinaData], Any]:
     """One field off the newest autofocus report; `None` until a run reports.
 
@@ -736,6 +754,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         options=list(get_args(ShutterState)),
         kind="dome",
         value=read_field("dome", "shutter_status"),
+        attributes=_dome_interlocks,
     ),
 )
 

@@ -24,6 +24,15 @@
       "Latitude": 51.07861,
       "Longitude": -0.29444,
       "Elevation": 708
+    },
+    "DomeSettings": {
+      "CloseOnUnsafe": true,
+      "RefuseUnsafeShutterMove": false,
+      "RefuseUnsafeShutterOpenSansSafetyDevice": true,
+      "RefuseUnparkWithoutShutterOpen": false,
+      "ParkMountBeforeShutterMove": false,
+      "ParkDomeBeforeShutterMove": false,
+      "FindHomeBeforePark": true
     }
   },
   "Error": "",
@@ -31,7 +40,7 @@
   "Success": true,
   "Type": "API",
   "_meta": {
-    "captured_at": "2026-10-23T23:30:41+00:00",
+    "captured_at": "2026-10-24T00:50:16+00:00",
     "nina_version": "3.2.0.9001",
     "api_version": "2.2.15.2",
     "endpoint": "/profile/show",
