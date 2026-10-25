@@ -4,6 +4,41 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The image panel card describes the frame it shows.** Pick an older frame
+  from the strip and the overlay, the stats row, the header and the ADU range
+  are that frame's, not the newest light's. A flat on screen shows its own ADU
+  and exposure, and no HFR or star count, where it used to show the last
+  light's behind a "Last light" tag.
+- **The image panel card asks N.I.N.A. for far fewer renders** (#110). A saved
+  frame used to cost seven JPEG renders on the imaging PC for every open
+  dashboard: the frame, then all six thumbnails again. Now it costs one for the
+  frame and one for its thumbnail, while the older thumbnails stay as they
+  were. A save arriving while a frame loads waits for that load and replaces
+  any save already waiting. A run of dawn flats therefore never queues renders
+  faster than N.I.N.A. finishes them.
+- **Thumbnails are N.I.N.A.'s own** when the Advanced API plugin keeps them
+  (its "Create Thumbnails" setting, on by default), so they cost no render at
+  all. Otherwise they are rendered small. The main preview is rendered no
+  wider than the card draws it, and the full-size frame is fetched only for
+  the zoomed view.
+- **The image panel never shows one frame under another's readings.** The card
+  asks for each frame by when it was saved, so a frame saved in the meantime
+  cannot take its place.
+
+### Changed
+
+- The `recent_frames` attribute of `sensor.<instance>_last_image_mean_adu`
+  carries each frame's target, exposure, HFR, star count and guide RMS beside
+  its ADU statistics.
+- The image panel card reloads from `recent_frames` rather than from the
+  `nina_image_save` event. With two rigs, a panel therefore follows only its
+  own rig's frames, whether or not its rig can be resolved. Thumbnails ignore
+  `stretch: false` where they are N.I.N.A.'s own, which it always stretches.
+
 ## [2.1.0] - 2026-10-24
 
 ### Breaking

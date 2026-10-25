@@ -9,31 +9,30 @@
  * blocked as mixed content. Instead the integration proxies them, same
  * origin as Home Assistant itself:
  *
- *   GET /api/nina_astrophotography/image/{entity_id}/{index}   → one frame,
- *     JPEG, by history index (0 = newest of any type)
+ *   GET /api/nina_astrophotography/image/{entity_id}/{index}?date=…   → one
+ *     frame, JPEG, by history index (0 = newest of any type) and save time
  *
  * Every image URL is signed just before use via the `auth/sign_path`
  * websocket command, so it can be set directly as `<img src>` — including
  * the thumbnail strip, which cannot carry an Authorization header.
  *
- * Reads HA sensors for the overlay and the strip/histogram:
- *   The newest LIGHT frame's HFR, star count, mean ADU, filter, exposure,
- *   guide RMS and target; the session frame count and integration time;
- *   whether the camera is exposing; and the mean-ADU sensor's `recent_frames`
- *   attribute — the newest frames of any type, already bounded and ordered —
- *   for the strip's labels and the histogram's range.
+ * Everything describing a frame comes from the mean-ADU sensor's
+ * `recent_frames` attribute — the newest frames of any type, already bounded
+ * and ordered, each with its own readings — so the overlay, the stats row and
+ * the histogram describe the frame on screen, whichever it is. Only the
+ * header's light count, integration time and exposing state are the session's.
  *
- * The overlay and the stats row describe the newest light, not the frame on
- * screen, which at dawn is a flat. When the two differ — matched by date
- * against the HFR sensor's `recent_lights` — the pills and target are dimmed
- * behind a "Last light" tag, and the stats row dimmed with them.
+ * Each N.I.N.A. render is a full FITS load and stretch on the imaging PC, so
+ * the panel asks for as few as it can: one main load at a time, the newest
+ * frame only when `recent_frames` gains one, a thumbnail only for a frame the
+ * strip has not shown before, and the preview no wider than it is drawn.
  *
  * Card config — one rig needs none: the card finds its own sensors in the
  * registry.
  *   type: custom:nina-image-panel-card
  *   device_id: abc123       # which rig, for two or more; any one of its devices
  *   prefix: n_i_n_a         # fallback only, for the entities that cannot resolve
- *   refresh_on_save: true   # auto-refresh when IMAGE-SAVE fires via HA event (default true)
+ *   refresh_on_save: true   # load each frame as N.I.N.A. saves it (default true)
  *   show_strip: true        # show recent-frames strip at bottom (default true)
  *   show_histogram: true    # show ADU histogram bar (default true)
  *   quality: 85             # JPEG quality 1-100 (default 85)
@@ -45,7 +44,7 @@ import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
   LinkGrace, hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
-import { missing, quantityIn, shown } from "./nina-units.js";
+import { quantityIn, shown } from "./nina-units.js";
 
 const VERSION = "2.1.0";
 
@@ -56,18 +55,8 @@ const DEFAULT_STRIP_COUNT = 6;
 // naturally busts the browser's cache across reloads of the same index.
 const SIGNED_URL_TTL_SECONDS = 30;
 
-// Home Assistant slugifies an instance name the same way for the entity ids
-// and the event payload: `N.I.N.A.` becomes `n_i_n_a`.
-function slug(name) {
-  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-// A reading that is left out rather than dashed: a pill or a header part that
-// has nothing to say is not drawn at all.
-function known(value) {
-  return missing(value) ? null : value;
-}
+// A strip tile's width in CSS pixels, as `.strip-thumb` draws it.
+const THUMB_WIDTH = 64;
 
 // An absent field is undefined; the integration publishes no reading as null.
 function finite(value) {
@@ -172,8 +161,6 @@ const STYLE = `
   }
   .stat-pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent2); }
   .stat-pill.warn .dot { background: var(--warn); }
-  .overlay.stale .stat-pill:not(.tag), .overlay.stale .target { opacity: 0.5; }
-  .stat-pill.tag { color: var(--muted); letter-spacing: .4px; text-transform: uppercase; }
 
   .exposing-bar {
     position: absolute; top: 0; left: 0; right: 0;
@@ -224,7 +211,6 @@ const STYLE = `
   .stat-cell .val { font-size: 0.8rem; font-weight: 600; }
   .stat-cell .val.good { color: var(--success); }
   .stat-cell .val.warn { color: var(--warn); }
-  .stats-row.stale .stat-cell .val { opacity: 0.5; }
 
   .strip-wrap {
     padding: 8px 10px 10px;
@@ -293,14 +279,14 @@ class NinaImagePanelCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._currentIndex = 0; // 0 = latest; set once the frame has loaded
+    this._shown = null;   // the `recent_frames` entry on screen, once one loads
+    this._newest = undefined;
     this._loading = false;
-    this._historyMeta = []; // {date, filename, image_type, filter, mean, median, min, max}
+    this._queued = null;
     this._hasImage = false;
-    this._loadToken = 0;
     this._rendered = false;
     this._stripKey = null;
-    this._unsubHassEvent = null;
+    this._tiles = new Map();  // strip tiles by frame date
     this._grace = new LinkGrace(() => { this.hass = this._hass; });
   }
 
@@ -316,7 +302,6 @@ class NinaImagePanelCard extends HTMLElement {
       device_id: config.device_id,
     };
     this._rig = new RigEntities(this._config.prefix, this._config.device_id);
-    this._entryId = null;
     this._grace.reset();
   }
 
@@ -324,7 +309,6 @@ class NinaImagePanelCard extends HTMLElement {
     this._hass = hass;
 
     if (this._rig.refresh(hass)) {
-      this._entryId = this._rigEntryId(hass);
       this._linkRows = hubEntityIds(hass, this._config.device_id)
         ?? [this._entityId(), this._eid("sensor", "session_image_count")];
     }
@@ -339,28 +323,31 @@ class NinaImagePanelCard extends HTMLElement {
       this._unreachable = lostSince !== null;
       this._update();
     }
-
-    this._subscribe();
   }
 
   _update() {
-    // On the first render, and whenever a config or registry change points
-    // the card at another entity, which may be another rig's.
+    // The newest frame is loaded on the first render, whenever a config or
+    // registry change points the card at another entity (which may be another
+    // rig's), and with `refresh_on_save` whenever the rig saves another. Read
+    // off the attribute rather than `nina_image_save`, so the frame arrives
+    // with its readings, and from this rig alone.
+    const newest = this._recentFrames()[0];
     const imageEntity = this._entityId();
     if (imageEntity !== this._imageEntity) {
       this._imageEntity = imageEntity;
-      this._loadImage(0, this._loading);
+      this._newest = newest?.date;
+      this._load(newest);
+    } else if (newest?.date !== this._newest) {
+      this._newest = newest?.date;
+      if (newest && this._config.refresh_on_save) this._load(newest);
     }
 
-    // Keyed on the attribute's contents, not on `nina_image_save`: the bus
-    // event reaches the card before the state update carrying the new frame,
-    // so a strip rebuilt from the event would render the previous list.
-    // Also when only the histogram is on: it reads what this loads.
+    // The histogram too: before a frame loads, it describes the newest.
     const stripKey = JSON.stringify(this._recentFrames());
-    if (stripKey !== this._stripKey
-        && (this._config.show_strip || this._config.show_histogram)) {
+    if (stripKey !== this._stripKey) {
       this._stripKey = stripKey;
-      this._loadStrip();
+      if (this._config.show_strip) this._loadStrip();
+      if (this._config.show_histogram) this._drawHistogram();
     }
 
     this._updateOverlay();
@@ -368,52 +355,10 @@ class NinaImagePanelCard extends HTMLElement {
     this._updateHeaderBadge();
   }
 
-  // Lovelace can detach and reattach a card without recreating it, as when
-  // masonry re-lays its columns out, and a detached card has unsubscribed.
-  connectedCallback() {
-    this._detached = false;
-    if (this._hass) this._subscribe();
-  }
-
-  // Refresh on `nina_image_save`, once per attachment. Not while detached,
-  // which a card can be and still be handed `hass`.
-  _subscribe() {
-    if (this._detached || this._unsubHassEvent || !this._config.refresh_on_save
-        || !this._hass.connection) return;
-    this._unsubHassEvent = this._hass.connection.subscribeEvents(
-      (event) => {
-        if (!this._fromThisRig(event?.data ?? {})) return;
-        this._currentIndex = 0;
-        this._loadImage(0, true);
-      },
-      "nina_image_save"
-    );
-  }
-
-  // Every configured rig fires `nina_image_save`, so a two-rig dashboard would
-  // otherwise refresh both panels off whichever rig saved a frame. The entry id
-  // is exact; the instance name is what is left when the rig did not resolve,
-  // and it matches only while `prefix:` is its slug.
-  _fromThisRig({ entry_id: entryId, instance }) {
-    if (this._entryId) return entryId === this._entryId;
-    return !instance || slug(instance) === this._config.prefix;
-  }
-
-  disconnectedCallback() {
-    this._detached = true;
-    // `subscribeEvents` resolves to the unsubscribe function, so a card
-    // removed before it resolves must await the promise to unsubscribe at all.
-    Promise.resolve(this._unsubHassEvent)
-      .then((unsub) => { if (typeof unsub === "function") unsub(); })
-      .catch(() => {});
-    this._unsubHassEvent = null;
-  }
-
   _s(id, fallback = null) {
     const e = this._hass?.states?.[id];
     return e ? e.state : fallback;
   }
-  _f(id, fallback = 0) { return parseFloat(this._s(id)) || fallback; }
   // A duration in `unit`, whichever unit the sensor is shown in; 0 for none.
   _duration(id, unit) { return quantityIn(this._hass, id, unit) || 0; }
 
@@ -431,30 +376,20 @@ class NinaImagePanelCard extends HTMLElement {
   // setup, and the card already reads it for `recent_frames`.
   _entityId() { return this._eid("sensor", "last_image_mean_adu"); }
 
-  // The config entry of the rig whose images this card shows, which is how a
-  // `nina_image_save` event names its rig: the hub's own identifier is the
-  // entry id (device.py `device_identifiers`). `null` without a registry.
-  _rigEntryId(hass) {
-    const hub = hass.devices?.[hass.entities?.[this._entityId()]?.device_id];
-    return hub?.identifiers?.find(([domain]) => domain === "nina_astrophotography")?.[1]
-      ?? null;
-  }
+  // The frame the readings describe: the one on screen, or before any has
+  // loaded the newest, which is what is loading.
+  _frame() { return this._shown ?? this._recentFrames()[0] ?? {}; }
 
-  // The frame on screen, from the `recent_frames` attribute. Index 0 is the
-  // newest of any type, matching what the proxy serves at history index 0.
-  // Read from the attribute, not the strip's copy, which is filled only while
-  // the strip or the histogram is shown.
-  _frame() { return this._recentFrames()[this._currentIndex] || {}; }
-
-  // Whether the frame on screen is the light the `last_image_*` sensors
-  // describe. A frame the attribute does not list is given the benefit, and
-  // with no light this session there are no readings to mislabel.
-  _showsLastLight() {
+  // Where the frame on screen sits in `recent_frames`: 0 the newest, -1 once
+  // newer frames have pushed it off the end.
+  _index() {
     const date = this._frame().date;
-    const lights = this._attr(this._eid("sensor", "last_image_hfr"), "recent_lights", []);
-    if (!date || lights.length === 0) return true;
-    return date === lights[lights.length - 1].date;
+    const frames = this._recentFrames();
+    // An empty list is a lost link or a restarted N.I.N.A., not an old frame.
+    if (!date || frames.length === 0) return 0;
+    return frames.findIndex((frame) => frame.date === date);
   }
+
   _attr(id, attr, fallback = null) {
     const e = this._hass?.states?.[id];
     return e?.attributes?.[attr] ?? fallback;
@@ -464,14 +399,26 @@ class NinaImagePanelCard extends HTMLElement {
   // fetch of our own, and no reversal needed.
   _recentFrames() { return this._attr(this._entityId(), "recent_frames", []); }
 
-  // The unsigned path: a stable, cache-key-free description of one frame.
-  _imagePath(index, forStrip = false) {
+  // The unsigned path: a stable, cache-key-free description of one frame. The
+  // index is where the frame sits now; its `date` lets the proxy find it past
+  // any frame the rig saved since, and refuse rather than serve another.
+  _imagePath(frame, { thumbnail = false, width = null } = {}) {
     const cfg = this._config;
+    const index = this._recentFrames().findIndex((f) => f.date === frame.date);
     const params = new URLSearchParams({
-      quality: forStrip ? "40" : String(cfg.quality),
+      quality: thumbnail ? "40" : String(cfg.quality),
       ...(cfg.stretch ? { autoPrepare: "true" } : {}),
+      date: frame.date,
+      ...(width ? { width: String(width) } : {}),
+      ...(thumbnail ? { thumbnail: "true" } : {}),
     });
-    return `/api/nina_astrophotography/image/${this._entityId()}/${index}?${params}`;
+    return `/api/nina_astrophotography/image/${this._entityId()}/${Math.max(index, 0)}?${params}`;
+  }
+
+  // Device pixels across `css` CSS pixels, so the rig sends no more of a
+  // frame than is drawn; `null` before layout.
+  _devicePixels(css) {
+    return css ? Math.ceil(css * (window.devicePixelRatio || 1)) : null;
   }
 
   // Signed right before use: `auth/sign_path` is Home Assistant's mechanism
@@ -515,7 +462,7 @@ class NinaImagePanelCard extends HTMLElement {
               <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
             </svg>
             <div>No image captured yet</div>
-            <div class="hint">Images will appear here as N.I.N.A. saves frames.<br>Ensure "Create Thumbnails" is enabled in the plugin settings.</div>
+            <div class="hint">Images will appear here as N.I.N.A. saves frames.</div>
           </div>
         </div>
 
@@ -563,153 +510,156 @@ class NinaImagePanelCard extends HTMLElement {
     this.shadowRoot.getElementById("modal-close").addEventListener("click", () => this._closeModal());
   }
 
-  async _loadImage(index, silent = false) {
-    if (this._loading && !silent) return;
+  // One main load at a time: a frame asked for meanwhile replaces any still
+  // waiting, so a burst of saves costs N.I.N.A. two renders, not one each.
+  // `picked` is a strip click, which shows the spinner and, failing, leaves
+  // the frame on screen.
+  _load(frame, picked = false) {
+    if (this._loading) {
+      this._queued = { frame, picked };
+      return;
+    }
+    this._loading = true;
+    this._loadImage(frame, picked).finally(() => {
+      this._loading = false;
+      const next = this._queued;
+      this._queued = null;
+      if (next) this._load(next.frame, next.picked);
+    });
+  }
 
+  async _loadImage(frame, picked) {
     const img    = this.shadowRoot?.getElementById("main-img");
     const spinner = this.shadowRoot?.getElementById("spinner");
     const noImg  = this.shadowRoot?.getElementById("no-image");
-    // Before the flag, not after: returning past it would wedge `_loading`
-    // true and block every later load.
     if (!img) return;
+    const described = this._frame();
 
-    // `silent` bypasses the guard above, so an IMAGE-SAVE refresh can race a
-    // strip click. Each load gets its own token and its own off-DOM probe
-    // image — the shared `<img>` and `_hasImage`/`_loading` are only ever
-    // touched by whichever load is still current when it settles, so a
-    // superseded load's promise still resolves instead of hanging forever,
-    // it just does nothing.
-    const token = ++this._loadToken;
-    this._loading = true;
-
-    if (!silent) {
+    if (picked) {
       img.classList.add("loading");
       spinner?.classList.add("active");
     }
 
     try {
-      const url = await this._signedUrl(this._imagePath(index));
+      if (!frame) throw new Error("no frame to load");
+      const width = this._devicePixels(this.shadowRoot.getElementById("img-wrap")?.clientWidth);
+      const url = await this._signedUrl(this._imagePath(frame, { width }));
       await new Promise((resolve, reject) => {
         const probe = new Image();
         probe.onload = resolve;
         probe.onerror = () => reject(new Error("image failed to load"));
         probe.src = url;
       });
-      if (token !== this._loadToken) return;
       img.src = url;
       // Only now: a failed or pending load leaves the previous frame on screen,
       // and everything describing it must stay on it too.
-      this._currentIndex = index;
+      this._shown = frame;
       this._hasImage = true;
       img.classList.remove("loading");
       spinner?.classList.remove("active");
       noImg && (noImg.style.display = "none");
       img.style.display = "block";
-      if (this._config.show_histogram) this._drawHistogram();
-      this._updateStripActive();
-      // Held: the readings are `unavailable`; keep the ones on screen.
-      if (!this._grace.holding) {
-        this._updateOverlay();
-        this._updateStatsRow();
-        this._updateHeaderBadge();
-      }
     } catch (err) {
-      if (token !== this._loadToken) return;
       img.classList.remove("loading");
       spinner?.classList.remove("active");
       // Held: the lost link is the likely cause; keep the frame on screen.
       if (this._grace.holding) return;
-      this._hasImage = false;
-      // Only for the latest frame; a strip click leaves the frame shown.
-      if (index === 0) {
+      // A strip click leaves the frame shown; the newest failing clears it.
+      if (!picked) {
+        this._shown = null;
+        this._hasImage = false;
         img.style.display = "none";
         noImg && (noImg.style.display = "flex");
       }
-    } finally {
-      if (token === this._loadToken) this._loading = false;
+    }
+    if (this._frame() === described) return;
+    if (this._config.show_histogram) this._drawHistogram();
+    this._updateStripActive();
+    // Held: the readings are `unavailable`; keep the ones on screen.
+    if (!this._grace.holding) {
+      this._updateOverlay();
+      this._updateStatsRow();
+      this._updateHeaderBadge();
     }
   }
 
-  async _loadStrip() {
-    const count = this._config.strip_count;
-    const recentFrames = this._recentFrames();
-    this._historyMeta = recentFrames.slice(0, count);
-    if (this._config.show_histogram) this._drawHistogram();
-
+  // Tiles are kept per frame: a new frame costs one thumbnail, and every
+  // older tile only moves along.
+  _loadStrip() {
     const strip = this.shadowRoot?.getElementById("strip");
     if (!strip) return;
 
-    // Bounded to what actually exists: `strip_count` thumbnails would each
-    // cost a sign + proxy round trip for an index N.I.N.A. cannot serve. A
-    // rig whose attribute has not populated yet (old data, first render)
-    // falls back to the configured count rather than showing nothing.
-    const thumbCount = recentFrames.length > 0
-      ? Math.min(count, recentFrames.length) : count;
-
+    const frames = this._recentFrames().slice(0, this._config.strip_count);
+    const kept = this._tiles;
+    this._tiles = new Map();
     strip.innerHTML = "";
-    for (let i = 0; i < thumbCount; i++) {
-      const thumb = document.createElement("div");
-      thumb.className = `strip-thumb${i === this._currentIndex ? " active" : ""}`;
-      thumb.dataset.index = i;
-      // A tile is a button in all but tag: a `div` keeps the thumbnail's
-      // layout free of a button's default styling.
-      thumb.setAttribute("role", "button");
-      thumb.setAttribute("tabindex", "0");
-      if (i === this._currentIndex) thumb.setAttribute("aria-current", "true");
-
-      // Decorative: the tile's `aria-label` names it, and still does once a
-      // failed thumbnail leaves nothing on it but the tags.
-      const img = document.createElement("img");
-      img.alt = "";
-      const dim = () => { thumb.style.opacity = "0.3"; };
-      hideUntilLoaded(img);
-      img.onerror = dim;
-      thumb.appendChild(img);
-      this._signedUrl(this._imagePath(i, true))
-        .then((url) => { img.src = url; })
-        .catch(dim);
-
-      // Only a calibration frame is tagged: a light is the ordinary case.
-      const type = tagFor(this._historyMeta[i]);
-      if (type) {
-        const tag = document.createElement("div");
-        tag.className = "strip-type";
-        tag.textContent = type;
-        thumb.appendChild(tag);
-      }
-
-      const filterName = this._historyMeta[i]?.filter ?? "";
-      if (filterName) {
-        const lbl = document.createElement("div");
-        lbl.className = "strip-filter";
-        lbl.textContent = filterName;
-        thumb.appendChild(lbl);
-      }
-
-      thumb.setAttribute("aria-label", [
-        i === 0 ? "Latest image" : `Frame -${i}`, type, filterName,
+    frames.forEach((frame, i) => {
+      const tile = kept.get(frame.date) ?? this._tile(frame);
+      tile.setAttribute("aria-label", [
+        i === 0 ? "Latest image" : `Frame -${i}`, tagFor(frame), frame.filter,
       ].filter(Boolean).join(", "));
+      this._tiles.set(frame.date, tile);
+      strip.appendChild(tile);
+    });
+    this._updateStripActive();
+  }
 
-      const pick = () => this._loadImage(parseInt(thumb.dataset.index));
-      thumb.addEventListener("click", pick);
-      thumb.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();   // Space would scroll the page
-        pick();
-      });
-      strip.appendChild(thumb);
+  _tile(frame) {
+    const thumb = document.createElement("div");
+    thumb.className = "strip-thumb";
+    thumb.dataset.date = frame.date;
+    // A tile is a button in all but tag: a `div` keeps the thumbnail's
+    // layout free of a button's default styling.
+    thumb.setAttribute("role", "button");
+    thumb.setAttribute("tabindex", "0");
+
+    // Decorative: the tile's `aria-label` names it, and still does once a
+    // failed thumbnail leaves nothing on it but the tags.
+    const img = document.createElement("img");
+    img.alt = "";
+    const dim = () => { thumb.style.opacity = "0.3"; };
+    hideUntilLoaded(img);
+    img.onerror = dim;
+    thumb.appendChild(img);
+    const width = this._devicePixels(THUMB_WIDTH);
+    this._signedUrl(this._imagePath(frame, { thumbnail: true, width }))
+      .then((url) => { img.src = url; })
+      .catch(dim);
+
+    // Only a calibration frame is tagged: a light is the ordinary case.
+    const type = tagFor(frame);
+    if (type) {
+      const tag = document.createElement("div");
+      tag.className = "strip-type";
+      tag.textContent = type;
+      thumb.appendChild(tag);
     }
+
+    if (frame.filter) {
+      const lbl = document.createElement("div");
+      lbl.className = "strip-filter";
+      lbl.textContent = frame.filter;
+      thumb.appendChild(lbl);
+    }
+
+    const pick = () => this._load(frame, true);
+    thumb.addEventListener("click", pick);
+    thumb.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();   // Space would scroll the page
+      pick();
+    });
+    return thumb;
   }
 
   _updateStripActive() {
-    const strip = this.shadowRoot?.getElementById("strip");
-    if (!strip) return;
-    strip.querySelectorAll(".strip-thumb").forEach(t => {
-      const current = parseInt(t.dataset.index) === this._currentIndex;
-      t.classList.toggle("active", current);
-      if (current) t.setAttribute("aria-current", "true");
-      else t.removeAttribute("aria-current");
-    });
+    const date = this._frame().date;
+    for (const [tileDate, tile] of this._tiles) {
+      const current = tileDate === date;
+      tile.classList.toggle("active", current);
+      if (current) tile.setAttribute("aria-current", "true");
+      else tile.removeAttribute("aria-current");
+    }
   }
 
   _drawHistogram() {
@@ -803,40 +753,30 @@ class NinaImagePanelCard extends HTMLElement {
     const overlay = this.shadowRoot?.getElementById("overlay");
     if (!overlay) return;
 
-    const hfr    = this._f(this._eid("sensor", "last_image_hfr"));
-    // `_s`'s fallback covers a missing entity only; `known` covers one that
-    // exists and reads `unknown` or `unavailable`, which would otherwise be
-    // drawn as a pill spelling the word.
-    const stars  = known(this._s(this._eid("sensor", "last_image_star_count")));
-    const filter = known(this._s(this._eid("sensor", "last_image_filter")));
-    const rms    = known(this._s(this._eid("sensor", "last_image_rms")));
-    const target = known(this._s(this._eid("sensor", "last_image_target")));
+    const frame = this._frame();
+    const hfr   = finite(frame.hfr);
+    const stars = finite(frame.stars);
+    const rms   = finite(frame.rms);
 
     const pills = [];
-    if (filter && filter !== "null") {
-      pills.push(`<span class="stat-pill"><span class="dot"></span>${filter}</span>`);
+    if (frame.filter) {
+      pills.push(`<span class="stat-pill"><span class="dot"></span>${frame.filter}</span>`);
     }
     if (hfr > 0) {
       const cls = hfr > 3 ? "warn" : "";
       pills.push(`<span class="stat-pill ${cls}"><span class="dot"></span>HFR ${hfr.toFixed(2)} px</span>`);
     }
-    if (stars && stars !== "null" && parseInt(stars) > 0) {
+    if (stars > 0) {
       pills.push(`<span class="stat-pill"><span class="dot"></span>${stars} ★</span>`);
     }
-    if (rms && rms !== "null" && rms !== "") {
-      pills.push(`<span class="stat-pill"><span class="dot"></span>RMS ${rms}</span>`);
+    if (rms !== null) {
+      pills.push(`<span class="stat-pill"><span class="dot"></span>RMS ${rms.toFixed(2)}″</span>`);
     }
 
-    const targetHtml = target && target !== "null"
-      ? `<span class="target" style="font-size:0.65rem;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;max-width:120px;text-overflow:ellipsis">${target}</span>`
+    const targetHtml = frame.target
+      ? `<span class="target" style="font-size:0.65rem;color:rgba(255,255,255,0.5);white-space:nowrap;overflow:hidden;max-width:120px;text-overflow:ellipsis">${frame.target}</span>`
       : "";
 
-    // The pills are the newest light's, so over any other frame they say
-    // whose readings they are.
-    const stale = (pills.length > 0 || targetHtml !== "") && !this._showsLastLight();
-    if (stale) pills.unshift(`<span class="stat-pill tag">Last light</span>`);
-
-    overlay.classList.toggle("stale", stale);
     overlay.innerHTML = `<div class="overlay-left">${pills.join("")}</div>${targetHtml}`;
   }
 
@@ -845,24 +785,22 @@ class NinaImagePanelCard extends HTMLElement {
       const el = this.shadowRoot?.getElementById(id);
       if (el) el.textContent = val;
     };
-    const hfr  = this._f(this._eid("sensor", "last_image_hfr"));
-    const stars = this._s(this._eid("sensor", "last_image_star_count"), "—");
-    const adu   = this._f(this._entityId());
-    const exp   = this._duration(this._eid("sensor", "last_image_exposure"), "s");
+    const frame = this._frame();
+    const hfr   = finite(frame.hfr);
+    const stars = finite(frame.stars);
+    const adu   = finite(frame.mean);
+    // Seconds whatever the instance shows durations in: an attribute is not
+    // converted. A flat can be a few hundredths of one.
+    const exp   = finite(frame.exposure);
 
-    set("st-hfr",   hfr  > 0 ? `${hfr.toFixed(2)} px`   : "—");
-    set("st-stars", shown(stars));
-    set("st-adu",   adu  > 0 ? Math.round(adu).toString() : "—");
-    set("st-exp",   exp  > 0 ? `${exp.toFixed(0)} s`      : "—");
+    set("st-hfr",   hfr > 0 ? `${hfr.toFixed(2)} px` : "—");
+    set("st-stars", stars !== null ? String(stars) : "—");
+    set("st-adu",   adu !== null ? Math.round(adu).toString() : "—");
+    set("st-exp",   exp > 0 ? `${Number(exp.toPrecision(3))} s` : "—");
 
-    // The newest light's too, beside a histogram of the frame on screen.
-    this.shadowRoot?.getElementById("stats-row")
-      ?.classList.toggle("stale", !this._showsLastLight());
-
-    // Colour HFR
     const hfrEl = this.shadowRoot?.getElementById("st-hfr");
-    if (hfrEl && hfr > 0) {
-      hfrEl.className = `val ${hfr < 2 ? "good" : hfr > 3.5 ? "warn" : ""}`;
+    if (hfrEl) {
+      hfrEl.className = `val ${hfr === null || hfr <= 0 ? "" : hfr < 2 ? "good" : hfr > 3.5 ? "warn" : ""}`;
     }
   }
 
@@ -883,9 +821,8 @@ class NinaImagePanelCard extends HTMLElement {
     // publishing an off state.
     const cameraState = this._s(this._eid("sensor", "camera_state"));
     const connected = cameraState !== null && cameraState !== "unavailable";
-    const target = known(this._s(this._eid("sensor", "last_image_target")));
-    const filter = known(this._s(this._eid("sensor", "last_image_filter")));
-    const index  = this._currentIndex;
+    const { target, filter } = this._frame();
+    const index = this._index();
 
     // Before the camera: a lost link makes it unavailable too.
     if (this._unreachable) {
@@ -905,12 +842,13 @@ class NinaImagePanelCard extends HTMLElement {
     expBar?.classList.toggle("active", exposing);
 
     if (title) {
-      title.textContent = index === 0 ? "Latest Image" : `Frame -${index}`;
+      title.textContent = index === 0 ? "Latest Image"
+        : index > 0 ? `Frame -${index}` : "Earlier frame";
     }
     if (sub) {
       const parts = [];
-      if (target && target !== "null") parts.push(target);
-      if (filter && filter !== "null") parts.push(filter);
+      if (target) parts.push(target);
+      if (filter) parts.push(filter);
       // Every light this session, not the target's or the filter's beside it.
       if (intTime > 0) parts.push(`session ${intTime.toFixed(1)} h`);
       sub.textContent = parts.join(" · ") || "No lights yet this session";
@@ -920,10 +858,10 @@ class NinaImagePanelCard extends HTMLElement {
   async _openModal() {
     const modal    = this.shadowRoot?.getElementById("modal");
     const modalImg = this.shadowRoot?.getElementById("modal-img");
-    if (!modal || !modalImg) return;
-    // Full-quality version for the modal, signed fresh for this viewing.
+    if (!modal || !modalImg || !this._shown) return;
+    // Full size and quality for the modal, signed fresh for this viewing.
     hideUntilLoaded(modalImg);
-    modalImg.src = await this._signedUrl(this._imagePath(this._currentIndex));
+    modalImg.src = await this._signedUrl(this._imagePath(this._shown));
     modal.classList.add("open");
   }
 
@@ -967,7 +905,8 @@ class NinaImagePanelCard extends HTMLElement {
       {
         name: "quality",
         label: "JPEG quality",
-        helper: "The main frame only; thumbnails are fixed at 40.",
+        helper: "The main frame only. Thumbnails are N.I.N.A.'s own where it keeps "
+          + "them, and quality 40 where it does not.",
         default: DEFAULT_QUALITY,
         selector: { number: { min: 1, max: 100, mode: "box" } },
       },

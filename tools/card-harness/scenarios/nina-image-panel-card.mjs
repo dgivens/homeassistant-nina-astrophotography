@@ -6,40 +6,35 @@
  * thumbnail dims too. The load that succeeds — the frame on screen, the active
  * thumbnail following it — is reached by nothing here. What the scenarios do
  * reach is everything around the picture — the overlay pills, the stats row,
- * the header, the histogram off the newest frame's statistics, the strip's
- * filter labels — and, in `ops.mjs`, the image paths the card signs, which
- * name the entity the proxy resolves a rig by, and which saves it reloads on.
+ * the header, the histogram, the strip's labels, all off the newest frame's
+ * own `recent_frames` entry — and, in `ops.mjs`, the image paths the card
+ * signs: the entity the proxy resolves a rig by, the frame's date, and which
+ * frames a new save makes it fetch.
  *
- * `dawn_flats` is dumped from inside its own night: the last light's readings
- * and a 122-frame session of 55 lights, with the dawn flats after them. All
- * twenty `recent_frames` are those flats, so the strip's six thumbnails are
- * flats and so is the frame the histogram describes, while the pills and the
- * stats row are the newest light's — so each thumbnail is tagged FLAT, and the
- * pills and stats row are dimmed behind "Last light".
+ * `dawn_flats` is dumped from inside its own night, and all twenty
+ * `recent_frames` are its dawn flats: the strip's six thumbnails are tagged
+ * FLAT, and the readings are a flat's — ADU and a short exposure, no HFR, no
+ * stars.
  *
  * `site_configured` is dumped on a later day than its night, so it has image
- * history but no session: a strip, no last-light readings, and the camera
- * exposing, which is the only capture where it is.
- *
- * `saves` and `saves_templated` render in `render.html` like `night`: only
- * `ops.mjs` fires their events.
+ * history but no session: a strip of lights with their own readings, no
+ * session totals, and the camera exposing, which is the only capture where it
+ * is.
  */
 
 import { linkScenarios, rig } from "../hass.mjs";
 
 const NIGHT = "dawn_flats";
 
-// A frame saved by this rig and one saved by another, which fire the same event
-// type. The second rig is invented: the corpus holds one. Its instance name is
-// the default one, so the slug that the fallback compares cannot tell it apart.
-const saves = (dump) => {
-  const [, entryId] = dump[NIGHT].devices.hub.identifiers.find(
-    ([domain]) => domain === "nina_astrophotography",
-  );
-  return [
-    { type: "nina_image_save", data: { entry_id: "another-rig", instance: "N.I.N.A." } },
-    { type: "nina_image_save", data: { entry_id: entryId, instance: "N.I.N.A." } },
-  ];
+// The night one frame earlier: its newest `recent_frames` entry not yet
+// saved, which `after` then hands over as the save.
+const MEAN_ADU = "sensor.n_i_n_a_last_image_mean_adu";
+const before = (dump) => {
+  const row = dump[NIGHT].states[MEAN_ADU];
+  return rig(dump, NIGHT).override(MEAN_ADU, row.state, {
+    ...row.attributes,
+    recent_frames: row.attributes.recent_frames.slice(1),
+  });
 };
 
 // No `draw` hook: the histogram is painted synchronously from `set hass`.
@@ -63,31 +58,36 @@ export const scenarios = {
         .build(),
   },
 
-  // No strip and no histogram, which must still mark the pills over a flat:
-  // the frame on screen is read from the attribute, not from the strip.
+  // No strip and no histogram, which must still describe the flat: the frame
+  // on screen is read from the attribute, not from the strip.
   bare: {
     hass: (dump) => rig(dump, NIGHT).build(),
     config: { show_strip: false, show_histogram: false },
   },
 
-  // Exposing, with frames in the history but no light this session.
+  // Exposing, with lights in the history but none this session: the readings
+  // are the frame's own, and the session totals empty.
   exposing: { hass: (dump) => rig(dump, "site_configured").build() },
 
-  // The drivers down: no camera entities at all, the last-light readings
-  // unknown and the session totals zero.
+  // The drivers down: no camera entities at all, no frames, and the session
+  // totals zero.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
   // The lost link: the badge names it, not the camera.
   ...linkScenarios(),
 
-  // Two rigs saving. Resolved, the card reloads for its own rig's frame only:
-  // one signed path, after the second event.
-  saves: { hass: (dump) => rig(dump, NIGHT).build(), events: saves },
+  // A frame saved: the panel signs the new frame's path, and a thumbnail for
+  // it alone, while the five older tiles move along.
+  saved: {
+    hass: (dump) => before(dump).build(),
+    after: (dump) => [rig(dump, NIGHT).build()],
+  },
 
-  // The same with no registry, where only the instance name is left to match
-  // on — so both saves reload the panel.
-  saves_templated: {
-    hass: (dump) => rig(dump, NIGHT).unresolvable().build(),
-    events: saves,
+  // The same with `refresh_on_save` off: the new thumbnail only, and the
+  // frame on screen stays.
+  saved_without_refresh: {
+    hass: (dump) => before(dump).build(),
+    after: (dump) => [rig(dump, NIGHT).build()],
+    config: { refresh_on_save: false },
   },
 };
