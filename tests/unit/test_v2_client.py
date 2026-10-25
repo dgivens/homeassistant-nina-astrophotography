@@ -537,6 +537,25 @@ async def test_the_image_endpoint_sends_autoPrepare_not_useAutoStretch() -> None
     assert params == {"stream": "true", "quality": 85, "autoPrepare": "true"}
 
 
+async def test_a_width_scales_the_render_by_width_alone() -> None:
+    """The route parses a height it ignores, and fails on a size without one."""
+    session = FakeSession(
+        {"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")}
+    )
+    await _client(session).get_image_bytes(0, width=320)
+    _, params = session.requests[-1]
+    assert params is not None
+    assert (params["resize"], params["size"]) == ("true", "320x320")
+
+
+async def test_a_thumbnail_route_that_is_unreachable_is_not_rendered_instead() -> None:
+    """A rig that cannot be reached cannot render either."""
+    session = FakeSession({"/image/thumbnail/": TimeoutError()})
+    with pytest.raises(NinaConnectionError):
+        await _client(session).get_thumbnail_bytes(0, width=128)
+    assert len(session.requests) == 1
+
+
 async def test_an_image_arrives_as_bytes() -> None:
     session = FakeSession(
         {"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")}

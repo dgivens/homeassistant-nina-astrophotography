@@ -15,7 +15,7 @@ Classification is on the pair (StatusCode, Error), never the code alone:
 initialized"; the wire says "Sequence is not initialized". Match the wire.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 import logging
 from typing import Any
@@ -27,6 +27,7 @@ from ..errors import (
     NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
+    NinaError,
     NinaNoImageError,
     NinaRequestError,
     NinaUnavailableError,
@@ -63,6 +64,9 @@ REPLAY_CAP = 2000  # a full night emitted 628; a long-lived process, more
 
 # A quality makes `/image` answer JPEG rather than a far larger PNG.
 IMAGE_QUALITY = 85
+
+# How many frames saved since a caller counted are looked past for its frame.
+_FRAME_SEARCH = 5
 
 # Pre-handler statuses meaning the path itself is not served.
 _NOT_SERVED = (404, 405, 501)
@@ -196,15 +200,23 @@ class NinaClientV2:
         return map_equipment_info(wire)
 
     async def get_frames(
-        self, *, include_all: bool = False, generation: str | None = None
+        self,
+        *,
+        include_all: bool = False,
+        index: int | None = None,
+        generation: str | None = None,
     ) -> list[Frame]:
         """`include_all`, not `all` — the wire parameter stays `all`; only the
         keyword differs, to leave the builtin unshadowed.
 
         Bare /image-history answers the latest frame as a single object;
-        ?all=true answers the list.
+        ?all=true answers the list, and `index` the frame there.
         """
-        params = {"all": "true"} if include_all else None
+        params: dict[str, str] | None = None
+        if include_all:
+            params = {"all": "true"}
+        elif index is not None:
+            params = {"index": str(index)}
         response = await self._get("/image-history", params)
         if isinstance(response, dict):
             response = [response]
@@ -265,28 +277,94 @@ class NinaClientV2:
         return map_profile(await self._get("/profile/show", {"active": "true"}) or {})
 
     async def get_image_bytes(
-        self, index: int, *, quality: int = IMAGE_QUALITY, auto_prepare: bool = True
+        self,
+        index: int,
+        *,
+        quality: int = IMAGE_QUALITY,
+        auto_prepare: bool = True,
+        width: int | None = None,
     ) -> bytes:
-        """Fetch a rendered frame; `index` counts oldest-first, as the route does."""
+        """Fetch a rendered frame; `index` counts oldest-first, as the route does.
+
+        `width` scales the frame to that many pixels across. The route scales
+        by the width alone, keeping the aspect ratio, but fails to parse a
+        `size` without a height. It never enlarges, nor shrinks below a tenth,
+        and renders at full size first: this spares the encode and transfer.
+        """
         params: dict[str, Any] = {"stream": "true", "quality": quality}
         if auto_prepare:
             params["autoPrepare"] = "true"
+        if width is not None:
+            params["resize"] = "true"
+            params["size"] = f"{width}x{width}"
         return await self._image_bytes(f"/image/{index}", params)
 
-    async def get_recent_image_bytes(
-        self, age: int, *, quality: int = IMAGE_QUALITY, auto_prepare: bool = True
+    async def get_thumbnail_bytes(
+        self,
+        index: int,
+        *,
+        quality: int = IMAGE_QUALITY,
+        auto_prepare: bool = True,
+        width: int | None = None,
     ) -> bytes:
-        """Fetch a rendered frame by `age`, 0 being the newest.
+        """N.I.N.A.'s own thumbnail of a frame, else a render `width` across.
+
+        The plugin writes one JPEG per saved frame from the preview it prepared,
+        256 px across or a tenth of the frame if wider, so serving it renders
+        nothing. It does so only while its "Create
+        Thumbnails" setting is on, and keys each by its place among the
+        thumbnailed frames: turned on mid-session, it answers for the wrong one.
+        The render answers whatever the thumbnail route refused or lacked.
+        """
+        try:
+            return await self._image_bytes(f"/image/thumbnail/{index}", {})
+        except NinaConnectionError:
+            raise
+        except NinaError:
+            return await self.get_image_bytes(
+                index, quality=quality, auto_prepare=auto_prepare, width=width
+            )
+
+    async def get_recent_image_bytes(
+        self,
+        age: int,
+        *,
+        quality: int = IMAGE_QUALITY,
+        auto_prepare: bool = True,
+        width: int | None = None,
+        thumbnail: bool = False,
+        date: datetime | None = None,
+    ) -> bytes:
+        """Fetch a frame by `age`, 0 being the newest, or the one saved at `date`.
 
         The count is read per call, not taken from the fold, which can lag a
-        frame behind. `NinaNoImageError` when fewer than `age + 1` are held.
+        frame behind. `NinaNoImageError` when fewer than `age + 1` are held, or
+        none was saved at `date`.
         """
         count = await self.get_image_history_count()
         if age >= count:
             raise NinaNoImageError(f"{count} frames held, none at age {age}")
-        return await self.get_image_bytes(
-            count - 1 - age, quality=quality, auto_prepare=auto_prepare
+        index = count - 1 - age
+        if date is not None:
+            index = await self._index_saved_at(date, index)
+        fetch = self.get_thumbnail_bytes if thumbnail else self.get_image_bytes
+        return await fetch(
+            index, quality=quality, auto_prepare=auto_prepare, width=width
         )
+
+    async def _index_saved_at(self, date: datetime, guess: int) -> int:
+        """The index of the frame saved at `date`, at or below `guess`.
+
+        An index never changes within a process and the history only grows, so
+        each frame saved since the caller counted puts its frame one lower.
+        """
+        for index in range(guess, max(guess - _FRAME_SEARCH, -1), -1):
+            frames = await self.get_frames(index=index)
+            if not frames or frames[0].date < date:
+                break
+            if frames[0].date == date:
+                return index
+        raise NinaNoImageError(f"no frame saved at {date.isoformat()}")
 
     async def get_livestack_image_bytes(
         self, target: str, filter_name: str, *, quality: int = IMAGE_QUALITY

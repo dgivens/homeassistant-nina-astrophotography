@@ -12,9 +12,12 @@ bytes at its own newest index only, so a case that reads the body stubs
 `/image/0` for itself.
 """
 
+from urllib.parse import quote
+
 import pytest
 
-from helpers import FakeResponse, failure, ok
+from custom_components.nina_astrophotography.api.v2.mapper import map_frame
+from helpers import FakeResponse, failure, load_envelope, ok
 
 ENTITY = "image.n_i_n_a_last_frame"
 FRAME = b"\xff\xd8\xff\xe0 not a frame"
@@ -122,6 +125,10 @@ async def test_an_entity_whose_entry_is_unloaded_answers_404(
         f"/api/nina_astrophotography/image/{ENTITY}/0?quality=high",
         f"/api/nina_astrophotography/image/{ENTITY}/0?quality=0",
         f"/api/nina_astrophotography/image/{ENTITY}/0?quality=101",
+        f"/api/nina_astrophotography/image/{ENTITY}/0?width=wide",
+        f"/api/nina_astrophotography/image/{ENTITY}/0?width=0",
+        f"/api/nina_astrophotography/image/{ENTITY}/0?date=yesterday",
+        f"/api/nina_astrophotography/image/{ENTITY}/0?date=2026-09-05T01:41:27",
     ],
     ids=[
         "bad-index",
@@ -129,9 +136,13 @@ async def test_an_entity_whose_entry_is_unloaded_answers_404(
         "bad-quality",
         "quality-too-low",
         "quality-too-high",
+        "bad-width",
+        "width-too-small",
+        "bad-date",
+        "date-without-offset",
     ],
 )
-async def test_an_invalid_index_or_quality_answers_400(
+async def test_an_invalid_index_quality_or_width_answers_400(
     hass, loaded_entry, rig, hass_client, path: str
 ) -> None:
     client = await hass_client()
@@ -158,3 +169,83 @@ async def test_autoprepare_is_only_sent_when_the_query_asks_for_it(
     params = rig.last_params("/image/0")
     assert params is not None
     assert params["autoPrepare"] == "true"
+
+
+async def test_a_width_asks_the_rig_for_a_scaled_render(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    rig.respond("/image-history?count=true", ok(1))
+    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    client = await hass_client()
+    await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?width=640")
+    params = rig.last_params("/image/0")
+    assert params is not None
+    assert (params["resize"], params["size"]) == ("true", "640x640")
+
+
+async def test_a_thumbnail_is_the_rigs_own_when_it_keeps_one(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    rig.respond("/image-history?count=true", ok(1))
+    rig.respond("/image/thumbnail/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    client = await hass_client()
+    resp = await client.get(
+        f"/api/nina_astrophotography/image/{ENTITY}/0?thumbnail=true&width=128"
+    )
+    assert await resp.read() == FRAME
+    assert rig.last_params("/image/0") is None
+
+
+async def test_a_thumbnail_the_rig_does_not_keep_is_rendered_at_the_width(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    """The plugin keeps none while its "Create Thumbnails" setting is off."""
+    rig.respond("/image-history?count=true", ok(1))
+    rig.respond("/image/thumbnail/0", failure("No thumbnails available", 400))
+    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    client = await hass_client()
+    resp = await client.get(
+        f"/api/nina_astrophotography/image/{ENTITY}/0?thumbnail=true&width=128"
+    )
+    assert await resp.read() == FRAME
+    params = rig.last_params("/image/0")
+    assert params is not None
+    assert params["size"] == "128x128"
+
+
+def _captured(position: int) -> tuple[dict, str]:
+    """A captured frame's wire, and the `date` its `recent_frames` entry carries."""
+    wire = load_envelope("imaging_guiding_image_history_all.json")["Response"][position]
+    return wire, quote(map_frame(wire, None).date.isoformat())
+
+
+async def test_a_date_finds_its_frame_past_one_saved_since(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    """The card's newest is the rig's second newest once another frame is saved,
+    so age 0 must not serve the newer frame under the older one's readings.
+    """
+    older, date = _captured(-2)
+    newer, _ = _captured(-1)
+    rig.respond("/image-history?count=true", ok(5))
+    rig.respond("/image-history?index=4", ok([newer]))
+    rig.respond("/image-history?index=3", ok([older]))
+    rig.respond("/image/3", FakeResponse(FRAME, content_type="image/jpeg"))
+    client = await hass_client()
+    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    assert await resp.read() == FRAME
+    assert rig.last_params("/image/4") is None
+
+
+async def test_a_date_no_frame_was_saved_at_answers_404(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    """As after N.I.N.A. restarts: the card's list names the last process's frames."""
+    _, date = _captured(-1)
+    older, _ = _captured(-2)
+    rig.respond("/image-history?count=true", ok(1))
+    rig.respond("/image-history?index=0", ok([older]))
+    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    client = await hass_client()
+    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    assert resp.status == 404

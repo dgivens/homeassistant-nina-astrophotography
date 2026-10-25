@@ -5,6 +5,8 @@ N.I.N.A. serves plain HTTP, and a browser refuses an HTTPS dashboard's fetch
 of it as mixed content.
 """
 
+from datetime import datetime
+
 from aiohttp import web
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
@@ -33,14 +35,22 @@ def _client_for_entity(hass: HomeAssistant, entity_id: str) -> NinaClientV2 | No
 
 def _bad_image_request() -> web.Response:
     return web.Response(
-        status=400, text="index must be >= 0, quality between 1 and 100"
+        status=400,
+        text=(
+            "index must be >= 0, quality between 1 and 100, width >= 1, "
+            "date an ISO 8601 time with an offset"
+        ),
     )
 
 
 class NinaImageProxyView(HomeAssistantView):
     """`GET /api/nina_astrophotography/image/{entity_id}/{index}`.
 
-    `index` 0 is the newest frame, as in `recent_frames`.
+    `index` 0 is the newest frame, as in `recent_frames`, and `date` that
+    entry's own `date`: with it the proxy serves that frame or none, however
+    many the rig saved since the card's list. `width` scales the frame down to
+    that many pixels across, and `thumbnail=true` asks for the rig's own
+    thumbnail before a render.
     """
 
     url = "/api/nina_astrophotography/image/{entity_id}/{index}"
@@ -52,9 +62,20 @@ class NinaImageProxyView(HomeAssistantView):
         try:
             frame_index = int(index)
             quality = int(request.query.get("quality", IMAGE_QUALITY))
+            width = int(request.query["width"]) if "width" in request.query else None
+            date = (
+                datetime.fromisoformat(request.query["date"])
+                if "date" in request.query
+                else None
+            )
         except ValueError:
             return _bad_image_request()
-        if frame_index < 0 or not 1 <= quality <= 100:
+        if (
+            frame_index < 0
+            or not 1 <= quality <= 100
+            or (width is not None and width < 1)
+            or (date is not None and date.tzinfo is None)
+        ):
             return _bad_image_request()
 
         hass: HomeAssistant = request.app[KEY_HASS]
@@ -66,7 +87,12 @@ class NinaImageProxyView(HomeAssistantView):
         auto_prepare = request.query.get("autoPrepare") == "true"
         try:
             image_bytes = await client.get_recent_image_bytes(
-                frame_index, quality=quality, auto_prepare=auto_prepare
+                frame_index,
+                quality=quality,
+                auto_prepare=auto_prepare,
+                width=width,
+                thumbnail=request.query.get("thumbnail") == "true",
+                date=date,
             )
         except NinaNoImageError, NinaCommandError:
             # An empty history, or an index no longer held.
