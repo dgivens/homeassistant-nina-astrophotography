@@ -384,9 +384,18 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
 - `sensor.<instance>_session_avg_hfr` has `by_target` and `by_filter`
   attributes: count, integration hours and mean HFR for each.
 - `sensor.<instance>_mount_time_to_meridian_flip` has `flip_fires_at_minutes`,
-  the reading at which N.I.N.A. actually flips. It is
-  `MaxMinutesAfterMeridian − MinMinutesAfterMeridian` from your profile, not
-  zero, so base warning thresholds on it rather than a fixed number.
+  the reading at which the flip window opens: N.I.N.A. flips at the first item
+  boundary from then on. It is `MaxMinutesAfterMeridian − MinutesAfterMeridian`
+  from your profile, not zero, so base warning thresholds on it rather than a
+  fixed number. The sensor counts down to the latest flip; the cards print both
+  ends, so with Min 5 and Max 15 a reading of 22 shows as "Flip in 12–22 min",
+  and a reading of 6 as "≤ 6 min".
+
+  The range is when the mount slews, not when imaging stops. With *Pause
+  before meridian* set, N.I.N.A. stops imaging Min + Pause minutes before the
+  earliest end, at meridian − Pause, and waits; the flip itself still comes at
+  the earliest end. N.I.N.A. also stops early when the next exposure would not
+  finish by the latest end.
 
 ## Error events
 

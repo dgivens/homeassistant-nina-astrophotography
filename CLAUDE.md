@@ -105,7 +105,8 @@ custom_components/nina_astrophotography/
                       are not cards: `nina-entity-resolver.js`,
                       `nina-card-config.js` (the prefix and the visual
                       editor's `getConfigForm()` schema) and `nina-units.js`
-                      (readings in the unit HA shows them in). Every card resolves
+                      (readings in the unit HA shows them in, and the
+                      meridian flip window). Every card resolves
                       its entity ids from the registry by `translation_key`
                       and keeps the configured instance prefix only as a
                       per-entity fallback.

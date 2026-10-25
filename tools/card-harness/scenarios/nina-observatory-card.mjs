@@ -37,6 +37,14 @@ export const scenarios = {
   // The time to the flip shown in hours, which must render what `station` does.
   flip_in_hours: { hass: (dump) => rig(dump, UP).displayedIn(FLIP, "h", 1 / 60).build() },
 
+  // Twenty minutes to the latest flip of a profile whose window is ten minutes
+  // wide: the banner warns of a flip in 10–20 min. The reading is invented — the
+  // corpus never caught a mount this close to its flip.
+  flip_soon: { hass: (dump) => rig(dump, UP).override(FLIP, 20).build() },
+
+  // Inside the window: the slew is due at the next item boundary.
+  flip_due: { hass: (dump) => rig(dump, UP).override(FLIP, 6).build() },
+
   // Every driver down, N.I.N.A. answering. Must not read as a lost link.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
 
