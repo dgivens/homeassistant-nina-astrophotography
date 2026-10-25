@@ -31,6 +31,7 @@ from .entity import (
     async_add_observed,
     usable,
 )
+from .sequence import refocus_temperature
 
 PARALLEL_UPDATES = 0
 
@@ -85,7 +86,8 @@ def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
     """Why the verdict was reached, and the R² and threshold it compared.
 
     A hung run and a rejected one need different fixes. The R² sensor ships
-    disabled, so the value judged is carried here.
+    disabled, so the value judged is carried here. The sequence's refocus
+    threshold rides along for the autofocus card's drift flag.
     """
     return {
         "reason": _autofocus_reason(data),
@@ -93,6 +95,7 @@ def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
         if (report := data.autofocus_report) is None
         else report.r_squared,
         "r_squared_threshold": data.profile.r_squared_threshold,
+        "refocus_temperature_delta": refocus_temperature(data.sequence),
     }
 
 

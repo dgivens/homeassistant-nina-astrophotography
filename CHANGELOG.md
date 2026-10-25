@@ -14,6 +14,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   defaults to the limit the card used before. Temperatures and the dew margin
   are in °C and wind in m/s whatever unit Home Assistant shows the reading in,
   so a limit does not move when the display unit changes.
+- **The autofocus card takes its drift threshold from the sequence** (#119).
+  With no `temperature_delta` set, it flags the focuser temperature against
+  the sequence's "AF After Temperature Change" trigger rather than a fixed
+  2 °C, and says so: "past the trigger's 2.0 °C". A sequence without the
+  trigger keeps 2 °C, and an explicit option still wins. The threshold is
+  published as `refocus_temperature_delta` on
+  `binary_sensor.<instance>_focuser_autofocus_failed`.
 
 ### Changed
 

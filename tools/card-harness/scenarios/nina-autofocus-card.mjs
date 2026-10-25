@@ -63,6 +63,26 @@ export const scenarios = {
     config: { temperature_delta: 0.1 },
   },
 
+  // The sequence's refocus trigger sets the threshold when the card has no
+  // option. The capture's trigger reads 2 °C, so its threshold is moved to
+  // flag the rig's own 0.2 °C of drift.
+  trigger_drifted: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(VERDICT, "off", verdict(dump, { refocus_temperature_delta: 0.1 }))
+        .build(),
+  },
+
+  // An explicit option outranks the trigger: 0.2 °C is past the trigger's 0.1
+  // but short of the card's 0.3, so nothing is flagged.
+  option_over_trigger: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(VERDICT, "off", verdict(dump, { refocus_temperature_delta: 0.1 }))
+        .build(),
+    config: { temperature_delta: 0.3 },
+  },
+
   // The same flag on a US customary instance, where Home Assistant shows both
   // temperatures in °F: every label names that unit, and the threshold is
   // printed converted to it.

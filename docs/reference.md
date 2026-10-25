@@ -294,6 +294,7 @@ Things to know when reading them:
 | `reason` | `hung`, `rejected`, or absent. A hung run usually means a sequence problem; a rejected one means the focus range or star detection needs adjusting. Only for `hung` do the other autofocus sensors show a different run from the one that failed. |
 | `r_squared` | the R² used for the decision: the worst value in the run's `RSquares` |
 | `r_squared_threshold` | your profile's `RSquaredThreshold` |
+| `refocus_temperature_delta` | the °C of focuser drift past which your sequence's "AF After Temperature Change" trigger refocuses, or absent with no such trigger. With several, the smallest: which one is in scope cannot be told. The autofocus card flags drift against it. |
 
 If you check R² yourself, compare against this `r_squared` attribute, not
 values from the `fits` attribute below; they can differ slightly.

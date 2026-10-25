@@ -9,7 +9,7 @@
  * all: the card finds its own focuser in the registry.
  *   type: custom:nina-autofocus-card
  *   device_id: abc123      # which rig, for two or more; any one of its devices
- *   temperature_delta: 2   # °C of drift since the run worth flagging
+ *   temperature_delta: 2   # °C of drift worth flagging; default: the sequence's trigger
  *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
  */
 
@@ -20,9 +20,9 @@ import { interval, inUnit, quantity, quantityIn, safe, shown } from "./nina-unit
 const VERSION = "2.1.0";
 
 // How far the focuser temperature may drift from the run's before the card
-// flags it. Only a default: the real threshold is the sequence's own refocus
-// trigger, and the card prints the number it used. Above 1 °C so a site that
-// swings ten degrees overnight is not flagged most of the night.
+// flags it, when neither `temperature_delta` nor the sequence's "AF After
+// Temperature Change" trigger says. Above 1 °C so a site that swings ten
+// degrees overnight is not flagged most of the night.
 const DEFAULT_TEMPERATURE_DELTA = 2.0;
 
 const CURVE = "#5bcfcf";      // the measured sweep
@@ -192,8 +192,7 @@ class NinaAutofocusCard extends HTMLElement {
     // Coerced, because YAML hands back a string as readily as a number, and a
     // silent fallback to the default would look like the setting was ignored.
     const delta = Math.abs(Number(this._config.temperature_delta));
-    this._temperatureDelta = Number.isFinite(delta) && delta > 0
-      ? delta : DEFAULT_TEMPERATURE_DELTA;
+    this._temperatureDelta = Number.isFinite(delta) && delta > 0 ? delta : null;
     this._signature = null;
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
@@ -284,6 +283,9 @@ class NinaAutofocusCard extends HTMLElement {
     const verdict = this._eid("binary_sensor", "autofocus_failed", "focuser_autofocus_failed");
     const judged = this._attr(verdict, "r_squared");
     const threshold = this._attr(verdict, "r_squared_threshold");
+    const trigger = this._attr(verdict, "refocus_temperature_delta");
+    const triggered = this._temperatureDelta === null
+      && Number.isFinite(trigger) && trigger > 0;
 
     return {
       timestamp: this._state(run),
@@ -323,6 +325,10 @@ class NinaAutofocusCard extends HTMLElement {
       drift: Number.isFinite(at) && Number.isFinite(temperature)
         ? temperature - at : null,
       driftC: now && then ? inUnit(now, "°C") - inUnit(then, "°C") : null,
+      // The option wins, then the sequence's trigger: the threshold N.I.N.A.
+      // itself refocuses at.
+      limit: triggered ? trigger : (this._temperatureDelta ?? DEFAULT_TEMPERATURE_DELTA),
+      triggered,
     };
   }
 
@@ -385,7 +391,7 @@ class NinaAutofocusCard extends HTMLElement {
     const away = Number.isFinite(run.nowPosition) && Number.isFinite(run.position)
       ? run.nowPosition - run.position : null;
     const drifted = Number.isFinite(run.driftC)
-      && Math.abs(run.driftC) >= this._temperatureDelta;
+      && Math.abs(run.driftC) >= run.limit;
     const blind = run.curve.filter((point) => !Number.isFinite(point.value)).length;
     // Positive means the sweep improved focus. Both readings are measured
     // exposures, so they are comparable; the fitted value is not.
@@ -459,7 +465,8 @@ class NinaAutofocusCard extends HTMLElement {
               <div class="value">${run.drift === null ? "—"
                 : `${run.drift >= 0 ? "+" : "−"}${fixed(Math.abs(run.drift), 1)}`} <span class="unit">${run.degrees}</span></div>
               <div class="sub">${fixed(run.temperature, 1)} → ${fixed(run.nowTemperature, 1)} ${run.degrees}${
-                drifted ? ` · past ${fixed(interval(this._temperatureDelta, "°C", run.degrees), 1)} ${run.degrees}` : ""}</div>
+                drifted ? ` · past ${run.triggered ? "the trigger's " : ""}${
+                  fixed(interval(run.limit, "°C", run.degrees), 1)} ${run.degrees}` : ""}</div>
             </div>` : ""}
           ${away !== null ? `
             <div class="stat-box">
@@ -754,10 +761,9 @@ class NinaAutofocusCard extends HTMLElement {
       {
         name: "temperature_delta",
         label: "Refocus temperature change",
-        helper: "Flag the focuser temperature once it moves this far from the last run's. "
-          + "In °C, whatever unit it is shown in, as N.I.N.A.'s own refocus trigger is: "
-          + "match your sequence's.",
-        default: DEFAULT_TEMPERATURE_DELTA,
+        helper: "Flag the focuser temperature once it moves this far from the last run's, "
+          + "in °C whatever unit it is shown in. Leave empty to use your sequence's "
+          + "\"AF After Temperature Change\" trigger, or 2 °C without one.",
         selector: { number: { min: 0.1, max: 10, step: "any", mode: "box", unit_of_measurement: "°C" } },
       },
     ]);
