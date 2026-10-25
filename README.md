@@ -139,13 +139,7 @@ type: custom:nina-observatory-card
 | **Weather** | **Autofocus** | **Frame statistics** |
 | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/weather.png" alt="Weather card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/autofocus.png" alt="Autofocus card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/frame-stats.png" alt="Frame statistics card" width="260"> |
 
-The latest image and weather samples are from a live rig. The rest are rendered
-by `tools/card-harness/` from data recorded on that rig: the observatory and sky
-map while it imaged NGC 281, the autofocus and frame statistics across a whole
-night.
-
-With a dome, the observatory card adds a Dome chip and Open or Close Dome —
-here rendered from the test VM's simulated rig, with the shutter open:
+With a dome, the observatory card adds a Dome chip and Open or Close Dome:
 
 <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/observatory-dome.png" alt="Observatory card with a dome: a Dome chip, and Close Dome among the controls" width="260">
 
