@@ -7,11 +7,16 @@ Assistant. This repository is the maintained fork; upstream is inactive.
 before making structural changes — it carries measured numbers and verified API
 behaviour that are expensive to rediscover.
 
-Newer design docs (`docs/test-vm.md` is the model) carry no rev number: merging
-the PR accepts them. The header is one status line ("accepted, not yet
-implemented"), updated when the work lands. A later change is a dated section
-appended after a `---` rule; the text above it is never edited. Write for a
-reader with no session context: final state, a glossary, no drafting history.
+## Read before you touch
+
+| Before you… | Read |
+|---|---|
+| change a Lovelace card in `www/`, or claim one verified | `docs/contributing/cards.md` |
+| send any request to a rig, or capture, redact or commit a fixture | `docs/contributing/fixtures.md` |
+| write a test in `tests/ha/` | `tests/scenarios/README.md`, then `docs/contributing/testing.md` |
+| open, stack or release a PR | `docs/contributing/pull-requests.md` |
+| write a design doc | `docs/contributing/design-docs.md` |
+| work on the simulated rig or the 1.4.5 upgrade | `docs/test-vm.md`, `tools/windows-rig/README.md`, `tools/upgrade-harness/README.md` |
 
 ## Commands
 
@@ -19,61 +24,27 @@ reader with no session context: final state, a glossary, no drafting history.
 uv sync                                                  # the `test` group only — no Home Assistant
 uv run pytest tests/unit -p no:homeassistant -q          # fast: well under a second
 uv run --group test-ha pytest tests/ha -q                # the Home Assistant suite; never -n auto
-uv run pytest tests/unit/test_api_envelope.py -v
-
-# The coverage floors, exactly as CI computes them: each suite records its own
-# data, `combine` merges them, and the script reads the JSON.
-uv run coverage run -m pytest tests/unit -p no:homeassistant -q
-uv run --group test-ha coverage run -m pytest tests/ha -q
-uv run coverage combine && uv run coverage json
-uv run python scripts/coverage_floors.py
-
-uv run python scripts/check_fixtures.py tests/fixtures/*.json tests/fixtures/rig/*   # the redaction guard
 uv run --group dev --group test-ha pyright                      # custom_components/, scripts/, tests/, tools/
 uv run --group dev ruff check --fix . && uv run --group dev ruff format .   # lint and format
 ```
 
-The `justfile` wraps all of these; `just ci` runs everything CI checks.
+`just ci` runs everything CI checks; the coverage floors and the redaction
+guard are in `docs/contributing/testing.md`.
 
-`tools/upgrade-harness/` upgrades a throwaway Home Assistant in Docker from one
-git ref to another against a N.I.N.A. and holds the result to
-`docs/2.0-renames.md`; its README has the commands.
-
-`docs/test-vm.md` designs the simulated rig: a disposable
-Windows VM on macOS/Apple silicon running stable or nightly N.I.N.A. against
-simulators. It also defines the `tests/rig/` tier. Host-specific code belongs
-only in its host backend (§4.1 there). `tools/windows-rig/` builds and runs
-it; its README has the commands, and a build needs `dangerouslyDisableSandbox`.
-
-**A bare `uv run pytest` collects both suites** and loads Home Assistant before
-collection; always name the suite.
-
-**Never pass `-p no:logging` to `tests/ha`.** It disables the plugin PHACC's
-`caplog` fixture wraps, and every test using `caplog` then ERRORS with
-"recursive dependency involving fixture 'caplog'" — which reads like a broken
-test rather than a bad flag.
-
-**The Bash sandbox blocks all network.** `scripts/capture_fixtures.py` and any
-other rig request need `dangerouslyDisableSandbox` — and then Tailscale up for
-the real rig, or the host times out rather than refusing.
-
-Dependencies and pytest config live in `pyproject.toml`; there is no
-`requirements*.txt` and no `pytest.ini`. Groups: `test` (lean, HA-free),
-`test-ha` (`pytest-homeassistant-custom-component`, pinned — add with
-`uv sync --group test-ha`), `dev` (schema generator, pre-commit, pyright, ruff).
-
-**Keep `uv sync` free of Home Assistant.** That is what makes the fast suite
-fast, and the modules it covers have no `homeassistant` imports.
-
-`pythonpath = ["tests", "."]` means helpers import as `from helpers import ...`.
-CI is `.github/workflows/ci.yml` (both suites, coverage floors, ruff, pyright,
-fixture redaction, hassfest, HACS). Ruff lints and formats with Home Assistant
-core's rule set, minus the docstring rules that demand boilerplate or a
-one-line summary — see `[tool.ruff]`; the pre-commit hooks run both.
-Pyright's scope and rules are `[tool.pyright]` in `pyproject.toml`: it gates
-`custom_components/`, `scripts/`, `tests/` and `tools/`, and turns off
-`reportIncompatibleVariableOverride`, which every override of a Home Assistant
-entity property trips.
+- **Always name the suite.** A bare `uv run pytest` collects both and loads
+  Home Assistant before collection.
+- **Never pass `-p no:logging` to `tests/ha`.** Every test using `caplog` then
+  errors with "recursive dependency involving fixture 'caplog'", which reads
+  like a broken test rather than a bad flag.
+- **The Bash sandbox blocks all network.** Rig requests need
+  `dangerouslyDisableSandbox`, and Tailscale up for the real rig, or the host
+  times out rather than refusing.
+- **Keep `uv sync` free of Home Assistant.** That is what makes the fast suite
+  fast: `tests/unit/` and everything under `api/` import no `homeassistant`,
+  and `api/errors.py` subclasses builtins only.
+- Dependencies and the pytest, ruff and pyright config live in
+  `pyproject.toml`; there is no `requirements*.txt` or `pytest.ini`.
+  `pythonpath = ["tests", "."]`, so helpers import as `from helpers import ...`.
 
 ## Layout (current)
 
@@ -101,18 +72,9 @@ custom_components/nina_astrophotography/
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
-  www/                6 Lovelace cards, plus three modules they import, which
-                      are not cards: `nina-entity-resolver.js`,
-                      `nina-card-config.js` (the prefix and the visual
-                      editor's `getConfigForm()` schema) and `nina-units.js`
-                      (readings in the unit HA shows them in, and the
-                      meridian flip window). Every card resolves
-                      its entity ids from the registry by `translation_key`
-                      and keeps the configured instance prefix only as a
-                      per-entity fallback.
-                      `frontend.py` serves them and self-registers each as a
-                      Lovelace resource — nothing for a user to copy into
-                      `/config/www/`. Render them with `tools/card-harness/`
+  www/                6 Lovelace cards and three shared modules; see
+                      docs/contributing/cards.md. `frontend.py` serves them and
+                      registers each as a Lovelace resource
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
@@ -156,184 +118,22 @@ disk proves nothing.
   `docs/2.0-renames.md` — ids the doc promises but the snapshot lacks are only
   legitimate for dome hardware and `"NaN"` weather channels.
 
-## Branches
-
-- `main` — the trunk and the shipping line; every PR targets it. Stack PRs
-  only when one builds on another's diff (stack #17); independent fixes are
-  plain PRs onto `main`.
-  **Create one with `gh stack init --base main <bottom> <top>`, then `gh stack
-  submit --auto --remote origin`** — `gh pr create --base <branch>` chains the
-  bases but GitHub tracks no stack, so a bottom-up merge strands the upper PR on
-  a deleted branch. Adopting already-open PRs after the fact is safe and edits
-  neither; `--remote` is a flag on `submit`, not on `init`.
-  **Extend an existing stack with `gh stack add <branch>` from the stack's
-  current top branch** — run from the new branch it answers "is not part of a
-  stack"; it adopts an existing branch with its commits and checks it out.
-  `init` fails with "already exists in a stack", and `gh stack view` works only
-  from a branch inside it (checking one out swaps the working tree).
-  `submit --auto` creates each new PR as a **draft titled from the branch
-  name**, so `gh pr edit` the real title and body, then `gh pr ready`.
-  **Every `gh stack` command needs `GH_REPO=<your fork>` and
-  `--remote origin`**: it auto-detects `upstream` and will try to create
-  duplicate PRs there. `gh repo set-default` covers `gh pr`, not `gh stack`.
-  One branch per task, named for it.
-- **PRs are squash-merged.** A mechanical reformat ships as its own PR, and
-  its squash SHA goes into `.git-blame-ignore-revs` after it merges. Git never
-  sees a squashed branch as merged (`--merged`, `git cherry`), so check the
-  PR's state before `git branch -D`.
-- **A release** bumps `version` in `manifest.json` and `pyproject.toml` and
-  dates its CHANGELOG section, then tags `v<version>` on `main` and publishes
-  a GitHub release from it — HACS offers releases, not commits. A beta is
-  `v<version>b<N>`, published as a pre-release.
-
-## Quality bar
-
-Target the Home Assistant **Bronze** quality-scale tier, and treat Silver/Gold
-rules as guidance rather than gates. The Bronze rules that bind us:
-
-- `config-flow-test-coverage` — **100%** on the config flow, including error
-  recovery and the duplicate-entry guard
-- `test-before-configure` / `test-before-setup` — validate the connection in the
-  config flow; raise `ConfigEntryNotReady` vs `ConfigEntryError` correctly
-- `runtime-data` — state lives on `entry.runtime_data`, never
-  `hass.data[DOMAIN][entry_id]`
-- `common-modules` — the coordinator is `coordinator.py`, the base entity is
-  `entity.py`
-- `has-entity-name` — entity names derive from their device
-- `appropriate-polling`, `entity-unique-id`, `entity-event-setup`
-
-`reauthentication-flow` is **exempt**: the Advanced API has no authentication.
-Record exemptions in `quality_scale.yaml` rather than leaving them looking
-unimplemented.
-
 ## Testing
 
-Two suites, run separately:
-
 - `tests/unit/` — **no Home Assistant import.** Runs in milliseconds. Covers the
-  API client, wire→model mapping, pure computations, and event parsing. Keep it
-  HA-free: `api/errors.py` subclasses builtins only, and nothing under `api/`
-  imports `homeassistant`.
+  API client, wire→model mapping, pure computations, and event parsing.
 - `tests/ha/` — `pytest-homeassistant-custom-component`. Covers config flow,
-  setup/unload, the device and entity registries, availability, and actions.
-
-The Home Assistant suite drives a **fake rig**: `tests/scenarios/` serves the
-captured envelope for each endpoint to the real client, so the envelope
-classification, the `"NaN"` rule and the mapper all run against recorded bytes.
-`goto` and `advance` move it between named states, `push` feeds the event
-socket, and `rig.sent` records commands — which are answered `Success: true`
-and never confirm anything. Read `tests/scenarios/README.md` before writing a
-test. Wire data constructed rather than captured is marked
-`@pytest.mark.synthetic` and says in its docstring what it fabricates.
-
-**`advance()` cannot reach a state that differs only in a tier-polled
-endpoint** — `/profile/show`, `/livestack/status`,
-`/equipment/focuser/last-af`. Every state but `imaging_guiding` withholds
-those, so the coordinator's not-served latch fires at setup and one refresh
-will not retry. Set the entry up with the rig already in the state instead
-(the `set_up_at` fixture in `tests/ha/conftest.py`). The same applies to
-`/event-history`, which is replayed once.
+  setup/unload, the device and entity registries, availability, and actions,
+  against a **fake rig** (`tests/scenarios/`) serving captured envelopes to the
+  real client.
 
 Test through **public Home Assistant interfaces**: set up via
 `hass.config_entries.async_setup`, assert via `hass.states`, `hass.services`,
 and the registries. Do not reach into coordinator internals — tests that do stop
 surviving refactors, which defeats the point during a restructure.
 
-**Registry snapshots live in `tests/ha/snapshots/`, and the extension is pinned
-in `tests/ha/conftest.py`.** Syrupy and `pytest-homeassistant-custom-component`
-both register a plugin fixture named `snapshot`, and pytest settles the clash by
-entry-point load order — which is not stable across machines. Syrupy winning
-stores under `__snapshots__/`, PHACC winning under `snapshots/`, so an unpinned
-corpus recorded on one host is invisible on the next: every read misses, and the
-same snapshots are reported both "does not exist" and "unused". Keep the
-conftest fixture, which outranks both plugins.
-
-### The Lovelace cards: neither suite renders one
-
-Both suites read the cards **as text** — `tests/unit/test_cards.py` checks the
-entity names they use, and `tests/ha/test_entity_resolver.py` and
-`test_card_units.py` run only `nina-entity-resolver.js` and `nina-units.js`,
-under node. Nothing below `setConfig`/`set hass`
-executes in CI: the shadow DOM, the canvases, and every branch deciding what to
-draw are reached by no test. Do not report a card change as verified on a green
-suite; say which of the two things below you actually ran.
-
-`tools/card-harness/` (its README has the commands) is how you reach them:
-
-- **`ops.mjs`** — runs a card under node against a stub DOM and a canvas that
-  logs every call. Record before a change and after; an unmoved log says the
-  change was a refactor, and the diff is what it altered. Use it on **every**
-  card refactor — it is what proves an entity-resolution conversion changed no
-  drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
-  twinkle stars and pulse the meridian. A card pulled out of git imports the
-  three shared modules relatively, so copy every non-card `www/` file beside
-  the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs`
-  finds the dump relative to its own path, so run the shipped one.
-- **`render.html`** — the cards side by side in a real browser, over
-  `python3 -m http.server` from the repo root (`file://` refuses their ES
-  imports). Screenshot it with the Playwright MCP tools and **look at it**: this
-  is the only check that covers layout, fonts and the canvas for real. Playwright
-  can only write under the repo, and a bare filename lands in the **repo root**,
-  untracked — pass `.playwright-mcp/<name>.png`, which is git-ignored, or delete
-  it before committing. The page title carries an error count, and the console
-  usually holds one 404 for `favicon.ico`, which is nothing.
-
-Both drive `tests/ha/snapshots/card_states.json` — the whole `hass` a card is
-handed (`states`, `entities`, `devices`), regenerated by
-`tests/ha/test_card_states.py` with the other snapshots, in its own commit.
-**Scenarios subtract from that rig; they do not invent readings.** Hand-written
-card data has the same defect as a hand-written fixture: it encodes what you
-assumed, so the card only proves itself right. `Rig.override` replaces an
-attribute map **wholesale**, so spread the row's own attributes and change only
-the field you mean — otherwise the scenario invents that field's siblings.
-**An override has to carry the readings physically tied to it**: the captured
-weather triple is self-consistent, so cooling the air towards its dew point
-without raising the humidity puts a state no station can report on screen, and
-the cell that should have flagged the night stays benign.
-
-`ops.mjs` fires the animation frames a render queued, so a card whose canvas its
-own frame reaches needs no `draw` hook — and is better without one, since a hook
-replaces those frames and would keep drawing if the card stopped queueing them.
-The sky map keeps its hook because it paints from a loop `connectedCallback`
-starts, and nothing there attaches the element.
-
-Traps when changing a card:
-
-- **Home Assistant converts a state before the card sees it** — into the
-  instance's unit system, or a display unit picked for that entity — so a
-  sensor published in m/s arrives in km/h or mph, and a duration in minutes may
-  arrive in hours. Read any reading with a device class through `nina-units.js`:
-  print it with its own `unit_of_measurement` and `display_precision`, and
-  convert it to the published unit only to meet a threshold. The
-  `site_configured_us_customary` dump is HA's own conversion to render against.
-
-- A card's `_s`/`_f`/`_state` fallback applies only when the entity is
-  **missing**, not when it reads `unavailable` or `unknown` — so a down driver
-  renders as the literal text `unavailable`, and `_f` turns it into `0`.
-  `nina-observatory-card`'s `shown()` is the pattern, and every card now
-  follows it. The image panel's `_f` reads are safe only because it prints
-  each one solely above zero.
-- **A lost link to N.I.N.A. is `linkLostSince` over `hubEntityIds`, held
-  through a failed poll by `LinkGrace`** (`nina-entity-resolver.js`, whose
-  docstrings carry the rules) — never a card's own check of a few rows. Decide
-  it before the camera or the station: a lost link makes every reading
-  `unavailable`, which otherwise renders as equipment disconnected in N.I.N.A.
-- `tests/unit/test_cards.py`'s `LITERAL` matches a **backticked**
-  `<domain>.<word>`, so prose like `` `select.filter` `` in a card comment fails
-  the hardcoded-id test. Reword the comment; the test is right.
-- **An `_eid("<domain>", "<key>", "<slug>")` call must fit on one line.**
-  `tests/cards.py`'s `RESOLVED` regex reads only that form, so a wrapped call
-  fails `test_every_registry_lookup_is_one_this_suite_can_read`. Wrap the
-  expression around it instead. A converted card also needs a `CANNOT_RESOLVE`
-  entry in `tests/ha/test_entity_resolver.py` — an empty one if all of it
-  resolves.
-- **A new config option needs a field in the card's `getConfigForm()`**, which
-  `test_the_visual_editor_offers_exactly_the_options_the_card_reads` enforces.
-  The form's `default` is only displayed, so `setConfig` applies it — per key,
-  not by spreading over a defaults object: the editor sends a cleared field as
-  `undefined`, which a spread keeps.
-
-### Keep tests tightly scoped
+Wire data constructed rather than captured is marked `@pytest.mark.synthetic`
+and says in its docstring what it fabricates.
 
 - One behaviour per test. If a test needs a paragraph to explain what it proves,
   it is testing too much.
@@ -346,97 +146,14 @@ Traps when changing a card:
   makes the failure message useless and the test brittle.
 - Verbose setup is a smell: reach for a fixture, not more lines.
 
-Coverage is deliberately uneven — 100% on the config flow, high on the mapper
-and the pure computation modules, no global percentage gate.
+## Fixtures and the live rig
 
-## Test fixtures: capture from a live rig, then redact
-
-Fixtures are **recorded from real hardware**, never hand-written. The published
-OpenAPI spec is accurate about field *names* and unreliable about *types*, and
-it contains at least one enum value that does not match the wire. Hand-written
-fixtures encode the spec's mistakes; captured ones encode reality.
-
-**Trust the rig over the spec wherever they disagree.**
-
-Capture with `scripts/capture_fixtures.py`; install the redaction guard once
-with `uv run --group dev pre-commit install` so a fixture cannot be committed
-unredacted. Two hard rules:
-
-**1. Read-only against a live rig.** Only `GET` endpoints that report state:
-`/version`, `/version/nina`, `/equipment/info`, `/equipment/*/info`, `/image-history`,
-`/sequence/json`, `/sequence/state`, `/event-history`, `/flats/status`,
-`/equipment/focuser/last-af`, `/application-start`, `/livestack/status`, and
-`/profile/show` (as an allowlist projection only — see below).
-**Never** call anything that commands equipment — slew, capture, park, home,
-connect, disconnect, guider, filter change, focuser move, flat light, dome,
-sequence start/stop, profile switch — unless the operator has explicitly said
-the rig is idle and it is safe. A rig may be imaging, and a wasted night is not
-recoverable. If unsure whether a call mutates state, do not make it.
-
-**A simulator rig is exempt.** This means a N.I.N.A. running a profile whose
-eleven devices are all ASCOM/Alpaca simulators, the dome included. There is no
-standing one: the operator brings one up on whatever machine is to hand, and
-its address changes. Ask for it rather than assume a host. Any command may be
-sent to it — slews, parks, sequences, disconnects — so it is where commands,
-the dome and the upgrade from 1.4.5 get exercised.
-
-A fixture captured from it is real wire data from simulated devices. Say so
-where it is used, and never let it replace a capture of the same state from the
-real rig, whose quirks (a station's `"NaN"` channels, a disconnected panel's
-`0 / 0` range) a simulator need not reproduce. `docs/test-vm.md`
-designs a disposable one.
-
-**2. Redact before committing.** A profile dump contains live credentials.
-
-| Field pattern | Action |
-|---|---|
-| `*ApiKey`, `*Token`, `*Secret`, `*Password`, `*Credential` | `"REDACTED"` |
-| `*Path`, `*Folder`, `*Directory`, `*Host`, `*Url` | `"REDACTED"` |
-| any Windows path, bare IPv4, UUID or HA entity id in a value | `"REDACTED"` |
-| a site or facility identifier in `Name`, `DisplayName`, `Description` or `ProjectName` | `"REDACTED"` |
-| a facility token inside any other string value | the token → `"REDACTED"`, the rest of the string kept |
-| `DeviceId`, `EntityId` | stable pseudonym `device-<8 hex>`, preserving distinctness |
-| `TelescopeName`, `CameraName` | `"Telescope"`, `"Camera"` |
-| `Filename` | stable pseudonym `frame_<8 hex>.fits`, derived from the original |
-| `TargetName` | keep — an astronomical object, not identifying |
-| `SiteLatitude`, `SiteLongitude`, `SiteElevation`, `Altitude`, `SiderealTime`, `SideOfPier` | **keep** — see below |
-
-**Site coordinates are kept, deliberately.** The rig is hosted at a public
-commercial facility and its location is not sensitive here. Zeroing them was
-also ineffective: a mount parked at the pole reports `Altitude` equal to the
-site latitude, and `SiderealTime` against `Coordinates.DateTime.UtcNow` solves
-for longitude — so the coordinates were derivable from fixtures whose named
-fields were all correctly zeroed.
-
-Keeping them is what makes §11's meridian-flip maths testable:
-`(RA_JNOW − LST) mod 12` needs a real `SiderealTime`, and the pier-side windows
-that add 12 h need a real `SideOfPier`. The alternative is a hand-written
-synthetic `(LST, RA, longitude)` triple, and hand-written fixtures encode the
-spec's mistakes rather than reality.
-
-**`Filename` is pseudonymised by hashing the original, never numbered by
-position.** Frame identity is `(Date, Filename)` and the fold spans fixtures, so
-a per-file counter both collides distinct frames across files and splits
-identical ones — which would make the path-equivalence property untestable.
-
-The **existing corpus predates this rule** and still carries zeroed coordinates
-and a `SideOfPier` of `"REDACTED"`. Re-capture will change those fields, so a
-re-capture is not byte-identical to what is committed today; that is expected,
-not a regression.
-
-`/profile/show` is captured as an **allowlist projection** — only
-`TelescopeSettings.FocalLength`, `FocuserSettings.{AutoFocusTimeoutSeconds,
-RSquaredThreshold}`, `MeridianFlipSettings.*`, `CameraSettings.PixelSize` and
-`AstrometrySettings.{Latitude,Longitude,Elevation}` (field by field: the section
-also holds `HorizonFilePath`). Never denylist it: its secret surface is too large
-to redact confidently, and it held a live `WeatherUndergroundAPIKey` on a trial
-capture. The committed corpus predates the astrometry fields, so no profile
-fixture carries a site until a re-capture.
-
-The corpus needs **states**, not one snapshot — imaging, dawn flats (calibration
-sentinels), before the first sub, equipment disconnected, sequence complete,
-Home Assistant started before N.I.N.A. Capture them opportunistically as the
-rig produces them.
+Fixtures are **recorded from real hardware**, never hand-written; trust the rig
+over the published spec wherever they disagree. **Never send a live rig
+anything but the read-only `GET` allowlist** in `docs/contributing/fixtures.md`
+unless the operator has said it is idle — a rig may be imaging, and a wasted
+night is not recoverable. A simulator rig is exempt. Redact before committing;
+the pre-commit guard enforces it.
 
 ## Comments and docstrings
 
@@ -488,141 +205,10 @@ not.
   N.I.N.A. accepts the command; the equipment moves seconds later, and no
   operation handle exists to wait on.
 
-<!-- rtk-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
+## Branches and quality
 
-## Golden Rule
-
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
-
-**Important**: Even in command chains with `&&`, use `rtk`:
-```bash
-# ❌ Wrong
-git add . && git commit -m "msg" && git push
-
-# ✅ Correct
-rtk git add . && rtk git commit -m "msg" && rtk git push
-```
-
-## RTK Commands by Workflow
-
-### Build & Compile (80-90% savings)
-```bash
-rtk cargo build         # Cargo build output
-rtk cargo check         # Cargo check output
-rtk cargo clippy        # Clippy warnings grouped by file (80%)
-rtk tsc                 # TypeScript errors grouped by file/code (83%)
-rtk lint                # ESLint/Biome violations grouped (84%)
-rtk prettier --check    # Files needing format only (70%)
-rtk next build          # Next.js build with route metrics (87%)
-```
-
-### Test (60-99% savings)
-```bash
-rtk cargo test          # Cargo test failures only (90%)
-rtk go test             # Go test failures only (90%)
-rtk jest                # Jest failures only (99.5%)
-rtk vitest              # Vitest failures only (99.5%)
-rtk playwright test     # Playwright failures only (94%)
-rtk pytest              # Python test failures only (90%)
-rtk rake test           # Ruby test failures only (90%)
-rtk rspec               # RSpec test failures only (60%)
-rtk test <cmd>          # Generic test wrapper - failures only
-```
-
-### Git (59-80% savings)
-```bash
-rtk git status          # Compact status
-rtk git log             # Compact log (works with all git flags)
-rtk git diff            # Compact diff (80%)
-rtk git show            # Compact show (80%)
-rtk git add             # Ultra-compact confirmations (59%)
-rtk git commit          # Ultra-compact confirmations (59%)
-rtk git push            # Ultra-compact confirmations
-rtk git pull            # Ultra-compact confirmations
-rtk git branch          # Compact branch list
-rtk git fetch           # Compact fetch
-rtk git stash           # Compact stash
-rtk git worktree        # Compact worktree
-```
-
-Note: Git passthrough works for ALL subcommands, even those not explicitly listed.
-
-### GitHub (26-87% savings)
-```bash
-rtk gh pr view <num>    # Compact PR view (87%)
-rtk gh pr checks        # Compact PR checks (79%)
-rtk gh run list         # Compact workflow runs (82%)
-rtk gh issue list       # Compact issue list (80%)
-rtk gh api              # Compact API responses (26%)
-```
-
-### JavaScript/TypeScript Tooling (70-90% savings)
-```bash
-rtk pnpm list           # Compact dependency tree (70%)
-rtk pnpm outdated       # Compact outdated packages (80%)
-rtk pnpm install        # Compact install output (90%)
-rtk npm run <script>    # Compact npm script output
-rtk npx <cmd>           # Compact npx command output
-rtk prisma              # Prisma without ASCII art (88%)
-```
-
-### Files & Search (60-75% savings)
-```bash
-rtk ls <path>           # Tree format, compact (65%)
-rtk read <file>         # Code reading with filtering (60%)
-rtk grep <pattern>      # Search grouped by file (75%). Format flags (-c, -l, -L, -o, -Z) run raw.
-rtk find <pattern>      # Find grouped by directory (70%)
-```
-
-### Analysis & Debug (70-90% savings)
-```bash
-rtk err <cmd>           # Filter errors only from any command
-rtk log <file>          # Deduplicated logs with counts
-rtk json <file>         # JSON structure without values
-rtk deps                # Dependency overview
-rtk env                 # Environment variables compact
-rtk summary <cmd>       # Smart summary of command output
-rtk diff                # Ultra-compact diffs
-```
-
-### Infrastructure (85% savings)
-```bash
-rtk docker ps           # Compact container list
-rtk docker images       # Compact image list
-rtk docker logs <c>     # Deduplicated logs
-rtk kubectl get         # Compact resource list
-rtk kubectl logs        # Deduplicated pod logs
-```
-
-### Network (65-70% savings)
-```bash
-rtk curl <url>          # Compact HTTP responses (70%)
-rtk wget <url>          # Compact download output (65%)
-```
-
-### Meta Commands
-```bash
-rtk gain                # View token savings statistics
-rtk gain --history      # View command history with savings
-rtk discover            # Analyze Claude Code sessions for missed RTK usage
-rtk proxy <cmd>         # Run command without filtering (for debugging)
-rtk init                # Add RTK instructions to CLAUDE.md
-rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
-```
-
-## Token Savings Overview
-
-| Category | Commands | Typical Savings |
-|----------|----------|-----------------|
-| Tests | vitest, playwright, cargo test | 90-99% |
-| Build | next, tsc, lint, prettier | 70-87% |
-| Git | status, log, diff, add, commit | 59-80% |
-| GitHub | gh pr, gh run, gh issue | 26-87% |
-| Package Managers | pnpm, npm, npx | 70-90% |
-| Files | ls, read, grep, find | 60-75% |
-| Infrastructure | docker, kubectl | 85% |
-| Network | curl, wget | 65-70% |
-
-Overall average: **60-90% token reduction** on common development operations.
-<!-- /rtk-instructions -->
+`main` is the trunk; every PR targets it, one branch per task, squash-merged.
+Target the Home Assistant **Bronze** quality scale: 100% coverage on the config
+flow, state on `entry.runtime_data`, and exemptions recorded with their reason
+in `quality_scale.yaml`. Stacking, releases and the full Bronze list are in
+`docs/contributing/pull-requests.md`.
