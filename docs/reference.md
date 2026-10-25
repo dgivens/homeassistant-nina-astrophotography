@@ -386,7 +386,9 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
 - `sensor.<instance>_mount_time_to_meridian_flip` has `flip_fires_at_minutes`,
   the reading at which N.I.N.A. actually flips. It is
   `MaxMinutesAfterMeridian − MinMinutesAfterMeridian` from your profile, not
-  zero, so base warning thresholds on it rather than a fixed number.
+  zero, so base warning thresholds on it rather than a fixed number. The
+  sensor counts down to the latest flip; the cards print both ends, so with
+  Min 5 and Max 15 a reading of 22 shows as "Flip in 12–22 min".
 
 ## Error events
 

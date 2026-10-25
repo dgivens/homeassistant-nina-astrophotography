@@ -131,6 +131,25 @@ export function quantityIn(hass, id, unit) {
 }
 
 /**
+ * The meridian flip as `{earliest, latest}` minutes from now, or `null` with no
+ * countdown. The sensor counts down to the latest flip, meridian + the
+ * profile's Max; the slew comes `flip_fires_at_minutes` (Max − Min) sooner, at
+ * meridian + Min, whenever an item ends inside that window.
+ */
+export function flipWindow(hass, id) {
+  const latest = quantityIn(hass, id, "min");
+  if (latest === null) return null;
+  const firesAt = parseFloat(hass.states[id].attributes?.flip_fires_at_minutes) || 0;
+  return { earliest: Math.max(0, latest - firesAt), latest };
+}
+
+/** A flip window in whole minutes, "12–22", or one number where both ends round alike. */
+export function flipRange({ earliest, latest }) {
+  const [from, to] = [earliest.toFixed(0), latest.toFixed(0)];
+  return from === to ? to : `${from}–${to}`;
+}
+
+/**
  * A quantity's number as Home Assistant would print it, or `null` for none.
  * `decimals` is only for an entity the registry gives no precision.
  */

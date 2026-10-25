@@ -8,6 +8,7 @@ table would only prove itself right.
 """
 
 from pathlib import Path
+from typing import Any
 
 from homeassistant.components.sensor.const import DEVICE_CLASS_UNITS, UNIT_CONVERTERS
 from homeassistant.const import UnitOfTemperature
@@ -39,7 +40,7 @@ CONVERTIBLE = sorted(
 )
 
 
-def _run(cases: list[list[str | float | None]]) -> list[float | None]:
+def _run(cases: list[list[Any]]) -> list[Any]:
     return run_node(DRIVER, cases)
 
 
@@ -78,3 +79,40 @@ def test_units_that_measure_different_things_do_not_convert() -> None:
         ["convert", 3.0, "°C", "s"],
     ]
     assert _run(cases) == [None] * len(cases)
+
+
+FLIP = "sensor.rig_mount_time_to_meridian_flip"
+
+
+@pytest.mark.parametrize(
+    ("state", "unit", "fires_at", "window"),
+    [
+        ("22", "min", 10.0, {"earliest": 12, "latest": 22}),
+        # Inside the window: the slew is due at the next item boundary.
+        ("6", "min", 10.0, {"earliest": 0, "latest": 6}),
+        ("0.5", "h", 10.0, {"earliest": 20, "latest": 30}),
+        # The profile not read yet: the countdown is all there is.
+        ("22", "min", None, {"earliest": 22, "latest": 22}),
+        ("unknown", "min", 10.0, None),
+    ],
+)
+def test_the_flip_window_runs_from_the_earliest_slew_to_the_countdown(
+    state: str, unit: str, fires_at: float | None, window: dict[str, float] | None
+) -> None:
+    attributes = {"unit_of_measurement": unit, "flip_fires_at_minutes": fires_at}
+    hass = {"states": {FLIP: {"state": state, "attributes": attributes}}}
+
+    assert _run([["flipWindow", hass, FLIP]]) == [
+        None if window is None else pytest.approx(window)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("earliest", "latest", "shown"),
+    [(12.4, 22.4, "12–22"), (0, 6, "0–6"), (22.2, 22.4, "22")],
+)
+def test_a_flip_window_prints_in_whole_minutes(
+    earliest: float, latest: float, shown: str
+) -> None:
+    window = {"earliest": earliest, "latest": latest}
+    assert _run([["flipRange", window]]) == [shown]

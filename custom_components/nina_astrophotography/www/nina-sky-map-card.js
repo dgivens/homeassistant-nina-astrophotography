@@ -22,7 +22,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
-import { missing, quantityIn } from "./nina-units.js";
+import { flipRange, flipWindow, missing } from "./nina-units.js";
 
 const VERSION = "2.1.0";
 
@@ -247,9 +247,8 @@ class NinaSkyMapCard extends HTMLElement {
     return Number.isFinite(value) ? value : null;
   }
   _on(id) { return this._s(id) === "on"; }
-  // Time to the flip in minutes, whatever unit the sensor is shown in.
-  _flipMinutes(id) {
-    return quantityIn(this._hass, id, "min");
+  _flip() {
+    return flipWindow(this._hass, this._eid("sensor", "mount_time_to_meridian_flip"));
   }
 
   // A disconnected device makes its entities unavailable, so availability is
@@ -347,12 +346,12 @@ class NinaSkyMapCard extends HTMLElement {
     // driver dropping out.
     const targetId = this._eid("sensor", "sequence_target");
     const target = this._available(targetId) ? this._s(targetId, "") : "";
-    const ttf = this._flipMinutes(this._eid("sensor", "mount_time_to_meridian_flip"));
+    const flip = this._flip();
 
     const sub = this.shadowRoot?.getElementById("hdr-sub");
     if (sub) {
       sub.textContent = target
-        ? `${target} · flip in ${ttf !== null ? ttf.toFixed(0) + " min" : "—"}`
+        ? `${target} · flip in ${flip !== null ? flipRange(flip) + " min" : "—"}`
         : "Telescope pointing";
     }
   }
@@ -472,12 +471,8 @@ class NinaSkyMapCard extends HTMLElement {
       ctx.setLineDash([]);
     }
 
-    // The flip fires at the sensor's own published offset, not zero.
-    const flipId = this._eid("sensor", "mount_time_to_meridian_flip");
-    const ttf = this._flipMinutes(flipId);
-    const firesAt = parseFloat(
-      this._hass?.states?.[flipId]?.attributes?.flip_fires_at_minutes) || 0;
-    const flipSoon = ttf !== null && ttf > 0 && ttf < 15 + firesAt;
+    const flip = this._flip();
+    const flipSoon = flip !== null && flip.latest > 0 && flip.earliest < 15;
     const meridianColor = flipSoon
       ? `rgba(244, 162, 97, ${0.5 + 0.4 * Math.sin(Date.now() / 400)})`
       : "rgba(123,141,232,0.25)";
@@ -593,11 +588,20 @@ class NinaSkyMapCard extends HTMLElement {
     ctx.restore();
 
     if (flipSoon) {
+      // Inside the horizon: the canvas ends at it, and is clipped to a circle.
+      // Backed, so the meridian it sits on does not strike it through.
+      const label = `⚠ Flip in ${flipRange(flip)} min`;
+      const y = cy + R * 0.7;
       ctx.font      = `bold ${10 * dpr}px sans-serif`;
-      ctx.fillStyle = "rgba(244,162,97,0.9)";
       ctx.textAlign = "center";
-      ctx.fillText(`⚠ Flip in ${ttf.toFixed(0)} min`, cx, cy + R + 18 * dpr);
+      ctx.textBaseline = "middle";
+      const w = ctx.measureText(label).width + 12 * dpr;
+      ctx.fillStyle = "rgba(10,14,28,0.85)";
+      ctx.fillRect(cx - w / 2, y - 8 * dpr, w, 16 * dpr);
+      ctx.fillStyle = "rgba(244,162,97,0.9)";
+      ctx.fillText(label, cx, y);
       ctx.textAlign = "start";
+      ctx.textBaseline = "alphabetic";
     }
   }
 

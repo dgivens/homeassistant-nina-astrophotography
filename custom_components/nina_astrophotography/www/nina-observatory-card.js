@@ -14,7 +14,9 @@ import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
   LinkGrace, hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
-import { displayed, missing, quantity, quantityIn, shown } from "./nina-units.js";
+import {
+  displayed, flipRange, flipWindow, missing, quantity, shown,
+} from "./nina-units.js";
 
 const VERSION = "2.1.0";
 
@@ -36,11 +38,6 @@ const CONFIRM_CLOSE_UNPARKED = "Close the dome? The mount is not confirmed parke
 function state(hass, entity_id, fallback = "—") {
   const e = hass.states[entity_id];
   return e ? e.state : fallback;
-}
-
-function attr(hass, entity_id, attribute, fallback = "—") {
-  const e = hass.states[entity_id];
-  return e ? (e.attributes[attribute] ?? fallback) : fallback;
 }
 
 function isOn(hass, entity_id) {
@@ -434,11 +431,7 @@ class NinaObservatoryCard extends HTMLElement {
     const mntDec       = numState(h, this._eid("sensor", "mount_declination"), 3);
     const mntAlt       = numState(h, this._eid("sensor", "mount_altitude"), 1);
     const mntAz        = numState(h, this._eid("sensor", "mount_azimuth"), 1);
-    // The flip fires at (Max − Min), not zero, so the warning window adds the
-    // sensor's own published offset rather than a bare number.
-    const flipId       = this._eid("sensor", "mount_time_to_meridian_flip");
-    const ttf          = quantityIn(h, flipId, "min") ?? NaN;
-    const flipFiresAt  = parseFloat(attr(h, flipId, "flip_fires_at_minutes", "")) || 0;
+    const flip         = flipWindow(h, this._eid("sensor", "mount_time_to_meridian_flip"));
 
     const focPos       = shown(state(h, this._eid("number", "focuser_position")));
     const focTemp      = measured(h, this._eid("sensor", "focuser_temperature"));
@@ -513,7 +506,7 @@ class NinaObservatoryCard extends HTMLElement {
 
     // Meridian flip warning
     const showFlipWarning =
-      tracking && Number.isFinite(ttf) && ttf > 0 && ttf < 15 + flipFiresAt;
+      tracking && flip !== null && flip.latest > 0 && flip.earliest < 15;
 
     const html = `
       <style>${STYLE}</style>
@@ -558,7 +551,7 @@ class NinaObservatoryCard extends HTMLElement {
 
           ${showFlipWarning ? `
             <div class="flip-alert">
-              ⚠️ Meridian flip in <strong style="margin:0 4px;">${ttf.toFixed(0)} min</strong>
+              ⚠️ Meridian flip in <strong style="margin:0 4px;">${flipRange(flip)} min</strong>
             </div>
           ` : ""}
 
@@ -580,7 +573,7 @@ class NinaObservatoryCard extends HTMLElement {
               ${metric("Dec", mntDec, "°")}
               ${metric("Alt", mntAlt, "°")}
               ${metric("Az", mntAz, "°")}
-              ${ttf < 999 ? metric("Flip in", ttf.toFixed(0), "min") : ""}
+              ${flip !== null && flip.latest < 999 ? metric("Flip in", flipRange(flip), "min") : ""}
             </div>
           </div>
 
