@@ -75,7 +75,7 @@ markers = [
 [tool.ruff]
 # Home Assistant core's configuration, adapted where it names core's own paths.
 # Departures: the docstring rules noted under `ignore`; PTH applies to tests
-# too; voluptuous is not banned for probatio, nor is importing `tests`.
+# too; importing `tests` is not banned.
 required-version = ">=0.16.7"
 # tests/ is on pytest's pythonpath, so `helpers` and `scenarios` are ours.
 src = [".", "tests"]
