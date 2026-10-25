@@ -15,7 +15,7 @@ import {
   LinkGrace, hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
 import {
-  displayed, flipRange, flipWindow, missing, quantity, shown,
+  displayed, flipRange, flipSoon, flipWindow, missing, quantity, shown,
 } from "./nina-units.js";
 
 const VERSION = "2.1.0";
@@ -506,7 +506,7 @@ class NinaObservatoryCard extends HTMLElement {
 
     // Meridian flip warning
     const showFlipWarning =
-      tracking && flip !== null && flip.latest > 0 && flip.earliest < 15;
+      tracking && flipSoon(flip);
 
     const html = `
       <style>${STYLE}</style>

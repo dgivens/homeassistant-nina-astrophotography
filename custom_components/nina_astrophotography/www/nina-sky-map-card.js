@@ -22,7 +22,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
-import { flipRange, flipWindow, missing } from "./nina-units.js";
+import { flipRange, flipSoon, flipWindow, missing } from "./nina-units.js";
 
 const VERSION = "2.1.0";
 
@@ -472,8 +472,8 @@ class NinaSkyMapCard extends HTMLElement {
     }
 
     const flip = this._flip();
-    const flipSoon = flip !== null && flip.latest > 0 && flip.earliest < 15;
-    const meridianColor = flipSoon
+    const warnFlip = flipSoon(flip);
+    const meridianColor = warnFlip
       ? `rgba(244, 162, 97, ${0.5 + 0.4 * Math.sin(Date.now() / 400)})`
       : "rgba(123,141,232,0.25)";
     ctx.beginPath();
@@ -587,11 +587,12 @@ class NinaSkyMapCard extends HTMLElement {
 
     ctx.restore();
 
-    if (flipSoon) {
+    if (warnFlip) {
       // Inside the horizon: the canvas ends at it, and is clipped to a circle.
-      // Backed, so the meridian it sits on does not strike it through.
+      // On the meridian's other half from the scope, which is near it, and
+      // backed so the meridian does not strike it through.
       const label = `⚠ Flip in ${flipRange(flip)} min`;
-      const y = cy + R * 0.7;
+      const y = cy + (proj(alt, az).y > cy ? -0.7 : 0.7) * R;
       ctx.font      = `bold ${10 * dpr}px sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
