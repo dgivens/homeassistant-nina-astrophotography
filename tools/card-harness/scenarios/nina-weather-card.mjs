@@ -28,6 +28,19 @@ const HUMIDITY = "sensor.n_i_n_a_weather_humidity";
 const DEW_POINT = "sensor.n_i_n_a_weather_dew_point";
 const SOURCE = "sensor.n_i_n_a_weather_source";
 
+// Limits the captured station crosses as it stands, so the scenarios using them
+// invent no reading. It reads 27.1 °C over a 20.5 °C dew point, a 6.6 °C
+// margin, at 67.3% and 0.7 m/s: a dew alert, humidity and wind in danger, and
+// the temperature no longer warm.
+const TIGHT = {
+  dew_margin: 7,
+  temperature_high: 30,
+  humidity_warn: 60,
+  humidity_danger: 65,
+  wind_warn: 0.5,
+  wind_danger: 0.6,
+};
+
 // No `draw` hook: the wind rose is painted from the frame the render queues,
 // which the runner fires. `_drawWindRose` takes the direction and the speed as
 // arguments, so a hook would have to pass them in by hand — and `station` and
@@ -111,6 +124,27 @@ export const scenarios = {
   dew_us_customary: {
     hass: (dump) =>
       rig(dump, US).override(TEMPERATURE, 73.4).override(HUMIDITY, 85.8).build(),
+  },
+
+  // `station` against `TIGHT`: every limit the station crosses, each cell and
+  // the wind rose's arrow coloured by a configured limit.
+  limits: { hass: (dump) => rig(dump, UP).build(), config: TIGHT },
+
+  // `limits` on a US customary instance. The limits stay in °C and m/s, so
+  // every cell and the arrow must colour as `limits` does — the 11.9 °F margin
+  // is 6.6 °C, inside 7, and 1.57 mph is 0.7 m/s.
+  limits_us_customary: { hass: (dump) => rig(dump, US).build(), config: TIGHT },
+
+  // `TIGHT` as YAML can hand it over, as strings, with two limits cleared the
+  // way the editor clears one. Must draw what `limits` does, the cleared
+  // two at their defaults.
+  limits_as_text: {
+    hass: (dump) => rig(dump, UP).build(),
+    config: {
+      ...Object.fromEntries(Object.entries(TIGHT).map(([key, value]) => [key, String(value)])),
+      cloud_warn: undefined,
+      seeing_warn: "",
+    },
   },
 
   // The station of `station` with its diagnostic source disabled — no

@@ -11,6 +11,11 @@
  *   type: custom:nina-weather-card
  *   device_id: abc123      # which rig, for two or more; any one of its devices
  *   prefix: n_i_n_a        # fallback only, for the entities that cannot resolve
+ *
+ * The limits a reading is coloured by are options too, in °C and m/s whatever
+ * unit Home Assistant shows the reading in:
+ *   dew_margin: 3          # dew alert while the air is within this of its dew point
+ *   wind_warn: 8           # and wind_danger: 12
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
@@ -161,6 +166,30 @@ function degToCompass(deg) {
   return DEG_LABELS[Math.round(deg / 22.5) % 16];
 }
 
+// Temperatures and the dew margin in °C, wind in m/s, humidity and cloud in %,
+// seeing in arcsec.
+const LIMITS = {
+  dew_margin: 3,
+  temperature_high: 25,
+  temperature_low: -10,
+  humidity_warn: 85,
+  humidity_danger: 95,
+  wind_warn: 8,
+  wind_danger: 12,
+  cloud_warn: 60,
+  cloud_danger: 85,
+  seeing_warn: 3,
+  seeing_danger: 5,
+};
+
+// Coerced, because YAML hands back a string as readily as a number, and `null`
+// for a key left empty. `Number` reads `null` and a blank string as 0.
+function limit(value, fallback) {
+  const text = typeof value === "string" ? value.trim() : value;
+  const n = text === null || text === "" ? NaN : Number(text);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 class NinaWeatherCard extends HTMLElement {
   constructor() {
     super();
@@ -169,7 +198,21 @@ class NinaWeatherCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = config || {};
+    const cfg = config || {};
+    this._config = cfg;
+    this._limits = {
+      dewMargin: limit(cfg.dew_margin, LIMITS.dew_margin),
+      tempHigh: limit(cfg.temperature_high, LIMITS.temperature_high),
+      tempLow: limit(cfg.temperature_low, LIMITS.temperature_low),
+      humidWarn: limit(cfg.humidity_warn, LIMITS.humidity_warn),
+      humidDanger: limit(cfg.humidity_danger, LIMITS.humidity_danger),
+      windWarn: limit(cfg.wind_warn, LIMITS.wind_warn),
+      windDanger: limit(cfg.wind_danger, LIMITS.wind_danger),
+      cloudWarn: limit(cfg.cloud_warn, LIMITS.cloud_warn),
+      cloudDanger: limit(cfg.cloud_danger, LIMITS.cloud_danger),
+      seeingWarn: limit(cfg.seeing_warn, LIMITS.seeing_warn),
+      seeingDanger: limit(cfg.seeing_danger, LIMITS.seeing_danger),
+    };
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
     this._grace.reset();
@@ -268,11 +311,13 @@ class NinaWeatherCard extends HTMLElement {
     const dewC   = inUnit(dewPt, "°C");
     const windMs = inUnit(windSpd, "m/s");
 
-    // Dew threat: the air within 3 °C of its dew point.
+    const L = this._limits;
+    // Dew threat: the air within `dew_margin` of its dew point.
     const dewMargin = tempC !== null && dewC !== null ? tempC - dewC : null;
-    const dewThreat = dewMargin !== null && dewMargin < 3;
-    const windColor = windMs !== null && windMs > 12 ? "var(--danger)"
-      : windMs !== null && windMs > 8 ? "var(--warn)" : "var(--text)";
+    const dewThreat = dewMargin !== null && dewMargin < L.dewMargin;
+    const windLevel = this._windLevel(windMs);
+    const windColor = windLevel === "danger" ? "var(--danger)"
+      : windLevel === "warn" ? "var(--warn)" : "var(--text)";
 
     // UNSAFE is tested first, so a disabled connectivity diagnostic cannot hide
     // a monitor reporting UNSAFE.
@@ -390,8 +435,8 @@ class NinaWeatherCard extends HTMLElement {
           <!-- Temperature & humidity -->
           <div class="section-title">Atmosphere</div>
           <div class="weather-grid">
-            ${qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > 25, tempC !== null && tempC < -10)}
-            ${cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > 85, humid !== null && humid > 95)}
+            ${qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > L.tempHigh, tempC !== null && tempC < L.tempLow)}
+            ${cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > L.humidWarn, humid !== null && humid > L.humidDanger)}
             ${qcell("🌫", "Dew Point", dewPt, 1, dewThreat, false)}
             ${qcell("📊", "Pressure", press, 1, false, false, press === null)}
           </div>
@@ -423,10 +468,10 @@ class NinaWeatherCard extends HTMLElement {
           <!-- Sky conditions -->
           <div class="section-title">Sky conditions</div>
           <div class="weather-grid">
-            ${cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > 60, cloud !== null && cloud > 85, cloud === null)}
+            ${cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > L.cloudWarn, cloud !== null && cloud > L.cloudDanger, cloud === null)}
             ${qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null)}
             ${qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null)}
-            ${cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > 3, seeing !== null && seeing > 5, seeing === null)}
+            ${cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > L.seeingWarn, seeing !== null && seeing > L.seeingDanger, seeing === null)}
             ${qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null)}
           </div>
 
@@ -459,6 +504,13 @@ class NinaWeatherCard extends HTMLElement {
     if (wxConnected && windDir !== null) {
       requestAnimationFrame(() => this._drawWindRose(windDir, windMs));
     }
+  }
+
+  // `"danger"`, `"warn"` or `null`, for a speed in m/s.
+  _windLevel(speed) {
+    if (speed === null) return null;
+    return speed > this._limits.windDanger ? "danger"
+      : speed > this._limits.windWarn ? "warn" : null;
   }
 
   // `speed` in m/s, whatever unit the sensor is shown in.
@@ -499,7 +551,8 @@ class NinaWeatherCard extends HTMLElement {
     const startX = cx - Math.cos(arrowRad) * arrowLen;
     const startY = cy - Math.sin(arrowRad) * arrowLen;
 
-    const color = speed !== null && speed > 12 ? "#e76f51" : speed !== null && speed > 8 ? "#f4a261" : "#5bcfcf";
+    const level = this._windLevel(speed);
+    const color = level === "danger" ? "#e76f51" : level === "warn" ? "#f4a261" : "#5bcfcf";
 
     // Arrow shaft
     ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, endY);
@@ -522,7 +575,87 @@ class NinaWeatherCard extends HTMLElement {
   }
 
   getCardSize() { return 7; }
-  static getConfigForm() { return configForm(); }
+  static getConfigForm() {
+    const number = (unit, extra = {}) => ({
+      selector: { number: { step: "any", mode: "box", unit_of_measurement: unit, ...extra } },
+    });
+    const percent = number("%", { min: 0, max: 100 });
+    // Nameless, so each limit stays a top-level key instead of nesting under it.
+    const pair = (schema) => ({ type: "grid", name: "", schema });
+    return configForm([
+      {
+        type: "expandable",
+        name: "",
+        title: "Limits",
+        schema: [
+          {
+            name: "dew_margin",
+            label: "Dew margin",
+            helper: "Show the dew alert while the air is within this of its dew point. "
+              + "Smaller with dew heaters on the optics. In °C, whatever unit the "
+              + "temperature is shown in.",
+            default: LIMITS.dew_margin,
+            ...number("°C", { min: 0 }),
+          },
+          pair([
+            {
+              name: "temperature_high",
+              label: "Warm above",
+              helper: "Warning. In °C.",
+              default: LIMITS.temperature_high,
+              ...number("°C"),
+            },
+            {
+              name: "temperature_low",
+              label: "Cold below",
+              helper: "Danger. In °C.",
+              default: LIMITS.temperature_low,
+              ...number("°C"),
+            },
+          ]),
+          pair([
+            { name: "humidity_warn", label: "Humidity warning above", default: LIMITS.humidity_warn, ...percent },
+            { name: "humidity_danger", label: "Humidity danger above", default: LIMITS.humidity_danger, ...percent },
+          ]),
+          pair([
+            {
+              name: "wind_warn",
+              label: "Wind warning above",
+              helper: "In m/s, whatever unit the speed is shown in: 1 m/s is 3.6 km/h or 2.24 mph.",
+              default: LIMITS.wind_warn,
+              ...number("m/s", { min: 0 }),
+            },
+            {
+              name: "wind_danger",
+              label: "Wind danger above",
+              helper: "In m/s. Also colours the wind rose's arrow.",
+              default: LIMITS.wind_danger,
+              ...number("m/s", { min: 0 }),
+            },
+          ]),
+          pair([
+            { name: "cloud_warn", label: "Cloud warning above", default: LIMITS.cloud_warn, ...percent },
+            { name: "cloud_danger", label: "Cloud danger above", default: LIMITS.cloud_danger, ...percent },
+          ]),
+          pair([
+            {
+              name: "seeing_warn",
+              label: "Seeing warning above",
+              helper: "Star FWHM.",
+              default: LIMITS.seeing_warn,
+              ...number("arcsec", { min: 0 }),
+            },
+            {
+              name: "seeing_danger",
+              label: "Seeing danger above",
+              default: LIMITS.seeing_danger,
+              ...number("arcsec", { min: 0 }),
+            },
+          ]),
+        ],
+      },
+    ]);
+  }
 
   static getStubConfig() { return {}; }
 }
