@@ -61,11 +61,12 @@ const THUMB_WIDTH = 64;
 // Device pixels across for a preview the card could not measure.
 const FALLBACK_PREVIEW_WIDTH = 1600;
 
-// N.I.N.A. holds every frame as 16-bit unsigned, whatever the camera's depth.
+// N.I.N.A. holds frames as 16-bit unsigned, so no statistic exceeds this; a
+// camera whose driver does not scale to 16 bits saturates lower.
 const ADU_FULL_SCALE = 65535;
 
-// The ADU bar is logarithmic: a light's background sits in the hundreds, a
-// flat's in the tens of thousands, and a saturated star at full scale.
+// The ADU bar is logarithmic: a light's background sits in the hundreds to a
+// few thousand, a flat's in the tens of thousands.
 const ADU_GRIDLINES = [[100, "100"], [1000, "1k"], [10000, "10k"]];
 
 // An absent field is undefined; the integration publishes no reading as null.
@@ -91,6 +92,10 @@ function hideUntilLoaded(img) {
 
 const STYLE = `
   :host {
+    /* A custom element is inline by default, and a ResizeObserver watching an
+       inline box does not report the card getting wider — which is what
+       redraws the ADU range. */
+    display: block;
     --bg:      var(--ha-card-background, var(--card-background-color, #12121e));
     --border:  var(--divider-color, rgba(255,255,255,0.1));
     --accent:  #7b8de8;
@@ -202,7 +207,10 @@ const STYLE = `
     margin-bottom: 3px;
   }
   .adu-label > span:first-child, .adu-label span span { white-space: nowrap; }
-  #adu-range { text-align: right; }
+  #adu-range {
+    display: flex; flex-wrap: wrap; justify-content: flex-end;
+    column-gap: 8px;
+  }
   .adu-label .median { color: var(--text); }
   .adu-label .mean { color: var(--accent2); }
   .adu-bar {
@@ -302,6 +310,21 @@ class NinaImagePanelCard extends HTMLElement {
     this._stripKey = null;
     this._tiles = new Map();  // strip tiles by frame date
     this._grace = new LinkGrace(() => { this.hass = this._hass; });
+  }
+
+  connectedCallback() {
+    // The ADU range is redrawn only with a frame, so a resize would otherwise
+    // stretch its gridlines and labels until the next one.
+    if (typeof ResizeObserver === "undefined" || this._observer) return;
+    this._observer = new ResizeObserver(() => {
+      if (this._config?.show_histogram) this._drawAduRange();
+    });
+    this._observer.observe(this);
+  }
+
+  disconnectedCallback() {
+    this._observer?.disconnect();
+    this._observer = undefined;
   }
 
   setConfig(config) {
@@ -712,7 +735,7 @@ class NinaImagePanelCard extends HTMLElement {
     const label = [["min", min], ["median", median], ["mean", mean], ["max", max]]
       .filter(([, value]) => value !== null)
       .map(([name, value]) => `<span class="${name}">${name} ${Math.round(value)}</span>`)
-      .join(" · ");
+      .join("");
     const rangeEl = this.shadowRoot?.getElementById("adu-range");
     if (rangeEl) rangeEl.innerHTML = label || "—";
     if (!label) return;
@@ -730,23 +753,29 @@ class NinaImagePanelCard extends HTMLElement {
       ctx.fillText(text, x(adu) + 2, 1);
     }
 
+    // A whisker, not a box: min and max are single pixels — a cold one and a
+    // star core — while nearly every pixel sits near the median.
+    const mid = (H + 9) / 2;
     if (min !== null && max !== null) {
-      ctx.fillStyle = "rgba(123,141,232,0.45)";
-      ctx.fillRect(x(min), 11, Math.max(x(max) - x(min), 1), H - 15);
+      ctx.beginPath();
+      ctx.moveTo(x(min), mid); ctx.lineTo(x(max), mid);
+      ctx.moveTo(x(min), mid - 3); ctx.lineTo(x(min), mid + 3);
+      ctx.moveTo(x(max), mid - 3); ctx.lineTo(x(max), mid + 3);
+      ctx.strokeStyle = "rgba(123,141,232,0.8)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
-    const tick = (adu, style, dash) => {
+    const tick = (adu, style, width) => {
       if (adu === null) return;
       ctx.beginPath();
       ctx.moveTo(x(adu), 9); ctx.lineTo(x(adu), H - 2);
       ctx.strokeStyle = style;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash(dash);
+      ctx.lineWidth = width;
       ctx.stroke();
     };
-    tick(median, "rgba(255,255,255,0.85)", [2, 2]);
-    tick(mean, "rgba(91,207,207,0.95)", []);
-    ctx.setLineDash([]);
+    tick(median, "rgba(255,255,255,0.9)", 3);
+    tick(mean, "rgba(91,207,207,0.95)", 1.5);
   }
 
   _updateOverlay() {
