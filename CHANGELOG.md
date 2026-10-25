@@ -14,6 +14,18 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   comparing against the old values has to use the new ones. A driver with no
   shutter reads `unknown`.
 
+### Added
+
+- **The shutdown and abort blueprints can wait for the roof to close.** Give
+  them the dome's shutter status (`dome_shutter`) and they wait for it to read
+  `closed` after closing, up to `close_timeout_minutes` (5 by default for the
+  shutdown, 3 for the abort). A shutter error ends the wait at once. Either way
+  they notify "Roof not closed yet" and send the close once more — many
+  drivers clear an error on a new command — and if the roof still has not
+  closed, they notify "Roof did not close". A
+  close is only sent: N.I.N.A. answers it before the roof moves, and not every
+  close raises an event.
+
 ### Fixed
 
 - **The observatory card shows a dome again** (#93). It probed for the dome on

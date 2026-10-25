@@ -66,6 +66,19 @@ blueprint:
             entity:
               integration: nina_astrophotography
               domain: binary_sensor
+        dome_shutter:
+          name: Dome shutter status
+          description: >
+            Optional. After closing the dome, wait for this to read closed, and
+            notify if it does not: a close is only sent, and N.I.N.A. answers it
+            before the roof has moved. The first one picked is the one checked.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              device_class: enum
+              multiple: true
 
     shutdown:
       name: Shutdown steps
@@ -90,6 +103,18 @@ blueprint:
           default: false
           selector:
             boolean:
+        close_timeout_minutes:
+          name: Time for the dome to close
+          description: >
+            How long to wait for the shutter status to read closed before
+            raising the alarm. Allow for the slowest roof travel; shorter
+            than the scheduled shutdown's, since every minute here may be rain.
+          default: 3
+          selector:
+            number:
+              min: 1
+              max: 30
+              unit_of_measurement: min
         warm_camera:
           name: Warm the camera
           description: Ramp the sensor back to ambient rather than cutting cooling.
@@ -162,6 +187,7 @@ mode: restart
 
 # Inputs must be bound here before templates can reference them.
 variables:
+  dome_shutter: !input dome_shutter
   mount_parked: !input mount_parked
   nina_rig: !input nina_rig
   safety_unsafe: !input safety_unsafe
@@ -302,6 +328,61 @@ actions:
         target:
           device_id: !input nina_rig
         continue_on_error: true
+      # The close is only sent: N.I.N.A. answers before the roof moves, and
+      # not every close raises a `DOME-SHUTTER-CLOSED`. Only the polled
+      # shutter status confirms it. A shutter in `error` has stopped and will
+      # not close unaided, so the first wait ends there too; many drivers clear
+      # the error on a new close, so the close is sent once more before the
+      # alarm. A brief `unavailable` is a missed poll and is waited through.
+      - alias: "Wait for the shutter to report closed, closing once more if not"
+        if:
+          - condition: template
+            value_template: "{{ dome_shutter | count > 0 }}"
+        then:
+          - wait_template: "{{ states(dome_shutter | first) in ['closed', 'error'] }}"
+            timeout:
+              minutes: !input close_timeout_minutes
+            continue_on_timeout: true
+          - if:
+              - condition: template
+                value_template: "{{ not is_state(dome_shutter | first, 'closed') }}"
+            then:
+              - action: notify.send_message
+                target:
+                  entity_id: !input notify_target
+                data:
+                  title: "⚠️ Roof not closed yet"
+                  message: >
+                    The dome's shutter reads {{ states(dome_shutter | first) }};
+                    closing it again.
+                continue_on_error: true
+              - action: nina_astrophotography.dome_close
+                target:
+                  device_id: !input nina_rig
+                continue_on_error: true
+              - wait_template: "{{ is_state(dome_shutter | first, 'closed') }}"
+                timeout:
+                  minutes: !input close_timeout_minutes
+                continue_on_timeout: true
+              - if:
+                  - condition: template
+                    value_template: "{{ not is_state(dome_shutter | first, 'closed') }}"
+                then:
+                  - action: notify.send_message
+                    target:
+                      entity_id: !input notify_target
+                    data:
+                      title: "🚨 Roof did not close"
+                      message: >-
+                        {%- set shutter = states(dome_shutter | first) -%}
+                        {%- if shutter in ['unavailable', 'unknown'] -%}
+                        Home Assistant has lost contact with the dome, so it
+                        cannot tell whether the roof closed.
+                        {%- else -%}
+                        The dome was told to close twice, but its shutter reads
+                        {{ shutter }}.
+                        {%- endif %} Manual intervention needed.
+                    continue_on_error: true
     else:
       - action: notify.send_message
         target:
