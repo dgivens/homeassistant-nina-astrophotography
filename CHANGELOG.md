@@ -4,7 +4,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
-## [Unreleased]
+## [2.1.0] - 2026-10-24
 
 ### Breaking
 
@@ -30,16 +30,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   closed, they notify "Roof did not close". A
   close is only sent: N.I.N.A. answers it before the roof moves, and not every
   close raises an event.
-
-### Fixed
-
-- **The observatory card shows a dome again** (#93). It probed for the dome on
-  an entity that ships disabled, so a dome owner never saw the Dome chip or its
-  buttons; and it compared the shutter against `Open`, so it never offered
-  Close Dome. It now probes the shutter status, offers Open Dome only with the
-  shutter closed and Close Dome otherwise, shows a shutter error on the chip,
-  and asks before opening as well as closing — warning when the mount is not
-  parked. Open Dome is disabled unless the safety monitor reads safe.
 
 ### Changed
 
@@ -75,6 +65,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
+- **The observatory card shows a dome again** (#93). It probed for the dome on
+  an entity that ships disabled, so a dome owner never saw the Dome chip or its
+  buttons; and it compared the shutter against `Open`, so it never offered
+  Close Dome. It now probes the shutter status, offers Open Dome only with the
+  shutter closed and Close Dome otherwise, shows a shutter error on the chip,
+  and asks before opening as well as closing — warning when the mount is not
+  parked. Open Dome is disabled unless the safety monitor reads safe.
 - **Guider RMS total, RA and declination read `unknown` while PHD2 is not
   guiding.** N.I.N.A. keeps reporting the last run's RMS after guiding stops,
   through a lost lock and while PHD2 loops or calibrates, and reports 0 for a
@@ -83,6 +80,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   start, so a run's first 100 guide steps (its guide graph's history size)
   still average in the run before, a meridian flip's included. The guiding
   alert blueprint's sustained window now restarts on a lost star.
+
+---
+
+## [2.0.1] - 2026-09-28
+
+### Changed
+
+- The brand icon follows the HACS standard.
+- Python dependencies updated.
 
 ---
 
