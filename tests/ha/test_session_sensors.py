@@ -105,6 +105,39 @@ async def test_recent_frames_name_their_type(
     assert recent[0]["image_type"] == "FLAT"
 
 
+def _number(state: str):
+    return pytest.approx(float(state))
+
+
+@pytest.mark.parametrize(
+    ("field", "sensor", "parse"),
+    [
+        ("hfr", LAST_IMAGE_HFR, _number),
+        ("stars", "sensor.n_i_n_a_last_image_star_count", _number),
+        ("exposure", "sensor.n_i_n_a_last_image_exposure", _number),
+        ("rms", "sensor.n_i_n_a_last_image_rms", _number),
+        ("target", "sensor.n_i_n_a_last_image_target", str),
+    ],
+)
+async def test_recent_frames_carry_each_frames_own_readings(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    rig,
+    set_up_at,
+    freezer,
+    field: str,
+    sensor: str,
+    parse,
+) -> None:
+    """The panel describes the frame it shows, which can be any of these. While
+    guiding the newest frame is the newest light, so it reads as the sensor does.
+    """
+    freezer.move_to("2026-09-05T06:43:39+00:00")  # the capture, in its session
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    recent = state_of(hass, LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
+    assert recent[0][field] == parse(state_of(hass, sensor).state)
+
+
 async def test_recent_lights_survive_a_dawn_flat_run(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:

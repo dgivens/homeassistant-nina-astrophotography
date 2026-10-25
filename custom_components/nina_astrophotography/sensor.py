@@ -211,14 +211,20 @@ def _recent_frames(data: NinaData) -> tuple[Mapping[str, Any], ...]:
     """Recent frames of every type, newest first, for the image panel card.
 
     Hand-picked fields rather than `asdict(frame)`: this is the card's
-    contract, not `Frame`'s.
+    contract, not `Frame`'s. Each frame carries its own readings, which the
+    `last_image_*` sensors hold only for the newest light.
     """
     return tuple(
         {
             "date": frame.date.isoformat(),
             "filename": frame.filename,
             "image_type": frame.image_type,
+            "target": frame.target_name,
             "filter": frame.filter_name,
+            "exposure": frame.exposure_time,
+            "hfr": frame.hfr,
+            "stars": frame.stars,
+            "rms": frame.rms_arcsec,
             "mean": frame.mean,
             "median": frame.median,
             "min": frame.min,

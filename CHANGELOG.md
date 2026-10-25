@@ -14,12 +14,40 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   The observatory card's banner and mount metric and the sky map's header and
   canvas now print both ends instead of the latest alone, and "≤ 6 min" once
   the window is open. The sensor itself is unchanged.
+- The `recent_frames` attribute of `sensor.<instance>_last_image_mean_adu`
+  carries each frame's target, exposure, HFR, star count and guide RMS beside
+  its ADU statistics.
+- The image panel card reloads from `recent_frames` rather than from the
+  `nina_image_save` event. With two rigs, a panel therefore follows only its
+  own rig's frames, whether or not its rig can be resolved. Thumbnails ignore
+  `stretch: false` where they are N.I.N.A.'s own, which it always stretches.
 
 ### Fixed
 
 - **The sky map's "Flip in" warning is drawn inside the map**, where it can be
   seen, on the side away from the telescope. It used to be placed below the
   bottom edge of the canvas.
+- **The image panel card describes the frame it shows.** Pick an older frame
+  from the strip and the overlay, the stats row, the header and the ADU range
+  are that frame's, not the newest light's. A flat on screen shows its own ADU
+  and exposure, and no HFR or star count, where it used to show the last
+  light's behind a "Last light" tag.
+- **The image panel card asks N.I.N.A. for far fewer renders** (#110). A saved
+  frame used to cost seven JPEG renders on the imaging PC for every open
+  dashboard: the frame, then all six thumbnails again. Now it costs one for the
+  frame and one for its thumbnail, while the older thumbnails stay as they
+  were. A save arriving while the main frame loads waits for that load and
+  replaces any save already waiting, so a run of dawn flats never queues main
+  renders faster than N.I.N.A. finishes them.
+- **Thumbnails are N.I.N.A.'s own** when the Advanced API plugin keeps them
+  (its "Create Thumbnails" setting, on by default), so they cost no render.
+  They look like N.I.N.A.'s own preview, star annotations included where it
+  draws them. Where the plugin has none, they are rendered small. The main
+  preview is rendered no wider than the card draws it, and the full-size frame
+  is fetched only for the zoomed view.
+- **The image panel never shows one frame under another's readings.** The card
+  asks for each frame by when it was saved, so a frame saved in the meantime
+  cannot take its place.
 
 ---
 
