@@ -397,6 +397,15 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
   the earliest end. N.I.N.A. also stops early when the next exposure would not
   finish by the latest end.
 
+- `sensor.<instance>_last_image_mean_adu` has `recent_frames`: the newest
+  frames of every type, newest first, each with its target, filter, exposure,
+  HFR, star count, guide RMS and N.I.N.A.'s min, median, mean and max ADU. The
+  image panel card draws its ADU range from these. They are statistics, not a
+  histogram like the one in N.I.N.A.'s Statistics panel: the Advanced API
+  publishes none. Building one means fetching the whole raw frame a second
+  time, which a remote observatory is already sending elsewhere. Issue #178
+  tracks doing it as an option.
+
 ## Error events
 
 `event.<instance>_error` fires `platesolve_failed`, `camera_download_timeout`

@@ -22,6 +22,12 @@
  * the ADU range describe the frame on screen, whichever it is. Only the
  * header's light count, integration time and exposing state are the session's.
  *
+ * The ADU range is those statistics, not a histogram: a histogram needs the
+ * frame's pixels. Every `/image` render is stretched, `autoPrepare=false`
+ * included, so a preview's pixels describe the picture, not the frame. Only
+ * `raw_fits` returns the frame's own values, at the whole frame's size again
+ * (#178).
+ *
  * Each N.I.N.A. render is a full FITS load and stretch on the imaging PC, so
  * the panel asks for as few as it can: one main load at a time, the newest
  * frame only when `recent_frames` gains one, a thumbnail only for a frame the
