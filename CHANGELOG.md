@@ -33,6 +33,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
+- **The image panel's ADU bar is drawn from the frame's statistics** (#114).
+  It used to draw a made-up bell curve around the mean, the same shape for a
+  good frame as for a bad one. It now marks the frame's min–max span, its
+  median and its mean on a logarithmic axis from 0 to 65535, with gridlines at
+  100, 1k and 10k, so a light's background in the hundreds and a flat's level
+  in the tens of thousands can both be read. The card has no pixel data, so
+  this is a range, not a histogram, and it cannot show how much of a frame is
+  clipped. The `show_histogram` option still turns it on and off.
 - **The frame statistics card reads the newest run, not the whole night**
   (#105). A run is the lights since the last target change that share the
   newest light's filter and exposure, interleaved filters and all. The star

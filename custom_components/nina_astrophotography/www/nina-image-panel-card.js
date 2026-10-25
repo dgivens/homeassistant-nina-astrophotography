@@ -2,7 +2,7 @@
  * N.I.N.A. Image Panel Card
  *
  * Displays the last captured image from N.I.N.A., with a live stats overlay,
- * session image strip, and histogram visualisation.
+ * session image strip, and the frame's ADU range.
  *
  * Images never come from N.I.N.A. directly: its Advanced API is plain
  * HTTP-only, and a dashboard served over HTTPS would have every such fetch
@@ -19,7 +19,7 @@
  * Everything describing a frame comes from the mean-ADU sensor's
  * `recent_frames` attribute — the newest frames of any type, already bounded
  * and ordered, each with its own readings — so the overlay, the stats row and
- * the histogram describe the frame on screen, whichever it is. Only the
+ * the ADU range describe the frame on screen, whichever it is. Only the
  * header's light count, integration time and exposing state are the session's.
  *
  * Each N.I.N.A. render is a full FITS load and stretch on the imaging PC, so
@@ -34,7 +34,7 @@
  *   prefix: n_i_n_a         # fallback only, for the entities that cannot resolve
  *   refresh_on_save: true   # load each frame as N.I.N.A. saves it (default true)
  *   show_strip: true        # show recent-frames strip at bottom (default true)
- *   show_histogram: true    # show ADU histogram bar (default true)
+ *   show_histogram: true    # show the frame's ADU range (default true)
  *   quality: 85             # JPEG quality 1-100 (default 85)
  *   stretch: true           # use N.I.N.A.'s auto-stretch (default true)
  *   strip_count: 6          # number of thumbnails in the recent strip (default 6)
@@ -60,6 +60,13 @@ const THUMB_WIDTH = 64;
 
 // Device pixels across for a preview the card could not measure.
 const FALLBACK_PREVIEW_WIDTH = 1600;
+
+// N.I.N.A. holds every frame as 16-bit unsigned, whatever the camera's depth.
+const ADU_FULL_SCALE = 65535;
+
+// The ADU bar is logarithmic: a light's background sits in the hundreds, a
+// flat's in the tens of thousands, and a saturated star at full scale.
+const ADU_GRIDLINES = [[100, "100"], [1000, "1k"], [10000, "10k"]];
 
 // An absent field is undefined; the integration publishes no reading as null.
 function finite(value) {
@@ -185,21 +192,25 @@ const STYLE = `
   .no-image svg { opacity: 0.3; }
   .no-image .hint { font-size: 0.68rem; opacity: 0.7; text-align: center; }
 
-  .histogram-wrap {
+  .adu-wrap {
     padding: 6px 12px 4px;
     border-top: 1px solid var(--border);
   }
-  .histogram-label {
-    display: flex; justify-content: space-between;
+  .adu-label {
+    display: flex; justify-content: space-between; gap: 8px;
     font-size: 0.6rem; color: var(--muted);
     margin-bottom: 3px;
   }
-  .histogram-bar {
+  .adu-label > span:first-child, .adu-label span span { white-space: nowrap; }
+  #adu-range { text-align: right; }
+  .adu-label .median { color: var(--text); }
+  .adu-label .mean { color: var(--accent2); }
+  .adu-bar {
     position: relative; height: 28px;
     background: rgba(255,255,255,0.04);
     border-radius: 4px; overflow: hidden;
   }
-  canvas.hist-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  canvas.adu-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
   .stats-row {
     display: grid; grid-template-columns: repeat(4, 1fr);
@@ -347,12 +358,12 @@ class NinaImagePanelCard extends HTMLElement {
       if (this._config.refresh_on_save || !this._hasImage) this._load(newest);
     }
 
-    // The histogram too: before a frame loads, it describes the newest.
+    // The ADU range too: before a frame loads, it describes the newest.
     const stripKey = JSON.stringify(this._recentFrames());
     if (stripKey !== this._stripKey) {
       this._stripKey = stripKey;
       if (this._config.show_strip) this._loadStrip();
-      if (this._config.show_histogram) this._drawHistogram();
+      if (this._config.show_histogram) this._drawAduRange();
     }
 
     this._updateOverlay();
@@ -477,13 +488,13 @@ class NinaImagePanelCard extends HTMLElement {
         </div>
 
         ${cfg.show_histogram ? `
-          <div class="histogram-wrap">
-            <div class="histogram-label">
-              <span>ADU distribution</span>
-              <span id="hist-range">—</span>
+          <div class="adu-wrap">
+            <div class="adu-label">
+              <span>ADU range</span>
+              <span id="adu-range">—</span>
             </div>
-            <div class="histogram-bar">
-              <canvas class="hist-canvas" id="hist-canvas"></canvas>
+            <div class="adu-bar">
+              <canvas class="adu-canvas" id="adu-canvas"></canvas>
             </div>
           </div>
         ` : ""}
@@ -584,7 +595,7 @@ class NinaImagePanelCard extends HTMLElement {
         noImg && (noImg.style.display = "flex");
       }
     }
-    if (this._config.show_histogram) this._drawHistogram();
+    if (this._config.show_histogram) this._drawAduRange();
     this._updateStripActive();
     // Held: the readings are `unavailable`; keep the ones on screen.
     if (!this._grace.holding) {
@@ -678,91 +689,64 @@ class NinaImagePanelCard extends HTMLElement {
     }
   }
 
-  _drawHistogram() {
-    const canvas = this.shadowRoot?.getElementById("hist-canvas");
+  _drawAduRange() {
+    const canvas = this.shadowRoot?.getElementById("adu-canvas");
     if (!canvas) return;
 
     // All of it from the frame on screen, out of `recent_frames`. The mean-ADU
     // sensor is no fallback: it holds the newest light's, and the frame on
     // screen may be a flat.
     const frame = this._frame();
-    const mean = finite(frame.mean);
     const min = finite(frame.min);
+    const median = finite(frame.median);
+    const mean = finite(frame.mean);
     const max = finite(frame.max);
-    const median = finite(frame.median) ?? mean;
 
-    // Sizing the canvas wipes it, so a frame with no curve leaves it empty.
+    // Sizing the canvas wipes it, so a frame with no statistics leaves it empty.
     const W = canvas.offsetWidth || 300;
     const H = canvas.offsetHeight || 28;
     const dpr = window.devicePixelRatio || 1;
     canvas.width  = W * dpr;
     canvas.height = H * dpr;
 
-    const rangeEl = this.shadowRoot?.getElementById("hist-range");
-    if (mean === null || min === null || max === null || max <= 0) {
-      if (rangeEl) rangeEl.textContent = "—";
-      return;
-    }
-    if (rangeEl) {
-      rangeEl.textContent = `${Math.round(min)} – ${Math.round(max)} (mean ${Math.round(mean)})`;
-    }
-
-    if (max <= min) return;
+    const label = [["min", min], ["median", median], ["mean", mean], ["max", max]]
+      .filter(([, value]) => value !== null)
+      .map(([name, value]) => `<span class="${name}">${name} ${Math.round(value)}</span>`)
+      .join(" · ");
+    const rangeEl = this.shadowRoot?.getElementById("adu-range");
+    if (rangeEl) rangeEl.innerHTML = label || "—";
+    if (!label) return;
 
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
+    const x = (adu) => W * Math.log1p(Math.max(adu, 0)) / Math.log1p(ADU_FULL_SCALE);
 
-    // A simplified gaussian histogram from min/max/mean/median.
-    const range = max - min;
-    const bars = 60;
-    const sigma = (max - min) * 0.18;
-    const vals = Array.from({ length: bars }, (_, i) => {
-      const x = min + (i / bars) * range;
-      const g = Math.exp(-0.5 * ((x - mean) / sigma) ** 2);
-      // A slight skew toward shadows, typical of an astrophoto histogram.
-      const skew = 1 + 0.4 * Math.exp(-0.5 * ((x - min) / (range * 0.15)) ** 2);
-      return g * skew;
-    });
-    const peakVal = Math.max(...vals);
-
-    const grad = ctx.createLinearGradient(0, 0, W, 0);
-    grad.addColorStop(0,   "rgba(60,80,180,0.7)");
-    grad.addColorStop(0.4, "rgba(100,120,220,0.8)");
-    grad.addColorStop(0.7, "rgba(150,170,255,0.6)");
-    grad.addColorStop(1,   "rgba(200,210,255,0.4)");
-
-    ctx.beginPath();
-    const bw = W / bars;
-    ctx.moveTo(0, H);
-    for (let i = 0; i < bars; i++) {
-      const bh = (vals[i] / peakVal) * H * 0.9;
-      ctx.lineTo(i * bw, H - bh);
-      ctx.lineTo((i + 1) * bw, H - bh);
+    ctx.font = "8px sans-serif";
+    ctx.textBaseline = "top";
+    for (const [adu, text] of ADU_GRIDLINES) {
+      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fillRect(x(adu), 0, 1, H);
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.fillText(text, x(adu) + 2, 1);
     }
-    ctx.lineTo(W, H);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
 
-    const meanX = ((mean - min) / range) * W;
-    ctx.beginPath();
-    ctx.moveTo(meanX, 0); ctx.lineTo(meanX, H);
-    ctx.strokeStyle = "rgba(91,207,207,0.8)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+    if (min !== null && max !== null) {
+      ctx.fillStyle = "rgba(123,141,232,0.45)";
+      ctx.fillRect(x(min), 11, Math.max(x(max) - x(min), 1), H - 15);
+    }
 
-    const medX = ((median - min) / range) * W;
-    ctx.beginPath();
-    ctx.moveTo(medX, 0); ctx.lineTo(medX, H);
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.stroke();
+    const tick = (adu, style, dash) => {
+      if (adu === null) return;
+      ctx.beginPath();
+      ctx.moveTo(x(adu), 9); ctx.lineTo(x(adu), H - 2);
+      ctx.strokeStyle = style;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash(dash);
+      ctx.stroke();
+    };
+    tick(median, "rgba(255,255,255,0.85)", [2, 2]);
+    tick(mean, "rgba(91,207,207,0.95)", []);
     ctx.setLineDash([]);
-
-    const satX = ((max * 0.95 - min) / range) * W;
-    ctx.fillStyle = "rgba(231,111,81,0.15)";
-    ctx.fillRect(satX, 0, W - satX, H);
   }
 
   _updateOverlay() {
@@ -907,7 +891,7 @@ class NinaImagePanelCard extends HTMLElement {
       {
         name: "show_histogram",
         label: "Show ADU range",
-        helper: "Min, mean and max ADU of the frame on screen.",
+        helper: "Min, median, mean and max ADU of the frame on screen, on a log scale.",
         ...toggle,
       },
       { name: "show_strip", label: "Show recent frames", ...toggle },
@@ -944,7 +928,7 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "nina-image-panel-card",
   name: "N.I.N.A. Image Panel",
-  description: "Live last-frame viewer with stats overlay, histogram, and frame strip.",
+  description: "Live last-frame viewer with stats overlay, ADU range, and frame strip.",
   preview: false,
   documentationURL: "https://github.com/dgivens/homeassistant-nina-astrophotography#lovelace-cards",
 });

@@ -6,7 +6,7 @@
  * thumbnail dims too. The load that succeeds — the frame on screen, the active
  * thumbnail following it — is reached by nothing here. What the scenarios do
  * reach is everything around the picture — the overlay pills, the stats row,
- * the header, the histogram, the strip's labels, all off the newest frame's
+ * the header, the ADU range, the strip's labels, all off the newest frame's
  * own `recent_frames` entry — and, in `ops.mjs`, the image paths the card
  * signs: the entity the proxy resolves a rig by, the frame's date, and which
  * frames a new save makes it fetch.
@@ -37,7 +37,7 @@ const before = (dump) => {
   });
 };
 
-// No `draw` hook: the histogram is painted synchronously from `set hass`.
+// No `draw` hook: the ADU range is painted synchronously from `set hass`.
 
 export const scenarios = {
   // Every id resolved, and a whole night behind the panel.
@@ -58,7 +58,7 @@ export const scenarios = {
         .build(),
   },
 
-  // No strip and no histogram, which must still describe the flat: the frame
+  // No strip and no ADU range, which must still describe the flat: the frame
   // on screen is read from the attribute, not from the strip.
   bare: {
     hass: (dump) => rig(dump, NIGHT).build(),
