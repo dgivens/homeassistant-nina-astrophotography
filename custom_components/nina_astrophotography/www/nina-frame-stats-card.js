@@ -14,7 +14,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
-import { quantityIn, shown } from "./nina-units.js";
+import { quantityIn, safe, shown } from "./nina-units.js";
 
 const VERSION = "2.1.0";
 
@@ -115,12 +115,6 @@ function spares(drawn) {
 
 // A light with no filter name among named ones, which no chip uses.
 const NO_FILTER = "#8a909c";
-
-// Filter and target names come off the rig and land in `innerHTML`.
-const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
-function safe(value) {
-  return String(value).replace(/[&<>"]/g, (character) => ESCAPES[character]);
-}
 
 // FNV-1a: stable across browsers and sessions.
 function nameHash(text) {
@@ -338,8 +332,9 @@ class NinaFrameStatsCard extends HTMLElement {
       i > 0 && (light.target !== lights[i - 1].target
                 || light.exposure !== lights[i - 1].exposure) ? [i] : []);
     // The newest light's run: the lights since the last target change that
-    // share its filter and exposure. Target Scheduler interleaves filters, so
-    // a run need not be contiguous. A target returned to after another is at
+    // share its filter and exposure. Filters are often interleaved, by Target
+    // Scheduler or to balance RGB through a night, so a run need not be
+    // contiguous. A target returned to after another is at
     // another altitude under another sky, so its run starts again.
     const newest = lights[lights.length - 1];
     let start = lights.length - 1;
