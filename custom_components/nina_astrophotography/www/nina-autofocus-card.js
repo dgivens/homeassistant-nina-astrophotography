@@ -15,7 +15,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
-import { interval, inUnit, quantity, quantityIn, shown } from "./nina-units.js";
+import { interval, inUnit, quantity, quantityIn, safe, shown } from "./nina-units.js";
 
 const VERSION = "2.1.0";
 
@@ -40,14 +40,6 @@ function fixed(value, places) {
 function reading(value) {
   if (!Number.isFinite(value)) return "—";
   return value !== 0 && Math.abs(value) < 0.1 ? value.toFixed(4) : value.toFixed(2);
-}
-
-// Filter, fitting, autofocuser, star detector and fit names all come off the
-// rig, and all of them land in `innerHTML`. A filter named with a tag would
-// otherwise run as markup in the dashboard.
-const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
-function safe(value) {
-  return String(value).replace(/[&<>"]/g, (character) => ESCAPES[character]);
 }
 
 // The wire names a fit and its minimum in .NET's own casing: `LeftTrend`,

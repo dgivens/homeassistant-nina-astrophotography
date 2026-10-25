@@ -1,6 +1,6 @@
 /**
- * Readings in the unit Home Assistant shows them in, and the meridian flip
- * window read from them.
+ * Readings in the unit Home Assistant shows them in, the meridian flip window
+ * read from them, and text off the rig made safe to print.
  *
  * Not a card, so not in `frontend.py`'s `CARD_FILENAMES`.
  *
@@ -25,6 +25,16 @@ export function missing(value) {
 /** A reading to print, dashed when there is none. */
 export function shown(value) {
   return missing(value) ? "—" : value;
+}
+
+const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+
+/**
+ * Text off the rig — a filter, target or fit name — made safe for
+ * `innerHTML`. A name typed with a tag would otherwise run as markup.
+ */
+export function safe(value) {
+  return String(value).replace(/[&<>"]/g, (character) => ESCAPES[character]);
 }
 
 // Every unit Home Assistant can show these quantities in, as maps into and out

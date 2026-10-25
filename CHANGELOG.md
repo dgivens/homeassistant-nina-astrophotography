@@ -33,6 +33,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
+- **The frame statistics card reads the newest run, not the whole night**
+  (#105). A run is the lights since the last target change that share the
+  newest light's filter and exposure, interleaved filters and all. The star
+  count and mean ADU charts are scaled to it, with the rest of the night faded
+  behind, so a sky background climbing towards dawn fills the chart instead of
+  a pixel and a half under the luminance frames. The HFR trend and rolling
+  average compare that run's lights only, so moving to another target or
+  exposure in the same filter no longer reads as seeing improving or
+  degrading. The trend box names the run's filter and target.
 - **The sky map's "Flip in" warning is drawn inside the map**, where it can be
   seen, on the side away from the telescope. It used to be placed below the
   bottom edge of the canvas.
