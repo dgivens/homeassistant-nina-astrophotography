@@ -283,6 +283,7 @@ class NinaAutofocusCard extends HTMLElement {
     const verdict = this._eid("binary_sensor", "autofocus_failed", "focuser_autofocus_failed");
     const judged = this._attr(verdict, "r_squared");
     const threshold = this._attr(verdict, "r_squared_threshold");
+    // A trigger at 0 refocuses before every frame: no drift worth flagging.
     const trigger = this._attr(verdict, "refocus_temperature_delta");
     const triggered = this._temperatureDelta === null
       && Number.isFinite(trigger) && trigger > 0;

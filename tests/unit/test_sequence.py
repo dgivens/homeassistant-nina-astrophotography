@@ -167,8 +167,8 @@ def test_the_refocus_threshold_is_read_off_the_captured_trigger(
 
 @pytest.mark.parametrize(
     ("thresholds", "expected"),
-    [((2.0, 1.0), 1.0), ((0.0, 1.5), 1.5), ((None, None), None)],
-    ids=["smallest wins", "zero is no threshold", "none at all"],
+    [((2.0, 1.0), 1.0), ((None, 1.5), 1.5), ((None, None), None)],
+    ids=["smallest wins", "one trigger of two nodes", "none at all"],
 )
 def test_of_several_refocus_triggers_the_smallest_decides(
     thresholds: tuple[float | None, float | None], expected: float | None

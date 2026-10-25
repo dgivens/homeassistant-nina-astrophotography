@@ -321,7 +321,7 @@ async def test_a_run_that_fitted_well_has_no_reason(
 
 
 async def test_the_sequences_refocus_threshold_is_published_for_the_card(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """The autofocus card flags drift against it rather than asking the
     operator to copy the trigger's setting into the card.

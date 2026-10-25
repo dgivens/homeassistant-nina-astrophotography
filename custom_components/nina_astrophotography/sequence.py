@@ -101,6 +101,6 @@ def refocus_temperature(root: SequenceNode | None) -> float | None:
     thresholds = [
         node.refocus_temperature
         for node in _walk(root)
-        if node.refocus_temperature is not None and node.refocus_temperature > 0
+        if node.refocus_temperature is not None
     ]
     return min(thresholds) if thresholds else None
