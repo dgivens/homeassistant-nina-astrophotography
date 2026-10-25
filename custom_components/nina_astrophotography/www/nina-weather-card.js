@@ -274,8 +274,8 @@ class NinaWeatherCard extends HTMLElement {
     const windColor = windMs !== null && windMs > 12 ? "var(--danger)"
       : windMs !== null && windMs > 8 ? "var(--warn)" : "var(--text)";
 
-    // UNSAFE is tested first, ahead of the diagnostic connectivity read: the
-    // other order would let a disabled diagnostic hide a monitor screaming UNSAFE.
+    // UNSAFE is tested first, so a disabled connectivity diagnostic cannot hide
+    // a monitor reporting UNSAFE.
     let safetyIcon, safetyLabelCls, safetyLabel, safetyDetail;
     if (isUnsafe) {
       safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
@@ -314,7 +314,8 @@ class NinaWeatherCard extends HTMLElement {
               Compatible: OpenWeatherMap, Pegasus UPB, AAG CloudWatcher, ASCOM Alpaca, and others.`;
     }
 
-    // Bortle-ish mapping: 22+ excellent, 20–22 good, 18–20 moderate, <18 poor.
+    // SQM in mag/arcsec²: 21.5+ excellent, 20 good, 18.5 moderate, below that
+    // poor. The bar spans 16 to 22.5.
     let sqPct = 0, sqLabel = "—", sqColor = "#7b8de8";
     if (skyQ !== null) {
       sqPct   = Math.min(100, Math.max(0, ((skyQ - 16) / (22.5 - 16)) * 100));
@@ -455,7 +456,6 @@ class NinaWeatherCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = html;
 
-    // Draw wind rose after render
     if (wxConnected && windDir !== null) {
       requestAnimationFrame(() => this._drawWindRose(windDir, windMs));
     }
@@ -490,7 +490,7 @@ class NinaWeatherCard extends HTMLElement {
     ctx.fillText("E", cx + r - 4, cy);
     ctx.fillText("W", cx - r + 4, cy);
 
-    // Meteorological: the arrow points from where the wind comes from.
+    // `dir` is meteorological, where the wind blows from; the head points there.
     const arrowRad = (dir - 90) * Math.PI / 180; // 0° = north = up
     const speedRatio = speed !== null ? Math.min(1, (speed || 0) / 20) : 0.5;
     const arrowLen = 12 + speedRatio * 10;
@@ -527,8 +527,8 @@ class NinaWeatherCard extends HTMLElement {
   static getStubConfig() { return {}; }
 }
 
-// Guarded: see nina-frame-stats-card.js — a leftover 1.4.5 `/local/` resource
-// defining the same tag would otherwise throw and abort this whole module.
+// Guarded: a stale 1.4.5 `/local/` resource defining the same tag would
+// otherwise throw and abort the rest of this module.
 if (!customElements.get("nina-weather-card")) {
   customElements.define("nina-weather-card", NinaWeatherCard);
 }

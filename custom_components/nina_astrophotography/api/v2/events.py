@@ -6,7 +6,6 @@ Two shapes of `IMAGE-SAVE` exist: the live socket carries `ImageStatistics` and
 no `Time`, while `/event-history` carries `Time` and no statistics — every
 stored copy is exactly `{Event, Time}`. Replay therefore fixes only the
 timestamp; it can never reconstruct a frame's measurements.
-
 """
 
 import asyncio
@@ -149,9 +148,9 @@ class NinaEventStream:
                     "N.I.N.A. event socket: connection refused – retrying in %ds", delay
                 )
             except Exception as exc:
-                # With the traceback: this catch is what keeps the socket
-                # reconnecting, so without it an unanticipated failure loops
-                # silently every 5 s with nothing to diagnose it by.
+                # With the traceback: this catch keeps the socket reconnecting,
+                # so an unanticipated failure would otherwise loop with nothing
+                # to diagnose it by.
                 _LOGGER.warning(
                     "N.I.N.A. event socket: unexpected error: %s", exc, exc_info=True
                 )

@@ -101,8 +101,8 @@ def test_only_the_literal_24_sentinel_or_tracking_off_nulls_the_flip_time(
 ) -> None:
     """24 h to flip means tracking is off, not 'a day away' (§11). The sentinel
     is exactly 24, and every other reading passes through — the mapper never
-    infers one from a range. No capture has a tracking mount, so the dawn mount
-    is re-timed.
+    infers one from a range. The dawn mount's `TrackingEnabled` and
+    `TimeToMeridianFlip` are moved for each case.
     """
     wire = load("dawn_equipment_info.json")["Mount"]
     mount = map_mount({**wire, "TrackingEnabled": tracking, "TimeToMeridianFlip": flip})
@@ -136,7 +136,7 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("focuser", "position", 2332),
         ("filter_wheel", "selected_filter", "R"),
         ("filter_wheel", "available_filters", ("L", "R", "G", "B", "H", "O", "S")),
-        ("guider", "state", None),  # no capture has a connected guider
+        ("guider", "state", None),  # the dawn guider is disconnected
         ("rotator", "synced", True),
         ("dome", "azimuth", None),  # "NaN" on a dome that never existed
         ("dome", "shutter_status", None),  # ShutterNone from a disconnected driver
@@ -203,7 +203,9 @@ def test_a_state_phd2_does_not_report_keeps_its_rms() -> None:
 
 @pytest.mark.synthetic
 def test_a_zero_plate_scale_is_no_reading_even_on_a_connected_guider() -> None:
-    """No capture has a connected guider, so the dawn guider is re-flagged."""
+    """No connected guider in the corpus reports a zero plate scale, so the dawn
+    guider is re-flagged connected.
+    """
     wire = load("dawn_equipment_info.json")["Guider"]
     assert map_guider({**wire, "Connected": True}).pixel_scale is None
 
@@ -543,7 +545,7 @@ def test_a_sequence_that_did_not_serialize_is_not_a_tree() -> None:
 
 
 def test_idle_flat_wizard_iterations_are_not_a_count() -> None:
-    """-1 through a completed Target Scheduler flat run — confirmed."""
+    """-1 even through a completed Target Scheduler flat run."""
     status = map_flats_status(load("dawn_flats_status_idle.json"))
     assert status.total_iterations is None
     assert status.completed_iterations is None
@@ -555,8 +557,8 @@ def test_idle_flat_wizard_iterations_are_not_a_count() -> None:
         # The captured shape: Response is the bare status string.
         (load("imaging_guiding_livestack_status.json"), (True, "Running")),
         pytest.param("stopped", (False, "stopped"), marks=pytest.mark.synthetic),
-        # The spec's documented shape, kept because the enum is lowercase there
-        # and a live rig has answered "Stopped".
+        # The spec's documented shape. Its enum is lowercase and the wire has
+        # answered "Stopped", so the state is compared case-blind.
         pytest.param(
             {"Status": "Running"}, (True, "Running"), marks=pytest.mark.synthetic
         ),
@@ -580,8 +582,8 @@ def test_livestack_status_reads_both_wire_shapes(wire, expected) -> None:
 
 
 def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
-    """/profile/show is captured as an allowlist projection and never as a
-    fixture — a full dump held a live WeatherUnderground key (§8.3).
+    """/profile/show is captured as an allowlist projection, never in full —
+    the full dump carries secrets such as a WeatherUnderground key (§8.3).
     """
     profile = map_profile(
         {

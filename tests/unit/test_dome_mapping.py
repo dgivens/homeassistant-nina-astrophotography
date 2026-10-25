@@ -66,9 +66,9 @@ def test_capability_flags_read_off_the_block(field) -> None:
     ],
 )
 def test_every_shutter_state_maps(wire, expected) -> None:
-    """The parked capture with `ShutterStatus` moved. Opening and closing were
-    seen on the wire but finish between two of N.I.N.A.'s refreshes too often
-    to capture; `ShutterError` is N.I.N.A.'s enum name, which the simulator
+    """The parked capture with `ShutterStatus` moved. Opening and closing reach
+    the wire but finish between two of N.I.N.A.'s refreshes too often to
+    capture; `ShutterError` is N.I.N.A.'s enum name, which the simulator
     cannot produce; `ShutterNone` on a connected dome is a driver with no
     shutter; an unknown name reads as no reading.
     """

@@ -91,7 +91,7 @@ deploy:
 
 # Sync the automation blueprints.
 deploy-blueprints:
-    # HA filed these under the importing GitHub user's folder, not the repo name.
+    # HA files an imported blueprint under the GitHub user's folder, not the repo's.
     rsync -v blueprints/automation/nina_astrophotography/*.yaml \
         {{ ha_host }}:{{ ha_config }}/blueprints/automation/dgivens/
 

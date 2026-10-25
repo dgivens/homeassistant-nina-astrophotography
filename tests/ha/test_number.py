@@ -162,8 +162,8 @@ async def test_the_cut_numbers_are_not_registered(
 async def test_the_focuser_position_number_exists(
     hass: HomeAssistant, loaded_entry
 ) -> None:
-    """The sensor half of §5.2.3's reinstatement — disabled by default, with
-    `state_class: measurement` for long-term statistics — is C6's.
+    """The sensor half of §5.2.3's pair — disabled by default, with
+    `state_class: measurement` for long-term statistics — is in `test_sensor.py`.
     """
     assert hass.states.get(FOCUSER_POSITION) is not None
 

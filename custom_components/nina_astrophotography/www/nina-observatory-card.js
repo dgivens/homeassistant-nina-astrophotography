@@ -504,7 +504,6 @@ class NinaObservatoryCard extends HTMLElement {
       ],
     ];
 
-    // Meridian flip warning
     const showFlipWarning =
       tracking && flipSoon(flip);
 

@@ -51,8 +51,8 @@ const VERSION = "2.1.0";
 const DEFAULT_QUALITY = 85;
 const DEFAULT_STRIP_COUNT = 6;
 
-// Signed just before use, not cached: a fresh signature each call is what
-// naturally busts the browser's cache across reloads of the same index.
+// Signed just before use: a fresh signature per call busts the browser's cache
+// across reloads of the same index.
 const SIGNED_URL_TTL_SECONDS = 30;
 
 // A strip tile's width in CSS pixels, as `.strip-thumb` draws it.
@@ -373,12 +373,10 @@ class NinaImagePanelCard extends HTMLElement {
     return this._rig.id(domain, key, slug);
   }
 
-  // The entity the proxy resolves to a rig by — any of this integration's
-  // own hub entities works, but NOT a piece of equipment's: `camera_state`
-  // is gated behind the camera being observed (kind="camera") and is absent
-  // from the registry on a fresh install, which would 404 every request.
-  // `last_image_mean_adu` (kind=None) is a hub entity, always created at
-  // setup, and the card already reads it for `recent_frames`.
+  // The entity the proxy resolves a rig by. It must be a hub entity, which
+  // exists from setup: an equipment entity such as `camera_state` is absent
+  // until its device is observed, and every request would 404. This one also
+  // carries `recent_frames`.
   _entityId() { return this._eid("sensor", "last_image_mean_adu"); }
 
   // The frame the readings describe: the one on screen, or before any has
@@ -400,8 +398,7 @@ class NinaImagePanelCard extends HTMLElement {
     return e?.attributes?.[attr] ?? fallback;
   }
 
-  // Already newest-first and bounded (session.py's `recent_frames`) — no
-  // fetch of our own, and no reversal needed.
+  // Newest first and bounded (session.py's `recent_frames`).
   _recentFrames() { return this._attr(this._entityId(), "recent_frames", []); }
 
   // The unsigned path: a stable, cache-key-free description of one frame. The
@@ -436,9 +433,7 @@ class NinaImagePanelCard extends HTMLElement {
     return this._devicePixels(wrap()) ?? FALLBACK_PREVIEW_WIDTH;
   }
 
-  // Signed right before use: `auth/sign_path` is Home Assistant's mechanism
-  // for handing an authenticated resource a short-lived URL usable directly
-  // as `<img src>`, which cannot carry an Authorization header itself.
+  // A short-lived URL `<img src>` can load without an Authorization header.
   async _signedUrl(path) {
     const { path: signed } = await this._hass.callWS({
       type: "auth/sign_path",

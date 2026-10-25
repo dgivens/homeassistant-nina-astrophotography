@@ -2,7 +2,7 @@
 
 The Advanced API 2.2.15 specification has no dither route on the guider or
 anywhere else — dithering happens inside a sequence and the only way it
-surfaces is the GUIDER-DITHER WebSocket event, which stays. A service that
+surfaces is the GUIDER-DITHER WebSocket event. A service that
 cannot ever succeed is worse than an absent one: it appears in the service
 picker, an automation is written against it, and the failure only shows up
 mid-session.
@@ -41,7 +41,7 @@ def test_no_dither_service_is_translated() -> None:
 
 
 def test_the_dither_event_is_still_delivered() -> None:
-    """Removing the command must not lose the notification that it happened."""
+    """With no dither command, the event is still how a dither is reported."""
     stream = NinaEventStream(
         host="nina.local", port=1888, session=cast(ClientSession, None)
     )

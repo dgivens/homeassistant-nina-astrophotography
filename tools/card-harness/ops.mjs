@@ -1,7 +1,7 @@
 /**
  * Print a card's rendered HTML and every canvas op, for one scenario.
  *
- *   node tools/card-harness/ops.mjs <card.js> <scenario> [--html]
+ *   node tools/card-harness/ops.mjs <card.js> <scenario> [--card=<name>] [--html]
  *
  * The point is the diff. Record a card before a refactor and after it; an
  * output that has not moved says the change was a refactor, and a diff is the

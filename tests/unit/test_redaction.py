@@ -120,9 +120,8 @@ def test_filenames_become_stable_pseudonyms_derived_from_the_name() -> None:
 
 
 def test_legacy_pseudonyms_pass_through_unchanged() -> None:
-    """The pre-script corpus used a narrower digest width (4 decimal digits
-    for Filename, 2 for DeviceId); still accepted so redact() stays idempotent
-    over those already-committed fixtures.
+    """Older committed fixtures carry decimal pseudonyms (4 digits for
+    Filename, 2 for DeviceId), and redact() stays idempotent over them.
     """
     assert redact({"Filename": "frame_0121.fits"})["Filename"] == "frame_0121.fits"
     assert redact({"DeviceId": "device-09"})["DeviceId"] == "device-09"
@@ -173,8 +172,8 @@ def test_the_meridian_flip_inputs_survive_redaction() -> None:
 def test_profile_projection_keeps_only_the_allowlist() -> None:
     """/profile/show is captured as a projection, never a redaction — its
     secret surface is too large to redact confidently. A leaf keeps its value,
-    a listed section comes through whole, and an unlisted sibling — here the
-    key that leaked on a trial capture — is simply not there.
+    a listed section comes through whole, and an unlisted sibling — here an
+    API key — is simply not there.
     """
     profile = {
         "TelescopeSettings": {"FocalLength": 500, "Name": "Esprit 100"},

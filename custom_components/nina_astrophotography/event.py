@@ -3,7 +3,7 @@
 **Best-effort.** The plugin scrapes `ERROR-*` events from N.I.N.A.'s log:
 `ERROR-PLATESOLVE` matches ASTAP only, and `ERROR-AF` never fires, so the
 autofocus arm is the fold's timeout verdict instead. `CAMERA-DOWNLOAD-TIMEOUT`
-is named from the plugin's source and never yet captured.
+is named from the plugin's source, unconfirmed on the wire.
 """
 
 from homeassistant.components.event import EventEntity, EventEntityDescription

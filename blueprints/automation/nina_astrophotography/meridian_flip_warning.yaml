@@ -72,9 +72,8 @@ variables:
 
 triggers:
   # The early warning. `flip_fires_at_minutes` is absent until the profile has
-  # been read — and defaulting it to 0 would put the warning back exactly where
-  # this blueprint exists to move it from, at the flip itself. So: no attribute,
-  # no early warning. The two event triggers below are unaffected.
+  # been read, and a default of 0 would warn only at the flip itself. So: no
+  # attribute, no early warning. The two event triggers below are unaffected.
   - trigger: template
     id: approaching
     value_template: >
@@ -83,7 +82,7 @@ triggers:
       {{ fires_at is not none and minutes >= 0
          and minutes <= warning_minutes | float + fires_at | float }}
 
-  # N.I.N.A. has committed to the flip. Observed on the wire, not assumed.
+  # N.I.N.A. has committed to the flip.
   - trigger: event
     event_type: nina_mount_before_flip
     id: committed

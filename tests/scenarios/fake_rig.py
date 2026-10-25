@@ -5,7 +5,7 @@
 wire→model mapper all run against captured bytes. `goto()` moves to a state;
 `advance()` walks an ordered sequence.
 
-Dispatch is on the path AND its single query parameter, because three endpoints
+Dispatch is on the path AND its single query parameter, because one path can
 answer differently by parameter — `/image-history` bare, `?count=true` and
 `?all=true` — and matching the path alone cannot tell them apart. Parameters do
 not appear in the URL: the client passes them to `session.get` separately.

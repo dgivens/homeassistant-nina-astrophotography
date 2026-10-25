@@ -9,8 +9,8 @@
     diagnostic. `Stars -1` is a sentinel everywhere, never a calibration
     signal.
   - `TimeToMeridianFlip` is `None` while tracking is off, and at the literal
-    24 (the sentinel) regardless of `TrackingEnabled` — every computed value
-    is in [0, 24), so 12 h is a legitimate reading and only 24 is the sentinel.
+    24 whatever `TrackingEnabled` says: every computed value is in [0, 24), so
+    12 h is a legitimate reading and only 24 is the sentinel.
   - A `Connected: false` block maps with every reading `None`; `connected`,
     `meta` and capability flags survive, since a disconnected driver answers
     template defaults for readings, not for capabilities.
@@ -114,9 +114,8 @@ _TIMESPAN = re.compile(
     r"(?P<minutes>\d{2}):(?P<seconds>\d{2}(?:\.\d+)?)$"
 )
 
-# The only method whose focus points are HFR in pixels. An allowlist, not a
-# denylist: CONTRASTDETECTION is the one non-HFR method shipped today, and a
-# method nobody here has seen must not have its numbers published as pixels.
+# The only method whose focus points are HFR in pixels. An allowlist, so an
+# unknown method's numbers are never published as pixels.
 _HFR_METHODS = frozenset({"STARHFR"})
 
 
@@ -454,8 +453,6 @@ def map_switch(wire: dict) -> SwitchDeviceModel:
             index = _integer(entry, "Id")
             channels.append(
                 SwitchChannelModel(
-                    # Namespaced per list: `position` restarts at 0 for the
-                    # second list, so both lists' fallbacks would collide.
                     index=index
                     if index is not None
                     else _fallback_index(key, position),
@@ -805,14 +802,9 @@ def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
 def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     """The newest autofocus report, or `None` where the rig has never run one.
 
-    `r_squared` is the minimum of `RSquares`, which sends `"NaN"` for fittings
-    this run did not use — the worst fit actually computed.
-
-    A CONTRASTDETECTION run's focus points are a contrast score, not pixels,
-    so `hfr`/`fitted_hfr` are dropped; positions stay. `hfr` is the sweep's
-    lowest measured point, unlike `fitted_hfr` (`CalculatedFocusPoint.Value`),
-    which under a `TREND*` fitting averages in the trendline intersection and
-    reads far below anything measured.
+    `r_squared` is the minimum of `RSquares` over the fittings this run used;
+    the rest send `"NaN"`. A CONTRASTDETECTION run's focus points are a
+    contrast score, not pixels, so the HFR fields are dropped; positions stay.
     """
     if not wire:
         return None
@@ -854,7 +846,7 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
 
 def map_livestack_status(wire: dict | str) -> LivestackStatus:
     """The Response is the bare status string (`"Running"`), not the spec's
-    `{"Status": "Running"}`, which is still read as a fallback.
+    `{"Status": "Running"}`, which is read as a fallback.
     """
     raw = wire if isinstance(wire, str) else _text(wire, "Status") or ""
     return LivestackStatus(running=raw.lower() == "running", raw_state=raw)

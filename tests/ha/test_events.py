@@ -10,8 +10,8 @@ from helpers import load_fixture
 async def test_a_pushed_event_reaches_the_bus_under_both_names(
     hass: HomeAssistant, loaded_entry, push, rig
 ) -> None:
-    """1.4.x automations trigger on `nina_<event>` or the catch-all `nina_event`;
-    the payload is now model-derived, so `frame` is a mapped Frame, not wire.
+    """1.4.x automations trigger on `nina_<event>` or the catch-all `nina_event`,
+    so both fire with the same payload; its `frame` is a mapped Frame, not wire.
     """
     fired = {}
     hass.bus.async_listen("nina_image_save", lambda e: fired.update(named=e.data))

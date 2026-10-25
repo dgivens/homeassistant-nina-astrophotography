@@ -15,7 +15,7 @@ refused.
 
 **A switch device channel is a switch only when binary** (`Max - Min ==
 StepSize`), and its on/off values are its own range ends. It reads `Value`,
-never `TargetValue`, which is only what it was last asked for.
+never `TargetValue`.
 """
 
 from collections.abc import Awaitable, Callable, Iterator

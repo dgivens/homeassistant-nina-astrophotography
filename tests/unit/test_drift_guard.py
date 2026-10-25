@@ -1,4 +1,4 @@
-"""The drift guard — two tests over the whole corpus.
+"""The drift guard: the wire's shape, observed over the whole corpus.
 
 Not one fixture, and the reason is key PRESENCE rather than nullability: a
 disconnected device does not null its fields, it drops them. The connected Mount

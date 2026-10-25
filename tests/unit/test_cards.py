@@ -3,8 +3,7 @@ own image URLs.
 
 They read `hass.states` and call the Advanced API directly from the browser
 rather than going through the integration, so a renamed entity or a corrected
-path leaves them behind — which is how the image-history endpoint stayed broken
-in `nina-image-panel-card.js` for a release after it was fixed everywhere else.
+path leaves them behind.
 
 Source checks only: these read the card files as text. A card names an entity
 either by templating its configured prefix onto a suffix, or by asking the
@@ -75,7 +74,7 @@ def _entity_suffixes() -> frozenset[str]:
 
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
 def test_no_card_reads_an_entity_that_2_0_does_not_create(card: Path) -> None:
-    """Every 1.4.5 card named entities phases B and C renamed or deleted.
+    """Every entity suffix a card templates onto its prefix is one 2.0 creates.
 
     Existence only: the snapshot lists registry rows whether or not they are
     enabled, so this cannot catch a card probing an entity that ships disabled
@@ -205,7 +204,6 @@ def test_no_card_hides_its_form_behind_an_editor_element(card: Path) -> None:
 def test_the_documented_action_fields_are_the_translated_ones() -> None:
     """`services.yaml` is what the UI reads, `strings.json` is what it labels
     them with, and a field in one and not the other is invisible or unlabelled.
-    Phase D renamed three user-facing fields across both.
     """
     component = ROOT / "custom_components" / "nina_astrophotography"
     services = yaml.safe_load((component / "services.yaml").read_text(encoding="utf-8"))

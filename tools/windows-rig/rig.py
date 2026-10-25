@@ -445,7 +445,7 @@ class QemuBackend:
                 "-tpmdev", "emulator,id=tpm0,chardev=chrtpm",
                 "-device", "tpm-tis-device,tpmdev=tpm0,ppi=off",
                 # Windows draws on virtio-gpu once provisioning's viogpudo binds,
-                # and can then take any resolution; Setup needed ramfb.
+                # and can then take any resolution; only Setup needs ramfb.
                 "-device", "virtio-gpu-pci",
                 "-device", "qemu-xhci,id=usb",
                 "-device", "usb-kbd,bus=usb.0",

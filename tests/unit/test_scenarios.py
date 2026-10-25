@@ -37,7 +37,9 @@ def _client(rig: FakeRig) -> NinaClientV2:
 
 
 def test_every_state_named_by_a_test_exists() -> None:
-    """A typo in advance("…") must fail here, not as a confusing KeyError."""
+    """No state is both awaiting capture and in the catalogue, so skipping a
+    test by an awaited name never hides a state that exists.
+    """
     assert AWAITING_CAPTURE.isdisjoint(STATES)
 
 
@@ -78,9 +80,8 @@ async def test_the_bare_history_path_is_served_by_every_state(
 async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> None:
     """404 with EmbedIO's HTML, so a missing endpoint fails loud.
 
-    The dawn states leave /livestack/status unregistered on purpose — that is
-    what a build without the plugin sends, and it keeps the coordinator's
-    not-served latch exercised. `imaging_guiding` serves the real capture.
+    The dawn states leave /livestack/status unregistered on purpose; see
+    `scenarios/states.py`.
     """
     client = _client(FakeRig(STATES, start="imaging"))
     with pytest.raises(NinaEndpointError):

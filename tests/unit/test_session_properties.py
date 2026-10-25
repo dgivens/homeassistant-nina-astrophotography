@@ -42,8 +42,7 @@ def test_fold_is_order_independent(shuffled) -> None:
 @given(st.sampled_from(FRAMES))
 def test_folding_one_frame_repeatedly_counts_it_once(frame) -> None:
     """Identity is (date, filename), so the same frame arriving three times is
-    one frame. True push-vs-poll path equivalence — the same frame carried by
-    an IMAGE-SAVE event and by /image-history — needs phase B's event-carried
-    frame to reach the fold.
+    one frame. Every copy here comes from /image-history: an IMAGE-SAVE event's
+    frame never reaches the fold.
     """
     assert fold([frame, frame, frame], [], "g1").image_count == 1
