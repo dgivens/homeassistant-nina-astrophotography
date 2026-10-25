@@ -142,6 +142,11 @@ type: custom:nina-observatory-card
 The autofocus and frame statistics samples are rendered from a recorded night
 by `tools/card-harness/`; the rest are from a live rig.
 
+With a dome, the observatory card adds a Dome chip and Open or Close Dome —
+here rendered from the test VM's simulated rig, with the shutter open:
+
+<img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/observatory-dome.png" alt="Observatory card with a dome: a Dome chip, and Close Dome among the controls" width="260">
+
 Every card also accepts:
 
 - `device_id`: which rig to show, when you have more than one. Use the
