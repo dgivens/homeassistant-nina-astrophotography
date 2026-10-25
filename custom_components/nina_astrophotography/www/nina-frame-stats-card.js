@@ -16,7 +16,7 @@ import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
 import { quantityIn, safe, shown } from "./nina-units.js";
 
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 
 // A filter keeps its colour from night to night, whichever others the session
 // used: the chips are the charts' legend, and an imager reads R as red. The

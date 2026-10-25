@@ -52,7 +52,7 @@ import {
 } from "./nina-entity-resolver.js";
 import { quantityIn, shown } from "./nina-units.js";
 
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 
 const DEFAULT_QUALITY = 85;
 const DEFAULT_STRIP_COUNT = 6;
