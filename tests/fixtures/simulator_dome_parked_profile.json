@@ -1,0 +1,42 @@
+{
+  "Response": {
+    "TelescopeSettings": {
+      "FocalLength": 783
+    },
+    "FocuserSettings": {
+      "AutoFocusTimeoutSeconds": 600,
+      "RSquaredThreshold": 0.7
+    },
+    "MeridianFlipSettings": {
+      "MinutesAfterMeridian": 5,
+      "MaxMinutesAfterMeridian": 10,
+      "PauseTimeBeforeMeridian": 0,
+      "Recenter": true,
+      "SettleTime": 30,
+      "UseSideOfPier": true,
+      "AutoFocusAfterFlip": false,
+      "RotateImageAfterFlip": false
+    },
+    "CameraSettings": {
+      "PixelSize": 3.8
+    },
+    "AstrometrySettings": {
+      "Latitude": 51.07861,
+      "Longitude": -0.29444,
+      "Elevation": 708
+    }
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-10-23T23:30:41+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/profile/show",
+    "params": {
+      "active": "true"
+    }
+  }
+}

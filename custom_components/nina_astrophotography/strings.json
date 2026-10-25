@@ -60,11 +60,17 @@
       "dome_slewing": {
         "name": "Slewing"
       },
+      "dome_synchronized": {
+        "name": "Synchronized"
+      },
       "filterwheel_is_moving": {
         "name": "Moving"
       },
       "focuser_is_moving": {
         "name": "Moving"
+      },
+      "imaging": {
+        "name": "Imaging"
       },
       "mount_at_home": {
         "name": "At home"
@@ -83,9 +89,6 @@
       },
       "safety_unsafe": {
         "name": "Unsafe"
-      },
-      "imaging": {
-        "name": "Imaging"
       },
       "scheduler_waiting": {
         "name": "Scheduler waiting"
@@ -234,7 +237,14 @@
         "name": "Dew point"
       },
       "dome_shutter_status": {
-        "name": "Shutter status"
+        "name": "Shutter status",
+        "state": {
+          "open": "Open",
+          "closed": "Closed",
+          "opening": "Opening",
+          "closing": "Closing",
+          "error": "Error"
+        }
       },
       "flat_panel_cover_state": {
         "name": "Cover state"
@@ -586,7 +596,7 @@
     },
     "dome_open": {
       "name": "Open Dome",
-      "description": "Open the dome shutter.",
+      "description": "Open the dome shutter. Refused while the safety monitor reports unsafe.",
       "fields": {
         "device_id": {
           "name": "Rig",
@@ -658,6 +668,12 @@
     },
     "command_failed": {
       "message": "N.I.N.A. did not accept the command: {error}"
+    },
+    "dome_following": {
+      "message": "{entity_id} was not sent: the dome is following the mount, and N.I.N.A. would stop following to make the move. Turn dome following off first."
+    },
+    "dome_unsafe": {
+      "message": "The dome was not opened: the safety monitor reports unsafe. Open it from N.I.N.A. to override."
     },
     "entry_not_loaded": {
       "message": "N.I.N.A. instance {instance} is not loaded, so the action was not sent."

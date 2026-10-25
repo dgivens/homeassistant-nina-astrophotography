@@ -25,7 +25,7 @@ from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from functools import partial
-from typing import Any
+from typing import Any, get_args
 
 from homeassistant.components.sensor import (
     DOMAIN as SENSOR_DOMAIN,
@@ -51,15 +51,16 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import derive
-from .api.models import Frame, TargetBreakdown
+from .api.models import Frame, ShutterState, TargetBreakdown
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_for, observed, read_field
+from .device import channel_key, channels_for, read_field
 from .entity import (
     NinaChannelEntity,
     NinaDescribedEntity,
     NinaEntityDescription,
     async_add_observed,
+    usable,
 )
 from .sequence import progress_percent
 
@@ -728,13 +729,12 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         value=lambda data: progress_percent(data.sequence),
     ),
     # ── Dome ─────────────────────────────────────────────────────────────
-    # From the spec alone; no hardware has validated it.
     NinaSensorDescription(
         key="dome_shutter_status",
         translation_key="dome_shutter_status",
-        entity_registry_enabled_default=False,
+        device_class=SensorDeviceClass.ENUM,
+        options=list(get_args(ShutterState)),
         kind="dome",
-        verified=False,
         value=read_field("dome", "shutter_status"),
     ),
 )
@@ -1016,7 +1016,7 @@ async def async_setup_entry(
 
     def _observed(data: NinaData) -> Iterator[tuple[str, Callable[[], SensorEntity]]]:
         for description in DESCRIPTIONS:
-            if observed(data, description.kind):
+            if usable(data, description):
                 yield (
                     description.key,
                     partial(NinaSensor, coordinator, entry, description),

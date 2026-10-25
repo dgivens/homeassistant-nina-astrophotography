@@ -63,6 +63,10 @@ class Dump(NamedTuple):
 # entity as Home Assistant shows a coordinator that has lost its rig. Set up
 # first and then moved, because an entry that cannot reach N.I.N.A. at setup
 # creates no entity to dump.
+#
+# The `simulator_dome_*` dumps are the test VM's rig (`docs/test-vm.md`), the
+# only one with a dome: parked with the shutter closed, open and following the
+# mount, and parked when N.I.N.A. stops answering.
 DUMPS: dict[str, Dump] = {
     "site_configured": Dump("site_configured", None, METRIC_SYSTEM),
     "equipment_disconnected": Dump("equipment_disconnected", None, METRIC_SYSTEM),
@@ -70,6 +74,11 @@ DUMPS: dict[str, Dump] = {
     "site_configured_us_customary": Dump("site_configured", None, US_CUSTOMARY_SYSTEM),
     "nina_unreachable": Dump(
         "site_configured", None, METRIC_SYSTEM, moved_to="nina_unreachable"
+    ),
+    "simulator_dome_parked": Dump("simulator_dome_parked", None, METRIC_SYSTEM),
+    "simulator_dome_following": Dump("simulator_dome_following", None, METRIC_SYSTEM),
+    "simulator_dome_unreachable": Dump(
+        "simulator_dome_parked", None, METRIC_SYSTEM, moved_to="nina_unreachable"
     ),
 }
 

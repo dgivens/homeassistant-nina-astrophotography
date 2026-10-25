@@ -372,6 +372,17 @@ _LOST_LOCK_AFTER_STOP: State = {
     "/livestack/image/Rotten%20Fish/R": _JPEG,
 }
 
+_DOME_PARKED: State = _captured("simulator_dome_parked")
+
+
+def _dome_from(slug: str) -> State:
+    """The parked simulator capture with the dome block of a later
+    `simulator_dome_<slug>` /equipment/info; every other block stays parked's.
+    """
+    block = load_envelope(f"simulator_dome_{slug}_equipment_info.json")["Response"]
+    return _replace_device(_DOME_PARKED, "Dome", block["Dome"])
+
+
 # Each name gets its own dict even where two are content-equal, so an in-place
 # edit in one test cannot leak into a state of another name.
 STATES: dict[str, State] = {
@@ -430,6 +441,45 @@ STATES: dict[str, State] = {
     # has not passed: a waiting entity keyed on the newest alone would read
     # "waiting until 21:05" on a stopped rig.
     "sequence_stopped": _captured("sequence_stopped"),
+    # Captured from the simulator rig (`docs/test-vm.md`): real wire data from
+    # an OmniSim dome. Parked with the shutter closed, and open following the
+    # mount. The next two swap in the dome block of a later /equipment/info:
+    # mid-slew, and dropped after having connected.
+    "simulator_dome_parked": dict(_DOME_PARKED),
+    "simulator_dome_following": _captured("simulator_dome_following"),
+    "simulator_dome_slewing": _dome_from("slewing"),
+    "simulator_dome_disconnected": _dome_from("disconnected"),
+    # Synthetic in `ShutterStatus` alone. Opening finishes between two of
+    # N.I.N.A.'s refreshes too often to capture; the simulator cannot fail.
+    "simulator_dome_opening": _with_readings(
+        _DOME_PARKED, "Dome", ShutterStatus="ShutterOpening"
+    ),
+    "simulator_dome_shutter_error": _with_readings(
+        _DOME_PARKED, "Dome", ShutterStatus="ShutterError"
+    ),
+    # Synthetic in `IsSafe` alone: the simulator's monitor reads safe.
+    "simulator_dome_unsafe": _with_readings(
+        _DOME_PARKED, "SafetyMonitor", IsSafe=False
+    ),
+    # The monitor's driver down, derived as `disconnect` derives one.
+    "simulator_dome_monitor_down": disconnect(_DOME_PARKED, "SafetyMonitor"),
+    # A dome whose driver cannot move its shutter. Synthetic in `CanSetShutter`.
+    "dome_without_shutter_control": _with_readings(
+        _DOME_PARKED, "Dome", CanSetShutter=False
+    ),
+    # A roll-off roof: a shutter and nothing else. Synthetic in the capability
+    # flags and the azimuth, which such a driver cannot report.
+    "roll_off_roof": _with_readings(
+        _DOME_PARKED,
+        "Dome",
+        CanSetAzimuth=False,
+        CanSyncAzimuth=False,
+        CanPark=False,
+        CanSetPark=False,
+        CanFindHome=False,
+        Azimuth="NaN",
+        AzimuthDMS="",
+    ),
     # Four of eleven devices connected, mid-reconnect.
     "partial_equipment_connection": dict(_RESTARTED),
     "nina_restarted": dict(_RESTARTED),

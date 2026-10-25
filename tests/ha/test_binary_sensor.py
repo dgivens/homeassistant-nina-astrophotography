@@ -79,8 +79,8 @@ async def test_the_cut_binary_sensors_are_not_registered(
 async def test_the_kept_binary_sensors_are_registered(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    """The dome's three are absent from this table on purpose: no capture has a
-    dome carrying a DeviceId, so the slot is None and §5.2.2 gates them out.
+    """The dome's are absent: the reference rig has none, so §5.2.2 gates them
+    out. `test_dome.py` covers them against the simulator's.
     """
     assert (
         registered(BINARY_SENSOR_DOMAIN, entity_registry, loaded_entry, suffix)
@@ -210,8 +210,8 @@ async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
 async def test_the_long_tail_ships_diagnostic_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    """Gold entity-category / entity-disabled-by-default. The dome's three are
-    not here: no capture observes a dome, so they are never registered.
+    """Gold entity-category / entity-disabled-by-default. The dome's are in
+    `test_dome.py`: the reference rig has none.
     """
     row = entity_registry.async_get(
         registered(BINARY_SENSOR_DOMAIN, entity_registry, loaded_entry, suffix)

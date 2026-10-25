@@ -19,12 +19,17 @@ import { displayed, missing, quantity, quantityIn, shown } from "./nina-units.js
 const VERSION = "2.0.0";
 
 // Home Assistant has no per-press confirmation for a custom card's own
-// buttons, and a mis-tap on any of these costs the rest of the night.
+// buttons, and a mis-tap on any of these costs the rest of the night — or, for
+// an open roof, the equipment.
 const CONFIRM = {
   sequence_stop: "Stop the running sequence?",
   mount_park: "Park the mount? Imaging stops.",
+  dome_open: "Open the dome?",
   dome_close: "Close the dome?",
 };
+// A closing roll-off roof can strike a telescope that is not parked, and a
+// mount that cannot be read may be anywhere.
+const CONFIRM_CLOSE_UNPARKED = "Close the dome? The mount is not confirmed parked.";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,17 +83,21 @@ function measured(hass, entity_id, decimals = 1) {
   return { value: displayed(q, decimals) ?? "—", unit: q?.unit ?? "" };
 }
 
-// No data is not a stopped rig.
+// No data is not a stopped rig. A close goes to N.I.N.A., not the roof, so with
+// no reply there is no telling whether it reached it.
 function unreachableBanner(since, dome) {
   const time = since
     ? ` since ${new Date(since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "";
+  const still = dome
+    ? "Stop, park and close still send — check that the roof closed."
+    : "Stop and park still send.";
   return `
   <div class="session-banner unreachable">
     <span class="icon">📡</span>
     <div>
       <div class="label">N.I.N.A. unreachable</div>
-      <div class="detail">No data from N.I.N.A.${time}; it may still be imaging. ${dome ? "Stop, park and close" : "Stop and park"} still send.</div>
+      <div class="detail">No data from N.I.N.A.${time}; it may still be imaging. ${still}</div>
     </div>
   </div>`;
 }
@@ -203,6 +212,8 @@ const STYLE = `
   }
   .equip-chip.connected { border-color: rgba(87,204,153,0.4); }
   .equip-chip.disconnected { opacity: 0.5; }
+  .equip-chip.fault { border-color: var(--danger); color: var(--danger); }
+  .equip-chip.fault .dot { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
 
   /* ── Section ── */
   .section { display: flex; flex-direction: column; gap: 6px; }
@@ -377,12 +388,15 @@ class NinaObservatoryCard extends HTMLElement {
     const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
     const gdrStatusId  = this._eid("sensor", "guider_status");
     const gdrConnected = available(h, gdrStatusId);
-    // Every dome entity ships disabled, so the section stays hidden until a
-    // dome owner enables them (issue #93).
-    const domeParkId   = this._eid("binary_sensor", "dome_at_park");
-    const domeConnected = available(h, domeParkId);
-    // Any row, even `unavailable`: Close Dome must survive a lost link.
-    const domeEnabled  = !!h.states[domeParkId];
+    // Probed on the shutter status, which every dome has, roll-off roofs
+    // included. `unknown` is still a dome: a shutter not known closed keeps
+    // Close.
+    const shutterId    = this._eid("sensor", "dome_shutter_status");
+    const domeConnected = !!h.states[shutterId] && state(h, shutterId) !== "unavailable";
+    // Each button exists only on a driver that can do it. Any row, even
+    // `unavailable`: Close Dome must survive a lost link.
+    const canOpen      = !!h.states[this._eid("button", "dome_open")];
+    const canClose     = !!h.states[this._eid("button", "dome_close")];
 
     // The guider switch has no `translation_key` and stays on the prefix path,
     // so a prefix that does not match the instance loses it; the status sensor
@@ -394,9 +408,15 @@ class NinaObservatoryCard extends HTMLElement {
     // a parked mount sent it again does nothing.
     const parked       = isOn(h, parkedId);
     const tracking     = notStopped(h, this._eid("select", "mount_tracking_rate"));
-    // The shutter reports its own state; `Open` is the only one that is open.
-    // Disabled as well, so this reads false until enabled — see above.
-    const domeOpen     = state(h, this._eid("sensor", "dome_shutter_status")) === "Open";
+    // Anything but `closed` is a roof to close: opening, open, closing, or a
+    // shutter in error, which a retried close is the answer to.
+    const shutter      = state(h, shutterId);
+    const domeShut     = shutter === "closed";
+    // A monitor that is not reporting is not a safe reading; no monitor at all
+    // leaves Open to N.I.N.A.
+    const unsafeId     = this._eid("binary_sensor", "safety_unsafe", "safety_monitor_unsafe");
+    const notSafe      = !!h.states[unsafeId] && state(h, unsafeId) !== "off";
+    this._mountUnparked = !parked;
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
@@ -457,7 +477,7 @@ class NinaObservatoryCard extends HTMLElement {
       [
         btn("btn-stop", "⏹ Stop Sequence", "danger"),
         btn("btn-park", "⏸ Park"),
-        domeEnabled ? btn("btn-dome-close", "🔒 Close Dome") : "",
+        canClose ? btn("btn-dome-close", "🔒 Close Dome") : "",
       ],
       [
         btn("btn-start", "▶ Start Sequence", "success", LOST),
@@ -473,9 +493,11 @@ class NinaObservatoryCard extends HTMLElement {
         parked ? btn("btn-unpark", "⬆ Unpark", "primary") : btn("btn-park", "⏸ Park"),
         btn("btn-af", "🔍 Auto Focus"),
         !domeConnected ? ""
-          : domeOpen
-            ? btn("btn-dome-close", "🔒 Close Dome")
-            : btn("btn-dome-open", "🔓 Open Dome", "primary"),
+          : !domeShut
+            ? (canClose ? btn("btn-dome-close", "🔒 Close Dome") : "")
+            : canOpen
+              ? btn("btn-dome-open", "🔓 Open Dome", "primary", notSafe ? "The safety monitor does not report safe" : "")
+              : "",
       ],
       // Neither cooling nor guiding is an emergency to end, so with no state
       // to pick one of the pair, these wait for one.
@@ -507,7 +529,7 @@ class NinaObservatoryCard extends HTMLElement {
 
         <div class="body">
 
-          ${unreachable ? unreachableBanner(lostSince, domeEnabled) : `
+          ${unreachable ? unreachableBanner(lostSince, canClose) : `
           <div class="session-banner">
             <div>
               <div class="target">${seqRunning ? target : "—"}</div>
@@ -529,7 +551,9 @@ class NinaObservatoryCard extends HTMLElement {
             ${chip("Focuser", focConnected)}
             ${chip("Filter Wheel", fwConnected)}
             ${chip("Guider", gdrConnected)}
-            ${domeConnected ? chip("Dome", domeConnected) : ""}
+            ${!domeConnected ? ""
+              : shutter === "error" ? chip("Dome · shutter error", true, "fault")
+              : chip("Dome", true)}
           </div>`}
 
           ${showFlipWarning ? `
@@ -620,8 +644,8 @@ class NinaObservatoryCard extends HTMLElement {
       const el = this.shadowRoot.getElementById(id);
       if (el) el.addEventListener("click", fn);
     };
-    const svc = (s, d) => {
-      if (CONFIRM[s] && !window.confirm(CONFIRM[s])) return;
+    const svc = (s, d, ask = CONFIRM[s]) => {
+      if (ask && !window.confirm(ask)) return;
       this._callService("nina_astrophotography", s, d);
     };
 
@@ -631,7 +655,8 @@ class NinaObservatoryCard extends HTMLElement {
     bind("btn-unpark",     () => svc("mount_unpark"));
     bind("btn-af",         () => svc("focuser_auto_focus"));
     bind("btn-dome-open",  () => svc("dome_open"));
-    bind("btn-dome-close", () => svc("dome_close"));
+    bind("btn-dome-close", () => svc("dome_close", undefined,
+      this._mountUnparked ? CONFIRM_CLOSE_UNPARKED : CONFIRM.dome_close));
     bind("btn-cool",       () => svc("camera_cool", { temperature: -10, minutes: 15 }));
     bind("btn-warm",       () => svc("camera_warm", { minutes: 20 }));
     bind("btn-start-guide",() => svc("guider_start"));
@@ -647,8 +672,9 @@ class NinaObservatoryCard extends HTMLElement {
   }
 }
 
-function chip(label, connected) {
-  return `<div class="equip-chip ${connected ? "connected" : "disconnected"}">
+// `fault` marks a connected device reporting a failure of its own.
+function chip(label, connected, fault = "") {
+  return `<div class="equip-chip ${connected ? "connected" : "disconnected"}${fault && ` ${fault}`}">
     ${statusDot(connected)} ${label}
   </div>`;
 }

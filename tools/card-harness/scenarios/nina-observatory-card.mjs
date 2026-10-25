@@ -8,12 +8,18 @@
  * `equipment_disconnected` has every driver down under a live hub, and
  * `nina_unreachable` is `site_configured` once N.I.N.A. stops answering: every
  * entity unavailable, the hub's included.
+ *
+ * The `simulator_dome_*` dumps are the test VM's rig, the one with a dome: an
+ * OmniSim dome parked and closed, or open and following an unparked mount.
  */
 
 import { linkScenarios, rig } from "../hass.mjs";
 
 const UP = "site_configured";
 const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
+const DOME = "simulator_dome_parked";
+const SHUTTER = "sensor.n_i_n_a_dome_shutter_status";
+const UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 
 // No `draw` hook: the card has no canvas.
 
@@ -51,4 +57,48 @@ export const scenarios = {
   unreachable_without_sequencer: {
     hass: (dump) => rig(dump, "nina_unreachable").without("sequencer_running").build(),
   },
+
+  // A Dome chip and Open Dome.
+  dome_closed: { hass: (dump) => rig(dump, DOME).build() },
+
+  // Close Dome, which warns that the mount is not confirmed parked.
+  dome_open: { hass: (dump) => rig(dump, "simulator_dome_following").build() },
+
+  // Close Dome while the shutter is still opening. Seen on the wire, but over
+  // between two of N.I.N.A.'s refreshes too often to capture.
+  dome_opening: { hass: (dump) => rig(dump, DOME).override(SHUTTER, "opening").build() },
+
+  // A red chip, and Close Dome to retry. The simulator cannot fail.
+  dome_shutter_error: { hass: (dump) => rig(dump, DOME).override(SHUTTER, "error").build() },
+
+  // Open Dome disabled. The simulator's safety monitor reads safe throughout.
+  dome_unsafe: { hass: (dump) => rig(dump, DOME).override(UNSAFE, "on").build() },
+
+  // The monitor not reporting is not a safe reading: Open Dome disabled.
+  dome_safety_unknown: {
+    hass: (dump) => rig(dump, DOME).override(UNSAFE, "unavailable").build(),
+  },
+
+  // The dome's driver down under a live hub: no chip and no dome button.
+  dome_driver_down: {
+    hass: (dump) => {
+      const r = rig(dump, DOME);
+      for (const id of [SHUTTER, "button.n_i_n_a_dome_open", "button.n_i_n_a_dome_close"]) {
+        r.override(id, "unavailable");
+      }
+      return r.build();
+    },
+  },
+
+  // A connected dome whose shutter reads nothing: still a dome, and Close
+  // stays, since a shutter not known closed may be open.
+  dome_shutter_unknown: { hass: (dump) => rig(dump, DOME).override(SHUTTER, "unknown").build() },
+
+  // A driver with no shutter control: the chip and no button.
+  dome_without_shutter_control: {
+    hass: (dump) => rig(dump, DOME).without("dome_open", "dome_close").build(),
+  },
+
+  // The lost link over a dome: Close Dome stays, and the banner says to check.
+  dome_unreachable: { hass: (dump) => rig(dump, "simulator_dome_unreachable").build() },
 };

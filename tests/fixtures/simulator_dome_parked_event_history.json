@@ -1,0 +1,187 @@
+{
+  "Response": [
+    {
+      "Time": "2026-10-23T14:55:53.2105922+00:00",
+      "Event": "CAMERA-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:55:53.3781898+00:00",
+      "Event": "CAMERA-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:03.6023931+00:00",
+      "Event": "FILTERWHEEL-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:07.4171426+00:00",
+      "Event": "FILTERWHEEL-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:17.4775542+00:00",
+      "Event": "FOCUSER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:17.6202873+00:00",
+      "Event": "FOCUSER-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:27.698891+00:00",
+      "Event": "ROTATOR-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:27.7922514+00:00",
+      "Event": "ROTATOR-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:37.9071933+00:00",
+      "Event": "MOUNT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:39.2257857+00:00",
+      "Event": "MOUNT-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:49.323529+00:00",
+      "Event": "DOME-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:49.4185244+00:00",
+      "Event": "DOME-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:59.4661362+00:00",
+      "Event": "FLAT-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:56:59.5383348+00:00",
+      "Event": "FLAT-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:57:09.5757467+00:00",
+      "Event": "SWITCH-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:57:09.7188734+00:00",
+      "Event": "SWITCH-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:57:19.7774947+00:00",
+      "Event": "WEATHER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:57:19.8361428+00:00",
+      "Event": "WEATHER-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:57:29.8890591+00:00",
+      "Event": "SAFETY-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:57:29.9276044+00:00",
+      "Event": "SAFETY-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:57:44.2284033+00:00",
+      "Event": "GUIDER-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T14:59:47.7388081+00:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-10-23T15:02:18.8397054+00:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-10-23T15:06:27.2295895+00:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-10-23T15:08:57.3344326+00:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-10-23T15:10:02.1294269+00:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-10-23T15:10:33.1707937+00:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-10-23T15:13:22.6332101+00:00",
+      "Event": "GUIDER-START"
+    },
+    {
+      "Time": "2026-10-23T15:13:31.0994473+00:00",
+      "Event": "GUIDER-STOP"
+    },
+    {
+      "Time": "2026-10-23T15:13:31.1286935+00:00",
+      "Event": "GUIDER-DISCONNECTED"
+    },
+    {
+      "Time": "2026-10-23T15:13:34.1936833+00:00",
+      "Event": "GUIDER-CONNECTED"
+    },
+    {
+      "Time": "2026-10-23T23:25:49.4518752+00:00",
+      "Event": "DOME-SHUTTER-OPENED"
+    },
+    {
+      "From": 180,
+      "Time": "2026-10-23T23:26:27.4496498+00:00",
+      "To": 90,
+      "Event": "DOME-SLEWED"
+    },
+    {
+      "Time": "2026-10-23T23:26:55.4589546+00:00",
+      "Event": "DOME-HOMED"
+    },
+    {
+      "Time": "2026-10-23T23:27:15.4581478+00:00",
+      "Event": "DOME-PARKED"
+    },
+    {
+      "From": 180,
+      "Time": "2026-10-23T23:27:41.4458443+00:00",
+      "To": 270,
+      "Event": "DOME-SLEWED"
+    },
+    {
+      "Time": "2026-10-23T23:28:05.4762213+00:00",
+      "Event": "DOME-PARKED"
+    },
+    {
+      "Time": "2026-10-23T23:28:41.4635033+00:00",
+      "Event": "DOME-SHUTTER-OPENED"
+    },
+    {
+      "From": 180,
+      "Time": "2026-10-23T23:28:43.4658117+00:00",
+      "To": 163.30227406038514,
+      "Event": "DOME-SLEWED"
+    },
+    {
+      "From": 163.30227406038514,
+      "Time": "2026-10-23T23:29:15.4684978+00:00",
+      "To": 222.28560075289033,
+      "Event": "DOME-SLEWED"
+    },
+    {
+      "Time": "2026-10-23T23:30:35.4772628+00:00",
+      "Event": "DOME-PARKED"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-10-23T23:30:41+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.2",
+    "endpoint": "/event-history",
+    "params": {}
+  }
+}

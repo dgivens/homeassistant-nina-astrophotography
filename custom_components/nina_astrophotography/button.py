@@ -16,12 +16,13 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api.v2.client import NinaClientV2
 from .coordinator import NinaConfigEntry
-from .device import observed
+from .device import refused_while_following, refused_while_unsafe, supports
 from .entity import (
     NinaDescribedEntity,
     NinaEntityDescription,
     async_add_observed,
     refusals_raised,
+    usable,
 )
 
 # One in-flight command per platform: these move hardware.
@@ -92,40 +93,41 @@ DESCRIPTIONS: tuple[NinaButtonDescription, ...] = (
         kind="guider",
         press=lambda client: client.clear_guider_calibration(),
     ),
-    # From the spec alone; no hardware has validated the dome.
     NinaButtonDescription(
         key="dome_open",
         translation_key="dome_open",
         unique_id_suffix="btn_dome_open",
-        entity_registry_enabled_default=False,
         kind="dome",
-        verified=False,
+        supported=supports("dome", "can_set_shutter"),
+        refusal=refused_while_unsafe,
         press=lambda client: client.open_dome(),
     ),
     NinaButtonDescription(
         key="dome_close",
         translation_key="dome_close",
         unique_id_suffix="btn_dome_close",
-        entity_registry_enabled_default=False,
         kind="dome",
-        verified=False,
+        supported=supports("dome", "can_set_shutter"),
         press=lambda client: client.close_dome(),
     ),
     NinaButtonDescription(
         key="dome_park",
         translation_key="dome_park",
         unique_id_suffix="btn_dome_park",
-        entity_registry_enabled_default=False,
         kind="dome",
-        verified=False,
+        supported=supports("dome", "can_park"),
+        # N.I.N.A. closes the shutter too, after homing when the profile's
+        # `FindHomeBeforePark` asks for it.
         press=lambda client: client.park_dome(),
     ),
     NinaButtonDescription(
         key="dome_home",
         translation_key="dome_home",
+        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         kind="dome",
-        verified=False,
+        supported=supports("dome", "can_find_home"),
+        refusal=refused_while_following,
         press=lambda client: client.home_dome(),
     ),
 )
@@ -137,6 +139,7 @@ class NinaButton(NinaDescribedEntity, ButtonEntity):
     entity_description: NinaButtonDescription
 
     async def async_press(self) -> None:
+        self._raise_if_refused()
         with refusals_raised():
             await self.entity_description.press(self.coordinator.client)
 
@@ -153,6 +156,6 @@ async def async_setup_entry(
         lambda data: (
             (d.key, partial(NinaButton, coordinator, entry, d))
             for d in DESCRIPTIONS
-            if observed(data, d.kind)
+            if usable(data, d)
         ),
     )

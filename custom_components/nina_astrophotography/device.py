@@ -58,6 +58,32 @@ def read_field(kind: str, field: str, default: Any = None) -> Callable[[NinaData
     return value
 
 
+def supports(kind: str, field: str) -> Callable[[NinaData], bool]:
+    """A capability flag off one equipment model, false while it is absent."""
+    read = read_field(kind, field)
+    return lambda data: bool(read(data))
+
+
+def refused_while_following(data: NinaData) -> str | None:
+    """Refuse a dome move while it follows the mount: N.I.N.A. answers one by
+    quietly turning following off, and the slit leaves the scope.
+    """
+    return "dome_following" if read_field("dome", "following")(data) else None
+
+
+def refused_while_unsafe(data: NinaData) -> str | None:
+    """Refuse opening the dome while the safety monitor reports unsafe.
+
+    N.I.N.A.'s own refusal is a profile option, off by default. A monitor that
+    is absent or not reporting refuses nothing here.
+    """
+    return (
+        "dome_unsafe"
+        if read_field("safety_monitor", "is_safe")(data) is False
+        else None
+    )
+
+
 def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
     """Every channel the N.I.N.A. switch device reports; empty while absent."""
     device = data.snapshot.switch_device

@@ -127,11 +127,11 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
     "nina-observatory-card.js": {
         # Takes the guider device's own name (`name=None`), so it has no key.
         ("switch", "guider"): "no translation key",
-        # No dome on any captured rig, so the device is never observed and its
-        # entities never created. A real dome's would ship disabled, and disabled
-        # entities are absent from the payload — unresolvable either way (#93).
-        ("binary_sensor", "dome_at_park"): "no dome device (#93)",
-        ("sensor", "dome_shutter_status"): "no dome device (#93)",
+        # No dome on the reference rig, so the device is never observed and its
+        # entities never created; they resolve on the simulator's (below).
+        ("sensor", "dome_shutter_status"): "no dome on this rig",
+        ("button", "dome_open"): "no dome on this rig",
+        ("button", "dome_close"): "no dome on this rig",
         # Present and disabled, which is the case the test below pins.
         ("sensor", "sequence_progress"): "ships disabled",
     },
@@ -222,15 +222,31 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
     assert fell_back == set(CANNOT_RESOLVE[card.name])
 
 
+@needs_node
+async def test_every_dome_read_resolves_on_a_rig_with_a_dome(
+    hass: HomeAssistant, config_entry, rig, hass_ws_client, set_up_at
+) -> None:
+    """Each dome entity the observatory card reads ships enabled, so none is
+    left out of what a dashboard receives.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+
+    resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
+
+    card = next(card for card in RESOLVING if card.name == "nina-observatory-card.js")
+    dome = {f"{domain}.{key}" for domain, key, _ in lookups(card) if "dome" in key}
+    assert dome
+    assert dome <= resolved.keys()
+
+
 async def test_a_disabled_entity_is_absent_from_what_the_frontend_sees(
     hass: HomeAssistant, loaded_entry, hass_ws_client
 ) -> None:
     """A disabled entity has a registry row and is still left out of the payload
-    a dashboard receives, so no card can resolve one — which is why the dome
-    section needs a device probe (#93).
+    a dashboard receives, so no card can resolve one.
 
     `sequence_progress` is the only read this card makes that is both disabled
-    and present; no captured rig creates the dome entities at all.
+    and present on the reference rig.
     """
     progress = f"sensor.{INSTANCE}_sequence_progress"
     assert er.async_get(hass).async_get(progress) is not None, "row should exist"
