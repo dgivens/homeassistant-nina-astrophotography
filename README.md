@@ -131,7 +131,7 @@ type: custom:nina-observatory-card
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, and their statistics | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85) |
 | `custom:nina-sky-map-card` | A star chart with the telescope's pointing, recent positions and the meridian | `trail_length` (default 60); `map_size` in px (default 320); `latitude` to override the site |
-| `custom:nina-weather-card` | Safety status, weather and sky quality | The limits it colours readings by, in °C and m/s whatever unit a reading is shown in: `dew_margin` (default 3); `temperature_high` and `temperature_low` (25, −10); `wind_warn` and `wind_danger` (8, 12); `humidity_warn`/`_danger` (85, 95) and `cloud_warn`/`_danger` (60, 85) in %; `seeing_warn`/`_danger` (3, 5) in arcsec |
+| `custom:nina-weather-card` | Safety status, weather and sky quality | Its warning and danger limits, in °C and m/s whatever unit a reading is shown in: `dew_margin` (default 3); `temperature_high` and `temperature_low` (25, −10); `wind_warn` and `wind_danger` (8, 12); `humidity_warn`/`_danger` (85, 95) and `cloud_warn`/`_danger` (60, 85) in %; `seeing_warn`/`_danger` (3, 5) in arcsec |
 
 | Observatory | Latest image | Sky map |
 |:-:|:-:|:-:|

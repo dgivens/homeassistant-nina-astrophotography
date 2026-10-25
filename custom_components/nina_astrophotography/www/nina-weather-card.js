@@ -182,10 +182,11 @@ const LIMITS = {
   seeing_danger: 5,
 };
 
-// Coerced, because YAML hands back a string as readily as a number. The editor
-// sends a cleared field as `undefined`, and `Number("")` would read it as 0.
+// Coerced, because YAML hands back a string as readily as a number, and `null`
+// for a key left empty. `Number` reads `null` and a blank string as 0.
 function limit(value, fallback) {
-  const n = value === null || value === "" ? NaN : Number(value);
+  const text = typeof value === "string" ? value.trim() : value;
+  const n = text === null || text === "" ? NaN : Number(text);
   return Number.isFinite(n) ? n : fallback;
 }
 
