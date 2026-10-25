@@ -24,7 +24,7 @@ import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
 import { missing, quantityIn } from "./nina-units.js";
 
-const VERSION = "2.0.0";
+const VERSION = "2.1.0";
 
 const DEFAULT_TRAIL_LENGTH = 60;
 const DEFAULT_MAP_SIZE = 320;
