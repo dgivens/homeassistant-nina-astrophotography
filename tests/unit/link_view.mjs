@@ -6,25 +6,34 @@
 // `[drawn, since, lost, stale]` for each read, `drawn` naming the state drawn.
 import { readFile } from "node:fs/promises";
 
-import { LinkView } from "../../custom_components/nina_astrophotography/www/nina-entity-resolver.js";
+import {
+  LinkView,
+  RigEntities,
+} from "../../custom_components/nina_astrophotography/www/nina-entity-resolver.js";
 
-const HUB = "binary_sensor.rig_sequencer_running";
+const HELD = "binary_sensor.rig_sequencer_running";
 const REACHABLE = "binary_sensor.rig_reachable";
 const QUIET_AT = "2026-10-26T02:00:00+00:00";
 
-const row = (state, changed) => ({ state, attributes: {}, last_changed: changed });
+const row = (state, changed, attributes = {}) =>
+  ({ state, attributes, last_changed: changed });
 // The rig as the coordinator publishes it: answering, one missed poll inside
-// the grace, and past it.
+// the grace, and past it; with `reachable` disabled; and as core restores it
+// for an entry that failed to load.
 const RIG = {
-  live: { [HUB]: row("on"), [REACHABLE]: row("on") },
-  quiet: { [HUB]: row("on"), [REACHABLE]: row("off", QUIET_AT) },
-  lost: { [HUB]: row("unavailable", QUIET_AT), [REACHABLE]: row("off", QUIET_AT) },
+  live: { [HELD]: row("on"), [REACHABLE]: row("on") },
+  quiet: { [HELD]: row("on"), [REACHABLE]: row("off", QUIET_AT) },
+  lost: { [HELD]: row("unavailable", QUIET_AT), [REACHABLE]: row("off", QUIET_AT) },
+  lost_unreported: { [HELD]: row("unavailable", QUIET_AT) },
+  failed: { [REACHABLE]: row("unavailable", QUIET_AT, { restored: true }) },
 };
 
 const [path] = process.argv.slice(2);
 const scripts = JSON.parse(await readFile(path, "utf8"));
 
 function run(steps) {
+  // No registry, so every id is the `rig` prefix templated onto its key.
+  const rig = new RigEntities("rig");
   const view = new LinkView();
   const out = [];
   for (const step of steps) {
@@ -32,8 +41,7 @@ function run(steps) {
       view.reset();
       continue;
     }
-    const { hass, since, lost, stale } = view.read(
-      { name: step, states: RIG[step] }, [HUB], REACHABLE);
+    const { hass, since, lost, stale } = view.read({ name: step, states: RIG[step] }, rig);
     out.push([hass.name, since, lost, stale]);
   }
   return out;

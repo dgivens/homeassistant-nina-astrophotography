@@ -176,7 +176,7 @@ export const scenarios = {
   ...linkScenarios(),
 
   // `unreachable` with the source and the monitor's connectivity disabled: the
-  // hub's other rows still tell it from an unconfigured rig.
+  // hub's rows still tell it from an unconfigured rig.
   unreachable_undiagnosed: {
     hass: (dump) =>
       rig(dump, "nina_unreachable")

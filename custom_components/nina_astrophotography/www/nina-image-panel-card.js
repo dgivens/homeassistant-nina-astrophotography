@@ -47,9 +47,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import {
-  hubEntityIds, LinkView, RigEntities,
-} from "./nina-entity-resolver.js";
+import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { quantityIn, shown } from "./nina-units.js";
 
 const VERSION = "2.2.0";
@@ -353,18 +351,14 @@ class NinaImagePanelCard extends HTMLElement {
   set hass(hass) {
     this._live = hass;
 
-    if (this._rig.refresh(hass)) {
-      this._linkRows = hubEntityIds(hass, this._config.device_id)
-        ?? [this._entityId(), this._eid("sensor", "session_image_count")];
-    }
+    this._rig.refresh(hass);
 
     if (!this._rendered) {
       this._buildDOM();
       this._rendered = true;
     }
 
-    const link = this._view.read(
-      hass, this._linkRows, this._eid("binary_sensor", "reachable"));
+    const link = this._view.read(hass, this._rig);
     // While N.I.N.A. is not answering, the readings are its last ones.
     this._hass = link.hass;
     this._link = link;

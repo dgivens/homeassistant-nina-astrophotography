@@ -94,7 +94,7 @@ export class RigEntities {
   }
 
   /**
-   * Re-resolve if the registry changed; `true` when it did.
+   * Re-resolve if the registry changed.
    *
    * The frontend replaces `hass.entities` only when the registry itself
    * changes, so this walks it on a rename, not on every state tick.
@@ -102,10 +102,9 @@ export class RigEntities {
    * the map arrives with an entity-registry change too.
    */
   refresh(hass) {
-    if (hass.entities === this._from) return false;
+    if (hass.entities === this._from) return;
     this._from = hass.entities;
     this._map = resolveEntities(hass, this._deviceId);
-    return true;
   }
 
   /** The entity id for `translation_key` `key`, else `<domain>.<prefix>_<slug>`. */
@@ -114,69 +113,38 @@ export class RigEntities {
   }
 }
 
-/**
- * This integration's entity ids on the hub, for `linkLostSince`; `null` when
- * the rig cannot be identified.
- *
- * These go `unavailable` only when the coordinator fails: a rig with every
- * driver down still reports `off` and `0`. `reachable` never does while the
- * entry is loaded, which `linkLostSince` reads past.
- * All of them, so disabling a few cannot blind the check. Other integrations'
- * helpers linked to the hub are left out; they go unavailable on their own.
- *
- * Walks the whole registry: memoise it as `resolveEntities` is.
- *
- * @param {object} hass the Home Assistant object a card is handed
- * @param {string} [configuredDeviceId] only consulted for two or more rigs
- * @returns {string[]|null}
- */
-export function hubEntityIds(hass, configuredDeviceId) {
-  const hubId = hubOf(hass?.devices, configuredDeviceId);
-  if (!hubId) return null;
-  return Object.values(hass.entities ?? {})
-    .filter((entity) => entity.device_id === hubId && entity.platform === DOMAIN)
-    .map((entity) => entity.entity_id);
-}
+// Hub rows created on every setup. They go `unavailable` only once the
+// coordinator stops holding the last data: a rig with every driver down still
+// reports them. Two, so disabling one cannot blind the check.
+const HELD_ROWS = [
+  ["binary_sensor", "sequencer_running"],
+  ["sensor", "session_image_count"],
+];
 
 /**
- * When the link was declared lost (epoch ms), or `null` while it is up: the
- * earliest `last_changed` of the rows that count. The coordinator holds the
- * last data for its outage grace period first, so this is later than
- * N.I.N.A.'s last answer.
+ * The link to N.I.N.A., read from the rig's `reachable` row.
  *
- * A restored row counts only when every row is restored — an entry that failed
- * to load. Beside live rows it is an entity not created this run (first-sight,
- * like the live stack, or an orphan): `unavailable` regardless of the link,
- * and changed at Home Assistant's start.
+ * That row turns `off` on the first missed poll and stays available, so it
+ * says when N.I.N.A. went quiet but not when the grace period ran out; the
+ * held rows going `unavailable` say that. It is created on every setup, so a
+ * restored copy means the entry is not loaded. Should it be disabled, the
+ * held rows alone still tell a lost link, though not since when.
  *
  * @param {object} hass the Home Assistant object a card is handed
- * @param {string[]} ids rows that go `unavailable` only with the link:
- *   `hubEntityIds`, or a card's templated hub ids when that is `null`
- * @returns {number|null}
+ * @param {RigEntities} rig the card's entity ids, refreshed from `hass` here
+ * @returns {{since: number|null, lost: boolean}} `since`, when N.I.N.A.
+ *   stopped answering (epoch ms), `null` while it answers; `lost`, past the
+ *   grace period
  */
-export function linkLostSince(hass, ids) {
-  const rows = ids.map((id) => hass.states?.[id]).filter(Boolean);
-  const down = rows.filter((row) => row.state === "unavailable");
-  const fresh = down.filter((row) => !row.attributes?.restored);
-  // A lone restored row cannot tell a failed entry from an orphan.
-  const failed = rows.length > 1 && down.length === rows.length;
-  const lost = fresh.length ? fresh : failed ? down : [];
-  if (!lost.length) return null;
-  return Math.min(...lost.map((row) => Date.parse(row.last_changed) || 0));
-}
-
-/**
- * When the rig's `reachable` row turned off (epoch ms), or `null` while it is
- * on or missing. It turns off on the first missed poll, so this is when
- * N.I.N.A. stopped answering, whether or not the grace period has run out.
- *
- * @param {object} hass the Home Assistant object a card is handed
- * @param {string} id the rig's `reachable` binary sensor
- * @returns {number|null}
- */
-export function quietSince(hass, id) {
-  const row = hass.states?.[id];
-  return row?.state === "off" ? Date.parse(row.last_changed) || null : null;
+export function linkState(hass, rig) {
+  rig.refresh(hass);
+  const row = (domain, key) => hass.states?.[rig.id(domain, key)];
+  const reachable = row("binary_sensor", "reachable");
+  const failed = reachable?.attributes?.restored === true;
+  const quiet = failed || reachable?.state === "off";
+  const lost =
+    failed || HELD_ROWS.some(([domain, key]) => row(domain, key)?.state === "unavailable");
+  return { since: quiet ? Date.parse(reachable.last_changed) || null : null, lost };
 }
 
 /**
@@ -196,22 +164,19 @@ export class LinkView {
 
   /**
    * @param {object} hass the Home Assistant object a card is handed
-   * @param {string[]} linkRows the rows `linkLostSince` reads
-   * @param {string} reachableId the rig's `reachable` binary sensor
+   * @param {RigEntities} rig the card's entity ids
    * @returns {{hass: object, since: number|null, lost: boolean, stale: boolean}}
-   *   `hass` to draw readings from; `since`, when N.I.N.A. stopped answering;
-   *   `lost`, past the grace period; `stale`, readings drawn but not current
+   *   `hass` to draw readings from; `since` and `lost` as `linkState` gives
+   *   them; `stale`, readings drawn but not current
    */
-  read(hass, linkRows, reachableId) {
-    const lostSince = linkLostSince(hass, linkRows);
-    const quiet = quietSince(hass, reachableId);
-    const lost = lostSince !== null;
+  read(hass, rig) {
+    const { since, lost } = linkState(hass, rig);
     if (!lost) this._live = hass;
     return {
       hass: lost ? this._live ?? hass : hass,
-      since: quiet ?? lostSince,
+      since,
       lost,
-      stale: lost ? this._live !== null : quiet !== null,
+      stale: lost ? this._live !== null : since !== null,
     };
   }
 

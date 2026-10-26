@@ -40,6 +40,14 @@ CASES = {
         ["live", "reset", "lost"],
         [LIVE, ["lost", QUIET_AT, True, False]],
     ),
+    "without the reachable row the held rows still lose the link": (
+        ["live", "lost_unreported"],
+        [LIVE, ["live", None, True, True]],
+    ),
+    "a restored reachable row is an entry that failed to load": (
+        ["failed"],
+        [["failed", QUIET_AT, True, False]],
+    ),
 }
 
 
