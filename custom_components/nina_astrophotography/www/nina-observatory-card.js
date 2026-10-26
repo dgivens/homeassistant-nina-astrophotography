@@ -420,7 +420,8 @@ class NinaObservatoryCard extends HTMLElement {
     // leaves Open to N.I.N.A.
     const unsafeId     = this._eid("binary_sensor", "safety_unsafe", "safety_monitor_unsafe");
     const notSafe      = !!h.states[unsafeId] && state(h, unsafeId) !== "off";
-    this._mountUnparked = !parked;
+    // A park remembered from before N.I.N.A. went quiet is not a current one.
+    this._mountUnparked = quiet || !parked;
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%

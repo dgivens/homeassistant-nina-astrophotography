@@ -18,6 +18,7 @@ import { linkScenarios, rig } from "../hass.mjs";
 const UP = "site_configured";
 const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
 const DOME = "simulator_dome_parked";
+const PARK = "binary_sensor.n_i_n_a_mount_at_park";
 const SHUTTER = "sensor.n_i_n_a_dome_shutter_status";
 const UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 
@@ -109,4 +110,14 @@ export const scenarios = {
 
   // The lost link over a dome: Close Dome stays, and the banner says to check.
   dome_unreachable: { hass: (dump) => rig(dump, "simulator_dome_unreachable").build() },
+
+  // Lost after the mount last read parked: Close Dome must still warn that the
+  // mount is not confirmed parked. No capture holds a dome rig with its mount
+  // parked, so the park reading is overridden; the rest is the simulator's.
+  dome_lost_parked: {
+    hass: (dump) => rig(dump, DOME)
+      .override(PARK, "on", { ...dump[DOME].states[PARK].attributes })
+      .build(),
+    after: (dump) => [rig(dump, "simulator_dome_unreachable").build()],
+  },
 };
