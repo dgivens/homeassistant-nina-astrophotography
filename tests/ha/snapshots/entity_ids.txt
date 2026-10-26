@@ -5,6 +5,7 @@ binary_sensor.n_i_n_a_focuser_moving
 binary_sensor.n_i_n_a_imaging
 binary_sensor.n_i_n_a_mount_at_home
 binary_sensor.n_i_n_a_mount_at_park
+binary_sensor.n_i_n_a_reachable
 binary_sensor.n_i_n_a_rotator_moving
 binary_sensor.n_i_n_a_rotator_synced
 binary_sensor.n_i_n_a_safety_monitor_connected

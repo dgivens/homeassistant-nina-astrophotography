@@ -143,6 +143,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -672,6 +678,13 @@
      "friendly_name": "N.I.N.A. Mount At park"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -2155,6 +2168,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "imaging"
    },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
    "binary_sensor.n_i_n_a_scheduler_waiting": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_scheduler_waiting",
@@ -2323,6 +2342,13 @@
      "friendly_name": "N.I.N.A. Imaging"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
    },
    "binary_sensor.n_i_n_a_scheduler_waiting": {
     "attributes": {
@@ -2656,6 +2682,12 @@
     "entity_id": "binary_sensor.n_i_n_a_mount_at_park",
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
@@ -3197,6 +3229,13 @@
      "friendly_name": "N.I.N.A. Mount At park"
     },
     "state": "unavailable"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "off"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -3996,6 +4035,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -4675,6 +4720,13 @@
      "friendly_name": "N.I.N.A. Mount At park"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -5641,6 +5693,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -6320,6 +6378,13 @@
      "friendly_name": "N.I.N.A. Mount At park"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -7286,6 +7351,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -7961,6 +8032,13 @@
      "friendly_name": "N.I.N.A. Mount At park"
     },
     "state": "unavailable"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "off"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -8870,6 +8948,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -9414,6 +9498,13 @@
      "friendly_name": "N.I.N.A. Mount At park"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -10579,6 +10670,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -11123,6 +11220,13 @@
      "friendly_name": "N.I.N.A. Mount At park"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
