@@ -164,3 +164,59 @@ export function linkLostSince(hass, ids) {
   if (!lost.length) return null;
   return Math.min(...lost.map((row) => Date.parse(row.last_changed) || 0));
 }
+
+/**
+ * When the rig's `reachable` row turned off (epoch ms), or `null` while it is
+ * on or missing. It turns off on the first missed poll, so this is when
+ * N.I.N.A. stopped answering, whether or not the grace period has run out.
+ *
+ * @param {object} hass the Home Assistant object a card is handed
+ * @param {string} id the rig's `reachable` binary sensor
+ * @returns {number|null}
+ */
+export function quietSince(hass, id) {
+  const row = hass.states?.[id];
+  return row?.state === "off" ? Date.parse(row.last_changed) || null : null;
+}
+
+/**
+ * What a card draws from while N.I.N.A. is not answering: the last `hass` in
+ * which the link was up, kept in memory, so the readings stay on screen marked
+ * stale rather than turning to `unavailable`.
+ *
+ * Inside the grace period Home Assistant still holds the readings, so `hass`
+ * itself is drawn. Past it, only a card that saw the link up has anything to
+ * show; one loaded during the outage draws the lost link. Nothing is stored
+ * across a reload: readings from last night are not worth showing.
+ */
+export class LinkView {
+  constructor() {
+    this._live = null;
+  }
+
+  /**
+   * @param {object} hass the Home Assistant object a card is handed
+   * @param {string[]} linkRows the rows `linkLostSince` reads
+   * @param {string} reachableId the rig's `reachable` binary sensor
+   * @returns {{hass: object, since: number|null, lost: boolean, stale: boolean}}
+   *   `hass` to draw readings from; `since`, when N.I.N.A. stopped answering;
+   *   `lost`, past the grace period; `stale`, readings drawn but not current
+   */
+  read(hass, linkRows, reachableId) {
+    const lostSince = linkLostSince(hass, linkRows);
+    const quiet = quietSince(hass, reachableId);
+    const lost = lostSince !== null;
+    if (!lost) this._live = hass;
+    return {
+      hass: lost ? this._live ?? hass : hass,
+      since: quiet ?? lostSince,
+      lost,
+      stale: lost ? this._live !== null : quiet !== null,
+    };
+  }
+
+  /** Forget the last live view, as a new config must. */
+  reset() {
+    this._live = null;
+  }
+}
