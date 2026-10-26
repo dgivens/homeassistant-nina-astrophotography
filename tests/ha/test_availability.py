@@ -34,25 +34,46 @@ async def test_a_disconnected_device_makes_its_entities_unavailable(
     assert state_of(hass, LIGHT).state == "unavailable"
 
 
+async def test_a_missed_poll_long_after_the_last_answer_keeps_the_last_data(
+    hass: HomeAssistant, freezer, loaded_entry, advance
+) -> None:
+    """A 60 s poll interval puts every first failure past the grace period."""
+    freezer.tick(2 * OutageGrace.PERIOD)
+    await advance("nina_unreachable")
+    assert state_of(hass, LIGHT).state != "unavailable"
+
+
 @pytest.mark.parametrize(
     ("down_for", "available"),
     [(OutageGrace.PERIOD - 1, True), (OutageGrace.PERIOD, False)],
     ids=["inside the grace", "past it"],
 )
-async def test_a_missed_poll_keeps_the_last_data_until_the_grace_runs_out(
+async def test_failures_keep_the_last_data_until_the_grace_runs_out(
     hass: HomeAssistant, freezer, loaded_entry, advance, down_for, available
 ) -> None:
-    """Measured from the last answer, so failing ticks cannot extend it."""
+    await advance("nina_unreachable")
     freezer.tick(down_for)
     await advance("nina_unreachable")
     assert (state_of(hass, LIGHT).state != "unavailable") is available
 
 
+async def test_failing_polls_do_not_extend_the_grace(
+    hass: HomeAssistant, freezer, loaded_entry, advance
+) -> None:
+    await advance("nina_unreachable")
+    for _ in range(3):
+        freezer.tick(OutageGrace.PERIOD / 3)
+        await advance("nina_unreachable")
+    assert state_of(hass, LIGHT).state == "unavailable"
+
+
 async def test_every_answer_restarts_the_grace(
     hass: HomeAssistant, freezer, loaded_entry, advance
 ) -> None:
+    await advance("nina_unreachable")
     freezer.tick(OutageGrace.PERIOD - 1)
     await advance("imaging")
+    await advance("nina_unreachable")
     freezer.tick(OutageGrace.PERIOD - 1)
     await advance("nina_unreachable")
     assert state_of(hass, LIGHT).state != "unavailable"

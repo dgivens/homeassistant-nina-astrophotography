@@ -223,23 +223,27 @@ class OutageGrace:
     A remote link drops a poll routinely while the rig images on. Failing at
     once turns every entity `unavailable` for a tick, which the recorder keeps
     and an automation on `unavailable` fires on.
+
+    Measured from the first failure, not the last answer: at a slow poll
+    interval plus a request timeout, the first failure already lands more than
+    `PERIOD` after the last answer.
     """
 
     PERIOD = 30.0
 
     def __init__(self) -> None:
-        self._answered: float | None = None
+        self._failing_since: float | None = None
 
-    def answered(self, now: float | None = None) -> None:
+    def answered(self) -> None:
         """Record that N.I.N.A. answered, which a refusal also is."""
-        self._answered = time.monotonic() if now is None else now
+        self._failing_since = None
 
-    def holds(self, now: float | None = None) -> bool:
-        """Whether a failure now is inside the grace; never before an answer."""
-        if self._answered is None:
-            return False
+    def failed(self, now: float | None = None) -> bool:
+        """Record a failure; whether the outage is still inside the grace."""
         moment = time.monotonic() if now is None else now
-        return moment - self._answered < self.PERIOD
+        if self._failing_since is None:
+            self._failing_since = moment
+        return moment - self._failing_since < self.PERIOD
 
 
 # An IMAGE-SAVE older than this is not activity. A longer sub is covered by

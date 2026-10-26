@@ -94,7 +94,7 @@ function unreachableBanner(since, dome) {
     <span class="icon">📡</span>
     <div>
       <div class="label">N.I.N.A. unreachable</div>
-      <div class="detail">No data from N.I.N.A.${time}; it may still be imaging. ${still}</div>
+      <div class="detail">Link lost${time}; N.I.N.A. may still be imaging. ${still}</div>
     </div>
   </div>`;
 }

@@ -138,8 +138,9 @@ export function hubEntityIds(hass, configuredDeviceId) {
 }
 
 /**
- * When N.I.N.A. stopped answering (epoch ms), or `null` while it answers: the
- * earliest `last_changed` of the rows that count.
+ * When the link was declared lost (epoch ms), or `null` while it is up: the
+ * earliest `last_changed` of the rows that count. The coordinator holds the
+ * last data for 30 s first, so this is later than N.I.N.A.'s last answer.
  *
  * A restored row counts only when every row is restored — an entry that failed
  * to load. Beside live rows it is an entity not created this run (first-sight,

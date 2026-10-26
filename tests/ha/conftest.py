@@ -151,14 +151,15 @@ def advance(hass, loaded_entry, rig):
 def outage(freezer, hass, config_entry, rig):
     """Take N.I.N.A. down for longer than the coordinator keeps its last data.
 
-    The runtime is read per call, so a test may set the entry up itself. A
-    clock frozen after setup jumps decades, which only lengthens the outage.
+    The runtime is read per call, so a test may set the entry up itself.
     """
 
     async def _outage() -> None:
         rig.goto("nina_unreachable")
+        coordinator = config_entry.runtime_data.coordinator
+        await coordinator.async_refresh()
         freezer.tick(OutageGrace.PERIOD)
-        await config_entry.runtime_data.coordinator.async_refresh()
+        await coordinator.async_refresh()
         await hass.async_block_till_done()
 
     return _outage

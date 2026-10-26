@@ -234,7 +234,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._note_reachable()
             return self.data
         except NinaError as exc:
-            if self.data is not None and self._grace.holds():
+            if self.data is not None and self._grace.failed():
                 _LOGGER.debug("N.I.N.A. at %s missed a poll: %s", self._host, exc)
                 return self.data
             # Once per outage, not once per tick.
