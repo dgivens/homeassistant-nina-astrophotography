@@ -12,7 +12,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  LinkGrace, hubEntityIds, linkLostSince, RigEntities,
+  hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
 import {
   displayed, flipRange, flipSoon, flipWindow, missing, quantity, shown,
@@ -328,14 +328,12 @@ class NinaObservatoryCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._grace = new LinkGrace(() => this._render());
   }
 
   setConfig(config) {
     this._config = config || {};
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
-    this._grace.reset();
   }
 
   set hass(hass) {
@@ -377,7 +375,6 @@ class NinaObservatoryCard extends HTMLElement {
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
     const lostSince = linkLostSince(h, this._linkRows);
-    if (this._grace.hold(lostSince)) return;
     const unreachable = lostSince !== null;
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
