@@ -11,9 +11,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import {
-  hubEntityIds, LinkView, RigEntities,
-} from "./nina-entity-resolver.js";
+import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import {
   displayed, flipRange, flipSoon, flipWindow, missing, quantity, shown,
 } from "./nina-units.js";
@@ -344,13 +342,7 @@ class NinaObservatoryCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (this._rig.refresh(hass)) {
-      this._linkRows = hubEntityIds(hass, this._config.device_id) ?? [
-        this._eid("binary_sensor", "sequencer_running"),
-        this._eid("binary_sensor", "imaging"),
-        this._eid("sensor", "session_image_count"),
-      ];
-    }
+    this._rig.refresh(hass);
     this._render();
   }
 
@@ -371,8 +363,7 @@ class NinaObservatoryCard extends HTMLElement {
 
   _render() {
     if (!this._hass) return;
-    const link = this._view.read(
-      this._hass, this._linkRows, this._eid("binary_sensor", "reachable"));
+    const link = this._view.read(this._hass, this._rig);
     // While N.I.N.A. is not answering, the readings are its last ones.
     const h = link.hass;
     // Nothing to show at all: the link was lost before this card saw it up.

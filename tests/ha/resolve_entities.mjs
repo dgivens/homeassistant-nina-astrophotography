@@ -6,20 +6,23 @@
 //
 // Usage: node resolve_entities.mjs <payload.json> [device_id] [fn]
 //
-// `fn` is `resolveEntities` (the default) or `linkLostSince`, which reads the
-// hub's rows, or the payload's `fallback` ids when there is no hub.
+// `fn` is `resolveEntities` (the default) or `linkState`, which reads the ids a
+// card would: resolved, else the payload's `prefix` templated onto each key.
 import { readFile } from "node:fs/promises";
 
 import {
-  hubEntityIds,
-  linkLostSince,
+  RigEntities,
+  linkState,
   resolveEntities,
 } from "../../custom_components/nina_astrophotography/www/nina-entity-resolver.js";
 
 const RUN = {
   resolveEntities,
-  linkLostSince: (hass, deviceId) =>
-    linkLostSince(hass, hubEntityIds(hass, deviceId) ?? hass.fallback),
+  linkState: (hass, deviceId) => {
+    const rig = new RigEntities(hass.prefix, deviceId);
+    rig.refresh(hass);
+    return linkState(hass, rig);
+  },
 };
 
 const [payload, deviceId, fn = "resolveEntities"] = process.argv.slice(2);

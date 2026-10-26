@@ -19,9 +19,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
-import {
-  hubEntityIds, LinkView, RigEntities,
-} from "./nina-entity-resolver.js";
+import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
 
 const VERSION = "2.2.0";
@@ -230,17 +228,7 @@ class NinaWeatherCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (this._rig.refresh(hass)) {
-      // The monitor's connectivity stays available while the monitor is down,
-      // so it too goes `unavailable` only with the link.
-      this._linkRows = [
-        ...(hubEntityIds(hass, this._config.device_id) ?? [
-          this._eid("sensor", "weather_source"),
-          this._eid("binary_sensor", "sequencer_running"),
-        ]),
-        this._eid("binary_sensor", "safety_monitor_connected"),
-      ];
-    }
+    this._rig.refresh(hass);
     this._render();
   }
 
@@ -263,8 +251,7 @@ class NinaWeatherCard extends HTMLElement {
 
   _render() {
     if (!this._hass) return;
-    const link = this._view.read(
-      this._hass, this._linkRows, this._eid("binary_sensor", "reachable"));
+    const link = this._view.read(this._hass, this._rig);
     // While N.I.N.A. is not answering, the readings are its last ones.
     this._shown = link.hass;
     // Nothing to show at all: the link was lost before this card saw it up.

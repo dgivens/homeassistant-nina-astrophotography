@@ -73,14 +73,14 @@ Traps when changing a card:
   `nina-observatory-card`'s `shown()` is the pattern, and every card now
   follows it. The image panel's `_f` reads are safe only because it prints
   each one solely above zero.
-- **A lost link to N.I.N.A. is `linkLostSince` over `hubEntityIds`**
-  (`nina-entity-resolver.js`, whose docstrings carry the rules) — never a
-  card's own check of a few rows. Decide it before the camera or the station:
-  a lost link makes every reading `unavailable`, which otherwise renders as
-  equipment disconnected in N.I.N.A. A card that shows readings draws them
-  through `LinkView`, which hands back the readings to draw and whether they
-  are stale: the rig's `reachable` row is `off` from the first missed poll,
-  and past the grace period the last live `hass` stands in.
+- **The link to N.I.N.A. is `linkState`** (`nina-entity-resolver.js`, whose
+  docstrings carry the rules) — never a card's own check of a few rows. Decide
+  it before the camera or the station: a lost link makes every reading
+  `unavailable`, which otherwise renders as equipment disconnected in N.I.N.A.
+  A card that shows readings draws them through `LinkView`, which hands back
+  the readings to draw and whether they are stale: the rig's `reachable` row
+  is `off` from the first missed poll, and past the grace period the last live
+  `hass` stands in.
 - `tests/unit/test_cards.py`'s `LITERAL` matches a **backticked**
   `<domain>.<word>`, so prose like `` `select.filter` `` in a card comment fails
   the hardcoded-id test. Reword the comment; the test is right.
