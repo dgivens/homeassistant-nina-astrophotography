@@ -20,8 +20,9 @@ blueprint:
     If your weather station ships an ASCOM SafetyMonitor, connect it in N.I.N.A.
     — that is the device this blueprint keys on.
 
-    It cannot help when N.I.N.A. itself becomes unreachable: every entity goes
-    unavailable and no command can reach the rig. It notifies instead.
+    It cannot help when N.I.N.A. itself becomes unreachable: no command can
+    reach the rig. It notifies instead, two minutes after N.I.N.A. stops
+    answering if you pick the rig's Reachable sensor below.
   domain: automation
   author: dgivens
   source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/weather_abort.yaml
@@ -57,6 +58,21 @@ blueprint:
               integration: nina_astrophotography
               domain: binary_sensor
               device_class: connectivity
+        rig_reachable:
+          name: Rig reachable
+          description: >
+            Optional, and recommended. The rig's "Reachable" sensor, which
+            turns off on the first poll N.I.N.A. misses. Without it, a lost
+            rig is noticed only once the monitor's connectivity sensor goes
+            unavailable, which waits out the integration's outage grace period
+            first.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: connectivity
+              multiple: true
         mount_parked:
           name: Mount at park
           description: >
@@ -190,6 +206,7 @@ variables:
   dome_shutter: !input dome_shutter
   mount_parked: !input mount_parked
   nina_rig: !input nina_rig
+  rig_reachable: !input rig_reachable
   safety_unsafe: !input safety_unsafe
 
 triggers:
@@ -215,10 +232,18 @@ triggers:
     to: "off"
     for: "00:00:30"
     id: monitor_lost
-  # N.I.N.A. itself unreachable — a crashed imaging PC, a dropped tunnel. Every
-  # entity goes unavailable and no command can reach the rig, so there is
-  # nothing to abort WITH; this arm only tells someone. A restored registry row
-  # reads `unavailable` too, which the conditions below tell apart.
+  # N.I.N.A. itself unreachable — a crashed imaging PC, a dropped tunnel. No
+  # command can reach the rig, so there is nothing to abort WITH; this arm only
+  # tells someone. `reachable` is `off` from the first missed poll, and
+  # `unavailable` only when the entry failed to load. Without it, the monitor's
+  # row going `unavailable` stands in, once the outage grace has run out.
+  - trigger: state
+    entity_id: !input rig_reachable
+    to: ["off", "unavailable"]
+    for: "00:02:00"
+    id: rig_unreachable
+  # A restored registry row reads `unavailable` too, which the conditions below
+  # tell apart.
   - trigger: state
     entity_id: !input safety_connected
     to: "unavailable"
@@ -236,6 +261,12 @@ conditions:
       {% set entry = config_entry_id(safety_unsafe) %}
       {% set rig = device_attr(nina_rig, 'config_entries') %}
       {{ entry is none or rig is not iterable or entry in rig | list }}
+  - alias: "A rig with a Reachable sensor is reported through it alone"
+    condition: template
+    value_template: >
+      {{ trigger.id != 'rig_unreachable'
+         or not rig_reachable
+         or trigger.entity_id in rig_reachable }}
   # While N.I.N.A. answers, a monitor not reported since the entry last loaded
   # (after a restart or reload with it disconnected, or removed for good) has
   # no live entity, only a restored registry row: `unavailable`,

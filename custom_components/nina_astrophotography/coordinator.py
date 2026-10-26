@@ -37,11 +37,12 @@ from .api.models import (
     VersionInfo,
 )
 from .api.v2 import NinaClientV2, NinaEventStream
-from .const import CONF_HOST, DEFAULT_ROLLOVER_HOUR
+from .const import CONF_HOST, DEFAULT_OUTAGE_GRACE, DEFAULT_ROLLOVER_HOUR
 from .device import KINDS
 from .polling import (
     EventLedger,
     GuiderStopLatch,
+    OutageGrace,
     ReseedGuard,
     RestartDetector,
     TierSchedule,
@@ -142,6 +143,10 @@ class NinaData:
     """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` or running
     guider seen since. Tells a stale `LostLock` from a guider hunting for its
     star."""
+    reachable: bool = True
+    """Whether N.I.N.A. answered the last poll. False while an outage is held
+    within its grace, and kept false once the coordinator fails, so the one
+    entity that outlives the outage can report it."""
 
     @property
     def newest_frame(self) -> Frame | None:
@@ -173,6 +178,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         update_interval: timedelta = FAST_INTERVAL,
         version: VersionInfo = VersionInfo(None, None),
         rollover_hour: int = DEFAULT_ROLLOVER_HOUR,
+        outage_grace: timedelta = timedelta(seconds=DEFAULT_OUTAGE_GRACE),
     ) -> None:
         super().__init__(
             hass,
@@ -190,6 +196,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._observed: set[str] = set()
         self._rejection_logged = False
         self._unavailable_logged = False
+        self._grace = OutageGrace(outage_grace.total_seconds())
+        self._reachable = True
         self._restart = RestartDetector()
         self._reseed_guard = ReseedGuard()
         self._ledger = EventLedger()
@@ -230,8 +238,17 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 self._rejection_logged = True
             # A refusal is an answer: the rig is up.
             self._note_reachable()
-            return self.data
+            return replace(self.data, reachable=True)
         except NinaError as exc:
+            self._reachable = False
+            if self.data is not None:
+                held = replace(self.data, reachable=False)
+                if self._grace.failed():
+                    _LOGGER.debug("N.I.N.A. at %s missed a poll: %s", self._host, exc)
+                    return held
+                # Kept on failure: the reachable sensor reads it while every
+                # other entity is unavailable.
+                self.data = held
             # Once per outage, not once per tick.
             if not self._unavailable_logged:
                 _LOGGER.warning("N.I.N.A. at %s is unavailable: %s", self._host, exc)
@@ -475,7 +492,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return self.config_entry.data[CONF_HOST]
 
     def _note_reachable(self) -> None:
-        """Announce the recovery once, and only after an outage was announced."""
+        """End the outage, and announce the recovery once if it was announced."""
+        self._grace.answered()
+        self._reachable = True
         if self._unavailable_logged:
             _LOGGER.info("N.I.N.A. at %s is back online", self._host)
             self._unavailable_logged = False
@@ -596,6 +615,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             guider_stopped=self._guider_stop.stopped(
                 pending_guider_stop(self.events, self.generation)
             ),
+            reachable=self._reachable,
         )
 
 

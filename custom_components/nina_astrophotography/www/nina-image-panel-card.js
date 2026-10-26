@@ -48,7 +48,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  LinkGrace, hubEntityIds, linkLostSince, RigEntities,
+  hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
 import { quantityIn, shown } from "./nina-units.js";
 
@@ -315,7 +315,6 @@ class NinaImagePanelCard extends HTMLElement {
     this._rendered = false;
     this._stripKey = null;
     this._tiles = new Map();  // strip tiles by frame date
-    this._grace = new LinkGrace(() => { this.hass = this._hass; });
   }
 
   connectedCallback() {
@@ -345,7 +344,6 @@ class NinaImagePanelCard extends HTMLElement {
       device_id: config.device_id,
     };
     this._rig = new RigEntities(this._config.prefix, this._config.device_id);
-    this._grace.reset();
   }
 
   set hass(hass) {
@@ -361,11 +359,8 @@ class NinaImagePanelCard extends HTMLElement {
       this._rendered = true;
     }
 
-    const lostSince = linkLostSince(hass, this._linkRows);
-    if (!this._grace.hold(lostSince)) {
-      this._unreachable = lostSince !== null;
-      this._update();
-    }
+    this._unreachable = linkLostSince(hass, this._linkRows) !== null;
+    this._update();
   }
 
   _update() {
@@ -614,8 +609,6 @@ class NinaImagePanelCard extends HTMLElement {
       img.style.display = "block";
     } catch (err) {
       settle();
-      // Held: the lost link is the likely cause; keep the frame on screen.
-      if (this._grace.holding) return;
       // A strip click leaves the frame shown; the newest failing clears it.
       if (!picked) {
         this._shown = null;
@@ -626,12 +619,9 @@ class NinaImagePanelCard extends HTMLElement {
     }
     if (this._config.show_histogram) this._drawAduRange();
     this._updateStripActive();
-    // Held: the readings are `unavailable`; keep the ones on screen.
-    if (!this._grace.holding) {
-      this._updateOverlay();
-      this._updateStatsRow();
-      this._updateHeaderBadge();
-    }
+    this._updateOverlay();
+    this._updateStatsRow();
+    this._updateHeaderBadge();
   }
 
   // Tiles are kept per frame: a new frame costs one thumbnail, and every

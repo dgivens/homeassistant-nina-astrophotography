@@ -19,10 +19,12 @@ from .api.v2 import NinaClientV2
 from .const import (
     CONF_HOST,
     CONF_INSTANCE_NAME,
+    CONF_OUTAGE_GRACE,
     CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
     DEFAULT_INSTANCE_NAME,
+    DEFAULT_OUTAGE_GRACE,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
@@ -139,6 +141,10 @@ class NinaOptionsFlow(config_entries.OptionsFlow):
                         CONF_ROLLOVER_HOUR,
                         default=options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR),
                     ): vol.All(int, vol.Range(min=0, max=23)),
+                    vol.Optional(
+                        CONF_OUTAGE_GRACE,
+                        default=options.get(CONF_OUTAGE_GRACE, DEFAULT_OUTAGE_GRACE),
+                    ): vol.All(int, vol.Range(min=0, max=300)),
                 }
             ),
         )

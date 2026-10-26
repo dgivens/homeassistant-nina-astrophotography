@@ -34,17 +34,22 @@
         "title": "N.I.N.A. Options",
         "data": {
           "poll_interval": "Poll Interval (seconds)",
-          "rollover_hour": "Session Rollover Hour (rig local time)"
+          "rollover_hour": "Session Rollover Hour (rig local time)",
+          "outage_grace": "Outage Grace Period (seconds)"
         },
         "data_description": {
           "poll_interval": "How often to poll, in seconds. The event socket carries most changes; this is the backstop.",
-          "rollover_hour": "The hour, in the RIG's own local time, where one session ends and the next begins. Noon by default. Set it to a real midday on site if the imaging PC's clock runs UTC, or a night's statistics split in two during its dawn flats."
+          "rollover_hour": "The hour, in the RIG's own local time, where one session ends and the next begins. Noon by default. Set it to a real midday on site if the imaging PC's clock runs UTC, or a night's statistics split in two during its dawn flats.",
+          "outage_grace": "How long N.I.N.A. may stop answering before its entities go unavailable. Until then they keep their last values, so a dropped poll leaves no gap in history; the Reachable sensor turns off at once either way. 0 marks them unavailable on the first failed poll."
         }
       }
     }
   },
   "entity": {
     "binary_sensor": {
+      "reachable": {
+        "name": "Reachable"
+      },
       "autofocus_failed": {
         "name": "Autofocus failed"
       },

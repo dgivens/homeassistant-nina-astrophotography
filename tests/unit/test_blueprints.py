@@ -153,7 +153,8 @@ def test_the_abort_triggers_on_the_safety_signals_and_nothing_else() -> None:
     fires when the sky CLEARS. The monitor's own dropout is a second trigger,
     held 30 s so one missed poll is not an abort, and `from: "on"` because that
     sensor reads `off` all day: without it every restart in daylight would park
-    the mount. An unreachable rig only notifies. And no weather channel
+    the mount. An unreachable rig only notifies, through the Reachable sensor
+    or, without one, the monitor's row going unavailable. And no weather channel
     triggers any of it — a forecast source reads 0% cloud under cloud.
     """
     triggers = _blueprint("weather_abort.yaml")["triggers"]
@@ -164,6 +165,7 @@ def test_the_abort_triggers_on_the_safety_signals_and_nothing_else() -> None:
     ] == [
         ("unsafe", "safety_unsafe", None, "on", None),
         ("monitor_lost", "safety_connected", "on", "off", "00:00:30"),
+        ("rig_unreachable", "rig_reachable", None, ["off", "unavailable"], "00:02:00"),
         ("rig_unreachable", "safety_connected", None, "unavailable", "00:02:00"),
     ]
 

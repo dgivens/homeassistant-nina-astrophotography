@@ -7,8 +7,9 @@ blueprint:
     buzz and never a night.
 
     Three arms, because a stall has three shapes. N.I.N.A. itself unreachable
-    takes every entity with it, so no template over the rig's own state can
-    ever see that one. A mount that parked itself under a running sequencer is
+    leaves nothing current to read, so no template over the rig's own state can
+    see that one; the rig's Reachable sensor, or failing it every entity going
+    unavailable, does. A mount that parked itself under a running sequencer is
     a stall with no ambiguity and no timer. And the ordinary case: the frames
     simply stopped.
 
@@ -48,6 +49,20 @@ blueprint:
               integration: nina_astrophotography
               domain: binary_sensor
               device_class: running
+        rig_reachable:
+          name: Rig reachable
+          description: >-
+            Optional, and recommended. The rig's "Reachable" sensor, which
+            turns off on the first poll N.I.N.A. misses. Without it, a lost
+            rig is noticed only once the sequencer sensor goes unavailable,
+            which waits out the integration's outage grace period first.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: connectivity
+              multiple: true
         imaging:
           name: Imaging
           description: >-
@@ -375,6 +390,7 @@ max_exceeded: silent
 variables:
   nina_rig: !input nina_rig
   sequencer_running: !input sequencer_running
+  rig_reachable: !input rig_reachable
   scheduler_waiting: !input scheduler_waiting
   mount_at_park: !input mount_at_park
   safety_unsafe: !input safety_unsafe
@@ -437,10 +453,18 @@ variables:
           > sequencer_on_seconds | float(0) }}
 
 triggers:
-  # N.I.N.A. down, the imaging PC rebooted, the tunnel gone. Every entity of the
-  # rig goes unavailable together, so no other arm can fire and no template over
-  # the rig's own state can see this at all. Held two minutes so a reload or a
-  # single missed poll is not an alert.
+  # N.I.N.A. down, the imaging PC rebooted, the tunnel gone. Nothing the rig
+  # reports is current, so no other arm can fire and no template over its state
+  # can see this at all. Held two minutes so a reload or a few missed polls are
+  # not an alert. `reachable` is `off` from the first missed poll, and
+  # `unavailable` only when the entry failed to load; without it, the
+  # sequencer's row going `unavailable` stands in, once the outage grace has
+  # run out.
+  - trigger: state
+    entity_id: !input rig_reachable
+    to: ["off", "unavailable"]
+    for: "00:02:00"
+    id: unreachable
   - trigger: state
     entity_id: !input sequencer_running
     to: "unavailable"
@@ -471,6 +495,13 @@ conditions:
       {% set rig = device_attr(nina_rig, 'config_entries') %}
       {{ entry is none or rig is not iterable or entry in rig | list }}
 
+  - alias: "A rig with a Reachable sensor is reported through it alone"
+    condition: template
+    value_template: >
+      {{ trigger.id != 'unreachable'
+         or not rig_reachable
+         or trigger.entity_id in rig_reachable }}
+
   # These gates live HERE, not in the actions. A bare condition that fails
   # inside a `choose` branch raises `_ConditionFail`, which Home Assistant
   # catches at that branch's own script boundary and — unlike `stop:` — does
@@ -480,8 +511,9 @@ conditions:
   # the automation's top level a false condition genuinely stops the run.
   #
   # Each arm carries its own gates, because they differ. The unreachable arm
-  # has none: every entity of the rig is unavailable when it fires, so any gate
-  # over them would mute the failure this blueprint most needs to catch.
+  # has none: when it fires, the rig's entities are unavailable or hold readings
+  # N.I.N.A. has not confirmed, so any gate over them would mute the failure
+  # this blueprint most needs to catch.
   - alias: "The gates for the arm that fired"
     condition: or
     conditions:
@@ -582,8 +614,8 @@ actions:
       # hard line breaks through the middle of a sentence.
       reason: >-
         {%- if trigger.id == 'unreachable' %}
-        Home Assistant cannot reach N.I.N.A. — every entity of this rig has been
-        unavailable for two minutes.
+        Home Assistant cannot reach N.I.N.A. — it has not answered for at least
+        two minutes.
         {%- elif trigger.id == 'parked' %}
         The mount parked itself while the sequencer was still running.
         {%- elif floored %}

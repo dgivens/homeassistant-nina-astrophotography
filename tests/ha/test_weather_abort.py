@@ -20,6 +20,7 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.nina_astrophotography.const import DOMAIN
 
 CONNECTED = "binary_sensor.rig_safety_monitor_connected"
+REACHABLE = "binary_sensor.rig_reachable"
 
 INPUTS = {
     "nina_rig": "device-id",
@@ -32,24 +33,28 @@ INPUTS = {
 
 @pytest.fixture
 async def watching(hass: HomeAssistant, installed):
-    """The blueprint over a connected monitor whose entry is in `entry_state`.
+    """The blueprint over a connected monitor whose entry is in `entry_state`,
+    watching the rig's Reachable sensor if `reachable`.
 
     Returns the notify calls.
     """
 
-    async def _set_up(entry_state: ConfigEntryState):
+    async def _set_up(entry_state: ConfigEntryState, *, reachable: bool = False):
         entry = MockConfigEntry(domain=DOMAIN, state=entry_state)
         entry.add_to_hass(hass)
-        er.async_get(hass).async_get_or_create(
-            "binary_sensor",
-            DOMAIN,
-            "safety_connected",
-            suggested_object_id="rig_safety_monitor_connected",
-            config_entry=entry,
-        )
-        hass.states.async_set(CONNECTED, "on")
+        rows = {"safety_connected": CONNECTED, "reachable": REACHABLE}
+        for key, entity_id in rows.items():
+            er.async_get(hass).async_get_or_create(
+                "binary_sensor",
+                DOMAIN,
+                key,
+                suggested_object_id=entity_id.split(".", 1)[1],
+                config_entry=entry,
+            )
+            hass.states.async_set(entity_id, "on")
         sent = async_mock_service(hass, "notify", "send_message")
-        await installed("weather_abort.yaml", INPUTS)
+        inputs = INPUTS | ({"rig_reachable": [REACHABLE]} if reachable else {})
+        await installed("weather_abort.yaml", inputs)
         return sent
 
     return _set_up
@@ -79,10 +84,54 @@ async def test_an_unavailable_monitor_row(
     """
     sent = await watching(entry_state)
 
-    hass.states.async_set(CONNECTED, "unavailable", attributes)
+    await _hold(hass, {CONNECTED: ("unavailable", attributes)})
+
+    expected = [UNREACHABLE] if notified else []
+    assert [call.data["title"] for call in sent] == expected
+
+
+@pytest.mark.parametrize(
+    ("entry_state", "rows", "notified"),
+    [
+        (ConfigEntryState.LOADED, {REACHABLE: ("off", {})}, 1),
+        (
+            ConfigEntryState.LOADED,
+            {REACHABLE: ("off", {}), CONNECTED: ("unavailable", {})},
+            1,
+        ),
+        (ConfigEntryState.LOADED, {CONNECTED: ("unavailable", {})}, 0),
+        (
+            ConfigEntryState.SETUP_RETRY,
+            {REACHABLE: ("unavailable", {"restored": True})},
+            1,
+        ),
+    ],
+    ids=["missed polls", "grace run out too", "monitor row alone", "entry failed"],
+)
+async def test_a_rig_with_a_reachable_sensor_is_reported_through_it(
+    hass: HomeAssistant,
+    watching,
+    entry_state: ConfigEntryState,
+    rows: dict,
+    notified: int,
+) -> None:
+    """Once, however many rows go: the monitor's row going `unavailable` is
+    the same outage, reported late.
+    """
+    sent = await watching(entry_state, reachable=True)
+
+    await _hold(hass, rows)
+
+    assert [call.data["title"] for call in sent] == [UNREACHABLE] * notified
+
+
+UNREACHABLE = "⚠️ N.I.N.A. unreachable"
+
+
+async def _hold(hass: HomeAssistant, rows: dict) -> None:
+    """Set `rows` to their (state, attributes) and hold them past the arm's wait."""
+    for entity_id, (state, attributes) in rows.items():
+        hass.states.async_set(entity_id, state, attributes)
     await hass.async_block_till_done()
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=2, seconds=1))
     await hass.async_block_till_done()
-
-    expected = ["⚠️ N.I.N.A. unreachable"] if notified else []
-    assert [call.data["title"] for call in sent] == expected

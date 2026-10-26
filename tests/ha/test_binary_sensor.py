@@ -10,6 +10,8 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.nina_astrophotography.api.errors import NinaRequestError
+from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from ha.registry import registered
 from helpers import state_of
 
@@ -19,6 +21,7 @@ SEQUENCER_RUNNING = "binary_sensor.n_i_n_a_sequencer_running"
 IMAGING = "binary_sensor.n_i_n_a_imaging"
 SCHEDULER_WAITING = "binary_sensor.n_i_n_a_scheduler_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
+REACHABLE = "binary_sensor.n_i_n_a_reachable"
 
 
 @pytest.mark.parametrize(
@@ -123,13 +126,58 @@ async def test_only_the_connectivity_sensor_survives_the_monitors_disconnection(
     assert state_of(hass, entity_id).state == expected
 
 
+async def test_reachable_turns_off_on_the_first_missed_poll(
+    hass: HomeAssistant, loaded_entry, advance
+) -> None:
+    """Inside the grace, when every other entity still shows its last value."""
+    await advance("nina_unreachable")
+    assert state_of(hass, REACHABLE).state == "off"
+
+
+async def test_reachable_stays_available_through_an_outage(
+    hass: HomeAssistant, outage, loaded_entry
+) -> None:
+    await outage()
+    assert state_of(hass, REACHABLE).state == "off"
+
+
+async def test_reachable_turns_off_with_no_grace_to_hold(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig
+) -> None:
+    """The failure that marks every other entity unavailable must still reach
+    the one that reports it.
+    """
+    config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(config_entry, options={"outage_grace": 0})
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    rig.goto("nina_unreachable")
+    await config_entry.runtime_data.coordinator.async_refresh()
+    assert state_of(hass, REACHABLE).state == "off"
+
+
+@pytest.mark.parametrize("answer", ["imaging", "refusal"])
+async def test_an_answer_turns_reachable_back_on(
+    hass: HomeAssistant, outage, loaded_entry, advance, monkeypatch, answer
+) -> None:
+    """A refusal is an answer too: the rig is up."""
+    await outage()
+    if answer == "refusal":
+        monkeypatch.setattr(NinaClientV2, "get_equipment", _refusing)
+    await advance("imaging")
+    assert state_of(hass, REACHABLE).state == "on"
+
+
+async def _refusing(self):
+    raise NinaRequestError("400")
+
+
 async def test_an_unreachable_rig_still_makes_the_connectivity_sensor_unavailable(
-    hass: HomeAssistant, advance
+    hass: HomeAssistant, outage, loaded_entry
 ) -> None:
     """Level 1 is not exempted: nothing is known about the monitor when nothing
     is known about the rig.
     """
-    await advance("nina_unreachable")
+    await outage()
     assert state_of(hass, MONITOR_CONNECTED).state == "unavailable"
 
 

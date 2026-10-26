@@ -21,7 +21,12 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from cards import INSTANCE, lookups, resolving_cards
-from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
+from custom_components.nina_astrophotography.const import (
+    CONF_HOST,
+    CONF_PORT,
+    DEFAULT_OUTAGE_GRACE,
+    DOMAIN,
+)
 from ha.registry import get_device
 from helpers import needs_node, run_node
 
@@ -94,8 +99,11 @@ async def _link_lost_since(
 
 
 async def _lose_the_link(advance, freezer: FrozenDateTimeFactory) -> int:
-    """N.I.N.A. stops answering a minute on; returns that moment in ms."""
-    freezer.tick(60)
+    """N.I.N.A. stops answering past the grace period; returns the moment the
+    coordinator gives up, in ms.
+    """
+    await advance("nina_unreachable")
+    freezer.tick(DEFAULT_OUTAGE_GRACE)
     await advance("nina_unreachable")
     return int(dt_util.utcnow().timestamp() * 1000)
 
@@ -362,7 +370,7 @@ async def test_a_rig_that_answers_has_not_lost_its_link(
 async def test_a_failed_poll_loses_the_link_from_that_moment(
     hass: HomeAssistant, advance, hass_ws_client, freezer: FrozenDateTimeFactory
 ) -> None:
-    """The cards' grace period runs from this, so it must be the failed poll."""
+    """The observatory banner dates the outage from this."""
     failed_at = await _lose_the_link(advance, freezer)
 
     assert await _link_lost_since(hass, hass_ws_client) == failed_at
@@ -397,8 +405,8 @@ async def test_an_orphaned_hub_row_does_not_date_a_lost_link(
     hass_ws_client,
     freezer: FrozenDateTimeFactory,
 ) -> None:
-    """It changed when core restored it: dating the loss from that would skip
-    the cards' grace period.
+    """It changed when core restored it: dating the loss from that would put
+    it at Home Assistant's start.
     """
     _orphan_a_hub_row(hass, loaded_entry)
 

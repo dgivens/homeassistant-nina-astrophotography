@@ -20,7 +20,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  LinkGrace, hubEntityIds, linkLostSince, RigEntities,
+  hubEntityIds, linkLostSince, RigEntities,
 } from "./nina-entity-resolver.js";
 import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
 
@@ -194,7 +194,6 @@ class NinaWeatherCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._grace = new LinkGrace(() => this._render());
   }
 
   setConfig(config) {
@@ -215,7 +214,6 @@ class NinaWeatherCard extends HTMLElement {
     };
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
-    this._grace.reset();
   }
 
   set hass(hass) {
@@ -267,9 +265,7 @@ class NinaWeatherCard extends HTMLElement {
     // The source is diagnostic and may be disabled, so nothing else depends on it.
     const source = this._s(this._eid("sensor", "weather_source"));
     const sourceLive = !missing(source);
-    const lostSince = linkLostSince(this._hass, this._linkRows);
-    if (this._grace.hold(lostSince)) return;
-    const unreachable = lostSince !== null;
+    const unreachable = linkLostSince(this._hass, this._linkRows) !== null;
     const channels = {
       temp: this._eid("sensor", "temperature", "weather_temperature"),
       humid: this._eid("sensor", "humidity", "weather_humidity"),

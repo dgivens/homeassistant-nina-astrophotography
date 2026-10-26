@@ -118,8 +118,9 @@ export class RigEntities {
  * This integration's entity ids on the hub, for `linkLostSince`; `null` when
  * the rig cannot be identified.
  *
- * No hub entity overrides `available`, so these go `unavailable` only when the
- * coordinator fails: a rig with every driver down still reports `off` and `0`.
+ * These go `unavailable` only when the coordinator fails: a rig with every
+ * driver down still reports `off` and `0`. `reachable` never does while the
+ * entry is loaded, which `linkLostSince` reads past.
  * All of them, so disabling a few cannot blind the check. Other integrations'
  * helpers linked to the hub are left out; they go unavailable on their own.
  *
@@ -138,8 +139,10 @@ export function hubEntityIds(hass, configuredDeviceId) {
 }
 
 /**
- * When N.I.N.A. stopped answering (epoch ms), or `null` while it answers: the
- * earliest `last_changed` of the rows that count.
+ * When the link was declared lost (epoch ms), or `null` while it is up: the
+ * earliest `last_changed` of the rows that count. The coordinator holds the
+ * last data for its outage grace period first, so this is later than
+ * N.I.N.A.'s last answer.
  *
  * A restored row counts only when every row is restored — an entry that failed
  * to load. Beside live rows it is an entity not created this run (first-sight,
@@ -160,64 +163,4 @@ export function linkLostSince(hass, ids) {
   const lost = fresh.length ? fresh : failed ? down : [];
   if (!lost.length) return null;
   return Math.min(...lost.map((row) => Date.parse(row.last_changed) || 0));
-}
-
-// One failed poll makes every entity unavailable; on a remote link that is
-// routine while the rig images on.
-export const LINK_GRACE_MS = 30_000;
-
-/**
- * Keeps a card's last live view through a failed poll, which would otherwise
- * draw every reading `unavailable`.
- *
- * A card calls `hold(since)` before rendering: `true` means keep what is on
- * screen, and `onExpire` fires when the grace period ends. Nothing is held
- * without a live view to keep (a fresh load, a new config).
- *
- * The wait is capped at LINK_GRACE_MS: `since` is on Home Assistant's clock,
- * `Date.now()` on the browser's. A detached card's timer is left to run.
- */
-export class LinkGrace {
-  /** @param {function(): void} onExpire re-renders the card */
-  constructor(onExpire) {
-    this._onExpire = onExpire;
-    this._live = false;
-    this._timer = null;
-  }
-
-  /**
-   * @param {number|null} since `linkLostSince`, or `null` for a live link
-   * @returns {boolean} whether to keep the last view rather than render
-   */
-  hold(since) {
-    this._clear();
-    if (since !== null && this._live) {
-      const wait = Math.min(LINK_GRACE_MS, since + LINK_GRACE_MS - Date.now());
-      if (wait > 0) {
-        this._timer = setTimeout(() => {
-          this._timer = null;
-          this._onExpire();
-        }, wait);
-        return true;
-      }
-    }
-    this._live = since === null;
-    return false;
-  }
-
-  /** Whether a hold is in progress. */
-  get holding() {
-    return this._timer !== null;
-  }
-
-  /** Forget the live view, as a new config must. */
-  reset() {
-    this._clear();
-    this._live = false;
-  }
-
-  _clear() {
-    clearTimeout(this._timer);
-    this._timer = null;
-  }
 }
