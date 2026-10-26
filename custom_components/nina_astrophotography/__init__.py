@@ -42,9 +42,11 @@ from .api.v2 import NinaClientV2, NinaEventStream
 from .const import (
     CONF_HOST,
     CONF_INSTANCE_NAME,
+    CONF_OUTAGE_GRACE,
     CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
+    DEFAULT_OUTAGE_GRACE,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
@@ -132,6 +134,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
     )
     rollover_hour = entry.options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR)
+    outage_grace = entry.options.get(CONF_OUTAGE_GRACE, DEFAULT_OUTAGE_GRACE)
     # Entries created before 2.0 carry no instance name; the title stands in.
     instance_name = entry.data.get(CONF_INSTANCE_NAME, entry.title)
 
@@ -158,6 +161,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         update_interval=timedelta(seconds=poll_interval),
         version=version,
         rollover_hour=rollover_hour,
+        outage_grace=timedelta(seconds=outage_grace),
     )
 
     # ── The event socket: real-time push ─────────────────────────────────────

@@ -57,7 +57,15 @@ there is a problem. Trigger an abort on `to: "on"`.
 If N.I.N.A. itself stops answering for 30 seconds, every entity of that rig
 goes `unavailable`. A shorter drop, such as one missed poll over a remote link,
 keeps the last readings, so it leaves no gap in history and fires no
-`unavailable` trigger.
+`unavailable` trigger. Change the 30 seconds under **Settings → Devices &
+Services → N.I.N.A. Astrophotography → Configure → Outage Grace Period**, from
+0 (unavailable on the first missed poll) to 300.
+
+While those readings are held they are not current. `binary_sensor.<instance>_reachable`
+says so: it turns `off` on the first missed poll and stays available through
+the whole outage. Trigger on it, with a `for:` delay of your choosing, rather
+than on another entity going `unavailable`, which waits out the grace period
+first.
 
 ## Entities by device
 

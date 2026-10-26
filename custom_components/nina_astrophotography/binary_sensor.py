@@ -5,6 +5,10 @@ A disconnected device makes its entities unavailable, so equipment has no
 dropped monitor from N.I.N.A. unreachable or Home Assistant restarting, and a
 roof-close automation must act on the first.
 
+`reachable` is the same idea for N.I.N.A. itself: it turns `off` on the first
+failed poll and stays available through the outage, while every other entity
+keeps its last value for the grace period and then goes unavailable.
+
 **`safety_unsafe` is `on` when conditions are unsafe**, as Home Assistant's
 `SAFETY` device class means it.
 """
@@ -41,11 +45,13 @@ class NinaBinarySensorDescription(NinaEntityDescription, BinarySensorEntityDescr
     """A binary sensor, plus how to read it out of the snapshot.
 
     `survives_disconnect` keeps an entity available while its device is down,
-    for the one whose job is to report that.
+    for the one whose job is to report that; `survives_outage` likewise while
+    N.I.N.A. is unreachable.
     """
 
     value: Callable[[NinaData], bool | None]
     survives_disconnect: bool = False
+    survives_outage: bool = False
 
 
 def _unsafe(data: NinaData) -> bool | None:
@@ -100,6 +106,15 @@ def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
 
 
 DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
+    NinaBinarySensorDescription(
+        key="reachable",
+        translation_key="reachable",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        kind=None,
+        survives_outage=True,
+        value=lambda data: data.reachable,
+    ),
     NinaBinarySensorDescription(
         key="safety_unsafe",
         translation_key="safety_unsafe",
@@ -253,6 +268,10 @@ class NinaBinarySensor(NinaDescribedEntity, BinarySensorEntity):
     @property
     def _survives_disconnect(self) -> bool:
         return self.entity_description.survives_disconnect
+
+    @property
+    def available(self) -> bool:
+        return self.entity_description.survives_outage or super().available
 
     @property
     def is_on(self) -> bool | None:

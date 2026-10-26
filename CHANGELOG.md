@@ -6,12 +6,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Added
+
+- **`binary_sensor.<instance>_reachable`** says whether N.I.N.A. answered the
+  last poll. It turns `off` on the first missed poll, while the other entities
+  still show their last readings, and stays available through the outage.
+
 ### Changed
 
 - **A brief outage no longer makes every entity unavailable** (#134). When
   N.I.N.A. misses a poll, the integration keeps the last readings for 30
   seconds before marking the rig's entities `unavailable`, whatever the poll
-  interval. One dropped poll over a remote link no longer leaves a gap in
+  interval. The period is a new option, Outage Grace Period, from 0 to 300
+  seconds. One dropped poll over a remote link no longer leaves a gap in
   history and long-term statistics, or fires automations that trigger on
   `unavailable`. The observatory, weather and image panel cards drop their own
   30-second hold, which this replaces, and the observatory card's banner now

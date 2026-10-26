@@ -18,8 +18,12 @@ import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.api.v2 import NinaEventStream
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
-from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
-from custom_components.nina_astrophotography.polling import OutageGrace
+from custom_components.nina_astrophotography.const import (
+    CONF_HOST,
+    CONF_PORT,
+    DEFAULT_OUTAGE_GRACE,
+    DOMAIN,
+)
 from helpers import load_fixture
 from scenarios.fake_rig import FakeRig
 from scenarios.states import AWAITING_CAPTURE, STATES
@@ -158,7 +162,7 @@ def outage(freezer, hass, config_entry, rig):
         rig.goto("nina_unreachable")
         coordinator = config_entry.runtime_data.coordinator
         await coordinator.async_refresh()
-        freezer.tick(OutageGrace.PERIOD)
+        freezer.tick(DEFAULT_OUTAGE_GRACE)
         await coordinator.async_refresh()
         await hass.async_block_till_done()
 

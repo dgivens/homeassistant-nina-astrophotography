@@ -226,12 +226,11 @@ class OutageGrace:
 
     Measured from the first failure, not the last answer: at a slow poll
     interval plus a request timeout, the first failure already lands more than
-    `PERIOD` after the last answer.
+    the period after the last answer.
     """
 
-    PERIOD = 30.0
-
-    def __init__(self) -> None:
+    def __init__(self, period: float) -> None:
+        self._period = period
         self._failing_since: float | None = None
 
     def answered(self) -> None:
@@ -243,7 +242,7 @@ class OutageGrace:
         moment = time.monotonic() if now is None else now
         if self._failing_since is None:
             self._failing_since = moment
-        return moment - self._failing_since < self.PERIOD
+        return moment - self._failing_since < self._period
 
 
 # An IMAGE-SAVE older than this is not activity. A longer sub is covered by

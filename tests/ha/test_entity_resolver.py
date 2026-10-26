@@ -21,8 +21,12 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from cards import INSTANCE, lookups, resolving_cards
-from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
-from custom_components.nina_astrophotography.polling import OutageGrace
+from custom_components.nina_astrophotography.const import (
+    CONF_HOST,
+    CONF_PORT,
+    DEFAULT_OUTAGE_GRACE,
+    DOMAIN,
+)
 from ha.registry import get_device
 from helpers import needs_node, run_node
 
@@ -99,7 +103,7 @@ async def _lose_the_link(advance, freezer: FrozenDateTimeFactory) -> int:
     coordinator gives up, in ms.
     """
     await advance("nina_unreachable")
-    freezer.tick(OutageGrace.PERIOD)
+    freezer.tick(DEFAULT_OUTAGE_GRACE)
     await advance("nina_unreachable")
     return int(dt_util.utcnow().timestamp() * 1000)
 

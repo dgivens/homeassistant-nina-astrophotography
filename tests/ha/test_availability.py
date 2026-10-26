@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nina_astrophotography.polling import OutageGrace
+from custom_components.nina_astrophotography.const import DEFAULT_OUTAGE_GRACE
 from helpers import state_of
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -38,14 +38,14 @@ async def test_a_missed_poll_long_after_the_last_answer_keeps_the_last_data(
     hass: HomeAssistant, freezer, loaded_entry, advance
 ) -> None:
     """A 60 s poll interval puts every first failure past the grace period."""
-    freezer.tick(2 * OutageGrace.PERIOD)
+    freezer.tick(2 * DEFAULT_OUTAGE_GRACE)
     await advance("nina_unreachable")
     assert state_of(hass, LIGHT).state != "unavailable"
 
 
 @pytest.mark.parametrize(
     ("down_for", "available"),
-    [(OutageGrace.PERIOD - 1, True), (OutageGrace.PERIOD, False)],
+    [(DEFAULT_OUTAGE_GRACE - 1, True), (DEFAULT_OUTAGE_GRACE, False)],
     ids=["inside the grace", "past it"],
 )
 async def test_failures_keep_the_last_data_until_the_grace_runs_out(
@@ -62,7 +62,7 @@ async def test_failing_polls_do_not_extend_the_grace(
 ) -> None:
     await advance("nina_unreachable")
     for _ in range(3):
-        freezer.tick(OutageGrace.PERIOD / 3)
+        freezer.tick(DEFAULT_OUTAGE_GRACE / 3)
         await advance("nina_unreachable")
     assert state_of(hass, LIGHT).state == "unavailable"
 
@@ -71,10 +71,10 @@ async def test_every_answer_restarts_the_grace(
     hass: HomeAssistant, freezer, loaded_entry, advance
 ) -> None:
     await advance("nina_unreachable")
-    freezer.tick(OutageGrace.PERIOD - 1)
+    freezer.tick(DEFAULT_OUTAGE_GRACE - 1)
     await advance("imaging")
     await advance("nina_unreachable")
-    freezer.tick(OutageGrace.PERIOD - 1)
+    freezer.tick(DEFAULT_OUTAGE_GRACE - 1)
     await advance("nina_unreachable")
     assert state_of(hass, LIGHT).state != "unavailable"
 
