@@ -15,6 +15,15 @@
 /** Home Assistant's own location in the test instance, for the fallback path. */
 export const HOME_LATITUDE = 32.87336;
 
+// What a restored row keeps: the registry's name, icon, device class, unit and
+// supported features, and the capability attributes of this integration's
+// platforms.
+const REGISTRY_ATTRIBUTES = new Set([
+  "friendly_name", "icon", "device_class", "unit_of_measurement", "supported_features",
+  "state_class", "options", "min", "max", "step", "mode", "supported_color_modes",
+  "event_types",
+]);
+
 export class Rig {
   /**
    * @param {object} dump   one rig state out of `card_states.json`
@@ -86,13 +95,16 @@ export class Rig {
 
   /**
    * Replace a row with core's placeholder for a registry row no entity has
-   * claimed since the restart: `unavailable`, marked `restored`, over its own
-   * attributes. Core's shape, not an invented reading.
+   * claimed since the restart: `unavailable`, marked `restored`, over what the
+   * registry holds of it (`RegistryEntry.write_unavailable_state`). An
+   * entity's own attributes, such as `recent_frames`, are not among them.
+   * Core's shape, not an invented reading.
    */
   restored(entityId) {
     const row = this._states[entityId];
     if (!row) throw new Error(`${entityId} is not in the dump — nothing to restore`);
-    return this.override(entityId, "unavailable", { ...row.attributes, restored: true });
+    const kept = Object.entries(row.attributes).filter(([key]) => REGISTRY_ATTRIBUTES.has(key));
+    return this.override(entityId, "unavailable", { ...Object.fromEntries(kept), restored: true });
   }
 
   /** Stamp every row's `last_changed`, which the dump does not carry. */
