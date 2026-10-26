@@ -511,8 +511,9 @@ conditions:
   # the automation's top level a false condition genuinely stops the run.
   #
   # Each arm carries its own gates, because they differ. The unreachable arm
-  # has none: every entity of the rig is unavailable when it fires, so any gate
-  # over them would mute the failure this blueprint most needs to catch.
+  # has none: when it fires, the rig's entities are unavailable or hold readings
+  # N.I.N.A. has not confirmed, so any gate over them would mute the failure
+  # this blueprint most needs to catch.
   - alias: "The gates for the arm that fired"
     condition: or
     conditions:

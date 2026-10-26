@@ -261,6 +261,12 @@ conditions:
       {% set entry = config_entry_id(safety_unsafe) %}
       {% set rig = device_attr(nina_rig, 'config_entries') %}
       {{ entry is none or rig is not iterable or entry in rig | list }}
+  - alias: "A rig with a Reachable sensor is reported through it alone"
+    condition: template
+    value_template: >
+      {{ trigger.id != 'rig_unreachable'
+         or not rig_reachable
+         or trigger.entity_id in rig_reachable }}
   # While N.I.N.A. answers, a monitor not reported since the entry last loaded
   # (after a restart or reload with it disconnected, or removed for good) has
   # no live entity, only a restored registry row: `unavailable`,
@@ -268,12 +274,6 @@ conditions:
   # an entry that failed to load is the rig unreachable.
   # Up here, not inside the action's `if`: a failing condition in a branch
   # ends only the branch, and the run would go on to park the mount.
-  - alias: "A rig with a Reachable sensor is reported through it alone"
-    condition: template
-    value_template: >
-      {{ trigger.id != 'rig_unreachable'
-         or not rig_reachable
-         or trigger.entity_id in rig_reachable }}
   - alias: "An unreachable rig is not a monitor this load has not seen"
     condition: template
     value_template: >

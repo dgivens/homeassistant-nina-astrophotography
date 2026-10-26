@@ -118,8 +118,9 @@ export class RigEntities {
  * This integration's entity ids on the hub, for `linkLostSince`; `null` when
  * the rig cannot be identified.
  *
- * No hub entity overrides `available`, so these go `unavailable` only when the
- * coordinator fails: a rig with every driver down still reports `off` and `0`.
+ * These go `unavailable` only when the coordinator fails: a rig with every
+ * driver down still reports `off` and `0`. `reachable` never does while the
+ * entry is loaded, which `linkLostSince` reads past.
  * All of them, so disabling a few cannot blind the check. Other integrations'
  * helpers linked to the hub are left out; they go unavailable on their own.
  *
@@ -140,7 +141,8 @@ export function hubEntityIds(hass, configuredDeviceId) {
 /**
  * When the link was declared lost (epoch ms), or `null` while it is up: the
  * earliest `last_changed` of the rows that count. The coordinator holds the
- * last data for 30 s first, so this is later than N.I.N.A.'s last answer.
+ * last data for its outage grace period first, so this is later than
+ * N.I.N.A.'s last answer.
  *
  * A restored row counts only when every row is restored — an entry that failed
  * to load. Beside live rows it is an entity not created this run (first-sight,
