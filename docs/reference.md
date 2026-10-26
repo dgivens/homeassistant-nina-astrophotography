@@ -178,9 +178,14 @@ It fires in three cases:
 
 | Case | Fires when |
 |---|---|
-| Unreachable | *sequencer running* has been `unavailable` for 2 minutes, meaning N.I.N.A. or its API is down |
+| Unreachable | *rig reachable* has been `off` for 2 minutes, meaning N.I.N.A. or its API is down. Without that input, *sequencer running* being `unavailable` for 2 minutes, which starts only after the outage grace period |
 | Parked | the mount parks while the sequencer is still running |
 | Quiet | *imaging* has been off for 20 minutes, or no frame has been saved for your longest exposure (default 600 s) plus 30 minutes. Checked every minute. |
+
+Pick the rig's *Reachable* sensor for *rig reachable*, in this blueprint and in
+`weather_abort.yaml`. It is optional so that automations made from the older
+blueprints keep loading, but without it a lost rig is reported one outage grace
+period later.
 
 The quiet case doesn't fire while the sequencer is stopped, while the scheduler
 is waiting, for 15 minutes after a wait ends, or in daylight. Its timers start

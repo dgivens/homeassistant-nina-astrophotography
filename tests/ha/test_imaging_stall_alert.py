@@ -343,6 +343,27 @@ async def test_an_unreachable_rig_reports_only_what_it_knows(
     assert "mount" not in message
 
 
+async def test_a_rig_with_a_reachable_sensor_is_reported_through_it(
+    hass: HomeAssistant, watching
+) -> None:
+    """From the first missed poll, while every other row still holds its last
+    value inside the integration's outage grace.
+    """
+    reachable = "binary_sensor.rig_reachable"
+    hass.states.async_set(reachable, "on")
+    clock = await watching(rig_reachable=[reachable])
+    await start_sequence(hass, clock)
+    hass.states.async_set(reachable, "off")
+    await hass.async_block_till_done()
+
+    clock.move_to(T0 + timedelta(minutes=3))
+    await tick(hass, T0 + timedelta(minutes=3))
+
+    raised = alert(hass)
+    assert raised is not None
+    assert "cannot reach N.I.N.A." in raised["message"]
+
+
 async def test_a_missing_sun_does_not_mute_the_alarm(
     hass: HomeAssistant, watching
 ) -> None:

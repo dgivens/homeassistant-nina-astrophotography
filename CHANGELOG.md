@@ -11,6 +11,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **`binary_sensor.<instance>_reachable`** says whether N.I.N.A. answered the
   last poll. It turns `off` on the first missed poll, while the other entities
   still show their last readings, and stays available through the outage.
+- **The stall alert and abort blueprints take the rig's Reachable sensor** as
+  a new, optional *Rig reachable* input. Their unreachable arms then fire two
+  minutes after N.I.N.A. stops answering, rather than two minutes after the
+  outage grace runs out. Edit existing automations to pick it.
 
 ### Changed
 
