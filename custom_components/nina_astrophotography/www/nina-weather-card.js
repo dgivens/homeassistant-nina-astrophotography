@@ -20,7 +20,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  hubEntityIds, linkLostSince, RigEntities,
+  hubEntityIds, LinkView, RigEntities,
 } from "./nina-entity-resolver.js";
 import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
 
@@ -87,6 +87,9 @@ const STYLE = `
   .safety-text .unsafe { color: var(--danger); }
   .safety-text .unknown{ color: var(--muted); }
   .safety-text .unreachable { color: var(--warn); }
+
+  /* Readings N.I.N.A. has not confirmed since it stopped answering */
+  .body.stale { opacity: 0.5; }
 
   /* ── Grid ── */
   .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
@@ -190,10 +193,18 @@ function limit(value, fallback) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// " since HH:MM", or nothing without a time.
+function since(ms) {
+  return ms
+    ? ` since ${new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+    : "";
+}
+
 class NinaWeatherCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._view = new LinkView();
   }
 
   setConfig(config) {
@@ -214,6 +225,7 @@ class NinaWeatherCard extends HTMLElement {
     };
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
+    this._view.reset();
   }
 
   set hass(hass) {
@@ -240,20 +252,26 @@ class NinaWeatherCard extends HTMLElement {
   }
 
   _s(id, fb = null) {
-    const e = this._hass?.states?.[id];
+    const e = this._shown?.states?.[id];
     return e ? e.state : fb;
   }
   _f(id, fb = null) {
     const v = parseFloat(this._s(id));
     return isNaN(v) ? fb : v;
   }
-  _q(id) { return quantity(this._hass, id); }
+  _q(id) { return quantity(this._shown, id); }
 
   _render() {
     if (!this._hass) return;
+    const link = this._view.read(
+      this._hass, this._linkRows, this._eid("binary_sensor", "reachable"));
+    // While N.I.N.A. is not answering, the readings are its last ones.
+    this._shown = link.hass;
+    // Nothing to show at all: the link was lost before this card saw it up.
+    const unreachable = link.lost && !link.stale;
 
     // Safety monitor
-    const safetyLinkRow = this._hass.states?.[this._eid("binary_sensor", "safety_monitor_connected")];
+    const safetyLinkRow = this._shown.states?.[this._eid("binary_sensor", "safety_monitor_connected")];
     const safetyConnected = safetyLinkRow?.state === "on";
     // `on` means UNSAFE. Three states, not two: `unknown` is no reading yet,
     // and must not render as "safe".
@@ -265,7 +283,6 @@ class NinaWeatherCard extends HTMLElement {
     // The source is diagnostic and may be disabled, so nothing else depends on it.
     const source = this._s(this._eid("sensor", "weather_source"));
     const sourceLive = !missing(source);
-    const unreachable = linkLostSince(this._hass, this._linkRows) !== null;
     const channels = {
       temp: this._eid("sensor", "temperature", "weather_temperature"),
       humid: this._eid("sensor", "humidity", "weather_humidity"),
@@ -318,7 +335,14 @@ class NinaWeatherCard extends HTMLElement {
     // UNSAFE is tested first, so a disabled connectivity diagnostic cannot hide
     // a monitor reporting UNSAFE.
     let safetyIcon, safetyLabelCls, safetyLabel, safetyDetail;
-    if (isUnsafe) {
+    if (link.stale) {
+      // A safe verdict nobody has confirmed is not one; the last reading is
+      // still worth knowing.
+      const last = isUnsafe ? "unsafe" : isSafe ? "safe" : "none";
+      safetyIcon = "📡"; safetyLabelCls = "unreachable";
+      safetyLabel = "Safety state unknown";
+      safetyDetail = `No answer from N.I.N.A.${since(link.since)}. Its last reading: ${last}.`;
+    } else if (isUnsafe) {
       safetyIcon = "⚠️"; safetyLabelCls = "unsafe";
       safetyLabel = "UNSAFE — conditions exceeded";
       safetyDetail = "Automated abort should be triggered if configured";
@@ -342,7 +366,9 @@ class NinaWeatherCard extends HTMLElement {
     }
 
     let wxStatus, noReadings, noReadingsHint;
-    if (wxConnected) {
+    if (link.stale) {
+      wxStatus = `N.I.N.A. ${link.lost ? "unreachable" : "not answering"} · last readings`;
+    } else if (wxConnected) {
       wxStatus = "Connected · N.I.N.A. weather station";
     } else if (unreachable) {
       wxStatus = "N.I.N.A. unreachable · weather station";
@@ -420,7 +446,7 @@ class NinaWeatherCard extends HTMLElement {
             <div class="hint">${noReadingsHint}</div>
           </div>
         ` : `
-        <div class="body">
+        <div class="body${link.stale ? " stale" : ""}">
 
           ${dewThreat ? `
             <div class="dew-alert">

@@ -12,7 +12,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  hubEntityIds, linkLostSince, RigEntities,
+  hubEntityIds, LinkView, RigEntities,
 } from "./nina-entity-resolver.js";
 import {
   displayed, flipRange, flipSoon, flipWindow, missing, quantity, shown,
@@ -82,10 +82,11 @@ function measured(hass, entity_id, decimals = 1) {
 
 // No data is not a stopped rig. A close goes to N.I.N.A., not the roof, so with
 // no reply there is no telling whether it reached it.
-function unreachableBanner(since, dome) {
-  const time = since
-    ? ` since ${new Date(since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+function linkBanner(link, dome) {
+  const time = link.since
+    ? ` since ${new Date(link.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
     : "";
+  const shown = link.stale ? " Showing its last readings." : "";
   const still = dome
     ? "Stop, park and close still send — check that the roof closed."
     : "Stop and park still send.";
@@ -93,8 +94,8 @@ function unreachableBanner(since, dome) {
   <div class="session-banner unreachable">
     <span class="icon">📡</span>
     <div>
-      <div class="label">N.I.N.A. unreachable</div>
-      <div class="detail">Link lost${time}; N.I.N.A. may still be imaging. ${still}</div>
+      <div class="label">N.I.N.A. ${link.lost ? "unreachable" : "not answering"}</div>
+      <div class="detail">No answer${time}; it may still be imaging.${shown} ${still}</div>
     </div>
   </div>`;
 }
@@ -189,6 +190,9 @@ const STYLE = `
   .session-banner .icon { font-size: 1.5rem; flex-shrink: 0; }
   .session-banner .label { font-size: 1rem; font-weight: 700; color: var(--warn); }
   .session-banner .detail { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+
+  /* Readings N.I.N.A. has not confirmed since it stopped answering */
+  .body.stale > :not(.unreachable):not(.controls) { opacity: 0.5; }
 
   /* ── Equipment status row ── */
   .equip-row {
@@ -328,12 +332,14 @@ class NinaObservatoryCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._view = new LinkView();
   }
 
   setConfig(config) {
     this._config = config || {};
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
+    this._view.reset();
   }
 
   set hass(hass) {
@@ -364,8 +370,14 @@ class NinaObservatoryCard extends HTMLElement {
   }
 
   _render() {
-    const h = this._hass;
-    if (!h) return;
+    if (!this._hass) return;
+    const link = this._view.read(
+      this._hass, this._linkRows, this._eid("binary_sensor", "reachable"));
+    // While N.I.N.A. is not answering, the readings are its last ones.
+    const h = link.hass;
+    // Nothing to show at all: the link was lost before this card saw it up.
+    const unreachable = link.lost && !link.stale;
+    const quiet = unreachable || link.stale;
 
     // The sequencer and the camera answer different questions: a rig waiting
     // out a target's start window is running and taking nothing.
@@ -374,8 +386,6 @@ class NinaObservatoryCard extends HTMLElement {
     const frameCountId = this._eid("sensor", "session_image_count");
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
-    const lostSince = linkLostSince(h, this._linkRows);
-    const unreachable = lostSince !== null;
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
     const focConnected = available(h, this._eid("number", "focuser_position"));
@@ -410,7 +420,8 @@ class NinaObservatoryCard extends HTMLElement {
     // leaves Open to N.I.N.A.
     const unsafeId     = this._eid("binary_sensor", "safety_unsafe", "safety_monitor_unsafe");
     const notSafe      = !!h.states[unsafeId] && state(h, unsafeId) !== "off";
-    this._mountUnparked = !parked;
+    // A park remembered from before N.I.N.A. went quiet is not a current one.
+    this._mountUnparked = quiet || !parked;
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
@@ -450,7 +461,8 @@ class NinaObservatoryCard extends HTMLElement {
     const pct = (v) => Math.min((v / rmsMax) * 100, 100).toFixed(1);
     const rmsClass = (v) => v > 3 ? "danger" : v > 1.5 ? "warn" : "";
 
-    const [status, dot] = unreachable ? ["Unreachable", "dot-warn"]
+    const [status, dot] = link.lost ? ["Unreachable", "dot-warn"]
+      : link.stale ? ["Not answering", "dot-warn"]
       : seqRunning ? ["Session active", "dot-on"] : ["Standby", "dot-off"];
     // The park row, not the RA probe, which a user may disable.
     const mountStatus = !available(h, parkedId) ? ""
@@ -460,10 +472,10 @@ class NinaObservatoryCard extends HTMLElement {
     const btn = (id, label, cls = "", off = "") =>
       `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"`
       + `${off ? ` disabled title="${off}"` : ""}>${label}</button>`;
-    const LOST = "N.I.N.A. unreachable";
-    // With no state to choose either of a pair, the set is fixed: commands
-    // that end activity stay live, the rest wait.
-    const controls = unreachable ? [
+    const LOST = link.lost ? "N.I.N.A. unreachable" : "N.I.N.A. is not answering";
+    // With no current state to choose either of a pair, the set is fixed:
+    // commands that end activity stay live, the rest wait.
+    const controls = quiet ? [
       [
         btn("btn-stop", "⏹ Stop Sequence", "danger"),
         btn("btn-park", "⏸ Park"),
@@ -516,9 +528,10 @@ class NinaObservatoryCard extends HTMLElement {
           <span class="dot ${dot}"></span>
         </div>
 
-        <div class="body">
+        <div class="body${link.stale ? " stale" : ""}">
 
-          ${unreachable ? unreachableBanner(lostSince, canClose) : `
+          ${link.stale ? linkBanner(link, canClose) : ""}
+          ${unreachable ? linkBanner(link, canClose) : `
           <div class="session-banner">
             <div>
               <div class="target">${seqRunning ? target : "—"}</div>
@@ -615,7 +628,7 @@ class NinaObservatoryCard extends HTMLElement {
             </div>
           </div>
 
-          <div class="section">
+          <div class="section controls">
             <div class="section-title">Controls</div>
             ${controls.map((row) => `<div class="btn-row">${row.join("")}</div>`).join("")}
           </div>

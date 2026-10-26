@@ -25,8 +25,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   seconds. One dropped poll over a remote link no longer leaves a gap in
   history and long-term statistics, or fires automations that trigger on
   `unavailable`. The observatory, weather and image panel cards drop their own
-  30-second hold, which this replaces, and the observatory card's banner now
-  reads "Link lost since" the moment the integration gave up.
+  30-second hold, which this replaces.
+- **The cards keep the last readings through an outage, marked stale.** The
+  observatory, weather and image panel cards dim them under "No answer since
+  HH:MM" from the first missed poll, and keep showing them after the entities
+  go `unavailable`, for as long as the page stays open. The weather card says
+  the safety state is unknown and names the last reading, rather than showing
+  a verdict nobody has confirmed. A page opened during the outage shows the
+  lost link, as before.
 
 ---
 

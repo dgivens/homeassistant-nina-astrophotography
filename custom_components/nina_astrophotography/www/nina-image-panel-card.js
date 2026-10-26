@@ -48,7 +48,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import {
-  hubEntityIds, linkLostSince, RigEntities,
+  hubEntityIds, LinkView, RigEntities,
 } from "./nina-entity-resolver.js";
 import { quantityIn, shown } from "./nina-units.js";
 
@@ -135,6 +135,8 @@ const STYLE = `
     background: rgba(91,207,207,0.15); color: var(--accent2);
     border: 1px solid rgba(91,207,207,0.3);
   }
+  /* Readings N.I.N.A. has not confirmed since it stopped answering */
+  ha-card.stale .overlay, ha-card.stale .stats-row { opacity: 0.5; }
   .header .badge.warn { background: rgba(244,162,97,0.15); color: var(--warn); border-color: rgba(244,162,97,0.3); }
 
   .img-wrap {
@@ -315,6 +317,7 @@ class NinaImagePanelCard extends HTMLElement {
     this._rendered = false;
     this._stripKey = null;
     this._tiles = new Map();  // strip tiles by frame date
+    this._view = new LinkView();
   }
 
   connectedCallback() {
@@ -344,10 +347,11 @@ class NinaImagePanelCard extends HTMLElement {
       device_id: config.device_id,
     };
     this._rig = new RigEntities(this._config.prefix, this._config.device_id);
+    this._view.reset();
   }
 
   set hass(hass) {
-    this._hass = hass;
+    this._live = hass;
 
     if (this._rig.refresh(hass)) {
       this._linkRows = hubEntityIds(hass, this._config.device_id)
@@ -359,7 +363,14 @@ class NinaImagePanelCard extends HTMLElement {
       this._rendered = true;
     }
 
-    this._unreachable = linkLostSince(hass, this._linkRows) !== null;
+    const link = this._view.read(
+      hass, this._linkRows, this._eid("binary_sensor", "reachable"));
+    // While N.I.N.A. is not answering, the readings are its last ones.
+    this._hass = link.hass;
+    this._link = link;
+    // Nothing to show at all: the link was lost before this card saw it up.
+    this._unreachable = link.lost && !link.stale;
+    this.shadowRoot.querySelector("ha-card")?.classList.toggle("stale", link.stale);
     this._update();
   }
 
@@ -470,7 +481,7 @@ class NinaImagePanelCard extends HTMLElement {
 
   // A short-lived URL `<img src>` can load without an Authorization header.
   async _signedUrl(path) {
-    const { path: signed } = await this._hass.callWS({
+    const { path: signed } = await this._live.callWS({
       type: "auth/sign_path",
       path,
       expires: SIGNED_URL_TTL_SECONDS,
@@ -850,7 +861,13 @@ class NinaImagePanelCard extends HTMLElement {
     const index = this._index();
 
     // Before the camera: a lost link makes it unavailable too.
-    if (this._unreachable) {
+    if (this._link.stale) {
+      const since = this._link.since
+        ? ` since ${new Date(this._link.since).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+        : "";
+      badge.textContent = `No answer${since}`;
+      badge.className   = "badge warn";
+    } else if (this._unreachable) {
       badge.textContent = "N.I.N.A. unreachable";
       badge.className   = "badge warn";
     } else if (!connected) {

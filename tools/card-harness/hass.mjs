@@ -133,18 +133,32 @@ const ORPHAN = "sensor.n_i_n_a_wait_ends_at";
  * Lost-link scenarios around the live `site_configured` rig, for every card
  * that shows one:
  *
- * - `unreachable` — no live view before it.
- * - `lost` — live, then N.I.N.A. stops answering: must draw `unreachable`.
+ * - `unreachable` — no live view before it: must draw the lost link alone.
+ * - `not_answering` — one missed poll, inside the grace: the held readings,
+ *   marked stale.
+ * - `lost` — live, then past the grace: the last live readings, marked stale.
+ * - `recovered` — lost, then answering again: the live rig, not stale.
  * - `unreachable_templated` — no registry, so the card's templated ids.
  * - `orphaned_row` — live beside an orphaned hub row: must draw the live rig.
  */
 export function linkScenarios() {
   return {
     unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
+    not_answering: {
+      hass: (dump) =>
+        rig(dump, "nina_not_answering").changedAt(new Date(Date.now() - 15_000)).build(),
+    },
     lost: {
       hass: (dump) => rig(dump, "site_configured").build(),
       after: (dump) => [
         rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - 45_000)).build(),
+      ],
+    },
+    recovered: {
+      hass: (dump) => rig(dump, "site_configured").build(),
+      after: (dump) => [
+        rig(dump, "nina_unreachable").build(),
+        rig(dump, "site_configured").build(),
       ],
     },
     unreachable_templated: {
