@@ -428,7 +428,7 @@ class NinaImagePanelCard extends HTMLElement {
   _index() {
     const date = this._frame().date;
     const frames = this._recentFrames();
-    // An empty list is a restarted N.I.N.A., not an old frame.
+    // An empty list says nothing of where the frame sits.
     if (!date || frames.length === 0) return 0;
     return frames.findIndex((frame) => frame.date === date);
   }
@@ -636,6 +636,12 @@ class NinaImagePanelCard extends HTMLElement {
     if (!strip) return;
 
     const frames = this._recentFrames().slice(0, this._config.strip_count);
+    // An emptied list keeps its tiles, so the same frames returning cost no
+    // thumbnails.
+    if (frames.length === 0) {
+      strip.innerHTML = "";
+      return;
+    }
     const kept = this._tiles;
     this._tiles = new Map();
     strip.innerHTML = "";
