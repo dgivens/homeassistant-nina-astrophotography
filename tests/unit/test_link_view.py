@@ -48,6 +48,14 @@ CASES = {
         ["failed"],
         [["failed", QUIET_AT, True, False]],
     ),
+    "missing rows do not replace the last live view": (
+        ["live", "missing", "failed"],
+        [LIVE, ["missing", None, False, False], ["live", QUIET_AT, True, True]],
+    ),
+    "a card that saw only missing rows draws the lost link": (
+        ["missing", "failed"],
+        [["missing", None, False, False], ["failed", QUIET_AT, True, False]],
+    ),
 }
 
 

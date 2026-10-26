@@ -36,6 +36,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   exposing bar, since the exposure may have ended. A page opened during the
   outage shows the lost link, as before.
 
+### Fixed
+
+- **The cards keep the last readings through a Home Assistant restart.** A
+  dashboard left open while Home Assistant restarts briefly sees none of the
+  rig's entities, as it does while the integration retries its setup. The
+  observatory, weather and image panel cards no longer take that for N.I.N.A.
+  answering, so they no longer swap the readings they held for an empty view
+  once the entities come back `unavailable` (#185).
+
 ---
 
 ## [2.2.0] - 2026-10-25

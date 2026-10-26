@@ -107,6 +107,15 @@ export class Rig {
     return this.override(entityId, "unavailable", { ...Object.fromEntries(kept), restored: true });
   }
 
+  /**
+   * Drop every row but keep the registry: Home Assistant once it has started
+   * and before the entry has set up, or while it retries its setup.
+   */
+  beforeSetup() {
+    this._states = {};
+    return this;
+  }
+
   /** Stamp every row's `last_changed`, which the dump does not carry. */
   changedAt(date) {
     const stamp = date.toISOString();
@@ -150,8 +159,15 @@ export function rig(dump, rigState) {
  * - `unreachable_templated` — no registry, so the card's templated ids.
  * - `not_loaded` — every row restored, as an entry that is not loaded leaves
  *   them: must draw the lost link alone.
+ * - `restarted` — live, then Home Assistant restarting under the card: no
+ *   rows, then every row restored. Must draw what `lost` does.
  */
 export function linkScenarios() {
+  const notLoaded = (dump) => {
+    const rows = rig(dump, "site_configured");
+    for (const id of Object.keys(dump.site_configured.states)) rows.restored(id);
+    return rows.changedAt(new Date(Date.now() - 45_000)).build();
+  };
   return {
     unreachable: { hass: (dump) => rig(dump, "nina_unreachable").build() },
     not_answering: {
@@ -174,12 +190,10 @@ export function linkScenarios() {
     unreachable_templated: {
       hass: (dump) => rig(dump, "nina_unreachable").unresolvable().build(),
     },
-    not_loaded: {
-      hass: (dump) => {
-        const notLoaded = rig(dump, "site_configured");
-        for (const id of Object.keys(dump.site_configured.states)) notLoaded.restored(id);
-        return notLoaded.changedAt(new Date(Date.now() - 45_000)).build();
-      },
+    not_loaded: { hass: notLoaded },
+    restarted: {
+      hass: (dump) => rig(dump, "site_configured").build(),
+      after: (dump) => [rig(dump, "site_configured").beforeSetup().build(), notLoaded(dump)],
     },
   };
 }
