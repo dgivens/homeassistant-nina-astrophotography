@@ -381,8 +381,8 @@ class NinaImagePanelCard extends HTMLElement {
       this._newest = newest?.date;
       this._load(newest);
     } else if (newest && newest.date !== this._newest) {
-      // An emptied list (a lost link drops the attribute) is not a save, so
-      // the same newest coming back loads nothing.
+      // An emptied list is not a save, so the same newest coming back loads
+      // nothing.
       this._newest = newest.date;
       if (this._config.refresh_on_save || !this._hasImage) this._load(newest);
     }
@@ -428,7 +428,7 @@ class NinaImagePanelCard extends HTMLElement {
   _index() {
     const date = this._frame().date;
     const frames = this._recentFrames();
-    // An empty list is a lost link or a restarted N.I.N.A., not an old frame.
+    // An empty list is a restarted N.I.N.A., not an old frame.
     if (!date || frames.length === 0) return 0;
     return frames.findIndex((frame) => frame.date === date);
   }
@@ -636,11 +636,6 @@ class NinaImagePanelCard extends HTMLElement {
     if (!strip) return;
 
     const frames = this._recentFrames().slice(0, this._config.strip_count);
-    // Emptied by a lost link: the tiles are kept for the frames' return.
-    if (frames.length === 0) {
-      strip.innerHTML = "";
-      return;
-    }
     const kept = this._tiles;
     this._tiles = new Map();
     strip.innerHTML = "";
@@ -875,7 +870,8 @@ class NinaImagePanelCard extends HTMLElement {
       badge.className   = "badge";
     }
 
-    expBar?.classList.toggle("active", exposing);
+    // Held readings are not current: the exposure may have ended since.
+    expBar?.classList.toggle("active", exposing && !this._link.stale);
 
     if (title) {
       title.textContent = index === 0 ? "Latest Image"

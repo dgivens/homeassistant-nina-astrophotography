@@ -31,8 +31,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   HH:MM" from the first missed poll, and keep showing them after the entities
   go `unavailable`, for as long as the page stays open. The weather card says
   the safety state is unknown and names the last reading, rather than showing
-  a verdict nobody has confirmed. A page opened during the outage shows the
-  lost link, as before.
+  a verdict nobody has confirmed. The image panel keeps its strip and ADU
+  range without asking N.I.N.A. for a thumbnail (#136), and stops its
+  exposing bar, since the exposure may have ended. A page opened during the
+  outage shows the lost link, as before.
 
 ---
 
