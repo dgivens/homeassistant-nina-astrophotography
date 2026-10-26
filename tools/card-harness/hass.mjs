@@ -126,9 +126,6 @@ export function rig(dump, rigState) {
   return new Rig(state);
 }
 
-// A hub row no card reads, standing in for an orphaned registry row.
-const ORPHAN = "sensor.n_i_n_a_wait_ends_at";
-
 /**
  * Lost-link scenarios around the live `site_configured` rig, for every card
  * that shows one:
@@ -139,7 +136,8 @@ const ORPHAN = "sensor.n_i_n_a_wait_ends_at";
  * - `lost` — live, then past the grace: the last live readings, marked stale.
  * - `recovered` — lost, then answering again: the live rig, not stale.
  * - `unreachable_templated` — no registry, so the card's templated ids.
- * - `orphaned_row` — live beside an orphaned hub row: must draw the live rig.
+ * - `not_loaded` — every row restored, as an entry that is not loaded leaves
+ *   them: must draw the lost link alone.
  */
 export function linkScenarios() {
   return {
@@ -164,6 +162,12 @@ export function linkScenarios() {
     unreachable_templated: {
       hass: (dump) => rig(dump, "nina_unreachable").unresolvable().build(),
     },
-    orphaned_row: { hass: (dump) => rig(dump, "site_configured").restored(ORPHAN).build() },
+    not_loaded: {
+      hass: (dump) => {
+        const notLoaded = rig(dump, "site_configured");
+        for (const id of Object.keys(dump.site_configured.states)) notLoaded.restored(id);
+        return notLoaded.changedAt(new Date(Date.now() - 45_000)).build();
+      },
+    },
   };
 }

@@ -12,7 +12,6 @@ the claim that a disabled entity can never resolve.
 
 from pathlib import Path
 
-from freezegun.api import FrozenDateTimeFactory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
@@ -21,12 +20,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from cards import INSTANCE, lookups, resolving_cards
-from custom_components.nina_astrophotography.const import (
-    CONF_HOST,
-    CONF_PORT,
-    DEFAULT_OUTAGE_GRACE,
-    DOMAIN,
-)
+from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
 from helpers import needs_node, run_node
 
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
@@ -104,16 +98,6 @@ async def _miss_a_poll(advance) -> int:
     """N.I.N.A. stops answering; returns that moment, in ms."""
     await advance("nina_unreachable")
     return _ms()
-
-
-async def _lose_the_link(advance, freezer: FrozenDateTimeFactory) -> int:
-    """N.I.N.A. stops answering past the grace period; returns the moment it
-    stopped, in ms.
-    """
-    quiet_at = await _miss_a_poll(advance)
-    freezer.tick(DEFAULT_OUTAGE_GRACE)
-    await advance("nina_unreachable")
-    return quiet_at
 
 
 def _templated(domain: str, suffix: str, instance: str = INSTANCE) -> str:
@@ -344,14 +328,11 @@ async def test_renaming_a_device_does_not_break_resolution(
 
 
 @needs_node
-@pytest.mark.parametrize("rig_state", ["imaging", "equipment_disconnected"])
-async def test_a_rig_that_answers_has_not_lost_its_link(
-    hass: HomeAssistant, advance, hass_ws_client, rig_state: str
+async def test_drivers_dropping_after_they_were_seen_is_not_a_lost_link(
+    hass: HomeAssistant, advance, hass_ws_client
 ) -> None:
-    """Drivers dropping after they were seen is not a lost link: their rows go
-    `unavailable`, the hub's do not.
-    """
-    await advance(rig_state)
+    """Their rows go `unavailable`; the hub's do not."""
+    await advance("equipment_disconnected")
 
     assert await _link(hass, hass_ws_client) == {"since": None, "lost": False}
 
@@ -368,37 +349,45 @@ async def test_a_missed_poll_is_quiet_but_not_lost(
 
 
 @needs_node
+@pytest.mark.parametrize("rig_state", ["imaging", "equipment_disconnected"])
 async def test_past_the_grace_the_link_is_lost_since_the_first_missed_poll(
-    hass: HomeAssistant, advance, hass_ws_client, freezer: FrozenDateTimeFactory
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    outage,
+    hass_ws_client,
+    rig_state: str,
 ) -> None:
-    """The banners date the outage from this."""
-    quiet_at = await _lose_the_link(advance, freezer)
+    """With no equipment ever seen too: the rows that tell it are the hub's."""
+    await set_up_at(hass, config_entry, rig, rig_state)
+    quiet_at = _ms()
+
+    await outage()
 
     assert await _link(hass, hass_ws_client) == {"since": quiet_at, "lost": True}
 
 
 @needs_node
+@pytest.mark.usefixtures("freezer")
 async def test_an_entry_that_is_not_loaded_has_lost_its_link(
     hass: HomeAssistant, loaded_entry, hass_ws_client
 ) -> None:
-    """Its rows restored, as an entry that failed to load leaves them."""
+    """Its rows restored, `reachable` among them, since the unload."""
+    unloaded_at = _ms()
     assert await hass.config_entries.async_unload(loaded_entry.entry_id)
     await hass.async_block_till_done()
 
-    assert (await _link(hass, hass_ws_client))["lost"]
+    assert await _link(hass, hass_ws_client) == {"since": unloaded_at, "lost": True}
 
 
 @needs_node
 @pytest.mark.parametrize("lost", [False, True], ids=["answering", "lost"])
 async def test_an_unidentified_rig_is_read_through_the_card_s_own_ids(
-    hass: HomeAssistant,
-    advance,
-    hass_ws_client,
-    freezer: FrozenDateTimeFactory,
-    lost: bool,
+    hass: HomeAssistant, loaded_entry, outage, hass_ws_client, lost: bool
 ) -> None:
     """Two rigs and no `device_id:` leave nothing to resolve."""
     if lost:
-        await _lose_the_link(advance, freezer)
+        await outage()
 
     assert (await _link(hass, hass_ws_client, identified=False))["lost"] is lost

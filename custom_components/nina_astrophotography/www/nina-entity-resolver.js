@@ -115,7 +115,7 @@ export class RigEntities {
 
 // Hub rows created on every setup. They go `unavailable` only once the
 // coordinator stops holding the last data: a rig with every driver down still
-// reports `off` and `0`. Two, so disabling one cannot blind the check.
+// reports them. Two, so disabling one cannot blind the check.
 const HELD_ROWS = [
   ["binary_sensor", "sequencer_running"],
   ["sensor", "session_image_count"],
@@ -127,16 +127,17 @@ const HELD_ROWS = [
  * That row turns `off` on the first missed poll and stays available, so it
  * says when N.I.N.A. went quiet but not when the grace period ran out; the
  * held rows going `unavailable` say that. It is created on every setup, so a
- * restored copy means the entry failed to load. Should it be disabled, the
+ * restored copy means the entry is not loaded. Should it be disabled, the
  * held rows alone still tell a lost link, though not since when.
  *
  * @param {object} hass the Home Assistant object a card is handed
- * @param {RigEntities} rig the card's entity ids, refreshed
+ * @param {RigEntities} rig the card's entity ids, refreshed from `hass` here
  * @returns {{since: number|null, lost: boolean}} `since`, when N.I.N.A.
  *   stopped answering (epoch ms), `null` while it answers; `lost`, past the
  *   grace period
  */
 export function linkState(hass, rig) {
+  rig.refresh(hass);
   const row = (domain, key) => hass.states?.[rig.id(domain, key)];
   const reachable = row("binary_sensor", "reachable");
   const failed = reachable?.attributes?.restored === true;
@@ -163,7 +164,7 @@ export class LinkView {
 
   /**
    * @param {object} hass the Home Assistant object a card is handed
-   * @param {RigEntities} rig the card's entity ids, refreshed
+   * @param {RigEntities} rig the card's entity ids
    * @returns {{hass: object, since: number|null, lost: boolean, stale: boolean}}
    *   `hass` to draw readings from; `since` and `lost` as `linkState` gives
    *   them; `stale`, readings drawn but not current
