@@ -106,9 +106,10 @@ for a card whose output depends on what it showed before, such as the image
 panel taking a newly saved frame. Each is logged as `hass`; the markup printed
 is what the last left. `Rig.changedAt(date)` stamps `last_changed`, measured
 against the pinned `Date.now()`; `Rig.restored(id)` swaps a row for core's
-restored placeholder; `linkScenarios()` is the shared set of lost-link
-scenarios. A brief outage is not one of them: the integration keeps the last
-data through it, so a card never sees it.
+restored placeholder; `Rig.beforeSetup()` drops every row but keeps the
+registry, as Home Assistant does before the entry sets up; `linkScenarios()`
+is the shared set of lost-link scenarios. A brief outage is not one of them:
+the integration keeps the last data through it, so a card never sees it.
 
 `events` are bus events `ops.mjs` fires at whatever the card subscribed to,
 once the first render has settled; each is logged, so the lines after it are

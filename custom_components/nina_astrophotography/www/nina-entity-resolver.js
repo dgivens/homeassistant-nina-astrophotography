@@ -147,6 +147,13 @@ export function linkState(hass, rig) {
   return { since: quiet ? Date.parse(reachable.last_changed) || null : null, lost };
 }
 
+/** Whether `hass` holds the rig's rows at all, which it does not until the entry sets up. */
+function reported(hass, rig) {
+  return [["binary_sensor", "reachable"], ...HELD_ROWS].some(
+    ([domain, key]) => hass.states?.[rig.id(domain, key)] !== undefined,
+  );
+}
+
 /**
  * What a card draws from while N.I.N.A. is not answering: the last `hass` in
  * which the link was up, kept in memory, so the readings stay on screen marked
@@ -154,8 +161,10 @@ export function linkState(hass, rig) {
  *
  * Inside the grace period Home Assistant still holds the readings, so `hass`
  * itself is drawn. Past it, only a card that saw the link up has anything to
- * show; one loaded during the outage draws the lost link. Nothing is stored
- * across a reload: readings from last night are not worth showing.
+ * show; one loaded during the outage draws the lost link. A `hass` without the
+ * rig's rows, as Home Assistant starting up or an entry retrying its setup
+ * hands a card, is not the link up and never replaces the view kept. Nothing
+ * is stored across a reload: readings from last night are not worth showing.
  */
 export class LinkView {
   constructor() {
@@ -171,7 +180,7 @@ export class LinkView {
    */
   read(hass, rig) {
     const { since, lost } = linkState(hass, rig);
-    if (!lost) this._live = hass;
+    if (!lost && reported(hass, rig)) this._live = hass;
     return {
       hass: lost ? this._live ?? hass : hass,
       since,

@@ -18,14 +18,15 @@ const QUIET_AT = "2026-10-26T02:00:00+00:00";
 const row = (state, changed, attributes = {}) =>
   ({ state, attributes, last_changed: changed });
 // The rig as the coordinator publishes it: answering, one missed poll inside
-// the grace, and past it; with `reachable` disabled; and as core restores it
-// for an entry that failed to load.
+// the grace, and past it; with `reachable` disabled; as core restores it for
+// an entry that failed to load; and absent, before the entry has set up.
 const RIG = {
   live: { [HELD]: row("on"), [REACHABLE]: row("on") },
   quiet: { [HELD]: row("on"), [REACHABLE]: row("off", QUIET_AT) },
   lost: { [HELD]: row("unavailable", QUIET_AT), [REACHABLE]: row("off", QUIET_AT) },
   lost_unreported: { [HELD]: row("unavailable", QUIET_AT) },
   failed: { [REACHABLE]: row("unavailable", QUIET_AT, { restored: true }) },
+  missing: {},
 };
 
 const [path] = process.argv.slice(2);
