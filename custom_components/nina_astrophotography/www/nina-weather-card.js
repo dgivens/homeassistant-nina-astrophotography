@@ -22,7 +22,7 @@ import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
 
-const VERSION = "2.2.0";
+const VERSION = "2.3.0";
 
 const STYLE = `
   :host {
