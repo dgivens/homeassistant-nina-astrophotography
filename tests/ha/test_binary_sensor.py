@@ -124,12 +124,12 @@ async def test_only_the_connectivity_sensor_survives_the_monitors_disconnection(
 
 
 async def test_an_unreachable_rig_still_makes_the_connectivity_sensor_unavailable(
-    hass: HomeAssistant, advance
+    hass: HomeAssistant, outage, loaded_entry
 ) -> None:
     """Level 1 is not exempted: nothing is known about the monitor when nothing
     is known about the rig.
     """
-    await advance("nina_unreachable")
+    await outage()
     assert state_of(hass, MONITOR_CONNECTED).state == "unavailable"
 
 

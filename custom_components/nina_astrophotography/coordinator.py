@@ -42,6 +42,7 @@ from .device import KINDS
 from .polling import (
     EventLedger,
     GuiderStopLatch,
+    OutageGrace,
     ReseedGuard,
     RestartDetector,
     TierSchedule,
@@ -190,6 +191,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._observed: set[str] = set()
         self._rejection_logged = False
         self._unavailable_logged = False
+        self._grace = OutageGrace()
         self._restart = RestartDetector()
         self._reseed_guard = ReseedGuard()
         self._ledger = EventLedger()
@@ -232,6 +234,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self._note_reachable()
             return self.data
         except NinaError as exc:
+            if self.data is not None and self._grace.holds():
+                _LOGGER.debug("N.I.N.A. at %s missed a poll: %s", self._host, exc)
+                return self.data
             # Once per outage, not once per tick.
             if not self._unavailable_logged:
                 _LOGGER.warning("N.I.N.A. at %s is unavailable: %s", self._host, exc)
@@ -475,7 +480,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         return self.config_entry.data[CONF_HOST]
 
     def _note_reachable(self) -> None:
-        """Announce the recovery once, and only after an outage was announced."""
+        """Restart the grace, and announce a recovery once if an outage was."""
+        self._grace.answered()
         if self._unavailable_logged:
             _LOGGER.info("N.I.N.A. at %s is back online", self._host)
             self._unavailable_logged = False

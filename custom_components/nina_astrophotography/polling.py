@@ -217,6 +217,31 @@ class TierSchedule:
         return pending
 
 
+class OutageGrace:
+    """Whether a failed poll may keep the last data rather than fail.
+
+    A remote link drops a poll routinely while the rig images on. Failing at
+    once turns every entity `unavailable` for a tick, which the recorder keeps
+    and an automation on `unavailable` fires on.
+    """
+
+    PERIOD = 30.0
+
+    def __init__(self) -> None:
+        self._answered: float | None = None
+
+    def answered(self, now: float | None = None) -> None:
+        """Record that N.I.N.A. answered, which a refusal also is."""
+        self._answered = time.monotonic() if now is None else now
+
+    def holds(self, now: float | None = None) -> bool:
+        """Whether a failure now is inside the grace; never before an answer."""
+        if self._answered is None:
+            return False
+        moment = time.monotonic() if now is None else now
+        return moment - self._answered < self.PERIOD
+
+
 # An IMAGE-SAVE older than this is not activity. A longer sub is covered by
 # `is_exposing`.
 _RECENT_SAVE = 300.0

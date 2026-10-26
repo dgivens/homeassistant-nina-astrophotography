@@ -1,4 +1,4 @@
-"""Availability level 2 and `log-when-unavailable`.
+"""Availability level 2, the grace before level 1, and `log-when-unavailable`.
 
 Level 1 — `CoordinatorEntity.available` propagating `last_update_success` — is
 Home Assistant's own and is not tested here (§8.2); it is pinned once, through
@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.nina_astrophotography.polling import OutageGrace
 from helpers import state_of
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
@@ -33,12 +34,36 @@ async def test_a_disconnected_device_makes_its_entities_unavailable(
     assert state_of(hass, LIGHT).state == "unavailable"
 
 
+@pytest.mark.parametrize(
+    ("down_for", "available"),
+    [(OutageGrace.PERIOD - 1, True), (OutageGrace.PERIOD, False)],
+    ids=["inside the grace", "past it"],
+)
+async def test_a_missed_poll_keeps_the_last_data_until_the_grace_runs_out(
+    hass: HomeAssistant, freezer, loaded_entry, advance, down_for, available
+) -> None:
+    """Measured from the last answer, so failing ticks cannot extend it."""
+    freezer.tick(down_for)
+    await advance("nina_unreachable")
+    assert (state_of(hass, LIGHT).state != "unavailable") is available
+
+
+async def test_every_answer_restarts_the_grace(
+    hass: HomeAssistant, freezer, loaded_entry, advance
+) -> None:
+    freezer.tick(OutageGrace.PERIOD - 1)
+    await advance("imaging")
+    freezer.tick(OutageGrace.PERIOD - 1)
+    await advance("nina_unreachable")
+    assert state_of(hass, LIGHT).state != "unavailable"
+
+
 async def test_an_outage_is_logged_once_and_the_recovery_once(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, caplog
+    hass: HomeAssistant, outage, loaded_entry: MockConfigEntry, advance, caplog
 ) -> None:
     caplog.set_level(logging.INFO)
-    await advance("nina_unreachable")
-    await advance("nina_unreachable")
+    await outage()
+    await outage()
     assert caplog.text.count("is unavailable") == 1
 
     await advance("imaging")

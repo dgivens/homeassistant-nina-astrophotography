@@ -54,7 +54,10 @@ a roof-close automation needs to know the difference.
 unsafe. This follows Home Assistant's `safety` device class, where `on` means
 there is a problem. Trigger an abort on `to: "on"`.
 
-If N.I.N.A. itself is unreachable, every entity of that rig goes `unavailable`.
+If N.I.N.A. itself stops answering for 30 seconds, every entity of that rig
+goes `unavailable`. A shorter drop, such as one missed poll over a remote link,
+keeps the last readings, so it leaves no gap in history and fires no
+`unavailable` trigger.
 
 ## Entities by device
 

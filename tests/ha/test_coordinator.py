@@ -12,10 +12,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nina_astrophotography.api.errors import (
-    NinaConnectionError,
-    NinaRequestError,
-)
+from custom_components.nina_astrophotography.api.errors import NinaRequestError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from helpers import state_of
 
@@ -48,12 +45,9 @@ async def test_the_session_boundary_is_the_rigs_local_noon(
 
 
 async def test_an_unreachable_rig_makes_the_entities_unavailable(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, monkeypatch
+    hass: HomeAssistant, outage, loaded_entry: MockConfigEntry
 ) -> None:
-    monkeypatch.setattr(
-        NinaClientV2, "get_equipment", _raising(NinaConnectionError("down"))
-    )
-    await loaded_entry.runtime_data.coordinator.async_refresh()
+    await outage()
     assert state_of(hass, LIGHT).state == "unavailable"
 
 

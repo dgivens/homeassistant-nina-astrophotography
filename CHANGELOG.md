@@ -4,6 +4,21 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **A brief outage no longer makes every entity unavailable** (#134). When
+  N.I.N.A. misses a poll, the integration keeps the last readings for up to
+  30 seconds before marking the rig's entities `unavailable`. One dropped poll
+  over a remote link no longer leaves a gap in history and long-term
+  statistics, or fires automations that trigger on `unavailable`. The
+  observatory, weather and image panel cards no longer hold their own 30
+  seconds on top, so a real outage reads "N.I.N.A. unreachable" after 30
+  seconds rather than up to a minute.
+
+---
+
 ## [2.2.0] - 2026-10-25
 
 ### Added
