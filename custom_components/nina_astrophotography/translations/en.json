@@ -83,6 +83,9 @@
       "mount_at_park": {
         "name": "At park"
       },
+      "mount_meridian_flip": {
+        "name": "Meridian flip"
+      },
       "rotator_is_moving": {
         "name": "Moving"
       },

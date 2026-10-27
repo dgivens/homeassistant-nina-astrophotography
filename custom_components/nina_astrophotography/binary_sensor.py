@@ -105,6 +105,14 @@ def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
     }
 
 
+def _flip_slew(data: NinaData) -> Mapping[str, Any]:
+    """`slews_at`: when the flip's wait ends, estimated from the last tracked
+    countdown; `None` outside a flip, or where nothing places it.
+    """
+    flip = data.meridian_flip
+    return {"slews_at": None if flip is None else flip.slews_at}
+
+
 DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
         key="reachable",
@@ -152,6 +160,16 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         translation_key="mount_at_home",
         kind="mount",
         value=read_field("mount", "at_home"),
+    ),
+    NinaBinarySensorDescription(
+        key="mount_meridian_flip",
+        translation_key="mount_meridian_flip",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        kind="mount",
+        # On through the wait before the slew, while the countdown sensor
+        # reads `unknown` because N.I.N.A. has turned tracking off.
+        value=lambda data: data.meridian_flip is not None,
+        attributes=_flip_slew,
     ),
     NinaBinarySensorDescription(
         key="autofocus_failed",

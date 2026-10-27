@@ -4,9 +4,12 @@ Every assertion goes through `hass.states` or the entity registry — the
 registry for the long tail, which ships disabled and so has no state.
 """
 
+from datetime import timedelta
+
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -22,6 +25,7 @@ IMAGING = "binary_sensor.n_i_n_a_imaging"
 SCHEDULER_WAITING = "binary_sensor.n_i_n_a_scheduler_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 REACHABLE = "binary_sensor.n_i_n_a_reachable"
+MERIDIAN_FLIP = "binary_sensor.n_i_n_a_mount_meridian_flip"
 
 
 @pytest.mark.parametrize(
@@ -389,3 +393,40 @@ async def test_a_report_older_than_the_session_is_not_tonights_problem(
     """
     await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
     assert state_of(hass, AUTOFOCUS_FAILED).state == "off"
+
+
+@pytest.mark.synthetic
+async def test_the_flip_sensor_runs_from_the_flips_start_to_its_end(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    push,
+    set_up_at,
+    freezer,
+    inside_the_guiding_session,
+) -> None:
+    """Fabricates the bare `MOUNT-BEFORE-FLIP` and `MOUNT-AFTER-FLIP` pushes."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    push({"Event": "MOUNT-BEFORE-FLIP"})
+    await hass.async_block_till_done()
+    during = state_of(hass, MERIDIAN_FLIP).state
+    freezer.tick(timedelta(minutes=2))
+    push({"Event": "MOUNT-AFTER-FLIP"})
+    await hass.async_block_till_done()
+    assert (during, state_of(hass, MERIDIAN_FLIP).state) == ("on", "off")
+
+
+@pytest.mark.synthetic
+async def test_the_flip_slews_when_the_tracked_countdown_reaches_the_window(
+    hass: HomeAssistant, config_entry, rig, push, set_up_at, inside_the_guiding_session
+) -> None:
+    """The capture's mount reads 2.1036 h to the flip and its profile a
+    15 − 5 minute window, so with the clock frozen N.I.N.A. would wait 116.2
+    minutes. Fabricates the bare `MOUNT-BEFORE-FLIP` push.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    push({"Event": "MOUNT-BEFORE-FLIP"})
+    await hass.async_block_till_done()
+    slews_at = state_of(hass, MERIDIAN_FLIP).attributes["slews_at"]
+    waits = slews_at - dt_util.utcnow()
+    assert waits == timedelta(hours=2.1036111110833335) - timedelta(minutes=10)
