@@ -132,8 +132,9 @@ Test through **public Home Assistant interfaces**: set up via
 and the registries. Do not reach into coordinator internals — tests that do stop
 surviving refactors, which defeats the point during a restructure.
 
-Wire data constructed rather than captured is marked `@pytest.mark.synthetic`
-and says in its docstring what it fabricates.
+Wire data constructed rather than captured is marked `@pytest.mark.synthetic`.
+Its docstring names what was fabricated only when the body does not show it — a
+reading moved inside a scenario state, not an event list built in the test.
 
 - One behaviour per test. If a test needs a paragraph to explain what it proves,
   it is testing too much.
@@ -157,7 +158,8 @@ the pre-commit guard enforces it.
 
 ## Comments and docstrings
 
-Keep both concise, and prefer explaining *why* over restating *what*.
+Keep both concise, and prefer explaining *why* over restating *what*. If the
+code already makes it plain, it does not need saying.
 
 **Docstrings carry durable knowledge, not session history.** The test: would
 this help someone touching this code a year from now with no memory of how it
@@ -173,6 +175,11 @@ came to be written?
 The same applies to inline comments. A comment justifying a surprising line is
 worth keeping; a comment recounting the debugging session that produced it is
 not.
+
+**Test docstrings are held to the same bar.** The name says what the test
+proves; a docstring adds only what the name and body cannot — why the behaviour
+matters, or the API fact that makes it non-obvious. Most tests need none. Never
+restate the name, the setup or the assertion.
 
 ## API behaviour that will otherwise catch you out
 

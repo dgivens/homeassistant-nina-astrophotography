@@ -113,5 +113,5 @@ driver actually sends, and is how every branch a single night cannot produce
 gets covered. What stays banned is inventing the document: a hand-written
 envelope, a key set no capture shows, a device block assembled from the spec.
 A state that needs one of those belongs in `AWAITING_CAPTURE`, and every test
-reading a derived state carries `@pytest.mark.synthetic` and says in its
-docstring what was moved.
+reading a derived state carries `@pytest.mark.synthetic`. The move happens in
+`states.py`, out of the test's sight, so its docstring says what was moved.
