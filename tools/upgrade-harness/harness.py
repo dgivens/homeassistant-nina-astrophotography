@@ -1,7 +1,7 @@
 """Stand up a throwaway Home Assistant in Docker, install one version of the
 integration against a N.I.N.A., and upgrade it in place to another.
 
-    uv run python tools/upgrade-harness/harness.py up --ref v1.4.5
+    uv run python tools/upgrade-harness/harness.py up --ref v1.4.5 --host host.docker.internal
     uv run python tools/upgrade-harness/harness.py snapshot before
     uv run python tools/upgrade-harness/harness.py upgrade --ref origin/main
     uv run python tools/upgrade-harness/harness.py snapshot after
@@ -12,8 +12,10 @@ Everything lives under `tools/upgrade-harness/.run/` (git-ignored): the
 container's `/config`, the access token, and the snapshots. The instance is
 onboarded through its own onboarding API, so no step needs a browser.
 
-Point it only at the simulator rig: setting an entry up polls every endpoint,
-and a check that goes further may command equipment.
+Point it only at a simulator rig: setting an entry up polls every endpoint,
+and a check that goes further may command equipment. Home Assistant runs in
+bridged Docker, so a rig forwarded to the host, like the test VM's, is
+`host.docker.internal`, not `127.0.0.1`.
 """
 
 import argparse
@@ -41,7 +43,6 @@ IMAGE = "ghcr.io/home-assistant/home-assistant:2026.9.0"
 PORT = 8124
 BASE = f"http://127.0.0.1:{PORT}"
 CLIENT_ID = f"{BASE}/"
-SIM_HOST = "10.20.30.133"
 SIM_PORT = 1888
 
 
@@ -383,12 +384,14 @@ def main() -> None:
     )
     commands = parser.add_subparsers(dest="command", required=True)
     start = commands.add_parser("up", help="start Home Assistant and add the rig")
-    start.add_argument("--ref", default="origin/main", help="git ref to install")
+    start.add_argument("--ref", default="v1.4.5", help="git ref to install")
     start.add_argument("--image", default=IMAGE)
-    start.add_argument("--host", default=SIM_HOST)
+    start.add_argument(
+        "--host", required=True, help="a simulator N.I.N.A., as the container sees it"
+    )
     start.add_argument("--port", type=int, default=SIM_PORT)
     move = commands.add_parser("upgrade", help="install another ref and restart")
-    move.add_argument("--ref", default="origin/v2")
+    move.add_argument("--ref", default="origin/main")
     take = commands.add_parser("snapshot", help="record the registry and states")
     take.add_argument("name")
     compare = commands.add_parser("check", help="hold an upgrade to the renames doc")
