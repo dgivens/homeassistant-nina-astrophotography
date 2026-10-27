@@ -99,12 +99,13 @@ function equToHoriz(ra_h, dec_deg, lat_deg, lst_h) {
 }
 
 /** Stereographic projection: alt/az → unit circle (x,y), [-1,1].
-    Zenith is centre, horizon the edge; az 0° (north) is up. */
+    Zenith is centre, horizon the edge. Drawn as a sky chart held overhead:
+    north up and east on the left (canvas y increases down). */
 function project(alt_deg, az_deg) {
   const r = Math.cos(alt_deg * DEG) / (1 + Math.sin(alt_deg * DEG));
-  const a = (az_deg - 180) * DEG;   // rotate so N is up (canvas y increases down)
+  const a = az_deg * DEG;
   return {
-    x:  r * Math.sin(a),
+    x: -r * Math.sin(a),
     y: -r * Math.cos(a),
   };
 }
@@ -302,8 +303,8 @@ class NinaSkyMapCard extends HTMLElement {
             style="width:${size}px;height:${size}px;"></canvas>
           <span class="compass-label" id="cl-n"  style="top:8px;   left:50%">N</span>
           <span class="compass-label" id="cl-s"  style="bottom:8px;left:50%">S</span>
-          <span class="compass-label" id="cl-e"  style="top:50%;   right:6px">E</span>
-          <span class="compass-label" id="cl-w"  style="top:50%;   left:6px">W</span>
+          <span class="compass-label" id="cl-e"  style="top:50%;   left:6px">E</span>
+          <span class="compass-label" id="cl-w"  style="top:50%;   right:6px">W</span>
         </div>
         <div class="info-row">
           <div class="info-cell"><div class="lbl">Altitude</div><div class="val" id="inf-alt">—</div></div>

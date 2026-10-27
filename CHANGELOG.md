@@ -4,6 +4,18 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The sky map's compass letters match the sky it draws.** The map drew north
+  at the bottom under the N at the top, so the scope, the stars and the flip
+  label all sat under the opposite letter. It is now a sky chart held
+  overhead: north up and east on the left, with the E and W letters to match
+  (#163).
+
+---
+
 ## [2.3.0] - 2026-10-26
 
 ### Added
