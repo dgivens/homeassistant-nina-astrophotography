@@ -36,7 +36,7 @@ def _client(rig: FakeRig) -> NinaClientV2:
     return NinaClientV2(host="nina.local", port=1888, session=cast(ClientSession, rig))
 
 
-def test_every_state_named_by_a_test_exists() -> None:
+def test_no_state_awaiting_capture_is_already_in_the_catalogue() -> None:
     """No state is both awaiting capture and in the catalogue, so skipping a
     test by an awaited name never hides a state that exists.
     """

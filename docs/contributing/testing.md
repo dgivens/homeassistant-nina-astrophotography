@@ -44,7 +44,8 @@ classification, the `"NaN"` rule and the mapper all run against recorded bytes.
 socket, and `rig.sent` records commands — which are answered `Success: true`
 and never confirm anything. Read `tests/scenarios/README.md` before writing a
 test. Wire data constructed rather than captured is marked
-`@pytest.mark.synthetic` and says in its docstring what it fabricates.
+`@pytest.mark.synthetic`; its docstring names what was fabricated only when the
+body does not show it.
 
 **`advance()` cannot reach a state that differs only in a tier-polled
 endpoint** — `/profile/show`, `/livestack/status`,

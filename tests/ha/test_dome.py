@@ -240,7 +240,7 @@ def _enabled(hass: HomeAssistant, entry) -> set[str]:
     return {row.entity_id for row in _dome_rows(hass, entry) if row.disabled_by is None}
 
 
-async def test_an_upgrade_enables_the_dome_rows_that_now_ship_enabled(
+async def test_an_upgrade_enables_the_dome_rows_shipped_enabled(
     hass, config_entry, rig, set_up_at
 ) -> None:
     """A row the user disabled stays so, as do the hand moves."""

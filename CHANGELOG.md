@@ -13,6 +13,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   tracking off and the countdown reads `unknown`. Its `slews_at` attribute
   estimates when the slew starts (#164).
 
+### Changed
+
+- **Test names say what each test proves** (#168), and a test's docstring
+  says only what its name and body do not. The scenarios README and the
+  image-history docstring describe the one-element list the bare
+  `/image-history` answers.
+
 ### Fixed
 
 - **The sky map's compass letters match the sky it draws.** The map drew north

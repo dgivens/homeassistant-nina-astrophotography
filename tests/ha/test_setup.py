@@ -66,7 +66,7 @@ async def test_a_build_that_does_not_serve_the_api_fails_the_entry(
     assert "API" in config_entry.reason
 
 
-async def test_the_services_still_reach_a_client_after_the_move_to_runtime_data(
+async def test_an_action_reaches_the_client_of_the_loaded_entry(
     hass: HomeAssistant, config_entry: MockConfigEntry, rig
 ) -> None:
     """An action finds its client through the loaded entry's `runtime_data`."""

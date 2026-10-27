@@ -1,6 +1,6 @@
 # Rig states
 
-`states.py` names the rig conditions the phase B and C tests advance through;
+`states.py` names the rig conditions the tests move the fake rig through;
 `fake_rig.py` serves one of them at a time to the real `NinaClientV2`.
 
 ## What a state is
@@ -42,10 +42,10 @@ corpus does show: drop `DeviceId`, `Name`, `DisplayName`, `Description`,
 that holds them down. Tests exercising a derived block carry
 `@pytest.mark.synthetic`.
 
-Bare `/image-history` for the `imaging` family is likewise assembled: the newest
-frame of the captured `?all=true` list, in an envelope of our own, because the
-dawn capture predates the bare path. `imaging_guiding` serves the real capture —
-a single-element **list**, not the bare object that assembly produces.
+Bare `/image-history` for the dawn family is likewise assembled, because the
+dawn capture predates the bare path: the newest frame of the captured
+`?all=true` list, wrapped as a one-element **list** in an envelope of our own —
+the shape `imaging_guiding` serves from its real capture.
 
 The two image routes — `/image/{index}` and `/livestack/image/{target}/{filter}`
 — answer **bytes**, so there is nothing to capture into a state: what the
@@ -113,5 +113,5 @@ driver actually sends, and is how every branch a single night cannot produce
 gets covered. What stays banned is inventing the document: a hand-written
 envelope, a key set no capture shows, a device block assembled from the spec.
 A state that needs one of those belongs in `AWAITING_CAPTURE`, and every test
-reading a derived state carries `@pytest.mark.synthetic` and says in its
-docstring what was moved.
+reading a derived state carries `@pytest.mark.synthetic`. The move happens in
+`states.py`, out of the test's sight, so its docstring says what was moved.

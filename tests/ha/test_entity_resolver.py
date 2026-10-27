@@ -149,7 +149,7 @@ def test_every_resolving_card_is_accounted_for() -> None:
 
 @needs_node
 @pytest.mark.parametrize("card", RESOLVING, ids=lambda p: p.name)
-async def test_every_card_lookup_resolves_to_the_id_it_used_to_template(
+async def test_every_card_lookup_resolves_to_its_prefix_templated_id(
     hass: HomeAssistant,
     config_entry,
     rig,
