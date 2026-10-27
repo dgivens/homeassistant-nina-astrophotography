@@ -54,7 +54,6 @@ from .polling import (
 from .sequence import running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
-    flip_started,
     fold,
     latest_stack,
     latest_target,
@@ -625,13 +624,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             guider_stopped=self._guider_stop.stopped(
                 pending_guider_stop(self.events, self.generation)
             ),
-            meridian_flip=meridian_flip(
-                self.events,
-                self.generation,
-                reading=self._flip_reading,
-                window_minutes=self._flip_window_minutes(),
-                now=moment,
-            ),
+            meridian_flip=self._meridian_flip(moment),
             reachable=self._reachable,
         )
 
@@ -643,11 +636,20 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         N.I.N.A. waits out the flip with tracking off, when the countdown reads
         nothing, and it is the reading from before that places the slew.
         """
-        if flip_started(self.events, self.generation) is not None:
+        if self._meridian_flip(read_at) is not None:
             return
         mount = snapshot.mount
         hours = None if mount is None else mount.time_to_meridian_flip
         self._flip_reading = None if hours is None else FlipReading(hours, read_at)
+
+    def _meridian_flip(self, now: datetime) -> MeridianFlip | None:
+        return meridian_flip(
+            self.events,
+            self.generation,
+            reading=self._flip_reading,
+            window_minutes=self._flip_window_minutes(),
+            now=now,
+        )
 
     def _flip_window_minutes(self) -> float | None:
         minimum = self._profile.min_minutes_after_meridian

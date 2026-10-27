@@ -384,6 +384,12 @@ STATES: dict[str, State] = {
     # Mid-session with everything captured: guider Guiding, camera exposing,
     # livestack Running, the profile and the last autofocus run served.
     "imaging_guiding": dict(_IMAGING_GUIDING),
+    # The same rig waiting out a meridian flip: N.I.N.A. turns tracking off
+    # until meridian + Min, and the countdown reads its 24 h sentinel.
+    # Synthetic in those two readings alone; no capture caught a flip.
+    "waiting_to_flip": _with_readings(
+        _IMAGING_GUIDING, "Mount", TrackingEnabled=False, TimeToMeridianFlip=24
+    ),
     # CONTENT-IDENTICAL to `imaging`, deliberately: the 67 flats are in the
     # same history, because dawn flats are a phase of the night rather than a
     # different snapshot. The name exists so a test can say what it is

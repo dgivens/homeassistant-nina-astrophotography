@@ -310,7 +310,7 @@ def pending_guider_stop(
     )
 
 
-def flip_started(
+def _flip_started(
     events: Iterable[NinaEvent], generation: str | None
 ) -> datetime | None:
     """When the newest `MOUNT-BEFORE-FLIP` was, if nothing has ended it since."""
@@ -345,7 +345,7 @@ def meridian_flip(
     flip's own steps, are over.
     """
     events = list(events)
-    started = flip_started(events, generation)
+    started = _flip_started(events, generation)
     if started is None:
         return None
     slews_at = None
