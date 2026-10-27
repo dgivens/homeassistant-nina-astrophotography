@@ -13,7 +13,7 @@
  * OmniSim dome parked and closed, or open and following an unparked mount.
  */
 
-import { linkScenarios, rig } from "../hass.mjs";
+import { flipScenarios, linkScenarios, rig } from "../hass.mjs";
 
 const UP = "site_configured";
 const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
@@ -45,6 +45,10 @@ export const scenarios = {
 
   // Inside the window: the slew is due at the next item boundary.
   flip_due: { hass: (dump) => rig(dump, UP).override(FLIP, 6).build() },
+
+  // N.I.N.A. waiting to flip, then slewing: the banner and the mount's metric
+  // say which, where the countdown alone would show nothing.
+  ...flipScenarios(),
 
   // Every driver down, N.I.N.A. answering. Must not read as a lost link.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },

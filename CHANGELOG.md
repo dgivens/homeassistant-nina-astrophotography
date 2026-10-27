@@ -6,6 +6,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Added
+
+- **`binary_sensor.<instance>_mount_meridian_flip`** is `on` while N.I.N.A.
+  is in a meridian flip, including the wait before the slew, when it turns
+  tracking off and the countdown reads `unknown`. Its `slews_at` attribute
+  estimates when the slew starts (#164).
+
 ### Fixed
 
 - **The sky map's compass letters match the sky it draws.** The map drew north
@@ -13,6 +20,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   label all sat under the opposite letter. It is now a sky chart held
   overhead: north up and east on the left, with the E and W letters to match
   (#163).
+- **The cards show a meridian flip while N.I.N.A. waits for it.** The
+  observatory card's banner and the sky map's header used to show no flip at
+  all during the wait. They now read "Waiting to flip · slews in N min",
+  then "Flipping" (#164).
 
 ---
 

@@ -197,3 +197,45 @@ export function linkScenarios() {
     },
   };
 }
+
+/**
+ * A meridian flip under way on the `site_configured` rig, for every card that
+ * shows one. No capture caught a flip, so each reading is invented, with the
+ * ones a flip ties to it: the guider stopped first, and while N.I.N.A. waits
+ * for meridian + Min, tracking off and the countdown `unknown`.
+ *
+ * - `flip_waiting` — the slew four and a half minutes off.
+ * - `flip_slewing` — the wait over and tracking back on, the countdown at the
+ *   profile's ten-minute window, where the slew starts.
+ *
+ * `draw` is the card's hook, if it has one.
+ */
+export function flipScenarios(draw) {
+  const FLIPPING = "binary_sensor.n_i_n_a_mount_meridian_flip";
+  const flipping = (dump, slewsInMinutes) => {
+    const slewsAt = new Date(Date.now() + slewsInMinutes * 60_000).toISOString();
+    return rig(dump, "site_configured")
+      .override(FLIPPING, "on", {
+        ...dump.site_configured.states[FLIPPING].attributes,
+        slews_at: slewsAt,
+      })
+      .override("switch.n_i_n_a_guider", "off")
+      .override("sensor.n_i_n_a_guider_status", "Stopped");
+  };
+  const hook = draw ? { draw } : {};
+  return {
+    flip_waiting: {
+      hass: (dump) =>
+        flipping(dump, 4.5)
+          .override("select.n_i_n_a_mount_tracking_rate", "Stopped")
+          .override("sensor.n_i_n_a_mount_time_to_meridian_flip", "unknown")
+          .build(),
+      ...hook,
+    },
+    flip_slewing: {
+      hass: (dump) =>
+        flipping(dump, -0.5).override("sensor.n_i_n_a_mount_time_to_meridian_flip", 10).build(),
+      ...hook,
+    },
+  };
+}

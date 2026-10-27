@@ -22,7 +22,9 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
-import { flipRange, flipSoon, flipWindow, missing } from "./nina-units.js";
+import {
+  flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
+} from "./nina-units.js";
 
 const VERSION = "2.3.0";
 
@@ -261,6 +263,13 @@ class NinaSkyMapCard extends HTMLElement {
   _tracking(id) {
     return this._available(id) && this._s(id) !== "Stopped";
   }
+  // The countdown reads unknown while N.I.N.A. waits to flip, tracking off.
+  _flipping() {
+    const rateId = this._eid("select", "mount_tracking_rate");
+    const tracking = this._available(rateId) ? this._tracking(rateId) : null;
+    const flipId = this._eid("binary_sensor", "mount_meridian_flip");
+    return flipUnderway(this._hass, flipId, tracking);
+  }
 
   // The star field's latitude: an explicit `latitude:`, else N.I.N.A.'s
   // configured site (readable with the mount disconnected), else Home
@@ -348,12 +357,13 @@ class NinaSkyMapCard extends HTMLElement {
     const targetId = this._eid("sensor", "sequence_target");
     const target = this._available(targetId) ? this._s(targetId, "") : "";
     const flip = this._flip();
+    const flipping = this._flipping();
 
     const sub = this.shadowRoot?.getElementById("hdr-sub");
     if (sub) {
-      sub.textContent = target
-        ? `${target} · flip in ${flip !== null ? flipRange(flip) + " min" : "—"}`
-        : "Telescope pointing";
+      const flipText = flipping ? flipStatus(flipping).toLowerCase()
+        : `flip in ${flip !== null ? flipRange(flip) + " min" : "—"}`;
+      sub.textContent = target ? `${target} · ${flipText}` : "Telescope pointing";
     }
   }
 
@@ -473,7 +483,8 @@ class NinaSkyMapCard extends HTMLElement {
     }
 
     const flip = this._flip();
-    const warnFlip = flipSoon(flip);
+    const flipping = this._flipping();
+    const warnFlip = flipping !== null || flipSoon(flip);
     const meridianColor = warnFlip
       ? `rgba(244, 162, 97, ${0.5 + 0.4 * Math.sin(Date.now() / 400)})`
       : "rgba(123,141,232,0.25)";
@@ -592,7 +603,7 @@ class NinaSkyMapCard extends HTMLElement {
       // Inside the horizon: the canvas ends at it, and is clipped to a circle.
       // On the meridian's other half from the scope, which is near it, and
       // backed so the meridian does not strike it through.
-      const label = `⚠ Flip in ${flipRange(flip)} min`;
+      const label = flipping ? `⚠ ${flipStatus(flipping)}` : `⚠ Flip in ${flipRange(flip)} min`;
       const y = cy + (proj(alt, az).y > cy ? -0.7 : 0.7) * R;
       ctx.font      = `bold ${10 * dpr}px sans-serif`;
       ctx.textAlign = "center";

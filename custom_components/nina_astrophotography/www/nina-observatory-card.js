@@ -13,7 +13,8 @@
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import {
-  displayed, flipRange, flipSoon, flipWindow, missing, quantity, shown,
+  displayed, flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
+  quantity, shown,
 } from "./nina-units.js";
 
 const VERSION = "2.3.0";
@@ -431,6 +432,9 @@ class NinaObservatoryCard extends HTMLElement {
     const mntAlt       = numState(h, this._eid("sensor", "mount_altitude"), 1);
     const mntAz        = numState(h, this._eid("sensor", "mount_azimuth"), 1);
     const flip         = flipWindow(h, this._eid("sensor", "mount_time_to_meridian_flip"));
+    // The countdown reads unknown while N.I.N.A. waits to flip, tracking off.
+    const flipId       = this._eid("binary_sensor", "mount_meridian_flip");
+    const flipping     = flipUnderway(h, flipId, tracking);
 
     const focPos       = shown(state(h, this._eid("number", "focuser_position")));
     const focTemp      = measured(h, this._eid("sensor", "focuser_temperature"));
@@ -505,7 +509,7 @@ class NinaObservatoryCard extends HTMLElement {
     ];
 
     const showFlipWarning =
-      tracking && flipSoon(flip);
+      flipping === null && tracking && flipSoon(flip);
 
     const html = `
       <style>${STYLE}</style>
@@ -549,7 +553,11 @@ class NinaObservatoryCard extends HTMLElement {
               : chip("Dome", true)}
           </div>`}
 
-          ${showFlipWarning ? `
+          ${flipping ? `
+            <div class="flip-alert">
+              🔄 <strong style="margin:0 4px;">${flipStatus(flipping)}</strong>
+            </div>
+          ` : showFlipWarning ? `
             <div class="flip-alert">
               ⚠️ Meridian flip in <strong style="margin:0 4px;">${flipRange(flip)} min</strong>
             </div>
@@ -573,7 +581,8 @@ class NinaObservatoryCard extends HTMLElement {
               ${metric("Dec", mntDec, "°")}
               ${metric("Alt", mntAlt, "°")}
               ${metric("Az", mntAz, "°")}
-              ${flip !== null && flip.latest < 999 ? metric("Flip in", flipRange(flip), "min") : ""}
+              ${flipping ? metric("Flip", flipping.waiting ? "Waiting" : "Flipping", "")
+                : flip !== null && flip.latest < 999 ? metric("Flip in", flipRange(flip), "min") : ""}
             </div>
           </div>
 
