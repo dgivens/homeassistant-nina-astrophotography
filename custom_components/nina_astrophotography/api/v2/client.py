@@ -210,8 +210,9 @@ class NinaClientV2:
         """`include_all` sends the wire's `all`; the keyword differs only to
         leave the builtin unshadowed.
 
-        Bare /image-history answers the latest frame as a single object;
-        ?all=true answers the list, and `index` the frame there.
+        Bare /image-history answers the latest frame as a one-element list;
+        ?all=true answers the whole list, and `index` the frame there. A lone
+        object is read as one frame.
         """
         params: dict[str, str] | None = None
         if include_all:

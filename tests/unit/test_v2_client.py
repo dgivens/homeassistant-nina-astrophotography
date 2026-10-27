@@ -192,12 +192,20 @@ async def test_a_build_without_version_is_an_endpoint_error() -> None:
 
 @pytest.mark.synthetic
 async def test_a_bare_string_equipment_response_is_no_data() -> None:
+    """Fabricates a successful envelope whose `Response` is `""`. The wire
+    sends that only on a refused call, but a payload that is not an object
+    must still read as no equipment rather than raise.
+    """
     client = _client(FakeSession({"equipment/info": ok("")}))
     assert (await client.get_equipment()).camera is None
 
 
 @pytest.mark.synthetic
 async def test_a_bare_string_history_response_is_no_frames() -> None:
+    """Fabricates a successful envelope whose `Response` is `""`. The wire
+    sends that only on a refused call, but a payload that is neither a list
+    nor an object must still read as no frames rather than raise.
+    """
     client = _client(FakeSession({"image-history": ok("")}))
     assert await client.get_frames() == []
 
