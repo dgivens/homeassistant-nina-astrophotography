@@ -15,12 +15,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
-- **Test names say what each test proves** (#168). Four tests whose names
-  described a past change, or claimed more than they check, are renamed. The
-  scenarios README and the image-history docstring now describe the
-  one-element list the bare `/image-history` answers. The contributor guide
-  now holds a test's docstring to the same bar as a comment: it says only what
-  the name and body do not.
+- **Test names say what each test proves** (#168), and a test's docstring
+  says only what its name and body do not. The scenarios README and the
+  image-history docstring describe the one-element list the bare
+  `/image-history` answers.
 
 ### Fixed
 
