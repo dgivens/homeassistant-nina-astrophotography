@@ -141,3 +141,62 @@ def test_a_flip_is_soon_inside_fifteen_minutes_of_the_earliest_slew(
 
 def test_no_flip_window_is_never_soon() -> None:
     assert _run([["flipSoon", None]]) == [False]
+
+
+FLIP_UNDERWAY = "binary_sensor.n_i_n_a_mount_meridian_flip"
+# 2026-09-05T07:00:00Z in milliseconds, the `now` each flip case is read at.
+NOW_MS = 1788591600000
+
+
+def _underway(state: str, slews_at: str | None) -> dict[str, object]:
+    return {
+        "states": {
+            FLIP_UNDERWAY: {"state": state, "attributes": {"slews_at": slews_at}}
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    ("state", "slews_at", "tracking", "underway"),
+    [
+        ("off", None, True, None),
+        ("on", "2026-09-05T07:04:30+00:00", False, {"waiting": True, "slewsIn": 4.5}),
+        # Tracking still on in the moment before N.I.N.A. turns it off.
+        ("on", "2026-09-05T07:04:30+00:00", True, {"waiting": True, "slewsIn": 4.5}),
+        ("on", "2026-09-05T06:59:00+00:00", False, {"waiting": True, "slewsIn": None}),
+        ("on", "2026-09-05T06:59:00+00:00", True, {"waiting": False, "slewsIn": None}),
+        ("on", None, None, {"waiting": False, "slewsIn": None}),
+    ],
+    ids=[
+        "no flip",
+        "waiting",
+        "about to stop tracking",
+        "due, tracking still off",
+        "slewing",
+        "nothing placed it",
+    ],
+)
+def test_a_flip_waits_until_its_slew_or_while_tracking_is_off(
+    state: str,
+    slews_at: str | None,
+    tracking: bool | None,
+    underway: dict[str, object] | None,
+) -> None:
+    hass = _underway(state, slews_at)
+    assert _run([["flipUnderway", hass, FLIP_UNDERWAY, tracking, NOW_MS]]) == [
+        None if underway is None else pytest.approx(underway)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("underway", "shown"),
+    [
+        ({"waiting": True, "slewsIn": 3.2}, "Waiting to flip · slews in 4 min"),
+        ({"waiting": True, "slewsIn": None}, "Waiting to flip"),
+        ({"waiting": False, "slewsIn": None}, "Flipping"),
+    ],
+)
+def test_a_flip_under_way_reads_as_its_phase(
+    underway: dict[str, object], shown: str
+) -> None:
+    assert _run([["flipStatus", underway]]) == [shown]

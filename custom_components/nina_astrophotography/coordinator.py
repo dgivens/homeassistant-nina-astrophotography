@@ -27,8 +27,10 @@ from .api.models import (
     AutoFocusReport,
     EquipmentSnapshot,
     FlatsStatus,
+    FlipReading,
     Frame,
     LivestackStatus,
+    MeridianFlip,
     NinaEvent,
     ProfileSettings,
     SequenceNode,
@@ -38,6 +40,7 @@ from .api.models import (
 )
 from .api.v2 import NinaClientV2, NinaEventStream
 from .const import CONF_HOST, DEFAULT_OUTAGE_GRACE, DEFAULT_ROLLOVER_HOUR
+from .derive import flip_offset_minutes
 from .device import KINDS
 from .polling import (
     EventLedger,
@@ -54,6 +57,7 @@ from .session import (
     fold,
     latest_stack,
     latest_target,
+    meridian_flip,
     pending_guider_stop,
     recent_frames,
     scheduler_wait,
@@ -143,6 +147,8 @@ class NinaData:
     """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` or running
     guider seen since. Tells a stale `LostLock` from a guider hunting for its
     star."""
+    meridian_flip: MeridianFlip | None
+    """The flip N.I.N.A. is in, its wait with tracking off included, or None."""
     reachable: bool = True
     """Whether N.I.N.A. answered the last poll. False while an outage is held
     within its grace, and kept false once the coordinator fails, so the one
@@ -211,6 +217,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._livestack = _NO_LIVESTACK
         self._profile = _NO_PROFILE
         self._last_autofocus: AutoFocusReport | None = None
+        self._flip_reading: FlipReading | None = None
         self._not_served: set[str] = set()
         self._tier_warned: set[str] = set()
         self._last_image_save: float | None = None
@@ -225,6 +232,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         guider_stop = pending_guider_stop(self.events, self.generation)
         try:
             snapshot = await self.client.get_equipment()
+            read_at = self._now()
             application_start = await self.client.get_application_start()
             count = await self.client.get_image_history_count()
             await self._track_process(application_start, count)
@@ -263,6 +271,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             guider_stop,
         )
         self._log_connection_changes(snapshot)
+        self._hold_flip_reading(snapshot, read_at)
         await self._run_tiers(snapshot, count)
         self._last_snapshot = snapshot
         if not self._replayed:
@@ -615,8 +624,39 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             guider_stopped=self._guider_stop.stopped(
                 pending_guider_stop(self.events, self.generation)
             ),
+            meridian_flip=self._meridian_flip(moment),
             reachable=self._reachable,
         )
+
+    def _hold_flip_reading(
+        self, snapshot: EquipmentSnapshot, read_at: datetime
+    ) -> None:
+        """Keep the newest tracked countdown, frozen while a flip is under way.
+
+        N.I.N.A. waits out the flip with tracking off, when the countdown reads
+        nothing, and it is the reading from before that places the slew.
+        """
+        if self._meridian_flip(read_at) is not None:
+            return
+        mount = snapshot.mount
+        hours = None if mount is None else mount.time_to_meridian_flip
+        self._flip_reading = None if hours is None else FlipReading(hours, read_at)
+
+    def _meridian_flip(self, now: datetime) -> MeridianFlip | None:
+        return meridian_flip(
+            self.events,
+            self.generation,
+            reading=self._flip_reading,
+            window_minutes=self._flip_window_minutes(),
+            now=now,
+        )
+
+    def _flip_window_minutes(self) -> float | None:
+        minimum = self._profile.min_minutes_after_meridian
+        maximum = self._profile.max_minutes_after_meridian
+        if minimum is None or maximum is None:
+            return None
+        return flip_offset_minutes(minimum, maximum)
 
 
 @dataclass

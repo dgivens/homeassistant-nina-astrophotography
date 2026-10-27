@@ -517,6 +517,25 @@ class StackState:
 
 
 @dataclass(frozen=True, slots=True)
+class FlipReading:
+    """`TimeToMeridianFlip` as last read while the mount tracked, and when."""
+
+    hours: float
+    read_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class MeridianFlip:
+    """A meridian flip N.I.N.A. has begun and not yet finished."""
+
+    started: datetime
+    """`MOUNT-BEFORE-FLIP`, raised before the guider stops and the wait."""
+    slews_at: datetime | None
+    """When the wait with tracking off ends and the slew begins; `None` with
+    no fresh tracked reading or no profile window to place it."""
+
+
+@dataclass(frozen=True, slots=True)
 class LivestackStatus:
     running: bool
     raw_state: str

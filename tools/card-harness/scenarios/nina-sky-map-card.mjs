@@ -5,7 +5,7 @@
  * `equipment_disconnected` is the same rig with the drivers down.
  */
 
-import { rig } from "../hass.mjs";
+import { flipScenarios, rig } from "../hass.mjs";
 
 const draw = (card) => card._drawFrame();
 const FLIP = "sensor.n_i_n_a_mount_time_to_meridian_flip";
@@ -50,6 +50,10 @@ export const scenarios = {
     hass: (dump) => rig(dump, "site_configured").override(FLIP, 20).build(),
     draw,
   },
+
+  // N.I.N.A. waiting to flip, then slewing: the header and the meridian say
+  // which, where the countdown alone would show nothing.
+  ...flipScenarios(draw),
 
   // The drivers down: no stars, no pointing, and the disconnected chip.
   mount_down: { hass: (dump) => rig(dump, "equipment_disconnected").build(), draw },

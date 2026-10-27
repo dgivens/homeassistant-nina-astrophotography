@@ -4,9 +4,12 @@ Every assertion goes through `hass.states` or the entity registry — the
 registry for the long tail, which ships disabled and so has no state.
 """
 
+from datetime import timedelta
+
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -22,6 +25,7 @@ IMAGING = "binary_sensor.n_i_n_a_imaging"
 SCHEDULER_WAITING = "binary_sensor.n_i_n_a_scheduler_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 REACHABLE = "binary_sensor.n_i_n_a_reachable"
+MERIDIAN_FLIP = "binary_sensor.n_i_n_a_mount_meridian_flip"
 
 
 @pytest.mark.parametrize(
@@ -389,3 +393,88 @@ async def test_a_report_older_than_the_session_is_not_tonights_problem(
     """
     await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
     assert state_of(hass, AUTOFOCUS_FAILED).state == "off"
+
+
+@pytest.mark.synthetic
+async def test_the_flip_sensor_runs_from_the_flips_start_to_its_end(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    push,
+    set_up_at,
+    freezer,
+    inside_the_guiding_session,
+) -> None:
+    """Fabricates the bare `MOUNT-BEFORE-FLIP` and `MOUNT-AFTER-FLIP` pushes."""
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    push({"Event": "MOUNT-BEFORE-FLIP"})
+    await hass.async_block_till_done()
+    during = state_of(hass, MERIDIAN_FLIP).state
+    freezer.tick(timedelta(minutes=2))
+    push({"Event": "MOUNT-AFTER-FLIP"})
+    await hass.async_block_till_done()
+    assert (during, state_of(hass, MERIDIAN_FLIP).state) == ("on", "off")
+
+
+@pytest.mark.synthetic
+async def test_the_flip_slews_when_the_tracked_countdown_reaches_the_window(
+    hass: HomeAssistant, config_entry, rig, push, set_up_at, inside_the_guiding_session
+) -> None:
+    """The capture's mount reads 2.1036 h to the flip and its profile a
+    15 − 5 minute window, so with the clock frozen N.I.N.A. would wait 116.2
+    minutes. Fabricates the bare `MOUNT-BEFORE-FLIP` push.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    push({"Event": "MOUNT-BEFORE-FLIP"})
+    await hass.async_block_till_done()
+    slews_at = state_of(hass, MERIDIAN_FLIP).attributes["slews_at"]
+    waits = slews_at - dt_util.utcnow()
+    assert waits == timedelta(hours=2.1036111110833335) - timedelta(minutes=10)
+
+
+@pytest.mark.synthetic
+async def test_the_slew_estimate_survives_the_wait_with_tracking_off(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    push,
+    set_up_at,
+    freezer,
+    inside_the_guiding_session,
+) -> None:
+    """A poll during the wait reads no countdown, and must not lose the one
+    read before it. Fabricates the bare `MOUNT-BEFORE-FLIP` push.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    push({"Event": "MOUNT-BEFORE-FLIP"})
+    await hass.async_block_till_done()
+    placed = state_of(hass, MERIDIAN_FLIP).attributes["slews_at"]
+    freezer.tick(timedelta(seconds=10))
+    rig.goto("waiting_to_flip")
+    await config_entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert state_of(hass, MERIDIAN_FLIP).attributes["slews_at"] == placed
+
+
+@pytest.mark.synthetic
+async def test_a_flip_that_lapsed_without_its_end_does_not_hold_the_next(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    push,
+    set_up_at,
+    freezer,
+    inside_the_guiding_session,
+) -> None:
+    """The first flip's 116-minute wait and its hour of steps pass with no
+    `MOUNT-AFTER-FLIP`, so the next flip must be placed from a fresh reading.
+    Fabricates both bare `MOUNT-BEFORE-FLIP` pushes.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    push({"Event": "MOUNT-BEFORE-FLIP"})
+    await hass.async_block_till_done()
+    freezer.tick(timedelta(hours=3))
+    await config_entry.runtime_data.coordinator.async_refresh()
+    push({"Event": "MOUNT-BEFORE-FLIP"})
+    await hass.async_block_till_done()
+    assert state_of(hass, MERIDIAN_FLIP).attributes["slews_at"] is not None

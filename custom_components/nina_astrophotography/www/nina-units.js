@@ -1,6 +1,7 @@
 /**
  * Readings in the unit Home Assistant shows them in, the meridian flip window
- * read from them, and text off the rig made safe to print.
+ * read from them and the flip under way, and text off the rig made safe to
+ * print.
  *
  * Not a card, so not in `frontend.py`'s `CARD_FILENAMES`.
  *
@@ -169,6 +170,29 @@ export function flipRange({ earliest, latest }) {
 /** Whether a flip window is due inside `lead` minutes, and not already past. */
 export function flipSoon(window, lead = 15) {
   return window !== null && window.latest > 0 && window.earliest < lead;
+}
+
+/**
+ * The meridian flip N.I.N.A. is in, from the flip sensor `id`, or `null`.
+ * Before the slew it waits with tracking off, and the countdown reads
+ * `unknown`: then `waiting` is true and `slewsIn` the minutes left, `null`
+ * once due or where nothing placed it. `tracking` is the mount's, `null` when
+ * unread, and decides only when no slew is still to come.
+ */
+export function flipUnderway(hass, id, tracking, now = Date.now()) {
+  const row = hass.states[id];
+  if (row?.state !== "on") return null;
+  const left = (Date.parse(row.attributes?.slews_at ?? "") - now) / 60000;
+  const slewsIn = left > 0 ? left : null;
+  return { waiting: slewsIn !== null || tracking === false, slewsIn };
+}
+
+/** A flip under way as words: "Waiting to flip · slews in 4 min", or "Flipping". */
+export function flipStatus({ waiting, slewsIn }) {
+  if (!waiting) return "Flipping";
+  return slewsIn === null
+    ? "Waiting to flip"
+    : `Waiting to flip · slews in ${Math.ceil(slewsIn)} min`;
 }
 
 /**

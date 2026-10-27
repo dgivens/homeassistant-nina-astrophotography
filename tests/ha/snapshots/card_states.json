@@ -143,6 +143,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -676,6 +682,14 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
     },
     "state": "off"
    },
@@ -2683,6 +2697,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -3231,6 +3251,14 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
     },
     "state": "off"
    },
@@ -4405,6 +4433,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -4949,6 +4983,13 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "unavailable"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip"
     },
     "state": "unavailable"
    },
@@ -5757,6 +5798,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -6440,6 +6487,14 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
     },
     "state": "off"
    },
@@ -7415,6 +7470,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -8098,6 +8159,14 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
     },
     "state": "off"
    },
@@ -9073,6 +9142,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -9752,6 +9827,13 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "unavailable"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip"
     },
     "state": "unavailable"
    },
@@ -10670,6 +10752,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -11218,6 +11306,14 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
     },
     "state": "off"
    },
@@ -12392,6 +12488,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "mount_at_park"
    },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
    "binary_sensor.n_i_n_a_reachable": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_reachable",
@@ -12940,6 +13042,14 @@
    "binary_sensor.n_i_n_a_mount_at_park": {
     "attributes": {
      "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
     },
     "state": "off"
    },

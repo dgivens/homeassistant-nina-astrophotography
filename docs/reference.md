@@ -414,6 +414,18 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
   the earliest end. N.I.N.A. also stops early when the next exposure would not
   finish by the latest end.
 
+  While N.I.N.A. waits for meridian + Min it turns tracking off, so the
+  countdown reads `unknown` for the whole wait.
+  `binary_sensor.<instance>_mount_meridian_flip` covers that. It turns `on` at
+  `MOUNT-BEFORE-FLIP`, before the guider stops and the wait begins, and `off`
+  at `MOUNT-AFTER-FLIP`. It also turns `off` when the sequence finishes or the
+  mount is parked, homed or disconnected. Its `slews_at` attribute estimates
+  when the wait ends and the slew starts, from the last countdown read while
+  the mount was tracking. It is `None` when no such reading or profile is
+  available, as after a Home Assistant restart in mid-wait. A cancelled flip
+  also sends `MOUNT-AFTER-FLIP`, so the sensor turning `off` does not prove the
+  mount flipped.
+
 - `sensor.<instance>_last_image_mean_adu` has `recent_frames`: the newest
   frames of every type, newest first, each with its target, filter, exposure,
   HFR, star count, guide RMS and N.I.N.A.'s min, median, mean and max ADU. The

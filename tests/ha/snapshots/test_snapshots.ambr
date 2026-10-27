@@ -53,6 +53,13 @@
     dict({
       'enabled_default': True,
       'entity_category': None,
+      'entity_id': 'binary_sensor.n_i_n_a_mount_meridian_flip',
+      'original_name': 'Meridian flip',
+      'unique_id': '01JTESTENTRY0000000000000_mount_meridian_flip',
+    }),
+    dict({
+      'enabled_default': True,
+      'entity_category': None,
       'entity_id': 'binary_sensor.n_i_n_a_mount_at_park',
       'original_name': 'At park',
       'unique_id': '01JTESTENTRY0000000000000_mount_parked',

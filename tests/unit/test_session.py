@@ -3,12 +3,19 @@
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
-from nina_astrophotography.api.models import AutoFocusState, Frame, NinaEvent
+from nina_astrophotography.api.models import (
+    AutoFocusState,
+    FlipReading,
+    Frame,
+    MeridianFlip,
+    NinaEvent,
+)
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import (
     fold,
     latest_stack,
     latest_target,
+    meridian_flip,
     pending_guider_stop,
     recent_frames,
     scheduler_wait,
@@ -565,3 +572,181 @@ def test_a_wait_ends_at_its_time_or_when_something_supersedes_it(
     stall rule built on it.
     """
     assert scheduler_wait(events, "g1", now=now) == expected
+
+
+FLIP_STARTED = datetime(2026, 9, 4, 3, 52, 34, tzinfo=RIG)
+GUIDER_STOPPED = FLIP_STARTED + timedelta(seconds=1)
+# Read ten seconds before the flip began, half an hour short of meridian + Max.
+TRACKED = FlipReading(hours=0.5, read_at=FLIP_STARTED - timedelta(seconds=10))
+
+
+def _flip_events(*logged: tuple[str, timedelta], generation: str = "g1") -> list:
+    """`MOUNT-BEFORE-FLIP` at 03:52:34, then each event that long after it."""
+    return [
+        NinaEvent(
+            name="MOUNT-BEFORE-FLIP", time=FLIP_STARTED, data={}, generation=generation
+        ),
+        *(
+            NinaEvent(name=name, time=FLIP_STARTED + after, data={}, generation="g1")
+            for name, after in logged
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("cut_after", "expected"),
+    [("MOUNT-BEFORE-FLIP", True), ("MOUNT-AFTER-FLIP", False)],
+    ids=["mid-flip", "flipped"],
+)
+def test_the_captured_flip_runs_from_its_before_event_to_its_after(
+    night_events: list[NinaEvent], cut_after: str, expected: bool
+) -> None:
+    cut = next(i for i, e in enumerate(night_events) if e.name == cut_after)
+    events = night_events[: cut + 1]
+    flip = meridian_flip(
+        events,
+        "g1",
+        reading=None,
+        window_minutes=None,
+        now=events[-1].time + timedelta(minutes=1),
+    )
+    assert (flip is not None) is expected
+
+
+@pytest.mark.parametrize(
+    "ending",
+    [
+        "MOUNT-AFTER-FLIP",
+        "SEQUENCE-FINISHED",
+        "MOUNT-PARKED",
+        "MOUNT-HOMED",
+        "MOUNT-DISCONNECTED",
+    ],
+)
+@pytest.mark.synthetic
+def test_a_flip_ends_with_its_after_event_or_with_the_mount_put_away(
+    ending: str,
+) -> None:
+    """AFTER-FLIP follows a cancelled or failed flip too; the others end a
+    flip whose AFTER-FLIP never came.
+    """
+    events = _flip_events((ending, timedelta(minutes=2)))
+    flip = meridian_flip(
+        events,
+        "g1",
+        reading=None,
+        window_minutes=None,
+        now=FLIP_STARTED + timedelta(minutes=3),
+    )
+    assert flip is None
+
+
+@pytest.mark.parametrize(
+    ("events", "expected"),
+    [
+        (_flip_events(("MOUNT-AFTER-FLIP", -timedelta(minutes=30))), True),
+        (_flip_events(generation="g0"), False),
+    ],
+    ids=["the end was an earlier flip's", "the start was the previous process's"],
+)
+@pytest.mark.synthetic
+def test_only_a_later_end_this_process_logged_counts(
+    events: list[NinaEvent], expected: bool
+) -> None:
+    flip = meridian_flip(
+        events,
+        "g1",
+        reading=None,
+        window_minutes=None,
+        now=FLIP_STARTED + timedelta(minutes=1),
+    )
+    assert (flip is not None) is expected
+
+
+@pytest.mark.parametrize(
+    ("events", "reading", "window", "slews_at"),
+    [
+        (
+            _flip_events(("GUIDER-STOP", timedelta(seconds=1))),
+            TRACKED,
+            10.0,
+            # 30 min less the 10 s since the reading, less the 10 min window.
+            GUIDER_STOPPED + timedelta(minutes=20, seconds=-10),
+        ),
+        (
+            _flip_events(),
+            TRACKED,
+            10.0,
+            FLIP_STARTED + timedelta(minutes=20, seconds=-10),
+        ),
+        (
+            _flip_events(("GUIDER-STOP", timedelta(seconds=1))),
+            replace(TRACKED, hours=0.1),
+            10.0,
+            GUIDER_STOPPED,
+        ),
+        (
+            _flip_events(("GUIDER-STOP", timedelta(seconds=1))),
+            replace(TRACKED, hours=3.0),
+            10.0,
+            GUIDER_STOPPED,
+        ),
+        (
+            _flip_events(),
+            replace(TRACKED, read_at=FLIP_STARTED - timedelta(minutes=10)),
+            10.0,
+            None,
+        ),
+        (_flip_events(), TRACKED, None, None),
+        (_flip_events(), None, 10.0, None),
+    ],
+    ids=[
+        "counted from the guider stop",
+        "no guider: counted from the start",
+        "already inside the window: no wait",
+        "a wait over two hours is skipped",
+        "the reading is stale",
+        "the profile is unread",
+        "no tracked reading",
+    ],
+)
+@pytest.mark.synthetic
+def test_the_slew_comes_when_the_last_tracked_countdown_reaches_the_window(
+    events: list[NinaEvent],
+    reading: FlipReading | None,
+    window: float | None,
+    slews_at: datetime | None,
+) -> None:
+    """N.I.N.A. waits `TimeToMeridianFlip − (Max − Min)` with tracking off,
+    counted once the guider has stopped, so the countdown read before the
+    flip places the slew; the wait itself reads the 24 h sentinel.
+    """
+    flip = meridian_flip(
+        events, "g1", reading=reading, window_minutes=window, now=FLIP_STARTED
+    )
+    assert flip == MeridianFlip(started=FLIP_STARTED, slews_at=slews_at)
+
+
+@pytest.mark.parametrize(
+    ("reading", "now", "expected"),
+    [
+        (TRACKED, FLIP_STARTED + timedelta(hours=1, minutes=19), True),
+        (TRACKED, FLIP_STARTED + timedelta(hours=1, minutes=21), False),
+        (None, FLIP_STARTED + timedelta(hours=2, minutes=59), True),
+        (None, FLIP_STARTED + timedelta(hours=3, minutes=1), False),
+    ],
+    ids=[
+        "an hour after the slew",
+        "past an hour after the slew",
+        "inside the longest wait and an hour",
+        "past the longest wait and an hour",
+    ],
+)
+@pytest.mark.synthetic
+def test_a_flip_that_never_reports_its_end_lapses(
+    reading: FlipReading | None, now: datetime, expected: bool
+) -> None:
+    flip = meridian_flip(
+        _flip_events(), "g1", reading=reading, window_minutes=10.0, now=now
+    )
+    assert (flip is not None) is expected

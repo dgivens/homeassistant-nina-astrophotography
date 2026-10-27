@@ -18,7 +18,9 @@ from statistics import fmean
 
 from .api.models import (
     AutoFocusState,
+    FlipReading,
     Frame,
+    MeridianFlip,
     NinaEvent,
     SessionStats,
     StackState,
@@ -39,6 +41,25 @@ _TARGET_STARTED = frozenset({"TS-TARGETSTART", "TS-NEWTARGETSTART"})
 
 # There is no TS-WAITSTOP. SEQUENCE-FINISHED fires on a manual stop too.
 _WAIT_ENDED_BY = _TARGET_STARTED | {"SEQUENCE-FINISHED"}
+
+_FLIP_STARTED = "MOUNT-BEFORE-FLIP"
+# AFTER-FLIP follows a failed or cancelled flip too. The others end a flip
+# whose AFTER-FLIP never came, as when N.I.N.A. died mid-flip.
+_FLIP_ENDED_BY = frozenset(
+    {
+        "MOUNT-AFTER-FLIP",
+        "SEQUENCE-FINISHED",
+        "MOUNT-PARKED",
+        "MOUNT-HOMED",
+        "MOUNT-DISCONNECTED",
+    }
+)
+# N.I.N.A. slews at once rather than wait longer than this.
+_LONGEST_FLIP_WAIT = timedelta(hours=2)
+# The slew, recentering, an optional autofocus and the settles, generously.
+_FLIP_STEPS = timedelta(hours=1)
+# An older reading may predate a slew to another target.
+_FRESH_FLIP_READING = timedelta(minutes=5)
 
 # Not GUIDER-DITHER, which N.I.N.A. raises even for a dither it skipped.
 _GUIDER_STARTED = "GUIDER-START"
@@ -287,3 +308,68 @@ def pending_guider_stop(
     return (
         newest.time if newest is not None and newest.name == _GUIDER_STOPPED else None
     )
+
+
+def _flip_started(
+    events: Iterable[NinaEvent], generation: str | None
+) -> datetime | None:
+    """When the newest `MOUNT-BEFORE-FLIP` was, if nothing has ended it since."""
+    events = list(events)
+    started = _newest(events, {_FLIP_STARTED}, generation)
+    if started is None:
+        return None
+    ended = _newest(events, _FLIP_ENDED_BY, generation)
+    if ended is not None and ended.time > started.time:
+        return None
+    return started.time
+
+
+def meridian_flip(
+    events: Iterable[NinaEvent],
+    generation: str | None,
+    *,
+    reading: FlipReading | None,
+    window_minutes: float | None,
+    now: datetime,
+) -> MeridianFlip | None:
+    """The flip N.I.N.A. is in, or None.
+
+    `MOUNT-BEFORE-FLIP` comes first: before the guider stops, and before the
+    wait until meridian + Min, which N.I.N.A. spends with tracking off and
+    `TimeToMeridianFlip` at its 24 h sentinel. So the slew is placed from
+    `reading`, the last tracked countdown: N.I.N.A. sets the wait to that
+    countdown less `window_minutes` (Max − Min) when the flip begins, and
+    counts it down once the guider has stopped.
+
+    A flip whose end never arrives lapses once the wait, and an hour for the
+    flip's own steps, are over.
+    """
+    events = list(events)
+    started = _flip_started(events, generation)
+    if started is None:
+        return None
+    slews_at = None
+    if (
+        reading is not None
+        and window_minutes is not None
+        and abs(started - reading.read_at) <= _FRESH_FLIP_READING
+    ):
+        remaining = timedelta(hours=reading.hours) - (started - reading.read_at)
+        wait = max(timedelta(0), remaining - timedelta(minutes=window_minutes))
+        if wait > _LONGEST_FLIP_WAIT:
+            wait = timedelta(0)
+        # No guider, no stop: the count starts at once.
+        counted_from = min(
+            (
+                event.time
+                for event in events
+                if event.name == _GUIDER_STOPPED
+                and event.generation == generation
+                and event.time >= started
+            ),
+            default=started,
+        )
+        slews_at = counted_from + wait
+    if now > (slews_at or started + _LONGEST_FLIP_WAIT) + _FLIP_STEPS:
+        return None
+    return MeridianFlip(started=started, slews_at=slews_at)
