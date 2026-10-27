@@ -28,6 +28,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   chart lines now take the theme's text colour rather than white, and on a
   light theme the accents darken to keep 4.5:1 against white. The sky map's
   sky and anything drawn over an image stay dark whatever the theme.
+- **The upgrade harness upgrades from 1.4.5 to the current release** (#167).
+  `tools/upgrade-harness/` now installs the `v1.4.5` tag and upgrades to
+  `origin/main`, instead of the retired `v2` branch. `up` takes the rig's
+  address as a required `--host`; the README shows the test VM's.
 - **The frame statistics card's filter colours hold up on a light theme**
   (#191). On white, G, OIII and four of the spare colours fell well below 3:1,
   and two spares all but vanished. A light theme now draws each filter in a
