@@ -185,9 +185,6 @@ def test_a_start_interrupted_inside_its_timeout_is_aborted_not_failed(
     """Unsafe conditions, the sequence ending, a park, a disconnect or the
     sequencer simply moving on to the next exposure all cancel a running
     autofocus; none of them is the focuser failing to find focus.
-
-    Fabricates each pair: an `AUTOFOCUS-STARTING`, then the interrupting event
-    37 s into it, its payload empty but for `IsSafe`.
     """
     events = [
         NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
@@ -205,11 +202,7 @@ def test_a_start_interrupted_inside_its_timeout_is_aborted_not_failed(
 
 @pytest.mark.synthetic
 def test_a_safe_reading_does_not_abort_a_running_autofocus() -> None:
-    """Only IsSafe false is an interruption; SAFETY-CHANGED fires for both.
-
-    Fabricates an `AUTOFOCUS-STARTING` and a `SAFETY-CHANGED` reading safe 37 s
-    into it.
-    """
+    """Only IsSafe false is an interruption; SAFETY-CHANGED fires for both."""
     events = [
         NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
         NinaEvent(
@@ -230,9 +223,6 @@ def test_a_safe_reading_does_not_abort_a_running_autofocus() -> None:
 def test_the_sequencer_moving_on_after_the_timeout_keeps_the_failure_verdict() -> None:
     """An exposure saved only after the timeout has elapsed shows the sequence
     carried on past a hung autofocus; it clears the run without excusing it.
-
-    Fabricates an `AUTOFOCUS-STARTING` and an `IMAGE-SAVE` 400 s after it, past
-    the 300 s timeout.
     """
     events = [
         NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
@@ -503,8 +493,6 @@ def test_neither_a_dither_nor_a_previous_process_moves_the_verdict(
 ) -> None:
     """N.I.N.A. raises GUIDER-DITHER even for a dither it skipped, so it is
     not a start; a stop from before a N.I.N.A. restart says nothing.
-
-    Fabricates each pair of guider events, a minute apart with empty payloads.
     """
     events = [
         NinaEvent(
@@ -582,9 +570,6 @@ def test_a_wait_ends_at_its_time_or_when_something_supersedes_it(
     An unknown rig clock reports not-waiting rather than guessing, which is the
     conservative way round for the dashboard and the alarming way round for a
     stall rule built on it.
-
-    Fabricates every history: a `TS-WAITSTART` at 20:33 announcing 21:05, then
-    whatever ends it, with empty payloads.
     """
     assert scheduler_wait(events, "g1", now=now) == expected
 
