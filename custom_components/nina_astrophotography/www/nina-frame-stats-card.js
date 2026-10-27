@@ -15,6 +15,7 @@
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
 import { quantityIn, safe, shown } from "./nina-units.js";
+import { THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.3.0";
 
@@ -179,16 +180,10 @@ function filterColours(slots, names) {
 }
 
 const STYLE = `
+  ${THEME}
   :host {
     --card-bg: var(--ha-card-background, var(--card-background-color, #1c1c2e));
     --card-border: var(--divider-color, rgba(255,255,255,0.1));
-    --accent: #7b8de8;
-    --accent2: #5bcfcf;
-    --warn: #f4a261;
-    --danger: #e76f51;
-    --success: #57cc99;
-    --muted: rgba(255,255,255,0.45);
-    --text: rgba(255,255,255,0.92);
     font-family: var(--primary-font-family, Roboto, sans-serif);
   }
   ha-card {
@@ -213,7 +208,7 @@ const STYLE = `
   .stat-row { display: flex; gap: 8px; }
   .stat-box {
     flex: 1;
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
     border: 1px solid var(--card-border);
     border-radius: 10px;
     padding: 10px 12px;
@@ -294,6 +289,7 @@ class NinaFrameStatsCard extends HTMLElement {
     this._hass = hass;
     this._rig.refresh(hass);
     this._updateData();
+    applyTheme(this);
     this._render();
   }
 
@@ -398,6 +394,13 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const slots = this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options") ?? [];
     const colours = filterColours(slots, [...Object.keys(byFilter), ...this._filters]);
+    // L's near-white would vanish on a light card, which draws it in the text
+    // colour instead.
+    const theme = palette(this);
+    const filterColour = (name) => {
+      const colour = colours.get(name);
+      return theme.light && colour === PASSBANDS.L ? theme.text : colour;
+    };
     // In wheel order, as an imager reads a wheel; names it does not list last.
     const slotOf = (name) => (slots.includes(name) ? slots.indexOf(name) : slots.length);
     const filterEntries = Object.entries(byFilter).sort(([a], [b]) => slotOf(a) - slotOf(b));
@@ -409,9 +412,9 @@ class NinaFrameStatsCard extends HTMLElement {
     // breakdown that goes missing cannot recolour a wheel's dropout.
     const ownColours = chipless && this._filters.every((name) => name === null);
     const lightColours = this._filters.map((name) =>
-      (ownColours ? null : name === null ? NO_FILTER : colours.get(name)));
+      (ownColours ? null : name === null ? NO_FILTER : filterColour(name)));
     const filterChipsHtml = filterEntries.map(([name, row]) => {
-      const colour = colours.get(name);
+      const colour = filterColour(name);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${safe(name)}: ${row?.count ?? 0}</span>
@@ -498,10 +501,10 @@ class NinaFrameStatsCard extends HTMLElement {
 
     if (hasData) {
       requestAnimationFrame(() => {
-        this._drawSparkline("hfr-chart", this._hfr, "#7b8de8", true, lightColours);
-        this._drawSparkline("stars-chart", this._stars, "#5bcfcf", false, lightColours,
+        this._drawSparkline("hfr-chart", this._hfr, theme.accent, true, lightColours);
+        this._drawSparkline("stars-chart", this._stars, theme.accent2, false, lightColours,
           (mean) => STARS_MIN_SPAN * mean);
-        this._drawSparkline("adu-chart", this._adu, "#f4a261", false, lightColours,
+        this._drawSparkline("adu-chart", this._adu, theme.warn, false, lightColours,
           () => ADU_MIN_SPAN);
       });
     }
@@ -522,6 +525,7 @@ class NinaFrameStatsCard extends HTMLElement {
     canvas.height = H * dpr;
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
+    const theme = palette(this);
 
     const valid = data.filter(v => v !== null && v !== undefined);
     if (valid.length < 2) return;
@@ -553,7 +557,7 @@ class NinaFrameStatsCard extends HTMLElement {
       ? null
       : pad.t + plotH - ((v - minVal) / range) * plotH;
 
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.strokeStyle = theme.ink(0.05);
     ctx.lineWidth = 0.5;
     for (let g = 0; g <= 3; g++) {
       const y = pad.t + (g / 3) * plotH;
@@ -561,7 +565,7 @@ class NinaFrameStatsCard extends HTMLElement {
     }
 
     // Target or exposure changes, midway between the two frames either side.
-    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.strokeStyle = theme.ink(0.35);
     ctx.lineWidth = 1;
     ctx.setLineDash([2, 3]);
     for (const i of this._boundaries) {
@@ -630,14 +634,14 @@ class NinaFrameStatsCard extends HTMLElement {
       const yAvg = yOf(avg);
       if (yAvg !== null) {
         ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "rgba(255,255,255,0.25)";
+        ctx.strokeStyle = theme.ink(0.25);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(pad.l, yAvg);
         ctx.lineTo(W - pad.r, yAvg);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.fillStyle = theme.ink(0.4);
         ctx.font = "9px sans-serif";
         ctx.fillText(`avg ${avg.toFixed(2)}`, W - pad.r - 48, yAvg - 3);
       }
@@ -659,7 +663,7 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.fillStyle = isLast ? col : col + "99";
       ctx.fill();
       if (isLast) {
-        ctx.strokeStyle = "rgba(255,255,255,0.6)";
+        ctx.strokeStyle = theme.ink(0.6);
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -674,7 +678,7 @@ class NinaFrameStatsCard extends HTMLElement {
         ? v.toFixed(2)
         : "";
       ctx.font = "bold 10px sans-serif";
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillStyle = theme.ink(0.85);
       ctx.fillText(label, xOf(data.length - 1) + 4, Math.max(lastY, 14));
     }
   }

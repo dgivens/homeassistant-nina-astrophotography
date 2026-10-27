@@ -21,20 +21,15 @@
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
+import { THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.3.0";
 
 const STYLE = `
+  ${THEME}
   :host {
     --bg:      var(--ha-card-background, var(--card-background-color, #1c1c2e));
     --border:  var(--divider-color, rgba(255,255,255,0.1));
-    --accent:  #7b8de8;
-    --accent2: #5bcfcf;
-    --warn:    #f4a261;
-    --danger:  #e76f51;
-    --success: #57cc99;
-    --muted:   rgba(255,255,255,0.45);
-    --text:    rgba(255,255,255,0.92);
     font-family: var(--primary-font-family, Roboto, sans-serif);
   }
   ha-card {
@@ -68,7 +63,7 @@ const STYLE = `
     animation: pulse-unsafe 2s ease-in-out infinite;
   }
   .safety-banner.unknown {
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
   .safety-banner.unreachable {
     background: rgba(244,162,97,0.10);
@@ -104,7 +99,7 @@ const STYLE = `
     gap: 7px;
   }
   .w-cell {
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
     border: 1px solid var(--border);
     border-radius: 9px; padding: 9px 11px;
     display: flex; flex-direction: column; gap: 3px;
@@ -133,7 +128,7 @@ const STYLE = `
   /* ── Sky quality bar ── */
   .sq-wrap { display: flex; flex-direction: column; gap: 4px; }
   .sq-bar-track {
-    height: 8px; background: rgba(255,255,255,0.08);
+    height: 8px; background: color-mix(in srgb, var(--ink) 8%, transparent);
     border-radius: 4px; overflow: hidden;
   }
   .sq-bar-fill {
@@ -229,6 +224,7 @@ class NinaWeatherCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._rig.refresh(hass);
+    applyTheme(this);
     this._render();
   }
 
@@ -370,11 +366,12 @@ class NinaWeatherCard extends HTMLElement {
 
     // SQM in mag/arcsec²: 21.5+ excellent, 20 good, 18.5 moderate, below that
     // poor. The bar spans 16 to 22.5.
-    let sqPct = 0, sqLabel = "—", sqColor = "#7b8de8";
+    let sqPct = 0, sqLabel = "—", sqColor = "var(--accent)";
     if (skyQ !== null) {
       sqPct   = Math.min(100, Math.max(0, ((skyQ - 16) / (22.5 - 16)) * 100));
       sqLabel = skyQ >= 21.5 ? "Excellent" : skyQ >= 20 ? "Good" : skyQ >= 18.5 ? "Moderate" : "Poor";
-      sqColor = skyQ >= 21.5 ? "#57cc99" : skyQ >= 20 ? "#5bcfcf" : skyQ >= 18.5 ? "#f4a261" : "#e76f51";
+      sqColor = skyQ >= 21.5 ? "var(--success)" : skyQ >= 20 ? "var(--accent2)"
+        : skyQ >= 18.5 ? "var(--warn)" : "var(--danger)";
     }
 
     const cell = (icon, label, val, unit, warnIf = false, dangerIf = false, naIf = false) => {
@@ -409,7 +406,7 @@ class NinaWeatherCard extends HTMLElement {
       <style>${STYLE}</style>
       <ha-card>
         <div class="header">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5bcfcf" stroke-width="1.5" stroke-linecap="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent2)" stroke-width="1.5" stroke-linecap="round">
             <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
           </svg>
           <div>
@@ -527,12 +524,13 @@ class NinaWeatherCard extends HTMLElement {
     const canvas = this.shadowRoot.getElementById("wind-rose-canvas");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    const theme = palette(this);
     const W = 64, H = 64, cx = 32, cy = 32, r = 26;
     ctx.clearRect(0, 0, W, H);
 
     // Background circle
     ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = theme.ink(0.12); ctx.lineWidth = 1; ctx.stroke();
 
     // Cross-hairs
     for (const a of [0, 90, 180, 270]) {
@@ -540,12 +538,12 @@ class NinaWeatherCard extends HTMLElement {
       ctx.beginPath();
       ctx.moveTo(cx + (r - 6) * Math.cos(rad), cy + (r - 6) * Math.sin(rad));
       ctx.lineTo(cx + r * Math.cos(rad), cy + r * Math.sin(rad));
-      ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 0.8; ctx.stroke();
+      ctx.strokeStyle = theme.ink(0.2); ctx.lineWidth = 0.8; ctx.stroke();
     }
 
     // Cardinal labels
     ctx.font = "bold 7px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255,255,255,0.35)";
+    ctx.fillStyle = theme.ink(0.35);
     ctx.fillText("N", cx, cy - r + 4);
     ctx.fillText("S", cx, cy + r - 4);
     ctx.fillText("E", cx + r - 4, cy);
@@ -561,7 +559,7 @@ class NinaWeatherCard extends HTMLElement {
     const startY = cy - Math.sin(arrowRad) * arrowLen;
 
     const level = this._windLevel(speed);
-    const color = level === "danger" ? "#e76f51" : level === "warn" ? "#f4a261" : "#5bcfcf";
+    const color = level === "danger" ? theme.danger : level === "warn" ? theme.warn : theme.accent2;
 
     // Arrow shaft
     ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(endX, endY);
@@ -580,7 +578,7 @@ class NinaWeatherCard extends HTMLElement {
 
     // Centre dot
     ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.fill();
+    ctx.fillStyle = theme.ink(0.3); ctx.fill();
   }
 
   getCardSize() { return 7; }

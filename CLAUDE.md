@@ -72,7 +72,7 @@ custom_components/nina_astrophotography/
   binary_sensor.py sensor.py number.py select.py light.py switch.py
   button.py image.py event.py   every platform is a table of entity
                       descriptors over NinaData; copy binary_sensor.py
-  www/                6 Lovelace cards and three shared modules; see
+  www/                6 Lovelace cards and four shared modules; see
                       docs/contributing/cards.md. `frontend.py` serves them and
                       registers each as a Lovelace resource
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities

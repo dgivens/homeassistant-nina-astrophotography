@@ -24,6 +24,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   observatory card's banner and the sky map's header used to show no flip at
   all during the wait. They now read "Waiting to flip · slews in N min",
   then "Flipping" (#164).
+- **The cards are readable on a light theme** (#175). Their text, washes and
+  chart lines now take the theme's text colour rather than white, and on a
+  light theme the accents darken to keep 4.5:1 against white. The sky map's
+  sky and anything drawn over an image stay dark whatever the theme.
 
 ---
 

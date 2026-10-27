@@ -49,6 +49,7 @@
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { quantityIn, shown } from "./nina-units.js";
+import { ON_IMAGE, THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.3.0";
 
@@ -95,6 +96,7 @@ function hideUntilLoaded(img) {
 }
 
 const STYLE = `
+  ${THEME}
   :host {
     /* A custom element is inline by default, and a ResizeObserver watching an
        inline box does not report the card getting wider — which is what
@@ -102,12 +104,6 @@ const STYLE = `
     display: block;
     --bg:      var(--ha-card-background, var(--card-background-color, #12121e));
     --border:  var(--divider-color, rgba(255,255,255,0.1));
-    --accent:  #7b8de8;
-    --accent2: #5bcfcf;
-    --warn:    #f4a261;
-    --success: #57cc99;
-    --muted:   rgba(255,255,255,0.45);
-    --text:    rgba(255,255,255,0.92);
     font-family: var(--primary-font-family, Roboto, sans-serif);
   }
   ha-card {
@@ -136,6 +132,9 @@ const STYLE = `
   /* Readings N.I.N.A. has not confirmed since it stopped answering */
   ha-card.stale .overlay, ha-card.stale .stats-row { opacity: 0.5; }
   .header .badge.warn { background: rgba(244,162,97,0.15); color: var(--warn); border-color: rgba(244,162,97,0.3); }
+
+  /* Over the frame, which is dark whatever the theme. */
+  .img-wrap, .modal-bg, .strip-thumb .strip-filter, .strip-thumb .strip-type { ${ON_IMAGE} }
 
   .img-wrap {
     position: relative;
@@ -221,7 +220,7 @@ const STYLE = `
   .adu-label .mean { color: var(--accent2); }
   .adu-bar {
     position: relative; height: 28px;
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
     border-radius: 4px; overflow: hidden;
   }
   canvas.adu-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -259,11 +258,11 @@ const STYLE = `
     cursor: pointer;
     border: 1.5px solid transparent;
     transition: border-color 0.15s;
-    background: rgba(255,255,255,0.06);
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
     position: relative;
   }
   .strip-thumb.active { border-color: var(--accent2); }
-  .strip-thumb:hover { border-color: rgba(255,255,255,0.3); }
+  .strip-thumb:hover { border-color: color-mix(in srgb, var(--ink) 30%, transparent); }
   /* Not the accent, or a focused tile reads as a second selected frame; and
      inset, since the scrolling strip clips anything drawn outside a tile. */
   .strip-thumb:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; }
@@ -352,6 +351,8 @@ class NinaImagePanelCard extends HTMLElement {
     this._live = hass;
 
     this._rig.refresh(hass);
+    // The ADU range is drawn only with a frame, so a theme change has to ask.
+    const rethemed = applyTheme(this);
 
     if (!this._rendered) {
       this._buildDOM();
@@ -366,6 +367,7 @@ class NinaImagePanelCard extends HTMLElement {
     this._unreachable = link.lost && !link.stale;
     this.shadowRoot.querySelector("ha-card")?.classList.toggle("stale", link.stale);
     this._update();
+    if (rethemed && this._config.show_histogram) this._drawAduRange();
   }
 
   _update() {
@@ -490,7 +492,7 @@ class NinaImagePanelCard extends HTMLElement {
       <ha-card>
 
         <div class="header">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5bcfcf" stroke-width="1.5" stroke-linecap="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent2)" stroke-width="1.5" stroke-linecap="round">
             <rect x="3" y="3" width="18" height="18" rx="3"/>
             <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
           </svg>
@@ -744,14 +746,15 @@ class NinaImagePanelCard extends HTMLElement {
 
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
+    const theme = palette(this);
     const x = (adu) => W * Math.log1p(Math.max(adu, 0)) / Math.log1p(ADU_FULL_SCALE);
 
     ctx.font = "8px sans-serif";
     ctx.textBaseline = "top";
     for (const [adu, text] of ADU_GRIDLINES) {
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
+      ctx.fillStyle = theme.ink(0.08);
       ctx.fillRect(x(adu), 0, 1, H);
-      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.fillStyle = theme.ink(0.3);
       ctx.fillText(text, x(adu) + 2, 1);
     }
 
@@ -763,7 +766,7 @@ class NinaImagePanelCard extends HTMLElement {
       ctx.moveTo(x(min), mid); ctx.lineTo(x(max), mid);
       ctx.moveTo(x(min), mid - 3); ctx.lineTo(x(min), mid + 3);
       ctx.moveTo(x(max), mid - 3); ctx.lineTo(x(max), mid + 3);
-      ctx.strokeStyle = "rgba(123,141,232,0.8)";
+      ctx.strokeStyle = theme.tint("accent", 0.8);
       ctx.lineWidth = 1;
       ctx.stroke();
     }
@@ -776,8 +779,8 @@ class NinaImagePanelCard extends HTMLElement {
       ctx.lineWidth = width;
       ctx.stroke();
     };
-    tick(median, "rgba(255,255,255,0.9)", 3);
-    tick(mean, "rgba(91,207,207,0.95)", 1.5);
+    tick(median, theme.ink(0.9), 3);
+    tick(mean, theme.tint("accent2", 0.95), 1.5);
   }
 
   _updateOverlay() {

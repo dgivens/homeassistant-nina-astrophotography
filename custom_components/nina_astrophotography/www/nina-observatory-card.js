@@ -12,6 +12,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
+import { THEME, applyTheme } from "./nina-theme.js";
 import {
   displayed, flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
   quantity, shown,
@@ -106,16 +107,10 @@ function statusDot(on) {
 // ─── Template ────────────────────────────────────────────────────────────────
 
 const STYLE = `
+  ${THEME}
   :host {
     --card-bg: var(--ha-card-background, var(--card-background-color, #1c1c2e));
     --card-border: var(--divider-color, rgba(255,255,255,0.1));
-    --accent: #7b8de8;
-    --accent2: #5bcfcf;
-    --warn: #f4a261;
-    --danger: #e76f51;
-    --success: #57cc99;
-    --muted: rgba(255,255,255,0.45);
-    --text: rgba(255,255,255,0.92);
     font-family: var(--primary-font-family, Roboto, sans-serif);
   }
 
@@ -167,7 +162,7 @@ const STYLE = `
   .session-banner .progress-track {
     width: 130px;
     height: 6px;
-    background: rgba(255,255,255,0.1);
+    background: color-mix(in srgb, var(--ink) 10%, transparent);
     border-radius: 3px;
     overflow: hidden;
   }
@@ -203,7 +198,7 @@ const STYLE = `
     display: flex;
     align-items: center;
     gap: 5px;
-    background: rgba(255,255,255,0.06);
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
     border: 1px solid var(--card-border);
     border-radius: 20px;
     padding: 4px 10px;
@@ -232,7 +227,7 @@ const STYLE = `
     gap: 7px;
   }
   .metric {
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
     border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 8px 10px;
@@ -248,7 +243,7 @@ const STYLE = `
   .guider-row { display: flex; gap: 8px; align-items: flex-start; }
   .guider-meter {
     flex: 1;
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
     border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 8px 10px;
@@ -257,7 +252,7 @@ const STYLE = `
   .rms-bar-wrap { display: flex; align-items: center; gap: 6px; }
   .rms-label { width: 28px; font-size: 0.65rem; color: var(--muted); }
   .rms-track {
-    flex: 1; height: 5px; background: rgba(255,255,255,0.1);
+    flex: 1; height: 5px; background: color-mix(in srgb, var(--ink) 10%, transparent);
     border-radius: 3px; overflow: hidden;
   }
   .rms-fill {
@@ -278,7 +273,7 @@ const STYLE = `
     padding: 8px 12px;
     border: 1px solid var(--card-border);
     border-radius: 8px;
-    background: rgba(255,255,255,0.06);
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
     color: var(--text);
     font-size: 0.78rem;
     font-weight: 600;
@@ -287,7 +282,7 @@ const STYLE = `
     transition: background 0.15s, transform 0.1s;
     display: flex; align-items: center; justify-content: center; gap: 5px;
   }
-  .nina-btn:not(:disabled):hover { background: rgba(255,255,255,0.12); }
+  .nina-btn:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 12%, transparent); }
   .nina-btn:not(:disabled):active { transform: scale(0.97); }
   .nina-btn.primary { background: rgba(123,141,232,0.18); border-color: var(--accent); color: var(--accent); }
   .nina-btn.danger  { background: rgba(231,111,81,0.15); border-color: var(--danger); color: var(--danger); }
@@ -306,7 +301,7 @@ const STYLE = `
   }
   .img-stat {
     flex: 1;
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
     border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 6px 8px;
@@ -344,6 +339,7 @@ class NinaObservatoryCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._rig.refresh(hass);
+    applyTheme(this);
     this._render();
   }
 

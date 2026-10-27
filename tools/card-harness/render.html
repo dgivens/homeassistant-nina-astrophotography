@@ -5,6 +5,9 @@
     python3 -m http.server 8901 --directory .        # from the repo root
     open http://127.0.0.1:8901/tools/card-harness/render.html?card=nina-sky-map-card
 
+  `&theme=light` sets Home Assistant's default light theme on the page; without
+  it no theme is set, and a card draws in its dark fallback.
+
   Served rather than opened as a file: the card is an ES module and imports
   another one, which a `file://` origin refuses.
 
@@ -29,12 +32,22 @@
       .slot { width: 380px; }
       .cap { color: #8a8aa0; font: 12px ui-monospace, monospace; margin-bottom: 6px; }
       .err { color: #ff6b6b; font: 12px ui-monospace, monospace; white-space: pre-wrap; }
+      /* Home Assistant's default light theme, the variables a card reads. */
+      body.light {
+        background: #fafafa;
+        --primary-text-color: #212121;
+        --secondary-text-color: #727272;
+        --card-background-color: #ffffff;
+        --divider-color: rgba(0, 0, 0, 0.12);
+      }
+      body.light .cap { color: #727272; }
     </style>
   </head>
   <body>
     <script type="module">
       const params = new URLSearchParams(location.search);
       const card = params.get("card") ?? "nina-sky-map-card";
+      document.body.classList.toggle("light", params.get("theme") === "light");
       const base = "../../";
 
       const [dump, { scenarios }] = await Promise.all([
