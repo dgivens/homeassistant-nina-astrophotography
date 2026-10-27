@@ -23,10 +23,13 @@
   its squash SHA goes into `.git-blame-ignore-revs` after it merges. Git never
   sees a squashed branch as merged (`--merged`, `git cherry`), so check the
   PR's state before `git branch -D`.
-- **A release** bumps `version` in `manifest.json` and `pyproject.toml` and
-  dates its CHANGELOG section, then tags `v<version>` on `main` and publishes
-  a GitHub release from it — HACS offers releases, not commits. A beta is
-  `v<version>b<N>`, published as a pre-release.
+- **A release** bumps `version` in `manifest.json`, `pyproject.toml` and
+  `uv.lock` and each card's `VERSION`, and dates its CHANGELOG section, then
+  tags `v<version>` on `main` and publishes a GitHub release from it — HACS
+  offers releases, not commits. Title the release with the tag itself: HACS
+  heads each release in Home Assistant's update dialog with the tag, and
+  appends the title whenever it differs, so `2.3.0` reads "v2.3.0 - 2.3.0".
+  A beta is `v<version>b<N>`, published as a pre-release.
 
 ## Quality bar
 
