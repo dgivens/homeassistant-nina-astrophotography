@@ -1,10 +1,11 @@
 # Lovelace cards: neither suite renders one
 
-`www/` holds 6 Lovelace cards, plus three modules they import, which are not
+`www/` holds 6 Lovelace cards, plus four modules they import, which are not
 cards: `nina-entity-resolver.js`, `nina-card-config.js` (the prefix and the
-visual editor's `getConfigForm()` schema) and `nina-units.js` (readings in the
+visual editor's `getConfigForm()` schema), `nina-units.js` (readings in the
 unit HA shows them in, the meridian flip window, and `safe()` for any rig
-text bound for `innerHTML`). Every card resolves its
+text bound for `innerHTML`) and `nina-theme.js` (the colours, on a dark theme
+or a light one). Every card resolves its
 entity ids from the registry by `translation_key` and keeps the configured
 instance prefix only as a per-entity fallback. `frontend.py` serves them and
 self-registers each as a Lovelace resource — nothing for a user to copy into
@@ -26,7 +27,7 @@ suite; say which of the two things below you actually ran.
   card refactor — it is what proves an entity-resolution conversion changed no
   drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
   twinkle stars and pulse the meridian. A card pulled out of git imports the
-  three shared modules relatively, so copy every non-card `www/` file beside
+  four shared modules relatively, so copy every non-card `www/` file beside
   the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs`
   finds the dump relative to its own path, so run the shipped one.
 - **`render.html`** — the cards side by side in a real browser, over
@@ -35,7 +36,9 @@ suite; say which of the two things below you actually ran.
   is the only check that covers layout, fonts and the canvas for real. Playwright
   can only write under the repo, and a bare filename lands in the **repo root**,
   untracked — pass `.playwright-mcp/<name>.png`, which is git-ignored, or delete
-  it before committing. The page title carries an error count, and the console
+  it before committing. Add `&theme=light` for Home Assistant's default light
+  theme; without it the page sets none, and a card draws in its dark fallback.
+  A colour change needs both. The page title carries an error count, and the console
   usually holds one 404 for `favicon.ico`, which is nothing.
 
 Both drive `tests/ha/snapshots/card_states.json` — the whole `hass` a card is
@@ -58,6 +61,15 @@ The sky map keeps its hook because it paints from a loop `connectedCallback`
 starts, and nothing there attaches the element.
 
 Traps when changing a card:
+
+- **No colour literal for anything drawn on the card.** Text, washes and
+  tracks come from the theme — `var(--text)`, `var(--muted)`, or
+  `color-mix(in srgb, var(--ink) N%, transparent)` — and accents from the
+  `var(--accent)` family, which a light theme swaps for darker ones. A canvas
+  cannot read those, so it asks `palette(this)` when it draws. A white literal
+  is right only on a surface that is dark whatever the theme: the sky map's
+  sky, or `ON_IMAGE` over a frame. `ops.mjs` sets no theme, so an unmoved log
+  says only that the dark fallback is unchanged.
 
 - **Home Assistant converts a state before the card sees it** — into the
   instance's unit system, or a display unit picked for that entity — so a

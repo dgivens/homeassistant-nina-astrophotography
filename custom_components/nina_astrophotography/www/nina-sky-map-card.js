@@ -25,6 +25,7 @@ import { RigEntities } from "./nina-entity-resolver.js";
 import {
   flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
 } from "./nina-units.js";
+import { THEME, applyTheme } from "./nina-theme.js";
 
 const VERSION = "2.3.0";
 
@@ -113,16 +114,10 @@ function project(alt_deg, az_deg) {
 }
 
 const STYLE = `
+  ${THEME}
   :host {
     --bg: var(--ha-card-background, var(--card-background-color, #12121e));
     --border: var(--divider-color, rgba(255,255,255,0.1));
-    --accent: #7b8de8;
-    --accent2: #5bcfcf;
-    --warn: #f4a261;
-    --danger: #e76f51;
-    --success: #57cc99;
-    --muted: rgba(255,255,255,0.4);
-    --text: rgba(255,255,255,0.92);
     font-family: var(--primary-font-family, Roboto, sans-serif);
   }
   ha-card {
@@ -148,6 +143,7 @@ const STYLE = `
     padding: 12px 12px 4px;
     display: flex; justify-content: center;
   }
+  /* The sky is painted, and dark whatever the theme. */
   canvas#sky { display: block; border-radius: 50%; cursor: crosshair; }
 
   /* Compass labels positioned around the canvas via JS */
@@ -155,7 +151,7 @@ const STYLE = `
     position: absolute;
     font-size: 0.65rem;
     font-weight: 700;
-    color: rgba(255,255,255,0.45);
+    color: var(--muted);
     letter-spacing: .5px;
     pointer-events: none;
     transform: translate(-50%, -50%);
@@ -226,6 +222,7 @@ class NinaSkyMapCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._rig.refresh(hass);
+    applyTheme(this);
     this._updateTrail();
     if (!this._rendered) {
       this._buildDOM();

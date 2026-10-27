@@ -16,6 +16,7 @@
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
 import { interval, inUnit, quantity, quantityIn, safe, shown } from "./nina-units.js";
+import { THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.3.0";
 
@@ -25,11 +26,13 @@ const VERSION = "2.3.0";
 // degrees overnight is not flagged most of the night.
 const DEFAULT_TEMPERATURE_DELTA = 2.0;
 
-const CURVE = "#5bcfcf";      // the measured sweep
-const FIT = "#7b8de8";        // the fitted curve, and the minimum it found
-const TREND = "#f4a261";      // the trend lines, and where they cross
-const FINAL = "#57cc99";      // where the focuser was left
-const DANGER = "#e76f51";
+// Each series' accent, named as in `nina-theme.js`: the legend reads it as
+// `var(--name)`, the canvas off `palette()`.
+const CURVE = "accent2";      // the measured sweep
+const FIT = "accent";         // the fitted curve, and the minimum it found
+const TREND = "warn";         // the trend lines, and where they cross
+const FINAL = "success";      // where the focuser was left
+const DANGER = "danger";
 
 function fixed(value, places) {
   return Number.isFinite(value) ? value.toFixed(places) : "—";
@@ -94,6 +97,7 @@ function duration(seconds) {
 }
 
 const STYLE = `
+  ${THEME}
   :host {
     /* A custom element is inline by default, and a ResizeObserver watching an
        inline box does not report the card getting wider — which is what
@@ -101,8 +105,6 @@ const STYLE = `
     display: block;
     --card-bg: var(--ha-card-background, var(--card-background-color, #1c1c2e));
     --card-border: var(--divider-color, rgba(255,255,255,0.1));
-    --muted: rgba(255,255,255,0.45);
-    --text: rgba(255,255,255,0.92);
     font-family: var(--primary-font-family, Roboto, sans-serif);
   }
   ha-card {
@@ -136,7 +138,7 @@ const STYLE = `
   .stat-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .stat-box {
     flex: 1; min-width: 92px; box-sizing: border-box;
-    background: rgba(255,255,255,0.04);
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
     border: 1px solid var(--card-border);
     border-radius: 10px;
     padding: 10px 12px;
@@ -168,7 +170,7 @@ const STYLE = `
     display: flex; align-items: center; gap: 5px;
     border-radius: 20px; padding: 4px 10px;
     font-size: 0.68rem;
-    background: rgba(255,255,255,0.05);
+    background: color-mix(in srgb, var(--ink) 5%, transparent);
     border: 1px solid var(--card-border);
   }
   .chip .k { color: var(--muted); }
@@ -214,6 +216,8 @@ class NinaAutofocusCard extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     this._rig.refresh(hass);
+    // The card draws only on a new run, so a theme change has to ask.
+    if (applyTheme(this)) this._signature = null;
     this._render();
   }
 
@@ -513,7 +517,7 @@ class NinaAutofocusCard extends HTMLElement {
 
   _legend(run) {
     const items = [
-      `<div class="item"><span class="dot" style="background:${CURVE}"></span>
+      `<div class="item"><span class="dot" style="background:var(--${CURVE})"></span>
         <span>Measured</span><span class="reading">${
           run.isHfr ? "± spread across stars" : "contrast score"}</span></div>`,
     ];
@@ -523,7 +527,7 @@ class NinaAutofocusCard extends HTMLElement {
       const colour = isTrend(fit.name) ? TREND : FIT;
       const dash = isTrend(fit.name) ? "dashed" : "solid";
       items.push(`<div class="item">
-        <span class="swatch" style="border-top-color:${drawn ? colour : "var(--muted)"};border-top-style:${drawn ? dash : "dotted"}"></span>
+        <span class="swatch" style="border-top-color:var(--${drawn ? colour : "muted"});border-top-style:${drawn ? dash : "dotted"}"></span>
         <span${drawn ? "" : ` style="color:var(--muted)"`}>${pretty(fit.name)}</span>
         <span class="reading">R² ${fixed(fit.r_squared, 3)}${drawn ? "" : " · not plotted"}</span></div>`);
     }
@@ -537,7 +541,7 @@ class NinaAutofocusCard extends HTMLElement {
       const plotted = Number.isFinite(minimum.value);
       const under = plotted && minimum.value < floor;
       items.push(`<div class="item">
-        <span class="diamond" style="background:${plotted ? colour : "var(--muted)"}"></span>
+        <span class="diamond" style="background:var(--${plotted ? colour : "muted"})"></span>
         <span${plotted ? "" : ` style="color:var(--muted)"`}>${pretty(minimum.name)}</span>
         <span class="reading">${shown(minimum.position)} · ${
           plotted ? `${reading(minimum.value)} ${run.unit}` : "negative · not plotted"}${
@@ -545,7 +549,7 @@ class NinaAutofocusCard extends HTMLElement {
     }
     if (Number.isFinite(run.position)) {
       items.push(`<div class="item">
-        <span class="swatch" style="border-top-color:${FINAL};border-top-style:dotted"></span>
+        <span class="swatch" style="border-top-color:var(--${FINAL});border-top-style:dotted"></span>
         <span>Focus position</span><span class="reading">${run.position}</span></div>`);
     }
     return `<div class="legend">${items.join("")}</div>`;
@@ -563,6 +567,7 @@ class NinaAutofocusCard extends HTMLElement {
     canvas.height = H * dpr;
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
+    const theme = palette(this);
 
     const pad = { l: 34, r: 12, t: 12, b: 20 };
     const plotW = W - pad.l - pad.r;
@@ -595,8 +600,8 @@ class NinaAutofocusCard extends HTMLElement {
     // Precision follows the range, not pixels: a contrast score spans
     // thousandths, and five gridlines reading "0.0" carry nothing.
     const places = Math.min(4, Math.max(1, 1 - Math.floor(Math.log10((yMax - yMin) / 4))));
-    ctx.strokeStyle = "rgba(255,255,255,0.06)";
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.strokeStyle = theme.ink(0.06);
+    ctx.fillStyle = theme.ink(0.4);
     ctx.lineWidth = 0.5;
     for (let line = 0; line <= 4; line++) {
       const value = yMin + ((yMax - yMin) * line) / 4;
@@ -623,14 +628,14 @@ class NinaAutofocusCard extends HTMLElement {
       if (Number.isFinite(point.value)) continue;
       const x = xOf(point.position);
       ctx.setLineDash([3, 3]);
-      ctx.strokeStyle = `${DANGER}55`;
+      ctx.strokeStyle = `${theme[DANGER]}55`;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x, pad.t);
       ctx.lineTo(x, H - pad.b);
       ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = DANGER;
+      ctx.fillStyle = theme[DANGER];
       ctx.textAlign = "center";
       ctx.fillText("✕", x, pad.t + plotH / 2);
     }
@@ -639,7 +644,7 @@ class NinaAutofocusCard extends HTMLElement {
     // a trend line stays a line rather than a spike out of the frame.
     for (const fit of run.fits) {
       if (!Array.isArray(fit.coefficients) || !fit.coefficients.length) continue;
-      ctx.strokeStyle = isTrend(fit.name) ? TREND : FIT;
+      ctx.strokeStyle = theme[isTrend(fit.name) ? TREND : FIT];
       ctx.lineWidth = 1.4;
       ctx.setLineDash(isTrend(fit.name) ? [5, 4] : []);
       ctx.beginPath();
@@ -656,7 +661,7 @@ class NinaAutofocusCard extends HTMLElement {
     }
 
     // The spread of HFR across the frame's stars, not the uncertainty on the V.
-    ctx.strokeStyle = `${CURVE}77`;
+    ctx.strokeStyle = `${theme[CURVE]}77`;
     ctx.lineWidth = 1;
     for (const point of measured) {
       if (!Number.isFinite(point.error) || point.error === 0) continue;
@@ -675,7 +680,7 @@ class NinaAutofocusCard extends HTMLElement {
 
     // The pen lifts at a position that measured nothing, rather than drawing
     // a chord through the region focus lives in.
-    ctx.strokeStyle = CURVE;
+    ctx.strokeStyle = theme[CURVE];
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     let pen = false;
@@ -695,10 +700,10 @@ class NinaAutofocusCard extends HTMLElement {
     for (const point of measured) {
       ctx.beginPath();
       ctx.arc(xOf(point.position), yOf(point.value), point === best ? 3.5 : 2.4, 0, Math.PI * 2);
-      ctx.fillStyle = point === best ? CURVE : `${CURVE}bb`;
+      ctx.fillStyle = point === best ? theme[CURVE] : `${theme[CURVE]}bb`;
       ctx.fill();
       if (point === best) {
-        ctx.strokeStyle = "rgba(255,255,255,0.65)";
+        ctx.strokeStyle = theme.ink(0.65);
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -707,7 +712,7 @@ class NinaAutofocusCard extends HTMLElement {
     // Where the focuser was left: the minima's mean, rounded to a step.
     if (Number.isFinite(run.position)) {
       const x = xOf(run.position);
-      ctx.strokeStyle = FINAL;
+      ctx.strokeStyle = theme[FINAL];
       ctx.lineWidth = 1.2;
       ctx.setLineDash([2, 3]);
       ctx.beginPath();
@@ -725,8 +730,8 @@ class NinaAutofocusCard extends HTMLElement {
       const x = xOf(minimum.position);
       const below = minimum.value < yMin;
       const y = yOf(Math.min(Math.max(minimum.value, yMin), yMax));
-      ctx.fillStyle = isTrend(minimum.name) ? TREND : FIT;
-      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.fillStyle = theme[isTrend(minimum.name) ? TREND : FIT];
+      ctx.strokeStyle = theme.ink(0.5);
       ctx.lineWidth = 0.8;
       const off = below || minimum.value > yMax;
       ctx.beginPath();

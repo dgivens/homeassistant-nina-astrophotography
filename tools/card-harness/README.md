@@ -82,6 +82,10 @@ python3 -m http.server 8901 --directory .     # from the repo root
 open "http://127.0.0.1:8901/tools/card-harness/render.html?card=nina-sky-map-card"
 ```
 
+`&theme=light` sets Home Assistant's default light theme on the page. Without
+it no theme is set, and a card draws in the dark colours it falls back to —
+which is also all `ops.mjs` sees, since node resolves no stylesheet.
+
 Served, not opened as a file: the cards are ES modules that import each other,
 and a `file://` origin refuses. `?scenario=` renders one of them alone. The page
 title carries the error count, and a scenario that throws shows its stack in
