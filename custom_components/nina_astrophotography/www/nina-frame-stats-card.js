@@ -96,9 +96,12 @@ const OTHER_COLOURS = [
   "#0db9f2", "#ff6a00", "#e1da89", "#9c6bff",
 ];
 
-// The passband hues each spare could pass for on a thin line: CIEDE2000 below
-// 12 in normal vision, or below 7 under a colour-vision deficiency. On a wheel
-// that already draws some of them, a spare goes back by how many.
+// The passband hues each spare could pass for on a thin line: CIEDE2000 with
+// kL = 2 below 12 in normal vision, or below 7 under a colour-vision deficiency
+// (Machado 2009, full severity). On a wheel that already draws some of them, a
+// spare goes back by how many. One order serves both themes, so that a slot
+// keeps its colour when the theme changes: no light counterpart could pass for
+// a passband its dark colour could not.
 const TWINS = new Map([
   ["#ff00bf", [PASSBANDS.Ha, PASSBANDS.OIII, PASSBANDS.SII]],
   ["#24ffc8", [PASSBANDS.OIII]],
@@ -116,6 +119,24 @@ function spares(drawn) {
 
 // A light with no filter name among named ones, which no chip uses.
 const NO_FILTER = "#8a909c";
+
+// What each colour draws as on a light card, where the dark palette's pale
+// hues fade into white. Picked by the same measure as the dark palette, each
+// at least 3:1 on white; L takes the text colour instead.
+const ON_LIGHT = new Map([
+  [PASSBANDS.R, "#cb070b"], [PASSBANDS.G, "#52a658"], [PASSBANDS.B, "#0664e4"],
+  [PASSBANDS.Ha, "#f7258a"], [PASSBANDS.OIII, "#13a4b4"], [PASSBANDS.SII, "#824aa9"],
+  [NO_FILTER, "#8f8b8d"],
+  ["#daff24", "#af9300"], ["#ff00bf", "#bc0e86"], ["#24ffc8", "#10714d"],
+  ["#da886c", "#d17e7b"], ["#0db9f2", "#009bec"], ["#ff6a00", "#96520b"],
+  ["#e1da89", "#718144"], ["#9c6bff", "#801aff"],
+]);
+
+// A filter's colour as `theme` draws it.
+function shade(colour, theme) {
+  if (!theme.light) return colour;
+  return colour === PASSBANDS.L ? theme.text : ON_LIGHT.get(colour);
+}
 
 // FNV-1a: stable across browsers and sessions.
 function nameHash(text) {
@@ -394,13 +415,7 @@ class NinaFrameStatsCard extends HTMLElement {
 
     const slots = this._attr(this._eid("select", "filter", "filter_wheel_filter"), "options") ?? [];
     const colours = filterColours(slots, [...Object.keys(byFilter), ...this._filters]);
-    // L's near-white would vanish on a light card, which draws it in the text
-    // colour instead.
     const theme = palette(this);
-    const filterColour = (name) => {
-      const colour = colours.get(name);
-      return theme.light && colour === PASSBANDS.L ? theme.text : colour;
-    };
     // In wheel order, as an imager reads a wheel; names it does not list last.
     const slotOf = (name) => (slots.includes(name) ? slots.indexOf(name) : slots.length);
     const filterEntries = Object.entries(byFilter).sort(([a], [b]) => slotOf(a) - slotOf(b));
@@ -412,9 +427,9 @@ class NinaFrameStatsCard extends HTMLElement {
     // breakdown that goes missing cannot recolour a wheel's dropout.
     const ownColours = chipless && this._filters.every((name) => name === null);
     const lightColours = this._filters.map((name) =>
-      (ownColours ? null : name === null ? NO_FILTER : filterColour(name)));
+      (ownColours ? null : name === null ? NO_FILTER : colours.get(name)));
     const filterChipsHtml = filterEntries.map(([name, row]) => {
-      const colour = filterColour(name);
+      const colour = shade(colours.get(name), theme);
       return `<div class="filter-chip" style="background:${colour}22;border-color:${colour}55">
         <div class="filter-dot" style="background:${colour}"></div>
         <span>${safe(name)}: ${row?.count ?? 0}</span>
@@ -576,7 +591,7 @@ class NinaFrameStatsCard extends HTMLElement {
 
     // An unnamed light beside named ones is grey, and hollow too, since an L
     // dot drawn at 60% is much the same grey.
-    const colourOf = (i) => colours[i] ?? fillColour;
+    const colourOf = (i) => shade(colours[i], theme) ?? fillColour;
     const hollow = (i) => colours[i] === NO_FILTER;
 
     // Lights outside the run: faded, unjoined, and clipped where they fall

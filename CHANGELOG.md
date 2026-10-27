@@ -32,6 +32,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `tools/upgrade-harness/` now installs the `v1.4.5` tag and upgrades to
   `origin/main`, instead of the retired `v2` branch. `up` takes the rig's
   address as a required `--host`; the README shows the test VM's.
+- **The frame statistics card's filter colours hold up on a light theme**
+  (#191). On white, G, OIII and four of the spare colours fell well below 3:1,
+  and two spares all but vanished. A light theme now draws each filter in a
+  darker counterpart of its colour, at least 3:1 on white, so R still reads
+  as red and Ha as rose. A filter keeps its slot's colour whichever theme is
+  showing, and the dark colours are unchanged.
 
 ---
 
