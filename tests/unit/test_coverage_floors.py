@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import sys
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import coverage_floors
 
@@ -28,25 +30,20 @@ def _report(tmp_path: Path, files: dict[str, float]) -> None:
     )
 
 
-def test_a_met_floor_passes(tmp_path, monkeypatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(coverage_floors, "FLOORS", FLOORS)
-    _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0, "api/v2/mapper.py": 90.0})
-    assert coverage_floors.main() == 0
-
-
-def test_a_breached_floor_fails(tmp_path, monkeypatch) -> None:
-    monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(coverage_floors, "FLOORS", FLOORS)
-    _report(tmp_path, {"derive.py": 94.9, "session.py": 95.0, "api/v2/mapper.py": 90.0})
-    assert coverage_floors.main() == 1
-
-
-def test_an_unmeasured_file_fails_rather_than_passing_silently(
-    tmp_path, monkeypatch
+@pytest.mark.parametrize(
+    ("measured", "exit_code"),
+    [
+        ({"derive.py": 96.0, "session.py": 95.0, "api/v2/mapper.py": 90.0}, 0),
+        ({"derive.py": 94.9, "session.py": 95.0, "api/v2/mapper.py": 90.0}, 1),
+        # An unenforced floor is worse than no floor.
+        ({"derive.py": 96.0, "session.py": 95.0}, 1),
+    ],
+    ids=["met", "breached", "unmeasured"],
+)
+def test_the_floors_fail_on_a_breach_and_on_an_unmeasured_file(
+    tmp_path, monkeypatch, measured: dict[str, float], exit_code: int
 ) -> None:
-    """An unenforced floor is worse than no floor."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(coverage_floors, "FLOORS", FLOORS)
-    _report(tmp_path, {"derive.py": 96.0, "session.py": 95.0})
-    assert coverage_floors.main() == 1
+    _report(tmp_path, measured)
+    assert coverage_floors.main() == exit_code

@@ -59,8 +59,8 @@ class FakeRig(FakeSession):
         *,
         sequence: Iterable[str] | None = None,
     ) -> None:
-        # Not FakeSession.__init__: its `responses`/`default` are the fragment
-        # matcher this class replaces, and a second lookup table would rot.
+        # Not FakeSession.__init__: its `responses` are the fragment matcher
+        # this class replaces, and a second lookup table would rot.
         self.requests: list[tuple[str, dict | None]] = []
         self.states = states
         self._sequence = list(sequence or ())

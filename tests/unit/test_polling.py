@@ -37,22 +37,22 @@ T2 = "2026-09-04T05:30:00-05:00"
         (("2026-09-04T10:58:59", 122), ("2026-09-04T10:58:59", 123), False),
         # First read: no baseline exists, so this is not a restart.
         ((None, 0), ("2026-09-04T10:58:59", 122), False),
+        # An unreadable /application-start is still corroborated by the counter,
+        # which is on the same tier.
+        (("2026-09-04T10:58:59", 122), (None, 0), True),
     ],
-    ids=["application-start moved", "count fell", "steady", "first read"],
+    ids=[
+        "application-start moved",
+        "count fell",
+        "steady",
+        "first read",
+        "application-start unreadable",
+    ],
 )
 def test_the_restart_signals(before, after, restarted) -> None:
     detector = RestartDetector()
     detector.update(*before)
     assert detector.observe(*after) is restarted
-
-
-def test_a_generation_that_reads_null_is_corroborated_by_the_counter() -> None:
-    """A tick whose /application-start is unreadable still reports the restart,
-    because the counter is on the same tier.
-    """
-    detector = RestartDetector()
-    detector.update("2026-09-04T10:58:59", 122)
-    assert detector.observe(None, 0) is True
 
 
 def test_an_unreadable_application_start_does_not_erase_the_baseline() -> None:
@@ -72,8 +72,9 @@ def test_an_unreadable_application_start_does_not_erase_the_baseline() -> None:
         ([(122, 123)], [False]),
         ([(122, 123), (122, 123)], [False, True]),
         ([(122, 123), (122, 122), (122, 123)], [False, False, False]),
+        ([(122, 123)] * 4, [False, True, False, True]),
     ],
-    ids=["invariant holds", "one tick", "two ticks", "a match resets"],
+    ids=["invariant holds", "one tick", "two ticks", "a match resets", "firing rearms"],
 )
 def test_the_reseed_guard_needs_the_mismatch_twice(observations, fires) -> None:
     """A frame saved between the ?count=true read and the history read fails
@@ -82,11 +83,6 @@ def test_the_reseed_guard_needs_the_mismatch_twice(observations, fires) -> None:
     """
     guard = ReseedGuard()
     assert [guard.check(*observation) for observation in observations] == fires
-
-
-def test_a_reseed_guard_that_fired_starts_over() -> None:
-    guard = ReseedGuard()
-    assert [guard.check(122, 123) for _ in range(4)] == [False, True, False, True]
 
 
 def test_a_mismatch_that_survives_a_reseed_latches_until_the_count_moves() -> None:

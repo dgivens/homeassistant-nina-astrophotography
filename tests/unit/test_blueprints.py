@@ -175,11 +175,10 @@ def test_the_meridian_warning_triggers_on_the_flip_event() -> None:
     reaching zero, and both bounds are per-profile — so N.I.N.A.'s own event is
     the only reliable signal that it is happening.
     """
-    ids = [t["id"] for t in _blueprint("meridian_flip_warning.yaml")["triggers"]]
-    events = [
-        t.get("event_type")
-        for t in _blueprint("meridian_flip_warning.yaml")["triggers"]
-    ]
+    triggers = _blueprint("meridian_flip_warning.yaml")["triggers"]
 
-    assert ids == ["approaching", "committed", "complete"]
-    assert events == [None, "nina_mount_before_flip", "nina_mount_after_flip"]
+    assert [(t["id"], t.get("event_type")) for t in triggers] == [
+        ("approaching", None),
+        ("committed", "nina_mount_before_flip"),
+        ("complete", "nina_mount_after_flip"),
+    ]

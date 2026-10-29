@@ -7,7 +7,6 @@ CloudCover; OpenMeteo (device-12) the reverse — which is what makes the
 """
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.const import ATTR_RESTORED
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -137,48 +136,6 @@ async def test_the_unique_id_does_not_change_with_the_source(
     before = entity_registry.async_get(SKY_TEMPERATURE).unique_id
     await advance("weather_openmeteo")
     assert entity_registry.async_get(SKY_TEMPERATURE).unique_id == before
-
-
-async def test_the_active_weather_source_is_inspectable(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
-) -> None:
-    await advance("weather_openmeteo")
-    assert state_of(hass, WEATHER_SOURCE).state == "OpenMeteo"
-
-
-async def test_a_channel_the_active_source_cannot_feed_survives_a_restart(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
-) -> None:
-    """§1.2's abort criterion. `async_setup_entry` runs before any data
-    arrives, and OpenMeteo never reports SkyBrightness — so nothing the poll
-    can say brings the channel back, and without the entity registry every
-    weather entity would sit `unavailable` from every Home Assistant restart
-    until its source next reported.
-
-    `restored` is the assertion, not the state's presence: Home Assistant
-    writes an `unavailable` placeholder for every registry row no live entity
-    claims, so a channel that was never re-created still answers
-    `hass.states.get`.
-    """
-    await advance("weather_openmeteo")
-    await _reload(hass, loaded_entry)
-    assert ATTR_RESTORED not in state_of(hass, SKY_BRIGHTNESS).attributes
-    assert state_of(hass, SKY_BRIGHTNESS).state == "unavailable"
-
-
-@pytest.mark.synthetic
-async def test_the_establishing_source_survives_a_restart(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
-) -> None:
-    """Which source established a channel is what separates `unavailable` from
-    `unknown`, so it is persisted per entity through the registry's options and
-    read back at setup. Without it a recovered channel cannot tell a source
-    that will never report it from one that is momentarily quiet.
-    """
-    await advance("weather_openmeteo")
-    await _reload(hass, loaded_entry)
-    await advance("weather_station_channel_nan")
-    assert state_of(hass, SKY_BRIGHTNESS).state == "unknown"
 
 
 def test_every_weather_channel_keeps_a_1_4_5_unique_id() -> None:

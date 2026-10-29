@@ -19,6 +19,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   says only what its name and body do not. The scenarios README and the
   image-history docstring describe the one-element list the bare
   `/image-history` answers.
+- **The test suite loses its redundant tests and the assertions another unit
+  owns** (#196): the session fold, the v2 client, the scenario catalogue, setup,
+  the dome and the entity resolver first, then the rest of the suite. Near-
+  duplicate tests became tables (polling, redaction, the cards' source checks,
+  the stall alert's gates, the tiers' event reads, the switch commands, the
+  autofocus verdict, the derive maths), a test that another already covered was
+  dropped, and four scenario states no test used were removed.
 
 ### Fixed
 

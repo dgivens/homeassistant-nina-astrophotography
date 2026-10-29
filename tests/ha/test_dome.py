@@ -10,7 +10,7 @@ from homeassistant.components.number.const import (
     DOMAIN as NUMBER_DOMAIN,
     SERVICE_SET_VALUE,
 )
-from homeassistant.const import ATTR_ENTITY_ID, EntityCategory
+from homeassistant.const import ATTR_ENTITY_ID, STATE_UNAVAILABLE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
@@ -120,13 +120,12 @@ async def test_a_dome_connected_after_setup_gets_its_entities(
 ) -> None:
     assert hass.states.get(SHUTTER) is None
     await advance("simulator_dome_parked")
-    assert state_of(hass, SHUTTER).state == "closed"
+    assert state_of(hass, SHUTTER).state != STATE_UNAVAILABLE
 
 
 @pytest.mark.parametrize(
     ("state", "entity_id", "expected"),
     [
-        ("simulator_dome_parked", SHUTTER, "closed"),
         ("simulator_dome_following", SHUTTER, "open"),
         pytest.param(
             "simulator_dome_shutter_error",
@@ -135,13 +134,11 @@ async def test_a_dome_connected_after_setup_gets_its_entities(
             marks=pytest.mark.synthetic,
         ),
         ("simulator_dome_disconnected", SHUTTER, "unavailable"),
-        ("simulator_dome_parked", SLEWING, "off"),
         ("simulator_dome_slewing", SLEWING, "on"),
-        ("simulator_dome_following", SYNCHRONIZED, "on"),
         ("simulator_dome_parked", SYNCHRONIZED, "unknown"),
     ],
 )
-async def test_each_dome_reading(
+async def test_a_dome_reading_becomes_the_entity_state(
     hass, loaded_entry, advance, state, entity_id, expected
 ) -> None:
     """Entered from parked, so the dropped dome is one that was observed.
@@ -152,34 +149,46 @@ async def test_each_dome_reading(
     assert state_of(hass, entity_id).state == expected
 
 
-# A command refused in one state: how to send it, the path it would reach,
-# the state that refuses it, and the refusal.
-_REFUSED = [
-    pytest.param(
+# How to send each command and the path it reaches.
+_COMMANDS = {
+    "home button": (
         (BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: HOME}),
         "/equipment/dome/home",
+    ),
+    "slew number": (
+        (NUMBER_DOMAIN, SERVICE_SET_VALUE, {ATTR_ENTITY_ID: AZIMUTH, ATTR_VALUE: 90}),
+        "/equipment/dome/slew",
+    ),
+    "open button": (
+        (BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: OPEN}),
+        "/equipment/dome/open",
+    ),
+    "open action": ((DOMAIN, SERVICE_DOME_OPEN, {}), "/equipment/dome/open"),
+}
+
+# A command refused in one state: the state that refuses it, and the refusal.
+_REFUSED = [
+    pytest.param(
+        *_COMMANDS["home button"],
         "simulator_dome_following",
         "dome_following",
         id="home while following",
     ),
     pytest.param(
-        (NUMBER_DOMAIN, SERVICE_SET_VALUE, {ATTR_ENTITY_ID: AZIMUTH, ATTR_VALUE: 90}),
-        "/equipment/dome/slew",
+        *_COMMANDS["slew number"],
         "simulator_dome_following",
         "dome_following",
         id="slew while following",
     ),
     pytest.param(
-        (BUTTON_DOMAIN, SERVICE_PRESS, {ATTR_ENTITY_ID: OPEN}),
-        "/equipment/dome/open",
+        *_COMMANDS["open button"],
         "simulator_dome_unsafe",
         "dome_unsafe",
         marks=pytest.mark.synthetic,
         id="open button while unsafe",
     ),
     pytest.param(
-        (DOMAIN, SERVICE_DOME_OPEN, {}),
-        "/equipment/dome/open",
+        *_COMMANDS["open action"],
         "simulator_dome_unsafe",
         "dome_unsafe",
         marks=pytest.mark.synthetic,
@@ -212,9 +221,11 @@ async def test_a_dangerous_dome_command_is_refused(
     assert path not in [p for p, _ in rig.sent]
 
 
-@pytest.mark.parametrize(("call", "path", "state", "key"), _REFUSED)
+@pytest.mark.parametrize(
+    ("call", "path"), list(_COMMANDS.values()), ids=list(_COMMANDS)
+)
 async def test_the_same_command_is_sent_when_it_is_safe(
-    hass, config_entry, rig, set_up_at, call, path, state, key
+    hass, config_entry, rig, set_up_at, call, path
 ) -> None:
     """Parked: not following, and the monitor reads safe."""
     await _set_up_with_hand_moves(

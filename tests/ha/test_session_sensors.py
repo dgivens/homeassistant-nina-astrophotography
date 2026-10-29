@@ -86,24 +86,14 @@ async def test_recent_frames_is_every_type_newest_first_and_bounded(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
     """Unlike the sensor's own LIGHT-only state, `recent_frames` is every type
-    this process saved, which a dashboard's strip must label correctly
-    whatever it lands on. The newest frame of the night is a flat, not a
-    light (see the ignores-calibration test above).
+    this process saved, each carrying its own, which a dashboard's strip must
+    label correctly whatever it lands on: filter alone cannot tell a flat from
+    a light. The newest frame of the night is a flat (see the
+    ignores-calibration test above).
     """
     await advance("dawn_flats")
     recent = state_of(hass, LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
     assert len(recent) == 20
-    assert recent[0]["mean"] == pytest.approx(33139.77, abs=0.01)
-
-
-async def test_recent_frames_name_their_type(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
-) -> None:
-    """A strip of flats must not read as a run of lights: filter alone cannot
-    tell them apart, so each frame carries its type.
-    """
-    await advance("dawn_flats")
-    recent = state_of(hass, LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
     assert recent[0]["image_type"] == "FLAT"
 
 

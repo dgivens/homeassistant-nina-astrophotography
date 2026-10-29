@@ -37,31 +37,22 @@ async def test_each_equipment_type_is_its_own_device(
     } <= names
 
 
-async def test_children_hang_off_the_hub(hass: HomeAssistant, loaded_entry) -> None:
-    registry = dr.async_get(hass)
-    devices = dr.async_entries_for_config_entry(registry, loaded_entry.entry_id)
-    hub = get_device(hass, loaded_entry)
-    assert {device.via_device_id for device in devices if device.id != hub.id} == {
-        hub.id
-    }
-
-
-async def test_the_hub_is_the_only_device_without_a_parent(
+async def test_the_hub_is_the_one_parentless_device_and_every_child_hangs_off_it(
     hass: HomeAssistant, loaded_entry
 ) -> None:
     """How a card finds a rig with no configuration (`nina-entity-resolver.js`):
     the hub is the one device carrying our identifier and no `via_device_id`.
-
-    The converse is `test_children_hang_off_the_hub`. A child registered without
-    its parent, or a hub given one, leaves the cards resolving nothing and
-    falling back to a templated prefix.
+    A child registered without its parent, or a hub given one, leaves the cards
+    resolving nothing and falling back to a templated prefix.
     """
     registry = dr.async_get(hass)
     devices = dr.async_entries_for_config_entry(registry, loaded_entry.entry_id)
+    hub = get_device(hass, loaded_entry)
 
-    assert [device.id for device in devices if device.via_device_id is None] == [
-        get_device(hass, loaded_entry).id
-    ]
+    assert [device.id for device in devices if device.via_device_id is None] == [hub.id]
+    assert {device.via_device_id for device in devices if device.id != hub.id} == {
+        hub.id
+    }
 
 
 async def test_the_hub_carries_the_nina_version(

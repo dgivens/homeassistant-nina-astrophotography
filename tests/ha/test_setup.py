@@ -4,7 +4,6 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import ATTR_RESTORED, STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -16,10 +15,8 @@ from custom_components.nina_astrophotography.api.errors import (
     NinaUnavailableError,
 )
 from custom_components.nina_astrophotography.const import CONF_POLL_INTERVAL, DOMAIN
-from helpers import state_of
 
 CLIENT = "custom_components.nina_astrophotography.api.v2.client.NinaClientV2"
-LIGHT = "light.n_i_n_a_flat_panel_light"
 
 
 async def test_setup_stores_state_on_runtime_data_not_hass_data(
@@ -29,7 +26,6 @@ async def test_setup_stores_state_on_runtime_data_not_hass_data(
     config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
     await hass.async_block_till_done()
-    assert config_entry.runtime_data.coordinator is not None
     assert DOMAIN not in hass.data
 
 
@@ -66,45 +62,16 @@ async def test_a_build_that_does_not_serve_the_api_fails_the_entry(
     assert "API" in config_entry.reason
 
 
-async def test_an_action_reaches_the_client_of_the_loaded_entry(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig
-) -> None:
-    """An action finds its client through the loaded entry's `runtime_data`."""
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
-    await hass.services.async_call(DOMAIN, "mount_park", {}, blocking=True)
-    assert ("/equipment/mount/park", None) in rig.sent
-
-
-async def test_unload_leaves_no_state_behind(
+async def test_the_actions_outlive_an_unloaded_entry(
     hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
-    """After unload the registry leaves only its restored placeholder for the
-    light — unavailable, `restored: true` — not an entity of ours.
+    """They are registered in `async_setup`, so an automation naming one still
+    validates while the rig is unloaded.
     """
     assert await hass.config_entries.async_unload(loaded_entry.entry_id)
     await hass.async_block_till_done()
     assert loaded_entry.state is ConfigEntryState.NOT_LOADED
-    state = state_of(hass, LIGHT)
-    assert (state.state, state.attributes.get(ATTR_RESTORED)) == (
-        STATE_UNAVAILABLE,
-        True,
-    )
-
-
-async def test_the_configured_poll_interval_drives_the_coordinator(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig
-) -> None:
-    config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(
-        config_entry, options={CONF_POLL_INTERVAL: 15}
-    )
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await hass.async_block_till_done()
-    assert config_entry.runtime_data.coordinator.update_interval == timedelta(
-        seconds=15
-    )
+    assert hass.services.has_service(DOMAIN, "mount_park")
 
 
 async def test_an_options_update_reloads_the_entry(

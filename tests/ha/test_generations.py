@@ -5,7 +5,6 @@ stay in the coordinator's set and stop counting. Clearing would race a
 concurrent poll and lose events arriving during the refetch.
 """
 
-from homeassistant.config_entries import ConfigEntryState
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -29,6 +28,10 @@ async def test_setup_seeds_the_session_from_the_full_history(
 async def test_a_restart_empties_the_session_without_clearing_the_set(
     loaded_entry: MockConfigEntry, advance
 ) -> None:
+    """The restart's empty history answers `Index out of range`, which looks
+    like a failure and is not one: the published data moves on to the new
+    generation.
+    """
     await advance("nina_restarted")
     data = loaded_entry.runtime_data.coordinator.data
     assert data.generation == RESTART_GENERATION
@@ -114,13 +117,3 @@ async def test_a_generation_adopted_late_reseeds_the_frames_under_it(
     rig.goto("imaging")
     await config_entry.runtime_data.coordinator.async_refresh()
     assert config_entry.runtime_data.coordinator.data.session.image_count == 122
-
-
-async def test_an_empty_history_is_not_a_failure(
-    loaded_entry: MockConfigEntry, advance
-) -> None:
-    """Of the three ways an empty history answers, only bare `/image-history`'s
-    `Index out of range` looks like one.
-    """
-    await advance("nina_restarted")
-    assert loaded_entry.state is ConfigEntryState.LOADED

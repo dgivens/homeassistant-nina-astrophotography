@@ -50,14 +50,6 @@ def test_subscribe_returns_an_unsubscribe() -> None:
     assert len(seen) == 1
 
 
-def test_subscribers_receive_models_not_dicts() -> None:
-    """No dict crosses the api/ boundary."""
-    socket, seen = subscribed()
-    socket._dispatch(captured("MOUNT-BEFORE-FLIP"))
-    assert isinstance(seen[0], NinaEvent)
-    assert isinstance(seen[0].time, datetime)
-
-
 def test_one_failing_subscriber_does_not_starve_the_others() -> None:
     socket = stream()
     seen: list[NinaEvent] = []

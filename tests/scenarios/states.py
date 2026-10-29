@@ -448,11 +448,7 @@ STATES: dict[str, State] = {
     "simulator_dome_following": _captured("simulator_dome_following"),
     "simulator_dome_slewing": _dome_from("slewing"),
     "simulator_dome_disconnected": _dome_from("disconnected"),
-    # Synthetic in `ShutterStatus` alone. Opening finishes between two of
-    # N.I.N.A.'s refreshes too often to capture; the simulator cannot fail.
-    "simulator_dome_opening": _with_readings(
-        _DOME_PARKED, "Dome", ShutterStatus="ShutterOpening"
-    ),
+    # Synthetic in `ShutterStatus` alone: the simulator cannot fail.
     "simulator_dome_shutter_error": _with_readings(
         _DOME_PARKED, "Dome", ShutterStatus="ShutterError"
     ),
@@ -482,14 +478,6 @@ STATES: dict[str, State] = {
     # Four of eleven devices connected, mid-reconnect.
     "partial_equipment_connection": dict(_RESTARTED),
     "nina_restarted": dict(_RESTARTED),
-    "sequencer_not_initialized": {
-        **_IMAGING,
-        "/sequence/json": load_envelope("startup_sequence_not_initialized.json"),
-    },
-    # Also content-identical to `imaging`: the dawn capture IS the physical
-    # station — SkyBrightness 5692 with CloudCover "NaN", on device-09 — and
-    # `weather_openmeteo` below is the contrast it exists for.
-    "weather_physical_station": dict(_IMAGING),
     # The same rig reporting weather from OpenMeteo on device-12: CloudCover 14
     # with SkyBrightness "NaN". The two sources' fields are disjoint.
     "weather_openmeteo": {
@@ -664,7 +652,6 @@ STATES: dict[str, State] = {
             _DAWN_CHANNELS[1],
         ],
     ),
-    "camera_disconnected": disconnect(_IMAGING, "Camera"),
     "safety_monitor_disconnected": disconnect(_IMAGING, "SafetyMonitor"),
     # All eleven down: the seven the restart capture holds down, plus the four
     # that are connected in every capture.

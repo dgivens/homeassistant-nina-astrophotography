@@ -25,26 +25,17 @@ def _count(entry: MockConfigEntry) -> int:
     return entry.runtime_data.coordinator.data.session.image_count
 
 
-async def test_a_pushed_frame_is_published_without_waiting_for_the_poll(
-    hass: HomeAssistant, loaded_entry, push, rig
+@pytest.mark.parametrize("deliveries", [1, 2], ids=["once", "redelivered"])
+async def test_a_pushed_frame_is_published_at_once_and_folded_once(
+    hass: HomeAssistant, loaded_entry, push, rig, deliveries: int
 ) -> None:
     """`async_set_updated_data`, not `async_request_refresh` — that single line
-    is what makes the design push-first rather than socket-as-a-hint.
+    is what makes the design push-first rather than socket-as-a-hint. Frame
+    identity is `(Date, Filename)`, identical on the push and poll paths, so a
+    redelivery must not move the count.
     """
     before = _count(loaded_entry)
-    push(load_fixture("live_image_save_push.json"))
-    await hass.async_block_till_done()
-    assert _count(loaded_entry) == before + 1
-
-
-async def test_the_same_frame_pushed_twice_is_folded_once(
-    hass: HomeAssistant, loaded_entry, push, rig
-) -> None:
-    """Frame identity is `(Date, Filename)`, identical on the push and poll
-    paths, so a redelivery must not move the count.
-    """
-    before = _count(loaded_entry)
-    for _ in range(2):
+    for _ in range(deliveries):
         push(load_fixture("live_image_save_push.json"))
         await hass.async_block_till_done()
     assert _count(loaded_entry) == before + 1

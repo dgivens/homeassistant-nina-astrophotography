@@ -4,48 +4,29 @@ from nina_astrophotography.api.models import SwitchChannelModel
 import pytest
 
 
-def test_a_switch_channel_is_binary_when_its_range_is_one_step() -> None:
-    """§5.3.5: Max − Min == StepSize means the channel goes on the switch platform."""
-    outlet = SwitchChannelModel(
+@pytest.mark.parametrize(
+    ("minimum", "maximum", "step_size", "binary"),
+    [
+        # §5.3.5: Max − Min == StepSize means the channel goes on the switch platform.
+        (0.0, 1.0, 1.0, True),
+        (0.0, 100.0, 1.0, False),
+        # `ReadonlySwitches` carry only Id/Name/Description/Value — no range to test.
+        (None, 1.0, 1.0, False),
+        (0.0, None, 1.0, False),
+        (0.0, 1.0, None, False),
+    ],
+)
+def test_a_switch_channel_is_binary_when_its_range_is_one_step(
+    minimum: float | None, maximum: float | None, step_size: float | None, binary: bool
+) -> None:
+    channel = SwitchChannelModel(
         index=0,
         name="Outlet 1",
         description="",
         value=1.0,
-        minimum=0.0,
-        maximum=1.0,
-        step_size=1.0,
-        writable=True,
-    )
-    dew = SwitchChannelModel(
-        index=1,
-        name="Dew A",
-        description="",
-        value=40.0,
-        minimum=0.0,
-        maximum=100.0,
-        step_size=1.0,
-        writable=True,
-    )
-    assert outlet.binary is True
-    assert dew.binary is False
-
-
-@pytest.mark.parametrize(
-    ("minimum", "maximum", "step_size"),
-    [(None, 1.0, 1.0), (0.0, None, 1.0), (0.0, 1.0, None)],
-)
-def test_a_channel_with_no_range_is_not_binary(
-    minimum: float | None, maximum: float | None, step_size: float | None
-) -> None:
-    """`ReadonlySwitches` carry only Id/Name/Description/Value — no range to test."""
-    channel = SwitchChannelModel(
-        index=2,
-        name="Voltage",
-        description="",
-        value=12.1,
         minimum=minimum,
         maximum=maximum,
         step_size=step_size,
-        writable=False,
+        writable=True,
     )
-    assert channel.binary is False
+    assert channel.binary is binary

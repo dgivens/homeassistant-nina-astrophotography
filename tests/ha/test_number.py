@@ -159,15 +159,6 @@ async def test_the_cut_numbers_are_not_registered(
     assert registered(NUMBER_DOMAIN, entity_registry, loaded_entry, key) is None
 
 
-async def test_the_focuser_position_number_exists(
-    hass: HomeAssistant, loaded_entry
-) -> None:
-    """The sensor half of §5.2.3's pair — disabled by default, with
-    `state_class: measurement` for long-term statistics — is in `test_sensor.py`.
-    """
-    assert hass.states.get(FOCUSER_POSITION) is not None
-
-
 @pytest.mark.parametrize("key", ["camera_usb_limit", "rotator_mechanical_position"])
 async def test_the_long_tail_ships_config_and_disabled(
     loaded_entry: MockConfigEntry, entity_registry, key: str

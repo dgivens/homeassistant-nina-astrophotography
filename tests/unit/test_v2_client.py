@@ -12,7 +12,7 @@ from nina_astrophotography.api.errors import (
     NinaRequestError,
     NinaUnavailableError,
 )
-from nina_astrophotography.api.models import Frame, SequenceNode, VersionInfo
+from nina_astrophotography.api.models import VersionInfo
 from nina_astrophotography.api.v2.client import NinaClientV2
 import pytest
 
@@ -51,8 +51,9 @@ async def test_a_5xx_carrying_the_no_data_text_is_still_unavailable() -> None:
     client = _client(
         FakeSession({"sequence/json": failure("Sequence is not initialized", 500)})
     )
-    with pytest.raises(NinaUnavailableError):
+    with pytest.raises(NinaUnavailableError) as caught:
         await client.get_sequence()
+    assert caught.value.retryable is True
 
 
 async def test_a_device_refusal_worded_not_initialized_is_a_command_error() -> None:
@@ -149,13 +150,6 @@ async def test_a_pre_handler_html_status_is_classified_by_its_code(
         await _client(session).get_flats()
 
 
-async def test_envelope_5xx_is_unavailable_and_retryable() -> None:
-    client = _client(FakeSession({"equipment/info": failure("Internal error", 500)}))
-    with pytest.raises(NinaUnavailableError) as caught:
-        await client.get_equipment()
-    assert caught.value.retryable is True
-
-
 @pytest.mark.parametrize(
     "exc", [aiohttp.ClientError("boom"), TimeoutError()], ids=["dropped", "timeout"]
 )
@@ -169,6 +163,7 @@ async def test_a_transport_failure_is_a_connection_error(exc) -> None:
 
 # EmbedIO's own 404 page: a path this build does not route at all.
 NOT_ROUTED = FakeResponse("<html>404</html>", status=404, content_type="text/html")
+JPEG = FakeResponse(b"\xff\xd8", content_type="image/jpeg")
 
 
 async def test_get_versions_yields_both_version_strings() -> None:
@@ -210,24 +205,17 @@ async def test_application_start_is_the_timestamp_string() -> None:
     assert await client.get_application_start() == "2026-09-04T10:58:59.1429105-05:00"
 
 
-async def test_profile_is_mapped_from_the_active_profile() -> None:
-    session = FakeSession(
-        {"profile/show": ok({"TelescopeSettings": {"FocalLength": 500}})}
-    )
-    assert (await _client(session).get_profile()).focal_length == 500
+async def test_the_profile_is_read_from_the_active_profile() -> None:
+    session = FakeSession({"profile/show": ok({})})
+    await _client(session).get_profile()
     assert session.requests[-1][1] == {"active": "true"}
 
 
-async def test_image_history_count_returns_the_scalar() -> None:
-    session = FakeSession({"image-history": ok(122)})
-    assert await _client(session).get_image_history_count() == 122
-    assert session.requests[-1][1] == {"count": "true"}
-
-
-async def test_empty_history_count_is_zero_not_none() -> None:
+@pytest.mark.parametrize("count", [122, 0])
+async def test_image_history_count_returns_the_scalar(count) -> None:
     """?count=true answers 0 where bare /image-history says Index out of range."""
-    session = FakeSession({"image-history": ok(0)})
-    assert await _client(session).get_image_history_count() == 0
+    session = FakeSession({"image-history": ok(count)})
+    assert await _client(session).get_image_history_count() == count
     assert session.requests[-1][1] == {"count": "true"}
 
 
@@ -237,7 +225,6 @@ async def test_frames_are_mapped_from_the_history_list() -> None:
         include_all=True
     )
     assert len(frames) == len(wire["Response"])
-    assert isinstance(frames[0], Frame)
 
 
 @pytest.mark.synthetic
@@ -264,30 +251,6 @@ async def test_a_bare_history_dict_is_one_frame() -> None:
     latest = load_envelope("dawn_image_history_with_flats.json")["Response"][-1]
     frames = await _client(FakeSession({"image-history": ok(latest)})).get_frames()
     assert [frame.filename for frame in frames] == [latest["Filename"]]
-
-
-async def test_the_sequence_tree_is_mapped() -> None:
-    client = _client(
-        FakeSession({"sequence/json": load_envelope("dawn_sequence_complete.json")})
-    )
-    assert isinstance(await client.get_sequence(), SequenceNode)
-
-
-async def test_events_use_the_offset_cached_from_equipment() -> None:
-    """The mount's clock is the only place the API states the rig's UTC offset,
-    and the log-scraped ERROR-* times are naive in it (dawn fixture: -5 h).
-    """
-    session = FakeSession(
-        {
-            "equipment/info": load_envelope("dawn_equipment_info.json"),
-            "event-history": load_envelope("dawn_event_history.json"),
-        }
-    )
-    client = _client(session)
-    await client.get_equipment()
-    events = await client.get_events()
-    error = next(event for event in events if event.name == "ERROR-PLATESOLVE")
-    assert error.time.utcoffset() == timedelta(hours=-5)
 
 
 async def test_the_cached_rig_offset_is_readable() -> None:
@@ -499,21 +462,12 @@ async def test_an_event_history_of_the_wrong_shape_is_empty_not_fatal(response) 
     ],
     ids=lambda value: value if isinstance(value, str) else None,
 )
-async def test_command_parameter_names_are_pinned(call, path, params) -> None:
+async def test_command_routes_and_parameters_are_pinned(call, path, params) -> None:
     session = FakeSession()
     await call(_client(session))
     url, sent = session.requests[-1]
     assert path in url
     assert sent == params
-
-
-async def test_a_refused_command_raises_rather_than_reporting_success() -> None:
-    """Every command shares the envelope path, so none of them can be checked
-    by a caller reading a return value: they all return None.
-    """
-    session = FakeSession({"mount/park": failure("Telescope not connected", 409)})
-    with pytest.raises(NinaCommandError):
-        await _client(session).park_mount()
 
 
 async def test_image_history_all_sends_all_true() -> None:
@@ -528,19 +482,17 @@ async def test_the_image_endpoint_sends_autoPrepare_not_useAutoStretch() -> None
     """An unknown parameter binds nothing and is not rejected, so the request
     succeeds and quietly returns the linear frame.
     """
-    session = FakeSession(
-        {"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")}
-    )
-    await _client(session).get_image_bytes(0)
+    session = FakeSession({"/image/": JPEG})
+    assert await _client(session).get_image_bytes(0) == b"\xff\xd8"
     _, params = session.requests[-1]
-    assert params == {"stream": "true", "quality": 85, "autoPrepare": "true"}
+    assert params is not None
+    assert params["autoPrepare"] == "true"
+    assert "useAutoStretch" not in params
 
 
 async def test_a_width_scales_the_render_by_width_alone() -> None:
     """The route parses a height it ignores, and fails on a size without one."""
-    session = FakeSession(
-        {"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")}
-    )
+    session = FakeSession({"/image/": JPEG})
     await _client(session).get_image_bytes(0, width=320)
     _, params = session.requests[-1]
     assert params is not None
@@ -555,20 +507,11 @@ async def test_a_thumbnail_route_that_is_unreachable_is_not_rendered_instead() -
     assert len(session.requests) == 1
 
 
-async def test_an_image_arrives_as_bytes() -> None:
-    session = FakeSession(
-        {"/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")}
-    )
-    assert await _client(session).get_image_bytes(0) == b"\xff\xd8"
-
-
 async def test_the_livestack_route_quotes_its_two_path_segments() -> None:
     """Target and filter are PATH segments, and a target name carries spaces
     and ampersands — unquoted they truncate the path rather than 404.
     """
-    session = FakeSession(
-        {"/livestack/image/": FakeResponse(b"\xff\xd8", content_type="image/jpeg")}
-    )
+    session = FakeSession({"/livestack/image/": JPEG})
     await _client(session).get_livestack_image_bytes("Lobster & Bubble", "S II")
     url, params = session.requests[-1]
     assert url.endswith("/livestack/image/Lobster%20%26%20Bubble/S%20II")

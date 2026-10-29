@@ -130,17 +130,21 @@ def test_a_flip_window_prints_in_whole_minutes(
 
 
 @pytest.mark.parametrize(
-    ("earliest", "latest", "soon"),
-    [(10, 20, True), (15, 25, False), (0, 6, True), (0, 0, False), (14.9, 14.9, True)],
+    ("window", "soon"),
+    [
+        ({"earliest": 10, "latest": 20}, True),
+        ({"earliest": 15, "latest": 25}, False),
+        ({"earliest": 0, "latest": 6}, True),
+        ({"earliest": 0, "latest": 0}, False),
+        ({"earliest": 14.9, "latest": 14.9}, True),
+        (None, False),
+    ],
+    ids=["inside", "at the edge", "imminent", "zero", "just inside", "no window"],
 )
 def test_a_flip_is_soon_inside_fifteen_minutes_of_the_earliest_slew(
-    earliest: float, latest: float, soon: bool
+    window: dict[str, float] | None, soon: bool
 ) -> None:
-    assert _run([["flipSoon", {"earliest": earliest, "latest": latest}]]) == [soon]
-
-
-def test_no_flip_window_is_never_soon() -> None:
-    assert _run([["flipSoon", None]]) == [False]
+    assert _run([["flipSoon", window]]) == [soon]
 
 
 FLIP_UNDERWAY = "binary_sensor.n_i_n_a_mount_meridian_flip"

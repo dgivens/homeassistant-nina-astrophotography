@@ -85,16 +85,6 @@ async def test_whatever_a_card_imports_is_served_at_that_path(
         assert "javascript" in resp.content_type
 
 
-async def test_setup_does_not_crash_when_lovelace_is_not_set_up(
-    hass, loaded_entry
-) -> None:
-    """`async_setup` must not raise on an instance with no lovelace set up,
-    which is this suite's default.
-    """
-    assert "lovelace" not in hass.data
-    assert loaded_entry.state is ConfigEntryState.LOADED
-
-
 async def test_a_registration_failure_does_not_sink_the_integration(
     hass, config_entry, rig, monkeypatch, caplog
 ) -> None:
@@ -229,12 +219,23 @@ async def test_removing_the_last_entry_deletes_its_resources(
     assert _resource_urls(hass) == []
 
 
-async def test_removing_the_entry_does_not_crash_when_lovelace_was_never_set_up(
-    hass, loaded_entry
+@pytest.mark.parametrize(
+    "lovelace",
+    [None, {"lovelace": {"resource_mode": "yaml", "resources": []}}],
+    ids=["none", "yaml-managed"],
+)
+async def test_removing_the_entry_needs_no_resource_collection_to_delete_from(
+    hass, config_entry, rig, lovelace: dict | None
 ) -> None:
-    assert "lovelace" not in hass.data
+    """Without Lovelace there is nothing to delete from, and a YAML collection
+    has no delete, mirroring the registration side.
+    """
+    if lovelace:
+        assert await async_setup_component(hass, "lovelace", lovelace)
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
 
-    await hass.config_entries.async_remove(loaded_entry.entry_id)
+    await hass.config_entries.async_remove(config_entry.entry_id)
     await hass.async_block_till_done()
 
     assert hass.config_entries.async_entries(DOMAIN) == []
@@ -269,16 +270,6 @@ async def test_removing_one_of_two_entries_keeps_the_resources(
     await hass.config_entries.async_remove(second_entry.entry_id)
     await hass.async_block_till_done()
     assert _resource_urls(hass) == []
-
-
-async def test_removing_the_entry_leaves_yaml_managed_resources_alone(
-    hass, config_entry, yaml_lovelace_entry
-) -> None:
-    """A YAML collection has no delete, mirroring the registration side."""
-    await hass.config_entries.async_remove(config_entry.entry_id)
-    await hass.async_block_till_done()
-
-    assert hass.config_entries.async_entries(DOMAIN) == []
 
 
 async def test_re_adding_after_the_last_entry_was_removed_reregisters_resources(
