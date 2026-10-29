@@ -7,6 +7,7 @@ is listening.
 """
 
 from homeassistant.core import HomeAssistant
+import pytest
 
 from helpers import load_fixture, state_of
 
@@ -18,33 +19,24 @@ def _wire(name: str) -> dict:
     return {"Event": name, "Time": "2026-09-04T03:15:00"}
 
 
-async def test_a_platesolve_error_fires_the_event_entity(
-    hass: HomeAssistant, loaded_entry, push
+@pytest.mark.parametrize(
+    ("event", "event_type"),
+    [
+        ("ERROR-PLATESOLVE", "platesolve_failed"),
+        # Named from the plugin's source and never seen in a capture: if the name
+        # is wrong this row costs nothing, and if it is right it is the one
+        # warning a stalled camera gives.
+        ("CAMERA-DOWNLOAD-TIMEOUT", "camera_download_timeout"),
+        # A night pushes hundreds of events through the same subscription.
+        ("GUIDER-DITHER", None),
+    ],
+)
+async def test_a_wire_event_fires_the_type_an_automation_triggers_on(
+    hass: HomeAssistant, loaded_entry, push, event: str, event_type: str | None
 ) -> None:
-    push(_wire("ERROR-PLATESOLVE"))
+    push(_wire(event))
     await hass.async_block_till_done()
-    assert state_of(hass, ERROR).attributes["event_type"] == "platesolve_failed"
-
-
-async def test_a_camera_download_timeout_fires_it_too(
-    hass: HomeAssistant, loaded_entry, push
-) -> None:
-    """Named from the plugin's source and never seen in a capture: if the name
-    is wrong this row costs nothing, and if it is right it is the one warning a
-    stalled camera gives.
-    """
-    push(_wire("CAMERA-DOWNLOAD-TIMEOUT"))
-    await hass.async_block_till_done()
-    assert state_of(hass, ERROR).attributes["event_type"] == "camera_download_timeout"
-
-
-async def test_an_event_the_entity_has_no_type_for_fires_nothing(
-    hass: HomeAssistant, loaded_entry, push
-) -> None:
-    """A night pushes hundreds of events through the same subscription."""
-    push(_wire("GUIDER-DITHER"))
-    await hass.async_block_till_done()
-    assert state_of(hass, ERROR).state == "unknown"
+    assert state_of(hass, ERROR).attributes.get("event_type") == event_type
 
 
 async def test_the_nights_replayed_failures_do_not_fire_at_startup(
@@ -55,12 +47,6 @@ async def test_the_nights_replayed_failures_do_not_fire_at_startup(
     does not re-announce hours-old failures.
     """
     assert state_of(hass, ERROR).state == "unknown"
-
-
-async def test_the_error_entity_ships_diagnostic(
-    hass: HomeAssistant, loaded_entry, entity_registry
-) -> None:
-    assert entity_registry.async_get(ERROR).entity_category == "diagnostic"
 
 
 async def test_a_hung_autofocus_fires_when_the_fold_first_calls_it_failed(

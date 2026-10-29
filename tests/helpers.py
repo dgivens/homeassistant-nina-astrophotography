@@ -60,19 +60,18 @@ class FakeSession:
 
     `responses` maps a path fragment to a payload, a FakeResponse, or an
     exception to raise; the first fragment found in the URL wins, so register
-    the more specific fragment first. `default` covers everything else.
+    the more specific fragment first. Anything else answers a bare success.
     """
 
-    def __init__(self, responses=None, default=None):
+    def __init__(self, responses=None):
         self.responses = responses or {}
-        self.default = default if default is not None else ok()
         self.requests: list[tuple[str, dict | None]] = []
 
     def _respond(self, url, params=None):
         self.requests.append((url, params))
         value = next(
             (v for fragment, v in self.responses.items() if fragment in url),
-            self.default,
+            ok(),
         )
         if isinstance(value, Exception):
             raise value

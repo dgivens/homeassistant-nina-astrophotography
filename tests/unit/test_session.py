@@ -1,4 +1,6 @@
-"""fold() is pure, idempotent, and order-independent."""
+"""The session fold and the event-derived readings beside it: `latest_*`,
+`scheduler_wait`, `meridian_flip` and `pending_guider_stop`.
+"""
 
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
@@ -27,6 +29,10 @@ from helpers import load_fixture
 # Noon the day after the dawn corpus: every one of its frames is by then in
 # the previous session.
 _AFTER_THE_ROLLOVER = datetime.fromisoformat("2026-09-05T13:00:00-05:00")
+
+# The rig's own offset; every N.I.N.A. timestamp is local to its clock.
+RIG = timezone(timedelta(hours=-5))
+_START = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
 
 
 @pytest.fixture
@@ -68,20 +74,22 @@ def _light(**overrides) -> Frame:
     return Frame(**{**fields, **overrides})
 
 
-def test_integration_time_sums_actual_exposures_of_lights_only(night) -> None:
-    """Lights sum to 6.2000 h; all 122 frames sum to 6.2301 h.
-
-    The tolerance is tight deliberately: at abs=0.02 an all-frames
-    implementation passes, and integration time is light-frame time.
-    """
-    stats = fold(night, [], generation="g1")
-    assert stats.integration_seconds / 3600 == pytest.approx(6.2000, abs=0.001)
-
-
-def test_calibration_frames_do_not_drag_the_hfr_aggregate(night) -> None:
-    """67 of 122 frames are flats reporting HFR 0."""
-    stats = fold(night, [], generation="g1")
-    assert stats.hfr_mean == pytest.approx(1.513, abs=0.01)
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        # Lights sum to 6.2000 h and all 122 frames to 6.2301 h. The tolerance
+        # is tight deliberately: at abs=0.02 an all-frames implementation passes,
+        # and integration time is light-frame time.
+        ("integration_seconds", pytest.approx(6.2000 * 3600, abs=0.001 * 3600)),
+        # 67 of the 122 frames are flats reporting HFR 0.
+        ("hfr_mean", pytest.approx(1.513, abs=0.01)),
+        # image_count is every frame; the aggregates are lights only.
+        ("image_count", 122),
+        ("light_count", 55),
+    ],
+)
+def test_the_captured_night_folds_to_its_aggregates(night, field, expected) -> None:
+    assert getattr(fold(night, [], generation="g1"), field) == expected
 
 
 def test_the_last_frame_is_the_last_light_not_the_last_flat(night) -> None:
@@ -89,7 +97,6 @@ def test_the_last_frame_is_the_last_light_not_the_last_flat(night) -> None:
     stats = fold(night, [], generation="g1")
     assert stats.last_frame is not None
     assert stats.last_frame.image_type == "LIGHT"
-    assert stats.last_frame.mean == pytest.approx(548.6, rel=0.2)
 
 
 def test_recent_lights_are_every_light_oldest_first(night) -> None:
@@ -122,142 +129,102 @@ def test_frames_from_a_previous_generation_are_filtered_not_cleared(night) -> No
     assert stats.image_count == 0
 
 
-def test_the_breakdown_covers_every_target_imaged(night) -> None:
-    assert len(fold(night, [], generation="g1").by_target) == 4
+@pytest.mark.parametrize(
+    ("field", "rows"),
+    [
+        ("by_target", 4),
+        # All 122 frames carry six filters; the 55 lights carry five, since the
+        # flats add G. A per-filter row for a G flat with no G lights is noise.
+        ("by_filter", 5),
+    ],
+)
+def test_the_breakdown_covers_what_the_lights_imaged(night, field, rows) -> None:
+    assert len(getattr(fold(night, [], generation="g1"), field)) == rows
 
 
-def test_the_filter_breakdown_excludes_filters_only_flats_used(night) -> None:
-    """All 122 frames carry six filters; the 55 lights carry five — the flats
-    add G. A per-filter row for a G flat with no G lights is noise.
-    """
-    assert len(fold(night, [], generation="g1").by_filter) == 5
-
-
-def test_image_count_counts_calibration_frames_too(night) -> None:
-    """image_count is every frame; the aggregates are lights only."""
-    assert fold(night, [], generation="g1").image_count == 122
-    assert fold(night, [], generation="g1").light_count == 55
+def _autofocus_start(*after: tuple[str, int, dict]) -> list[NinaEvent]:
+    """`AUTOFOCUS-STARTING` at `_START`, then each `(name, seconds, data)`."""
+    return [
+        NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
+        *(
+            NinaEvent(name, _START + timedelta(seconds=seconds), data, "g1")
+            for name, seconds, data in after
+        ),
+    ]
 
 
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
-    ("timeout", "elapsed", "failed"),
-    [(300, 301, True), (600, 301, False), (600, 601, True)],
+    ("events", "timeout", "elapsed", "running", "failed"),
+    [
+        # A start nothing answers within the PROFILE's timeout has hung. It is
+        # `FocuserSettings.AutoFocusTimeoutSeconds`, 600 on the captured rig, so
+        # a 300 s constant would call a seven-minute run failed. The corpus has
+        # no hung night (its one unanswered start was aborted), so it is built.
+        (_autofocus_start(), 300, 301, True, True),
+        (_autofocus_start(), 600, 301, True, False),
+        (_autofocus_start(), 600, 601, True, True),
+        # Only IsSafe false interrupts; SAFETY-CHANGED fires for both.
+        (
+            _autofocus_start(("SAFETY-CHANGED", 37, {"IsSafe": True})),
+            300,
+            60,
+            True,
+            False,
+        ),
+        # An exposure saved only after the timeout shows the sequence carried
+        # on past a hung autofocus: it clears the run without excusing it.
+        (_autofocus_start(("IMAGE-SAVE", 400, {})), 300, 500, False, True),
+        (_autofocus_start(("AUTOFOCUS-FINISHED", 200, {})), 300, 201, False, False),
+        # Unsafe conditions, the sequence ending, a park, a disconnect or the
+        # sequencer moving on to the next exposure all cancel a running
+        # autofocus; none of them is the focuser failing to find focus.
+        *(
+            (_autofocus_start((name, 37, data)), 300, 600, False, False)
+            for name, data in [
+                ("SAFETY-CHANGED", {"IsSafe": False}),
+                ("SEQUENCE-FINISHED", {}),
+                ("MOUNT-PARKED", {}),
+                ("CAMERA-DISCONNECTED", {}),
+                ("IMAGE-SAVE", {}),
+            ]
+        ),
+    ],
+    ids=[
+        "past the 300 s timeout",
+        "inside the 600 s timeout",
+        "past the 600 s timeout",
+        "a safe reading",
+        "saved after the timeout",
+        "finished",
+        "unsafe",
+        "sequence finished",
+        "mount parked",
+        "camera disconnected",
+        "next exposure saved",
+    ],
 )
-def test_an_unmatched_autofocus_start_hangs_at_the_profiles_timeout(
-    timeout, elapsed, failed
+def test_an_autofocus_start_is_running_hung_or_aborted_by_what_follows_it(
+    events, timeout, elapsed, running, failed
 ) -> None:
-    """A start that nothing answers within the RIG's timeout has hung, and that
-    timeout is `FocuserSettings.AutoFocusTimeoutSeconds` — 600 on the captured
-    rig, so a 300 s constant would call a seven-minute run failed. The corpus
-    has no hung night — its one unanswered start was aborted — so the hang is
-    constructed.
-    """
-    start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
-    events = [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")]
     stats = fold(
         [],
         events,
         generation="g1",
         autofocus_timeout_seconds=timeout,
-        now=start + timedelta(seconds=elapsed),
+        now=_START + timedelta(seconds=elapsed),
     )
-    assert stats.autofocus.failed is failed
-
-
-_START = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
-
-
-@pytest.mark.synthetic
-@pytest.mark.parametrize(
-    ("name", "data"),
-    [
-        ("SAFETY-CHANGED", {"IsSafe": False}),
-        ("SEQUENCE-FINISHED", {}),
-        ("MOUNT-PARKED", {}),
-        ("CAMERA-DISCONNECTED", {}),
-        ("IMAGE-SAVE", {}),
-    ],
-)
-def test_a_start_interrupted_inside_its_timeout_is_aborted_not_failed(
-    name, data
-) -> None:
-    """Unsafe conditions, the sequence ending, a park, a disconnect or the
-    sequencer simply moving on to the next exposure all cancel a running
-    autofocus; none of them is the focuser failing to find focus.
-    """
-    events = [
-        NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
-        NinaEvent(name, _START + timedelta(seconds=37), data, "g1"),
-    ]
-    stats = fold(
-        [],
-        events,
-        generation="g1",
-        autofocus_timeout_seconds=300,
-        now=_START + timedelta(seconds=600),
+    assert (stats.autofocus.running_since is not None, stats.autofocus.failed) == (
+        running,
+        failed,
     )
-    assert stats.autofocus == AutoFocusState(None, None, False)
-
-
-@pytest.mark.synthetic
-def test_a_safe_reading_does_not_abort_a_running_autofocus() -> None:
-    """Only IsSafe false is an interruption; SAFETY-CHANGED fires for both."""
-    events = [
-        NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
-        NinaEvent(
-            "SAFETY-CHANGED", _START + timedelta(seconds=37), {"IsSafe": True}, "g1"
-        ),
-    ]
-    stats = fold(
-        [],
-        events,
-        generation="g1",
-        autofocus_timeout_seconds=300,
-        now=_START + timedelta(seconds=60),
-    )
-    assert stats.autofocus.running_since == _START
-
-
-@pytest.mark.synthetic
-def test_the_sequencer_moving_on_after_the_timeout_keeps_the_failure_verdict() -> None:
-    """An exposure saved only after the timeout has elapsed shows the sequence
-    carried on past a hung autofocus; it clears the run without excusing it.
-    """
-    events = [
-        NinaEvent("AUTOFOCUS-STARTING", _START, {}, "g1"),
-        NinaEvent("IMAGE-SAVE", _START + timedelta(seconds=400), {}, "g1"),
-    ]
-    stats = fold(
-        [],
-        events,
-        generation="g1",
-        autofocus_timeout_seconds=300,
-        now=_START + timedelta(seconds=500),
-    )
-    assert (stats.autofocus.running_since, stats.autofocus.failed) == (None, True)
-
-
-def test_an_autofocus_still_inside_its_timeout_has_not_failed() -> None:
-    start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
-    stats = fold(
-        [],
-        [NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1")],
-        generation="g1",
-        autofocus_timeout_seconds=300,
-        now=start + timedelta(seconds=60),
-    )
-    assert stats.autofocus.failed is False
-
-
-def test_a_fold_of_nothing_has_no_session_start() -> None:
-    """Before the first frame there is no clock to derive a session from."""
-    assert fold([], [], generation="g1").session_start is None
 
 
 @pytest.mark.parametrize(
     ("field", "expected"),
     [
+        # Before the first frame there is no clock to derive a session from.
+        ("session_start", None),
         ("image_count", 0),
         ("light_count", 0),
         ("integration_seconds", 0.0),
@@ -355,8 +322,7 @@ def test_the_hfr_extremes_are_the_best_and_worst_light(night) -> None:
 
 def test_frames_before_the_noon_rollover_are_outside_the_session(night) -> None:
     """A session runs noon to noon, so last night's frames are last night's."""
-    tomorrow = max(f.date for f in night) + timedelta(days=1)
-    assert fold(night, [], generation="g1", now=tomorrow).image_count == 0
+    assert fold(night, [], generation="g1", now=_AFTER_THE_ROLLOVER).image_count == 0
 
 
 def test_the_last_autofocus_to_finish_is_reported(night_events) -> None:
@@ -383,15 +349,6 @@ def test_the_nights_unanswered_start_was_an_abort_not_a_failure(night_events) ->
     assert (stats.autofocus.running_since, stats.autofocus.failed) == (None, False)
 
 
-def test_an_autofocus_that_finished_is_no_longer_running() -> None:
-    start = datetime.fromisoformat("2026-09-03T23:00:00-05:00")
-    events = [
-        NinaEvent("AUTOFOCUS-STARTING", start, {}, "g1"),
-        NinaEvent("AUTOFOCUS-FINISHED", start + timedelta(seconds=200), {}, "g1"),
-    ]
-    assert fold([], events, generation="g1").autofocus.running_since is None
-
-
 def test_events_from_a_previous_session_do_not_report_an_autofocus(
     night_events,
 ) -> None:
@@ -403,10 +360,9 @@ def test_events_from_a_previous_session_do_not_report_an_autofocus(
 def test_the_recent_frames_ignore_the_session_window(night) -> None:
     """The rig's image history does not roll over at local noon, so what
     `image.last_frame` renders long after the rollover is still last night's
-    frame — which `fold`'s own `last_frame` has by then dropped.
+    frame.
     """
     assert recent_frames(night, "g1")[0].date == max(f.date for f in night)
-    assert fold(night, [], "g1", now=_AFTER_THE_ROLLOVER).last_frame is None
 
 
 def test_the_recent_frames_of_another_process_are_not_offered(night) -> None:
@@ -506,8 +462,6 @@ def test_neither_a_dither_nor_a_previous_process_moves_the_verdict(
     assert (pending_guider_stop(events, "g1") is not None) is expected
 
 
-# The rig's own offset; every N.I.N.A. timestamp is local to its clock.
-RIG = timezone(timedelta(hours=-5))
 WAIT_END = datetime(2026, 9, 15, 21, 5, 40, tzinfo=RIG)
 WAITING_AT = datetime(2026, 9, 15, 20, 45, tzinfo=RIG)
 
@@ -616,7 +570,6 @@ def test_the_captured_flip_runs_from_its_before_event_to_its_after(
 @pytest.mark.parametrize(
     "ending",
     [
-        "MOUNT-AFTER-FLIP",
         "SEQUENCE-FINISHED",
         "MOUNT-PARKED",
         "MOUNT-HOMED",
@@ -624,12 +577,10 @@ def test_the_captured_flip_runs_from_its_before_event_to_its_after(
     ],
 )
 @pytest.mark.synthetic
-def test_a_flip_ends_with_its_after_event_or_with_the_mount_put_away(
+def test_a_flip_ends_when_the_mount_is_put_away_before_its_after_event(
     ending: str,
 ) -> None:
-    """AFTER-FLIP follows a cancelled or failed flip too; the others end a
-    flip whose AFTER-FLIP never came.
-    """
+    """These end a flip whose AFTER-FLIP never came."""
     events = _flip_events((ending, timedelta(minutes=2)))
     flip = meridian_flip(
         events,

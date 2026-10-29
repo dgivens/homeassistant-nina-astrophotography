@@ -21,7 +21,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.nina_astrophotography.api.errors import NinaCommandError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
-from custom_components.nina_astrophotography.const import DOMAIN
+from ha.registry import registered
 from helpers import load_fixture, state_of
 
 FILTER = "select.n_i_n_a_filter_wheel_filter"
@@ -148,12 +148,7 @@ async def test_a_refused_command_surfaces_as_a_home_assistant_error(
 async def test_the_kept_selects_keep_their_1_4_5_unique_id(
     loaded_entry: MockConfigEntry, entity_registry, suffix: str
 ) -> None:
-    assert (
-        entity_registry.async_get_entity_id(
-            SELECT_DOMAIN, DOMAIN, f"{loaded_entry.entry_id}_{suffix}"
-        )
-        is not None
-    )
+    assert registered(SELECT_DOMAIN, entity_registry, loaded_entry, suffix) is not None
 
 
 @pytest.mark.synthetic
@@ -166,10 +161,5 @@ async def test_the_filter_change_sends_the_wheels_slot_not_the_list_position(
     filter, answers `Success: true`, and costs the sub.
     """
     await advance("filter_wheel_numbered_from_four")
-    await hass.services.async_call(
-        SELECT_DOMAIN,
-        SERVICE_SELECT_OPTION,
-        {ATTR_ENTITY_ID: FILTER, ATTR_OPTION: "H"},
-        blocking=True,
-    )
+    await _select(hass, FILTER, "H")
     assert rig.sent[-1] == ("/equipment/filterwheel/change-filter", {"filterId": 8})

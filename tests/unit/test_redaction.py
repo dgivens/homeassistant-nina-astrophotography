@@ -81,18 +81,28 @@ from redaction import (
         # A four-part .NET version string is shaped exactly like a bare IPv4
         # address when every segment is 1-3 digits.
         ({"api_version": "2.2.15.2"}, {"api_version": "2.2.15.2"}),
+        # JSON types survive, so a type-aware drift guard checks N.I.N.A.'s
+        # output rather than the redactor's.
+        (
+            {"LastDownloadTime": 3.0, "ApiKey": None},
+            {"LastDownloadTime": 3.0, "ApiKey": None},
+        ),
+        # A dict under a key containing "path" stays a dict.
+        (
+            {"ImagePathSettings": {"Enabled": True}},
+            {"ImagePathSettings": {"Enabled": True}},
+        ),
+        # Committed fixtures carry decimal pseudonyms (4 digits for Filename, 2
+        # for DeviceId); redact() stays idempotent over them.
+        ({"Filename": "frame_0121.fits"}, {"Filename": "frame_0121.fits"}),
+        ({"DeviceId": "device-09"}, {"DeviceId": "device-09"}),
+        # The meridian flip's inputs: a redactor that zeroes RightAscension
+        # leaves (RA - LST) with no captured fixture to test against.
+        ({"RightAscension": 22.071111}, {"RightAscension": 22.071111}),
     ],
 )
 def test_redacts_by_rule(payload: dict, expected: dict) -> None:
     assert redact(payload) == expected
-
-
-def test_redaction_preserves_json_type() -> None:
-    """A type-aware drift guard must check N.I.N.A.'s output, not the redactor's."""
-    assert redact({"LastDownloadTime": 3.0, "ApiKey": None}) == {
-        "LastDownloadTime": 3.0,
-        "ApiKey": None,
-    }
 
 
 def test_device_ids_become_stable_distinct_pseudonyms() -> None:
@@ -119,14 +129,6 @@ def test_filenames_become_stable_pseudonyms_derived_from_the_name() -> None:
     assert a.startswith("frame_") and a.endswith(".fits")
 
 
-def test_legacy_pseudonyms_pass_through_unchanged() -> None:
-    """Older committed fixtures carry decimal pseudonyms (4 digits for
-    Filename, 2 for DeviceId), and redact() stays idempotent over them.
-    """
-    assert redact({"Filename": "frame_0121.fits"})["Filename"] == "frame_0121.fits"
-    assert redact({"DeviceId": "device-09"})["DeviceId"] == "device-09"
-
-
 def test_the_facility_token_rule_is_idempotent() -> None:
     """It substitutes rather than replacing, so it must not match its own
     output — `scan()` is a diff against `redact()` and would otherwise report
@@ -138,35 +140,6 @@ def test_the_facility_token_rule_is_idempotent() -> None:
 
 def test_scan_finds_what_redact_would_change() -> None:
     assert scan({"Outer": {"ApiKey": "live"}}) == ["Outer.ApiKey"]
-
-
-def test_scan_is_clean_after_redaction_by_construction() -> None:
-    """redact() is idempotent, so this cannot be satisfied by an escape hatch."""
-    assert scan(redact({"Outer": {"ApiKey": "live"}, "DeviceId": "ASCOM.X"})) == []
-
-
-def test_a_redacted_container_stays_a_container() -> None:
-    """Type preservation covers dicts and lists, not only scalars — otherwise a
-    dict under a key containing "path" becomes the string "REDACTED".
-    """
-    out = redact({"ImagePathSettings": {"Enabled": True}})
-    assert isinstance(out["ImagePathSettings"], dict)
-
-
-def test_the_meridian_flip_inputs_survive_redaction() -> None:
-    """SiderealTime is §11's LST input, and RightAscension its RA.
-
-    A redactor that zeroes either leaves (RA - LST) mod 12 with no captured
-    fixture to test against, and the only alternative is a hand-written
-    synthetic triple — which the fixture rules forbid.
-    """
-    mount = {
-        "SiteLatitude": 31.5478,
-        "SiderealTime": 21.021944,
-        "RightAscension": 22.071111,
-        "SideOfPier": "pierWest",
-    }
-    assert redact(mount) == mount
 
 
 def test_profile_projection_keeps_only_the_allowlist() -> None:

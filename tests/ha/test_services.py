@@ -42,14 +42,28 @@ def _hub(hass: HomeAssistant, entry) -> str:
     return get_device(hass, entry).id
 
 
-async def test_a_service_reaches_the_rig_its_device_belongs_to(
-    hass: HomeAssistant, two_rigs
+@pytest.mark.parametrize(
+    "target",
+    [
+        lambda hass, entry: {"device_id": _hub(hass, entry)},
+        # `services.yaml` declares a `target:`, so the action must accept every
+        # form the target picker yields, not only a bare device.
+        lambda hass, entry: {
+            "entity_id": er.async_entries_for_config_entry(
+                er.async_get(hass), entry.entry_id
+            )[0].entity_id
+        },
+    ],
+    ids=["device", "entity"],
+)
+async def test_a_service_reaches_the_rig_its_target_belongs_to(
+    hass: HomeAssistant, two_rigs, target
 ) -> None:
     """The targeted device, not the first loaded entry, picks the rig, so a
     second rig is reachable.
     """
     first, second = two_rigs.rigs
-    await _call(hass, "mount_park", device_id=_hub(hass, two_rigs.entries[1]))
+    await _call(hass, "mount_park", **target(hass, two_rigs.entries[1]))
 
     assert second.sent[-1][0] == "/equipment/mount/park"
     assert "/equipment/mount/park" not in [path for path, _ in first.sent]
@@ -92,22 +106,6 @@ async def test_an_untargeted_call_is_refused_while_a_second_rig_is_merely_down(
     with pytest.raises(ServiceValidationError):
         await _call(hass, "mount_park")
     assert two_rigs.rigs[1].sent == []
-
-
-async def test_an_entity_of_a_rig_targets_that_rig(
-    hass: HomeAssistant, two_rigs
-) -> None:
-    """`services.yaml` declares a `target:`, so the action must accept every
-    form the target picker yields, not only a bare device.
-    """
-    first, second = two_rigs.rigs
-    entity = er.async_entries_for_config_entry(
-        er.async_get(hass), two_rigs.entries[1].entry_id
-    )[0]
-    await _call(hass, "mount_park", entity_id=entity.entity_id)
-
-    assert second.sent[-1][0] == "/equipment/mount/park"
-    assert "/equipment/mount/park" not in [path for path, _ in first.sent]
 
 
 @pytest.mark.parametrize(

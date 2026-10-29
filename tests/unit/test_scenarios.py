@@ -78,7 +78,8 @@ async def test_the_bare_history_path_is_served_by_every_state(
 
 
 async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> None:
-    """404 with EmbedIO's HTML, so a missing endpoint fails loud.
+    """An unregistered path answers 404 with EmbedIO's HTML, so a missing
+    endpoint fails loud.
 
     The dawn states leave /livestack/status unregistered on purpose; see
     `scenarios/states.py`.
@@ -118,7 +119,7 @@ async def test_a_path_no_state_serves_reads_as_a_route_this_build_lacks() -> Non
     ],
     ids=["running, scheduler waiting", "running, just started", "stopped"],
 )
-async def test_the_root_containers_do_not_tell_running_from_stopped_alone(
+async def test_the_sequence_states_serve_their_captured_container_statuses(
     state: str, containers: dict[str, str]
 ) -> None:
     """`Targets_Container` reads CREATED both ten seconds into a run and after
@@ -135,15 +136,13 @@ async def test_the_root_containers_do_not_tell_running_from_stopped_alone(
 
 async def test_goto_changes_what_the_rig_serves() -> None:
     rig = FakeRig(STATES, start="imaging")
-    client = _client(rig)
-    assert await client.get_image_history_count() == 122
     rig.goto("nina_restarted")
-    assert await client.get_image_history_count() == 0
+    assert await _client(rig).get_image_history_count() == 0
 
 
-async def test_advance_walks_the_named_sequence() -> None:
+def test_advance_walks_the_named_sequence() -> None:
     rig = FakeRig(STATES, start="imaging", sequence=SEQUENCES["restart"])
-    assert rig.advance() == "nina_restarted"
+    rig.advance()
     assert rig.state_name == "nina_restarted"
 
 

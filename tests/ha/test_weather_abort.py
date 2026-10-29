@@ -21,6 +21,7 @@ from custom_components.nina_astrophotography.const import DOMAIN
 
 CONNECTED = "binary_sensor.rig_safety_monitor_connected"
 REACHABLE = "binary_sensor.rig_reachable"
+UNREACHABLE = "⚠️ N.I.N.A. unreachable"
 
 INPUTS = {
     "nina_rig": "device-id",
@@ -123,9 +124,6 @@ async def test_a_rig_with_a_reachable_sensor_is_reported_through_it(
     await _hold(hass, rows)
 
     assert [call.data["title"] for call in sent] == [UNREACHABLE] * notified
-
-
-UNREACHABLE = "⚠️ N.I.N.A. unreachable"
 
 
 async def _hold(hass: HomeAssistant, rows: dict) -> None:

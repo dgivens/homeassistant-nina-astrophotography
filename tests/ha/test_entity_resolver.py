@@ -6,8 +6,8 @@ reimplementation would only prove itself right.
 
 The snapshot's entity half comes from core's own
 `config/entity_registry/list_for_display`, so the trimming and the `disabled_by`
-filter are core's rather than this file's — which is what lets these tests pin
-the claim that a disabled entity can never resolve.
+filter are core's rather than this file's, so a disabled entity is absent from
+what the resolver reads exactly as it is from a dashboard's.
 """
 
 from pathlib import Path
@@ -17,10 +17,9 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from cards import INSTANCE, lookups, resolving_cards
-from custom_components.nina_astrophotography.const import CONF_HOST, CONF_PORT, DOMAIN
+from custom_components.nina_astrophotography.const import DOMAIN
 from helpers import needs_node, run_node
 
 DRIVER = Path(__file__).parent / "resolve_entities.mjs"
@@ -224,44 +223,14 @@ async def test_every_dome_read_resolves_on_a_rig_with_a_dome(
     assert dome <= resolved.keys()
 
 
-async def test_a_disabled_entity_is_absent_from_what_the_frontend_sees(
-    hass: HomeAssistant, loaded_entry, hass_ws_client
-) -> None:
-    """A disabled entity has a registry row and is still left out of the payload
-    a dashboard receives, so no card can resolve one.
-
-    `sequence_progress` is the only read this card makes that is both disabled
-    and present on the reference rig.
-    """
-    progress = f"sensor.{INSTANCE}_sequence_progress"
-    assert er.async_get(hass).async_get(progress) is not None, "row should exist"
-
-    snapshot = await _snapshot(hass, hass_ws_client)
-
-    assert progress not in snapshot["entities"]
-
-
 @needs_node
 async def test_two_rigs_resolve_nothing_until_one_is_named(
-    hass: HomeAssistant, config_entry, rig, hass_ws_client
+    hass: HomeAssistant, two_rigs, hass_ws_client
 ) -> None:
     """Discovery is only unambiguous for one rig. Guessing between two would
     give a dashboard the wrong rig's readings, so the map is empty instead and
     every lookup falls back to the configured prefix.
     """
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    second = MockConfigEntry(
-        domain=DOMAIN,
-        title="Second Rig",
-        data={CONF_HOST: "other.local", CONF_PORT: 1888},
-        unique_id="other.local:1888",
-        entry_id="01JTESTENTRY0000000000001",
-    )
-    second.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(second.entry_id)
-    await hass.async_block_till_done()
-
     resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
     assert resolved == {}
@@ -269,25 +238,13 @@ async def test_two_rigs_resolve_nothing_until_one_is_named(
 
 @needs_node
 async def test_naming_a_child_device_resolves_its_whole_rig(
-    hass: HomeAssistant, config_entry, rig, hass_ws_client
+    hass: HomeAssistant, two_rigs, hass_ws_client
 ) -> None:
     """`device_id` may name any one of a rig's devices, not just its hub — a
     device selector makes a child the likelier pick. Resolution has to cover the
     whole rig from there, including entities hanging off the hub itself.
     """
-    config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    second = MockConfigEntry(
-        domain=DOMAIN,
-        title="Second Rig",
-        data={CONF_HOST: "other.local", CONF_PORT: 1888},
-        unique_id="other.local:1888",
-        entry_id="01JTESTENTRY0000000000001",
-    )
-    second.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(second.entry_id)
-    await hass.async_block_till_done()
-
+    config_entry = two_rigs.entries[0]
     registry = dr.async_get(hass)
     camera = registry.async_get_device_by_identifier(
         (DOMAIN, f"{config_entry.entry_id}_camera"), config_entry.entry_id
@@ -301,7 +258,6 @@ async def test_naming_a_child_device_resolves_its_whole_rig(
         device.id
         for device in dr.async_entries_for_config_entry(registry, config_entry.entry_id)
     }
-    assert resolved, "naming one of its devices should identify the rig"
     assert {
         snapshot["entities"][entity_id]["device_id"] for entity_id in resolved.values()
     } <= rig

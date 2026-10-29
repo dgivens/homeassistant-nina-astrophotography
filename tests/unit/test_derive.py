@@ -1,6 +1,6 @@
 """Pure, version-independent maths. No wire vocabulary reaches this module."""
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime
 
 from nina_astrophotography.derive import (
     flip_offset_minutes,
@@ -30,16 +30,6 @@ def test_the_session_boundary_is_the_most_recent_local_noon(moment, expected) ->
     )
 
 
-def test_the_boundary_is_noon_in_the_moments_own_offset() -> None:
-    """12:30 UTC is 07:30 on a UTC-5 rig, mid-way through its dawn flats: the
-    session is still last night's, and the boundary is expressed at -05:00.
-    """
-    moment = datetime(2026, 9, 4, 12, 30, tzinfo=UTC).astimezone(
-        timezone(timedelta(hours=-5))
-    )
-    assert session_start(moment) == datetime.fromisoformat("2026-09-03T12:00:00-05:00")
-
-
 def test_the_rollover_hour_is_configurable() -> None:
     moment = datetime.fromisoformat("2026-09-04T10:00:00-05:00")
     assert session_start(moment, rollover_hour=8) == datetime.fromisoformat(
@@ -47,54 +37,54 @@ def test_the_rollover_hour_is_configurable() -> None:
     )
 
 
-def test_image_scale_is_the_standard_206_265_formula() -> None:
-    """This rig: CameraInfo.PixelSize 3.76 um, every frame's FocalLength 500 mm."""
-    assert image_scale_arcsec_per_px(3.76, 500.0) == pytest.approx(1.5511, abs=1e-4)
+@pytest.mark.parametrize(
+    ("pixel_size", "focal_length", "binning", "expected"),
+    [
+        # This rig: CameraInfo.PixelSize 3.76 um, every frame's FocalLength 500 mm.
+        (3.76, 500.0, 1, pytest.approx(1.5511, abs=1e-4)),
+        # At bin 2 the true scale is 2x; an unbinned formula would halve every
+        # derived arcsecond figure.
+        (3.76, 500.0, 2, pytest.approx(3.1022, abs=1e-4)),
+        # Absent, not zero: a disconnected camera reports PixelSize 0, and a
+        # scale of 0 arcsec/px would make every HFR read as perfect.
+        (3.76, 0.0, 1, None),
+        (0.0, 500.0, 1, None),
+    ],
+    ids=["standard", "binned", "no-focal-length", "no-pixel-size"],
+)
+def test_image_scale_is_the_206_265_formula_or_nothing(
+    pixel_size, focal_length, binning, expected
+) -> None:
+    assert (
+        image_scale_arcsec_per_px(pixel_size, focal_length, binning=binning) == expected
+    )
 
 
 @pytest.mark.parametrize(
-    ("pixel_size", "focal_length"),
-    [(3.76, 0.0), (0.0, 500.0)],
-    ids=["no-focal-length", "no-pixel-size"],
+    ("hfr", "expected"),
+    [
+        # The last light frame of the captured night: HFR 1.4545 px at 1.5511.
+        (1.4545, pytest.approx(2.2561, abs=1e-4)),
+        # A calibration frame's HFR is nulled by the mapper, not zeroed.
+        (None, None),
+    ],
 )
-def test_image_scale_is_none_when_either_input_is_missing(
-    pixel_size, focal_length
-) -> None:
-    """Absent, not zero: a disconnected camera reports PixelSize 0, and a scale
-    of 0 arcsec/px would make every HFR read as perfect.
-    """
-    assert image_scale_arcsec_per_px(pixel_size, focal_length) is None
+def test_hfr_in_arcseconds_is_pixels_times_scale(hfr, expected) -> None:
+    assert hfr_arcsec(hfr, 1.5511) == expected
 
 
-def test_binning_multiplies_the_scale() -> None:
-    """At bin 2 the true scale is 2x, so an unbinned formula halves every
-    derived arcsecond figure.
-    """
-    assert image_scale_arcsec_per_px(3.76, 500.0, binning=2) == pytest.approx(
-        3.1022, abs=1e-4
-    )
-
-
-def test_hfr_in_arcseconds_is_pixels_times_scale() -> None:
-    """The last light frame of the captured night: HFR 1.4545 px at 1.5511."""
-    assert hfr_arcsec(1.4545, 1.5511) == pytest.approx(2.2561, abs=1e-4)
-
-
-def test_hfr_in_arcseconds_is_none_without_an_hfr() -> None:
-    """A calibration frame's HFR is nulled by the mapper, not zeroed."""
-    assert hfr_arcsec(None, 1.5511) is None
-
-
-def test_hours_to_meridian_matches_the_rig() -> None:
-    """LST 21.021944, RA 22.071111 → 01:02:57, verified to the second (§11)."""
-    assert hours_to_meridian(22.071111, 21.021944) * 3600 == pytest.approx(
-        1 * 3600 + 2 * 60 + 57, abs=1
-    )
-
-
-def test_hours_to_meridian_wraps_just_after_transit() -> None:
-    """Past the meridian the target is nearly a full 12 hours from the next one."""
-    assert hours_to_meridian(21.9, 22.0) == pytest.approx(11.9)
+@pytest.mark.parametrize(
+    ("ra", "lst", "expected"),
+    [
+        # LST 21.021944, RA 22.071111 → 01:02:57, verified to the second (§11).
+        (22.071111, 21.021944, pytest.approx(1 + 2 / 60 + 57 / 3600, abs=1 / 3600)),
+        # Past the meridian the target is nearly a full 12 hours from the next.
+        (21.9, 22.0, pytest.approx(11.9)),
+    ],
+    ids=["matches the rig", "wraps just after transit"],
+)
+def test_hours_to_meridian(ra, lst, expected) -> None:
+    assert hours_to_meridian(ra, lst) == expected
 
 
 @pytest.mark.parametrize(

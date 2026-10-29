@@ -172,25 +172,14 @@ async def test_a_panel_that_cannot_switch_its_light_is_unavailable_not_absent(
     assert state_of(hass, ENTITY).state == "unavailable"
 
 
-async def test_a_panel_never_observed_has_no_entity(
-    hass: HomeAssistant, set_up_with_flat_device
-) -> None:
-    """/equipment/info always emits a FlatDevice block; only a DeviceId proves
-    the rig has one (§5.2.2).
-    """
-    await set_up_with_flat_device(
-        meta=DeviceMeta(None, None, None, None, None),
-        connected=False,
-    )
-    assert hass.states.get(ENTITY) is None
-
-
 async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
     hass: HomeAssistant, set_up_with_flat_device, rig, monkeypatch
 ) -> None:
     """A sequence routinely connects the panel long after Home Assistant
     started; the light must arrive with it, as the panel's other entities do.
     """
+    # /equipment/info always emits a FlatDevice block; only a DeviceId proves
+    # the rig has one (§5.2.2), so a panel never observed has no entity.
     entry = await set_up_with_flat_device(
         meta=DeviceMeta(None, None, None, None, None),
         connected=False,

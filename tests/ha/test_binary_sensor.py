@@ -185,20 +185,6 @@ async def test_an_unreachable_rig_still_makes_the_connectivity_sensor_unavailabl
     assert state_of(hass, MONITOR_CONNECTED).state == "unavailable"
 
 
-async def test_an_unanswered_autofocus_start_raises_the_problem_sensor(
-    hass: HomeAssistant,
-    config_entry: MockConfigEntry,
-    rig,
-    inside_the_dawn_session,
-    set_up_at,
-) -> None:
-    """There is no autofocus-failed event: the dawn night's eighth
-    AUTOFOCUS-STARTING going unanswered past the timeout is the whole signal.
-    """
-    await set_up_at(hass, config_entry, rig, "autofocus_timed_out")
-    assert state_of(hass, AUTOFOCUS_FAILED).state == "on"
-
-
 @pytest.mark.parametrize(
     ("state", "expected"),
     [
@@ -312,103 +298,97 @@ async def test_a_hub_entity_is_not_on_an_equipment_device(
 
 
 @pytest.mark.synthetic
-async def test_a_completed_autofocus_rejected_on_its_curve_fit_raises_the_problem(
+async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judged_against(
     hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
 ) -> None:
     """The failure that costs a night. A rejected run FINISHES — the event
     stream shows a normal pair, so the hung heuristic sees nothing — and
     N.I.N.A. writes its report with no verdict on it. The R² under the
-    profile's `RSquaredThreshold` is the only evidence there is (§4.4).
+    profile's `RSquaredThreshold` is the only evidence there is (§4.4), and
+    `on` alone cannot be acted on without it.
     """
     await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
-    assert state_of(hass, AUTOFOCUS_FAILED).state == "on"
+    problem = state_of(hass, AUTOFOCUS_FAILED)
+    assert problem.state == "on"
+    assert problem.attributes["reason"] == "rejected"
+    assert (
+        problem.attributes["r_squared"]
+        < problem.attributes["r_squared_threshold"]
+        == 0.7
+    )
 
 
-async def test_a_completed_autofocus_that_fitted_well_raises_nothing(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
-) -> None:
-    """The same captured report unmodified: 0.971 against a 0.7 threshold."""
-    await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    assert state_of(hass, AUTOFOCUS_FAILED).state == "off"
-
-
-@pytest.mark.synthetic
-async def test_a_rejected_run_publishes_what_it_was_judged_against(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
-) -> None:
-    """`on` alone cannot be acted on. The R² and the threshold it lost to are
-    what turn the verdict into a number the operator can check.
-    """
-    await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
-    attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
-    assert attributes["reason"] == "rejected"
-    assert attributes["r_squared"] < attributes["r_squared_threshold"] == 0.7
-
-
-async def test_a_hung_run_says_so_because_the_report_is_another_runs(
+@pytest.mark.parametrize(
+    ("clock", "rig_state", "verdict", "attributes"),
+    [
+        # The same captured report unmodified: 0.971 against a 0.7 threshold.
+        # The threshold is published whether or not anything failed: it says how
+        # much headroom a passing run had. The sequence's refocus threshold
+        # rides along for the autofocus card to flag drift against.
+        (
+            "inside_the_guiding_session",
+            "imaging_guiding",
+            "off",
+            {
+                "reason": None,
+                "r_squared_threshold": 0.7,
+                "refocus_temperature_delta": 2.0,
+            },
+        ),
+        # There is no autofocus-failed event: the dawn night's eighth
+        # AUTOFOCUS-STARTING going unanswered past the timeout is the whole
+        # signal. A run that hangs never writes a report, so `last-af` still
+        # holds the previous one and the reason says so.
+        ("inside_the_dawn_session", "autofocus_timed_out", "on", {"reason": "hung"}),
+        # The report file outlives a restart, and with no frozen clock this runs
+        # a day or more after the capture, so the same rejected report is
+        # older than the session. Believing it would raise a problem every
+        # time Home Assistant started.
+        (None, "autofocus_rejected_on_r_squared", "off", {}),
+    ],
+    ids=["fitted well", "unanswered start", "report older than the session"],
+)
+async def test_the_autofocus_problem_sensor_judges_this_sessions_runs(
     hass: HomeAssistant,
-    config_entry: MockConfigEntry,
+    config_entry,
     rig,
-    inside_the_dawn_session,
     set_up_at,
+    request: pytest.FixtureRequest,
+    clock: str | None,
+    rig_state: str,
+    verdict: str,
+    attributes: dict,
 ) -> None:
-    """A run that hangs never writes a report, so `last-af` still holds the
-    previous one. Without the reason, anything read off that report reads as
-    belonging to the run that just failed.
-    """
-    await set_up_at(hass, config_entry, rig, "autofocus_timed_out")
-    assert state_of(hass, AUTOFOCUS_FAILED).attributes["reason"] == "hung"
+    if clock:
+        request.getfixturevalue(clock)
+    await set_up_at(hass, config_entry, rig, rig_state)
+    problem = state_of(hass, AUTOFOCUS_FAILED)
+    assert problem.state == verdict
+    assert {key: problem.attributes[key] for key in attributes} == attributes
 
 
-async def test_a_run_that_fitted_well_has_no_reason(
-    hass: HomeAssistant, inside_the_guiding_session, config_entry, rig, set_up_at
-) -> None:
-    """The threshold is published whether or not anything failed: it is what
-    says how much headroom a passing run had.
-    """
-    await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
-    assert attributes["reason"] is None
-    assert attributes["r_squared_threshold"] == 0.7
-
-
-async def test_the_sequences_refocus_threshold_is_published_for_the_card(
-    hass: HomeAssistant, config_entry, rig, set_up_at
-) -> None:
-    """The autofocus card flags drift against it rather than asking the
-    operator to copy the trigger's setting into the card.
-    """
-    await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    attributes = state_of(hass, AUTOFOCUS_FAILED).attributes
-    assert attributes["refocus_temperature_delta"] == 2.0
-
-
-async def test_a_report_older_than_the_session_is_not_tonights_problem(
-    hass: HomeAssistant, config_entry, rig, set_up_at
-) -> None:
-    """The report file outlives a restart, and with no frozen clock this test
-    runs a day or more after the capture — so the same rejected report reads
-    `off`. Believing an old one would raise a problem every time Home Assistant
-    started.
-    """
-    await set_up_at(hass, config_entry, rig, "autofocus_rejected_on_r_squared")
-    assert state_of(hass, AUTOFOCUS_FAILED).state == "off"
-
-
-@pytest.mark.synthetic
-async def test_the_flip_sensor_runs_from_the_flips_start_to_its_end(
+@pytest.fixture
+async def before_flip(
     hass: HomeAssistant,
     config_entry,
     rig,
     push,
     set_up_at,
-    freezer,
     inside_the_guiding_session,
 ) -> None:
-    """Fabricates the bare `MOUNT-BEFORE-FLIP` and `MOUNT-AFTER-FLIP` pushes."""
+    """The rig at `imaging_guiding` with a bare `MOUNT-BEFORE-FLIP` pushed,
+    fabricated: no capture holds a flip underway.
+    """
     await set_up_at(hass, config_entry, rig, "imaging_guiding")
     push({"Event": "MOUNT-BEFORE-FLIP"})
     await hass.async_block_till_done()
+
+
+@pytest.mark.synthetic
+async def test_the_flip_sensor_runs_from_the_flips_start_to_its_end(
+    hass: HomeAssistant, before_flip, push, freezer
+) -> None:
+    """Fabricates the bare `MOUNT-AFTER-FLIP` push."""
     during = state_of(hass, MERIDIAN_FLIP).state
     freezer.tick(timedelta(minutes=2))
     push({"Event": "MOUNT-AFTER-FLIP"})
@@ -418,15 +398,12 @@ async def test_the_flip_sensor_runs_from_the_flips_start_to_its_end(
 
 @pytest.mark.synthetic
 async def test_the_flip_slews_when_the_tracked_countdown_reaches_the_window(
-    hass: HomeAssistant, config_entry, rig, push, set_up_at, inside_the_guiding_session
+    hass: HomeAssistant, before_flip
 ) -> None:
     """The capture's mount reads 2.1036 h to the flip and its profile a
     15 − 5 minute window, so with the clock frozen N.I.N.A. would wait 116.2
-    minutes. Fabricates the bare `MOUNT-BEFORE-FLIP` push.
+    minutes.
     """
-    await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    push({"Event": "MOUNT-BEFORE-FLIP"})
-    await hass.async_block_till_done()
     slews_at = state_of(hass, MERIDIAN_FLIP).attributes["slews_at"]
     waits = slews_at - dt_util.utcnow()
     assert waits == timedelta(hours=2.1036111110833335) - timedelta(minutes=10)
@@ -434,20 +411,11 @@ async def test_the_flip_slews_when_the_tracked_countdown_reaches_the_window(
 
 @pytest.mark.synthetic
 async def test_the_slew_estimate_survives_the_wait_with_tracking_off(
-    hass: HomeAssistant,
-    config_entry,
-    rig,
-    push,
-    set_up_at,
-    freezer,
-    inside_the_guiding_session,
+    hass: HomeAssistant, config_entry, rig, before_flip, freezer
 ) -> None:
     """A poll during the wait reads no countdown, and must not lose the one
-    read before it. Fabricates the bare `MOUNT-BEFORE-FLIP` push.
+    read before it.
     """
-    await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    push({"Event": "MOUNT-BEFORE-FLIP"})
-    await hass.async_block_till_done()
     placed = state_of(hass, MERIDIAN_FLIP).attributes["slews_at"]
     freezer.tick(timedelta(seconds=10))
     rig.goto("waiting_to_flip")
@@ -458,21 +426,11 @@ async def test_the_slew_estimate_survives_the_wait_with_tracking_off(
 
 @pytest.mark.synthetic
 async def test_a_flip_that_lapsed_without_its_end_does_not_hold_the_next(
-    hass: HomeAssistant,
-    config_entry,
-    rig,
-    push,
-    set_up_at,
-    freezer,
-    inside_the_guiding_session,
+    hass: HomeAssistant, config_entry, before_flip, push, freezer
 ) -> None:
     """The first flip's 116-minute wait and its hour of steps pass with no
     `MOUNT-AFTER-FLIP`, so the next flip must be placed from a fresh reading.
-    Fabricates both bare `MOUNT-BEFORE-FLIP` pushes.
     """
-    await set_up_at(hass, config_entry, rig, "imaging_guiding")
-    push({"Event": "MOUNT-BEFORE-FLIP"})
-    await hass.async_block_till_done()
     freezer.tick(timedelta(hours=3))
     await config_entry.runtime_data.coordinator.async_refresh()
     push({"Event": "MOUNT-BEFORE-FLIP"})

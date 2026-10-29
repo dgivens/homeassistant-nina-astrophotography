@@ -125,31 +125,29 @@ async def test_an_endpoint_this_build_does_not_serve_is_asked_once(
     assert [rig.reads(path) for path in NOT_SERVED] == [1, 1, 1]
 
 
-async def test_a_safety_event_refetches_without_waiting_for_a_tier(
-    hass, tiers, push
-) -> None:
-    """§6.4: nothing safety-related waits for a tier."""
-    rig = await tiers()
-    push({"Event": "SAFETY-CHANGED", "Time": AT})
-    await hass.async_block_till_done()
-    assert rig.reads("/equipment/info") == 1
-
-
 @pytest.mark.parametrize(
-    "fixture",
+    "payload",
     [
-        "simulator_dome_shutter_opened_push.json",
-        "simulator_dome_slewed_push.json",
-        "simulator_dome_parked_push.json",
+        # §6.4: nothing safety-related waits for a tier.
+        {"Event": "SAFETY-CHANGED", "Time": AT},
+        # A dome event announces a move and carries none of the readings it
+        # changed — `DOME-SLEWED`'s azimuths aside — so the shutter is read
+        # back. Captured from the simulator rig's socket.
+        load_fixture("simulator_dome_shutter_opened_push.json"),
+        load_fixture("simulator_dome_slewed_push.json"),
+        load_fixture("simulator_dome_parked_push.json"),
+        # FLAT-LIGHT-TOGGLED carries an empty payload and FLAT-BRIGHTNESS-CHANGED
+        # fires through a ramp with inconsistent `Previous` values (§5.3.4), so
+        # the panel is re-read rather than taken from the event.
+        {"Event": "FLAT-LIGHT-TOGGLED", "Time": AT},
     ],
+    ids=["safety", "dome shutter", "dome slew", "dome park", "flat panel"],
 )
-async def test_a_dome_event_refetches_the_dome(hass, tiers, push, fixture) -> None:
-    """A dome event announces a move and carries none of the readings it
-    changed — `DOME-SLEWED`'s azimuths aside — so the shutter is read back.
-    Captured from the simulator rig's socket.
-    """
+async def test_an_equipment_event_refetches_equipment_without_waiting_for_a_tier(
+    hass, tiers, push, payload
+) -> None:
     rig = await tiers()
-    push(load_fixture(fixture))
+    push(payload)
     await hass.async_block_till_done()
     assert rig.reads("/equipment/info") == 1
 
@@ -169,21 +167,29 @@ async def test_ts_targetstart_never_refetches_the_sequence(
     assert rig.reads("/sequence/json") == 0
 
 
-async def test_a_stack_status_event_reads_the_livestack_status_back(
-    hass, tiers, push, config_entry
+@pytest.mark.parametrize(
+    ("event", "path"),
+    [
+        # The event announces THAT the status changed; the status is read back
+        # from the endpoint rather than taken from the push.
+        ("STACK-STATUS", "/livestack/status"),
+        # A profile SWITCH changes the focal length and meridian limits, which
+        # are only on /profile/show.
+        ("PROFILE-CHANGED", "/profile/show"),
+    ],
+)
+async def test_an_event_reads_its_endpoint_back(
+    hass, tiers, push, config_entry, event, path
 ) -> None:
-    """The event announces THAT the status changed; the status is read back from
-    the endpoint rather than taken from the push.
-
-    Polled by hand rather than by the clock: this state's flat panel is
+    """Polled by hand rather than by the clock: this state's flat panel is
     disconnected, so no entity exists to hold a listener and the coordinator
     schedules no tick of its own.
     """
     rig = await tiers("imaging_guiding")
-    push(captured("STACK-STATUS"))
+    push(captured(event) if event == "STACK-STATUS" else {"Event": event, "Time": AT})
     await config_entry.runtime_data.coordinator.async_refresh()
     await hass.async_block_till_done()
-    assert rig.reads("/livestack/status") == 1
+    assert rig.reads(path) == 1
 
 
 async def test_an_event_cannot_re_arm_an_endpoint_the_build_does_not_serve(
@@ -306,23 +312,6 @@ async def test_a_restart_re_asks_an_endpoint_the_old_process_did_not_serve(
     assert rig.reads("/livestack/status") == 2
 
 
-async def test_a_profile_change_reads_the_profile_back(
-    hass, tiers, push, config_entry
-) -> None:
-    """`ProfileService.ProfileChanged` fires on a profile SWITCH, and the new
-    profile's focal length and meridian limits are only on /profile/show.
-
-    Polled by hand rather than by the clock, as the livestack test is: this
-    state's flat panel is disconnected, so no entity holds a listener and the
-    coordinator schedules no tick of its own.
-    """
-    rig = await tiers("imaging_guiding")
-    push({"Event": "PROFILE-CHANGED", "Time": AT})
-    await config_entry.runtime_data.coordinator.async_refresh()
-    await hass.async_block_till_done()
-    assert rig.reads("/profile/show") == 1
-
-
 @pytest.mark.parametrize("event", ["SEQUENCE-STARTING", "SEQUENCE-FINISHED"])
 async def test_a_sequence_boundary_refetches_the_sequence(
     hass, tiers, push, freezer, event
@@ -336,14 +325,3 @@ async def test_a_sequence_boundary_refetches_the_sequence(
     push({"Event": event, "Time": AT})
     await tick(hass, freezer, TierSchedule.SEQUENCE_DEBOUNCE)
     assert rig.reads("/sequence/json") == 1
-
-
-async def test_a_flat_panel_event_re_reads_the_panel(hass, tiers, push) -> None:
-    """FLAT-LIGHT-TOGGLED carries an empty payload and FLAT-BRIGHTNESS-CHANGED
-    fires through a ramp with inconsistent `Previous` values (§5.3.4), so the
-    panel's state is re-read rather than taken from the event.
-    """
-    rig = await tiers()
-    push({"Event": "FLAT-LIGHT-TOGGLED", "Time": AT})
-    await hass.async_block_till_done()
-    assert rig.reads("/equipment/info") == 1

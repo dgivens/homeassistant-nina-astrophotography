@@ -143,16 +143,23 @@ def test_no_card_hardcodes_an_entity_id(card: Path) -> None:
     assert not hardcoded, f"{card.name} hardcodes: {sorted(hardcoded)}"
 
 
-@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
-def test_no_card_asks_for_the_stretch_by_the_wrong_name(card: Path) -> None:
-    """`useAutoStretch` is not a parameter on /image/{index}; `autoPrepare` is."""
-    assert "useAutoStretch" not in card.read_text(encoding="utf-8")
+# Strings no card may contain, and why.
+FORBIDDEN = {
+    # Not a parameter on /image/{index}; `autoPrepare` is.
+    "useAutoStretch": "is not a parameter of /image/{index}",
+    # /image is not a route: the index is a path segment, /image/{index}.
+    "/image?": "puts the image index in the query string",
+    # Home Assistant prefers getConfigElement(), so defining it hides the form.
+    "getConfigElement": "hides the config form behind an editor element",
+}
 
 
 @pytest.mark.parametrize("card", CARDS, ids=lambda p: p.name)
-def test_no_card_puts_the_image_index_in_the_query_string(card: Path) -> None:
-    """/image is not a route — the index is a path segment, /image/{index}."""
-    assert "/image?" not in card.read_text(encoding="utf-8")
+@pytest.mark.parametrize("needle", FORBIDDEN, ids=FORBIDDEN.get)
+def test_no_card_contains_what_the_api_or_the_host_rejects(
+    card: Path, needle: str
+) -> None:
+    assert needle not in card.read_text(encoding="utf-8")
 
 
 ELEMENTS = [
@@ -193,12 +200,6 @@ def test_the_visual_editor_offers_exactly_the_options_the_card_reads(
     read = set(CONFIG_READ.findall(card.read_text(encoding="utf-8")))
 
     assert _form_fields(card) == read
-
-
-@pytest.mark.parametrize("card", ELEMENTS, ids=lambda p: p.name)
-def test_no_card_hides_its_form_behind_an_editor_element(card: Path) -> None:
-    """Home Assistant prefers `getConfigElement()`, so defining it hides the form."""
-    assert "getConfigElement" not in card.read_text(encoding="utf-8")
 
 
 def test_the_documented_action_fields_are_the_translated_ones() -> None:

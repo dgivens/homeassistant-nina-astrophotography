@@ -20,16 +20,18 @@ from custom_components.nina_astrophotography.api.v2.mapper import map_frame
 from helpers import FakeResponse, failure, load_envelope, ok
 
 ENTITY = "image.n_i_n_a_last_frame"
+IMAGE = f"/api/nina_astrophotography/image/{ENTITY}"
 FRAME = b"\xff\xd8\xff\xe0 not a frame"
+JPEG = FakeResponse(FRAME, content_type="image/jpeg")
 
 
 async def test_a_real_image_proxies_through_with_its_content_type(
     hass, loaded_entry, rig, hass_client
 ) -> None:
     rig.respond("/image-history?count=true", ok(1))
-    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/0", JPEG)
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
+    resp = await client.get(f"{IMAGE}/0")
     assert resp.status == 200
     assert resp.content_type == "image/jpeg"
     # Not just a 200: the bytes proxied through are the ones the rig served.
@@ -46,7 +48,7 @@ async def test_index_0_is_translated_to_ninas_newest_index(
     rig.respond("/image-history?count=true", ok(5))
     rig.respond("/image/4", ok({"Image": "irrelevant"}))  # proves 4 was asked
     client = await hass_client()
-    await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
+    await client.get(f"{IMAGE}/0")
     assert rig.last_params("/image/4") is not None
     assert rig.last_params("/image/0") is None
 
@@ -60,7 +62,7 @@ async def test_an_index_at_or_past_the_current_count_answers_404(
     """
     rig.respond("/image-history?count=true", ok(1))
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/1")
+    resp = await client.get(f"{IMAGE}/1")
     assert resp.status == 404
 
 
@@ -75,7 +77,7 @@ async def test_an_envelope_arriving_at_200_is_never_served_as_an_image(
     rig.respond("/image-history?count=true", ok(1))
     rig.respond("/image/0", envelope)
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
+    resp = await client.get(f"{IMAGE}/0")
     assert resp.status == 404
 
 
@@ -91,7 +93,7 @@ async def test_the_rig_being_unreachable_for_the_count_answers_502(
         FakeResponse("<html>500</html>", status=500, content_type="text/html"),
     )
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
+    resp = await client.get(f"{IMAGE}/0")
     assert resp.status == 502
 
 
@@ -112,22 +114,22 @@ async def test_an_entity_whose_entry_is_unloaded_answers_404(
     assert entity_registry.async_get(ENTITY) is not None
 
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
+    resp = await client.get(f"{IMAGE}/0")
     assert resp.status == 404
 
 
 @pytest.mark.parametrize(
     "path",
     [
-        f"/api/nina_astrophotography/image/{ENTITY}/not-a-number",
-        f"/api/nina_astrophotography/image/{ENTITY}/-1",
-        f"/api/nina_astrophotography/image/{ENTITY}/0?quality=high",
-        f"/api/nina_astrophotography/image/{ENTITY}/0?quality=0",
-        f"/api/nina_astrophotography/image/{ENTITY}/0?quality=101",
-        f"/api/nina_astrophotography/image/{ENTITY}/0?width=wide",
-        f"/api/nina_astrophotography/image/{ENTITY}/0?width=0",
-        f"/api/nina_astrophotography/image/{ENTITY}/0?date=yesterday",
-        f"/api/nina_astrophotography/image/{ENTITY}/0?date=2026-09-05T01:41:27",
+        f"{IMAGE}/not-a-number",
+        f"{IMAGE}/-1",
+        f"{IMAGE}/0?quality=high",
+        f"{IMAGE}/0?quality=0",
+        f"{IMAGE}/0?quality=101",
+        f"{IMAGE}/0?width=wide",
+        f"{IMAGE}/0?width=0",
+        f"{IMAGE}/0?date=yesterday",
+        f"{IMAGE}/0?date=2026-09-05T01:41:27",
     ],
     ids=[
         "bad-index",
@@ -157,14 +159,14 @@ async def test_autoprepare_is_only_sent_when_the_query_asks_for_it(
     card would get N.I.N.A.'s auto-stretch anyway.
     """
     rig.respond("/image-history?count=true", ok(1))
-    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/0", JPEG)
     client = await hass_client()
-    await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0")
+    await client.get(f"{IMAGE}/0")
     params = rig.last_params("/image/0")
     assert params is not None
     assert "autoPrepare" not in params
 
-    await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?autoPrepare=true")
+    await client.get(f"{IMAGE}/0?autoPrepare=true")
     params = rig.last_params("/image/0")
     assert params is not None
     assert params["autoPrepare"] == "true"
@@ -174,9 +176,9 @@ async def test_a_width_asks_the_rig_for_a_scaled_render(
     hass, loaded_entry, rig, hass_client
 ) -> None:
     rig.respond("/image-history?count=true", ok(1))
-    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/0", JPEG)
     client = await hass_client()
-    await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?width=640")
+    await client.get(f"{IMAGE}/0?width=640")
     params = rig.last_params("/image/0")
     assert params is not None
     assert (params["resize"], params["size"]) == ("true", "640x640")
@@ -186,11 +188,9 @@ async def test_a_thumbnail_is_the_rigs_own_when_it_keeps_one(
     hass, loaded_entry, rig, hass_client
 ) -> None:
     rig.respond("/image-history?count=true", ok(1))
-    rig.respond("/image/thumbnail/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/thumbnail/0", JPEG)
     client = await hass_client()
-    resp = await client.get(
-        f"/api/nina_astrophotography/image/{ENTITY}/0?thumbnail=true&width=128"
-    )
+    resp = await client.get(f"{IMAGE}/0?thumbnail=true&width=128")
     assert await resp.read() == FRAME
     assert rig.last_params("/image/0") is None
 
@@ -201,11 +201,9 @@ async def test_a_thumbnail_the_rig_does_not_keep_is_rendered_at_the_width(
     """The plugin keeps none while its "Create Thumbnails" setting is off."""
     rig.respond("/image-history?count=true", ok(1))
     rig.respond("/image/thumbnail/0", failure("No thumbnails available", 400))
-    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/0", JPEG)
     client = await hass_client()
-    resp = await client.get(
-        f"/api/nina_astrophotography/image/{ENTITY}/0?thumbnail=true&width=128"
-    )
+    resp = await client.get(f"{IMAGE}/0?thumbnail=true&width=128")
     assert await resp.read() == FRAME
     params = rig.last_params("/image/0")
     assert params is not None
@@ -229,9 +227,9 @@ async def test_a_date_finds_its_frame_past_one_saved_since(
     rig.respond("/image-history?count=true", ok(5))
     rig.respond("/image-history?index=4", ok([newer]))
     rig.respond("/image-history?index=3", ok([older]))
-    rig.respond("/image/3", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/3", JPEG)
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    resp = await client.get(f"{IMAGE}/0?date={date}")
     assert await resp.read() == FRAME
     assert rig.last_params("/image/4") is None
 
@@ -242,9 +240,9 @@ async def test_a_date_with_nothing_saved_since_is_served_where_counted(
     newest, date = _captured(-1)
     rig.respond("/image-history?count=true", ok(5))
     rig.respond("/image-history?index=4", ok([newest]))
-    rig.respond("/image/4", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/4", JPEG)
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    resp = await client.get(f"{IMAGE}/0?date={date}")
     assert await resp.read() == FRAME
 
 
@@ -258,9 +256,9 @@ async def test_a_date_is_looked_for_past_ten_frames_saved_since(
     rig.respond("/image-history?count=true", ok(saved_since + 1))
     for index in range(saved_since + 1):
         rig.respond(f"/image-history?index={index}", ok([history[index]]))
-    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/0", JPEG)
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    resp = await client.get(f"{IMAGE}/0?date={date}")
     assert resp.status == status
 
 
@@ -272,7 +270,7 @@ async def test_a_date_no_frame_was_saved_at_answers_404(
     older, _ = _captured(-2)
     rig.respond("/image-history?count=true", ok(1))
     rig.respond("/image-history?index=0", ok([older]))
-    rig.respond("/image/0", FakeResponse(FRAME, content_type="image/jpeg"))
+    rig.respond("/image/0", JPEG)
     client = await hass_client()
-    resp = await client.get(f"/api/nina_astrophotography/image/{ENTITY}/0?date={date}")
+    resp = await client.get(f"{IMAGE}/0?date={date}")
     assert resp.status == 404

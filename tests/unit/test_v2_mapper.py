@@ -69,17 +69,6 @@ def test_nan_fields_map_to_none_not_zero() -> None:
     assert all(v is None for v in snapshot.weather.channels.values())
 
 
-def test_tracking_mode_is_mapped_verbatim() -> None:
-    """The wire's own spelling, never the spec's enum ('Siderial')."""
-    snapshot = map_equipment_info(load("dawn_equipment_info.json"))
-    # /equipment/info nests eleven device blocks under Camera, Dome, FilterWheel,
-    # FlatDevice, Focuser, Guider, Mount, Rotator, SafetyMonitor, Switch and
-    # WeatherData. The per-device /equipment/<x>/info captures are a BARE device
-    # object — do not feed them to map_equipment_info.
-    assert snapshot.mount is not None
-    assert snapshot.mount.tracking_mode == "Stopped"
-
-
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
     ("tracking", "flip", "expected"),
@@ -109,19 +98,16 @@ def test_only_the_literal_24_sentinel_or_tracking_off_nulls_the_flip_time(
     assert mount.time_to_meridian_flip == expected
 
 
-def test_flat_panel_range_comes_from_the_driver() -> None:
-    """MaxBrightness 4096 on this panel; 255 on an Alnitak. Never hardcode."""
-    snapshot = map_equipment_info(load("dawn_equipment_info.json"))
-    assert snapshot.flat_device is not None
-    assert snapshot.flat_device.brightness_range == (0, 4096)
-
-
 def test_the_per_device_endpoint_shape_maps_too() -> None:
     """dawn_flatdevice_connected.json is a bare FlatDeviceInfo, not a snapshot."""
     panel = map_flat_device(load("dawn_flatdevice_connected.json"))
     assert panel.brightness_range == (0, 4096)
 
 
+# /equipment/info nests eleven device blocks under Camera, Dome, FilterWheel,
+# FlatDevice, Focuser, Guider, Mount, Rotator, SafetyMonitor, Switch and
+# WeatherData. The per-device /equipment/<x>/info captures are a BARE device
+# object — do not feed them to map_equipment_info.
 @pytest.mark.parametrize(
     ("device", "field", "expected"),
     [
@@ -132,6 +118,8 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         # Per-camera, and narrower than the 0-100 a range-free reading suggests.
         ("camera", "usb_limit_range", (40, 100)),
         ("mount", "epoch", "JNOW"),
+        # The wire's own spelling, never the spec's enum ('Siderial').
+        ("mount", "tracking_mode", "Stopped"),
         ("mount", "tracking_modes", ("Sidereal", "Lunar", "Solar", "Stopped")),
         ("focuser", "position", 2332),
         ("filter_wheel", "selected_filter", "R"),
@@ -141,6 +129,8 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("dome", "azimuth", None),  # "NaN" on a dome that never existed
         ("dome", "shutter_status", None),  # ShutterNone from a disconnected driver
         ("flat_device", "cover_state", "Closed"),
+        # MaxBrightness is 4096 on this panel and 255 on an Alnitak.
+        ("flat_device", "brightness_range", (0, 4096)),
         ("safety_monitor", "is_safe", False),
     ],
 )
@@ -337,10 +327,6 @@ def test_every_calibration_type_is_stripped_like_a_flat(first_flat, image_type) 
     assert (frame.hfr, frame.stars) == (None, None)
 
 
-def test_light_frames_keep_their_hfr(first_light) -> None:
-    assert map_frame(first_light, generation="g1").hfr is not None
-
-
 @pytest.mark.synthetic
 def test_a_snapshot_is_not_calibration_and_keeps_its_readings(first_light) -> None:
     """Only the calibration set loses readings; a SNAPSHOT is of the sky. No
@@ -445,36 +431,31 @@ def _first_event(name: str) -> dict:
     return next(e for e in load("dawn_event_history.json") if e["Event"] == name)
 
 
-def test_mediator_event_times_are_offset_aware_local() -> None:
-    event = map_event(_first_event("IMAGE-SAVE"), generation="g1")
-    assert event.time.utcoffset() == timedelta(hours=-5)
-
-
-def test_ts_event_times_are_naive_utc() -> None:
-    """Two naive formats, indistinguishable by shape — key on the event name."""
-    event = map_event(_first_event("TS-NEWTARGETSTART"), generation="g1")
-    assert event.time.utcoffset() == timedelta(0)
-
-
-def test_log_scraped_event_times_are_local_and_still_offset_aware() -> None:
-    """Left naive, the first ERROR-PLATESOLVE to land beside 600 offset-aware
-    events crashes fold()'s sorted iteration with "can't compare offset-naive
-    and offset-aware datetimes". Every NinaEvent.time is aware.
-    """
-    event = map_event(
-        _first_event("ERROR-PLATESOLVE"),
-        generation="g1",
-        rig_offset=timedelta(hours=-5),
-    )
-    assert event.time.utcoffset() == timedelta(hours=-5)
-
-
-def test_a_naive_local_time_falls_back_to_utc_before_the_offset_is_known() -> None:
-    """The first poll can arrive after the first event. Ordering must always be
-    defined; replay corrects it once the mount's clock has been read.
-    """
-    event = map_event(_first_event("ERROR-PLATESOLVE"), generation="g1")
-    assert event.time.utcoffset() == timedelta(0)
+@pytest.mark.parametrize(
+    ("name", "rig_offset", "expected"),
+    [
+        ("IMAGE-SAVE", None, timedelta(hours=-5)),
+        # Two naive formats, indistinguishable by shape: key on the event name.
+        ("TS-NEWTARGETSTART", None, timedelta(0)),
+        # Left naive, the first ERROR-PLATESOLVE beside 600 offset-aware events
+        # crashes fold()'s sort, so every NinaEvent.time is aware.
+        ("ERROR-PLATESOLVE", timedelta(hours=-5), timedelta(hours=-5)),
+        # The first poll can arrive after the first event; ordering must be
+        # defined, and replay corrects it once the mount's clock is read.
+        ("ERROR-PLATESOLVE", None, timedelta(0)),
+    ],
+    ids=[
+        "mediator: offset-aware local",
+        "Target Scheduler: naive UTC",
+        "log-scraped: naive local",
+        "log-scraped before the offset is known",
+    ],
+)
+def test_an_events_time_is_resolved_by_where_it_came_from(
+    name, rig_offset, expected
+) -> None:
+    event = map_event(_first_event(name), generation="g1", rig_offset=rig_offset)
+    assert event.time.utcoffset() == expected
 
 
 def test_every_event_class_sorts_together() -> None:
@@ -644,48 +625,32 @@ def test_an_absent_profile_section_is_no_reading() -> None:
     assert map_profile({}).focal_length is None
 
 
-def test_the_autofocus_reports_worst_fit_is_what_a_threshold_judges() -> None:
-    """N.I.N.A. computes an R² only for the fittings a run actually used and
-    sends `"NaN"` for the rest — this TRENDPARABOLIC run carries a `"NaN"`
-    Hyperbolic — so the minimum of what survives the `"NaN"` rule is the worst
-    fit computed, and no fitting-to-R² table has to be guessed at.
-    """
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        # N.I.N.A. computes an R² only for the fittings a run used and sends
+        # "NaN" for the rest, so the minimum of what survives is the worst fit
+        # computed and no fitting-to-R² table has to be guessed at.
+        ("r_squared", pytest.approx(0.9710548595560263)),
+        # `CalculatedFocusPoint` is the fitted minimum, not the run's start.
+        ("position", 2340),
+        ("filter_name", "L"),
+        # `CalculatedFocusPoint.Value` is not an achieved HFR: under a TREND*
+        # fitting it is the mean of the trendline intersection and the quadratic
+        # minimum. The lowest measured point is what compares across fittings.
+        ("hfr", pytest.approx(1.55229727412562)),
+        ("fitted_hfr", pytest.approx(1.0932570683996303)),
+        # `InitialFocusPoint` is where the focuser was before the run: the other
+        # end of the move.
+        ("initial_position", 2352),
+        ("initial_hfr", pytest.approx(1.5191799853991006)),
+        # `Duration` is a .NET TimeSpan string, not a number.
+        ("duration_seconds", pytest.approx(242.0079444)),
+    ],
+)
+def test_an_autofocus_report_maps_its_readings(field, expected) -> None:
     report = _autofocus(load("imaging_guiding_last_af.json"))
-    assert report.r_squared == pytest.approx(0.9710548595560263)
-
-
-def test_an_autofocus_report_carries_where_it_left_the_focuser() -> None:
-    """`CalculatedFocusPoint` is the fitted minimum, not the run's start."""
-    report = _autofocus(load("imaging_guiding_last_af.json"))
-    assert (report.position, report.filter_name) == (2340, "L")
-
-
-def test_the_autofocus_hfr_is_the_sweeps_lowest_measured_point() -> None:
-    """`CalculatedFocusPoint.Value` is not an achieved HFR: under a `TREND*`
-    fitting N.I.N.A. sets it to the mean of the trendline intersection and the
-    quadratic minimum, which here reads 1.09 against a best measured 1.55. The
-    measured point is what compares run to run and across fittings.
-    """
-    report = _autofocus(load("imaging_guiding_last_af.json"))
-    assert report.hfr == pytest.approx(1.55229727412562)
-    assert report.fitted_hfr == pytest.approx(1.0932570683996303)
-
-
-def test_an_autofocus_report_carries_where_the_run_started() -> None:
-    """`InitialFocusPoint` is where the focuser was before the run — the other
-    end of the move, without which the run's size is unknowable.
-    """
-    report = _autofocus(load("imaging_guiding_last_af.json"))
-    assert report.initial_position == 2352
-    assert report.initial_hfr == pytest.approx(1.5191799853991006)
-
-
-def test_an_autofocus_runs_duration_is_seconds() -> None:
-    """`Duration` is a .NET TimeSpan string, not a number: the overhead a run
-    costs a session is only comparable once it is seconds.
-    """
-    report = _autofocus(load("imaging_guiding_last_af.json"))
-    assert report.duration_seconds == pytest.approx(242.0079444)
+    assert getattr(report, field) == expected
 
 
 @pytest.mark.synthetic
@@ -896,12 +861,12 @@ def test_the_fit_minima_are_read_by_the_names_the_rig_uses() -> None:
 @pytest.mark.parametrize(
     ("equation", "expected"),
     [
-        ("y = 2 * x^2 + -3 * x + 4", (2.0, -3.0, 4.0)),
-        ("y = -0.5 * x + 1.25", (-0.5, 1.25)),
-        ("y = 3 * x^3 + 1", (3.0, 0.0, 0.0, 1.0)),  # zero-filled, not skipped
-        ("y = 1E+05 * x + 2", (100000.0, 2.0)),  # the split must not be on "+"
-        ("", None),
-        ("y = a / (x - b)", None),  # no hyperbolic form observed
+        ("y = 2 * x^2 + -3 * x + 4", [(2.0, -3.0, 4.0)]),
+        ("y = -0.5 * x + 1.25", [(-0.5, 1.25)]),
+        ("y = 3 * x^3 + 1", [(3.0, 0.0, 0.0, 1.0)]),  # zero-filled, not skipped
+        ("y = 1E+05 * x + 2", [(100000.0, 2.0)]),  # the split must not be on "+"
+        ("", []),  # an unused fitting is not published
+        ("y = a / (x - b)", [None]),  # no hyperbolic form observed
     ],
 )
 def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
@@ -912,10 +877,10 @@ def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
     """
     wire = dict(load("imaging_guiding_last_af.json"), Fittings={"Quadratic": equation})
     fits = _autofocus(wire).fits
-    if expected is None:
-        assert [f.coefficients for f in fits] in ([], [None])
-    else:
-        assert fits[0].coefficients == pytest.approx(expected)
+    assert [f.coefficients for f in fits] == [
+        None if coefficients is None else pytest.approx(coefficients)
+        for coefficients in expected
+    ]
 
 
 def test_a_rig_that_has_never_run_an_autofocus_has_no_report() -> None:

@@ -81,24 +81,28 @@ def test_the_tree_seeds_the_running_signal_and_the_events_correct_it(
     assert running(tree, events, "g1") is expected
 
 
-def test_the_last_named_target_in_pre_order_wins() -> None:
-    """Last, not deepest — depth does not order sibling targets. Pinned so the
-    ordering is a decision rather than an accident of the walk.
+@pytest.mark.parametrize(
+    ("tree", "expected"),
+    [
+        (_node("Sequence", _node("Targets", target="M31"), target="Tonight"), "M31"),
+        (
+            _node(
+                "Sequence",
+                _node("A", _node("B", target="deep")),
+                _node("C", target="shallow"),
+            ),
+            "shallow",
+        ),
+    ],
+    ids=["a child after its parent", "a shallow target after a deep one"],
+)
+def test_the_last_named_target_in_pre_order_wins(
+    tree: SequenceNode, expected: str
+) -> None:
+    """Last in walk order, not deepest: depth does not order sibling targets.
+    Pinned so the ordering is a decision rather than an accident of the walk.
     """
-    tree = _node("Sequence", _node("Targets", target="M31"), target="Tonight")
-    assert target_name(tree) == "M31"
-
-
-def test_a_deeper_target_does_not_outrank_a_later_shallow_one() -> None:
-    """Walk order decides, not depth: a later shallow target beats an earlier
-    deep one.
-    """
-    tree = _node(
-        "Sequence",
-        _node("A", _node("B", target="deep")),
-        _node("C", target="shallow"),
-    )
-    assert target_name(tree) == "shallow"
+    assert target_name(tree) == expected
 
 
 def test_progress_is_the_innermost_counting_nodes_own_fraction() -> None:

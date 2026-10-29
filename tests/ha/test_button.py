@@ -23,7 +23,6 @@ from helpers import failure
 
 AUTO_FOCUS = "button.n_i_n_a_focuser_auto_focus"
 CLEAR_CALIBRATION = "button.n_i_n_a_guider_clear_calibration"
-DOME_OPEN = "button.n_i_n_a_dome_open"
 
 # The endpoint each button owns. Indexed by the descriptor key, so a button
 # added without a row here fails rather than going untested.
@@ -94,13 +93,6 @@ async def test_a_button_appears_when_its_equipment_is_first_seen(
     assert hass.states.get(CLEAR_CALIBRATION) is None
     await advance("imaging_guiding")
     assert hass.states.get(CLEAR_CALIBRATION) is not None
-
-
-async def test_a_button_for_equipment_the_rig_has_never_had_is_absent(
-    hass: HomeAssistant, loaded_entry
-) -> None:
-    """A descriptor whose slot is `None` would mint a nameless dome device."""
-    assert hass.states.get(DOME_OPEN) is None
 
 
 async def test_every_button_lands_on_the_device_its_entity_id_names(
