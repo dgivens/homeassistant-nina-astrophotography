@@ -16,8 +16,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   between two fixed times or while the sun is up: from when the rising sun
   passes `mute_morning_altitude` until the setting sun drops below
   `mute_evening_altitude`. A rig still unreachable when the window closes
-  is reported then. The default is off, and the sun is placed at Home
-  Assistant's location.
+  is reported then. The default is off.
+- **The imaging stall alert can place the sun at the rig.** Wire its
+  optional site latitude and longitude inputs, and both `night_only` and the
+  sun quiet hours follow the rig's sky instead of Home Assistant's.
 - **`binary_sensor.<instance>_mount_meridian_flip`** is `on` while N.I.N.A.
   is in a meridian flip, including the wait before the slew, when it turns
   tracking off and the countdown reads `unknown`. Its `slews_at` attribute

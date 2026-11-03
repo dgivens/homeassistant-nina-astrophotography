@@ -201,7 +201,8 @@ It also stays quiet in these situations you should know about:
   safety monitor, fill in the safety input; if you leave it empty you'll get an
   alert during every weather hold.
 - **In daylight,** because `night_only` is on by default. Turn it off for solar
-  imaging. It uses `sun.sun`; without that entity it doesn't suppress anything.
+  imaging. It uses the sun at the rig if you wire the site inputs (see below),
+  and `sun.sun` otherwise; with neither it doesn't suppress anything.
 
 - **During quiet hours,** if you set them, for a rig you shut down by day.
   `mute_mode` picks the window: between two times, which may cross midnight,
@@ -209,9 +210,14 @@ It also stays quiet in these situations you should know about:
   the setting sun drops below another. The defaults are -12° (the end of
   nautical twilight) and +3° (roughly 20–30 minutes before sunset). The window
   covers the unreachable alert too, and a rig still unreachable when it closes
-  is reported then. Fixed times are Home Assistant's local time, and the sun is
-  placed at Home Assistant's location, so for a hosted rig both can be off by
-  the difference between the two sites.
+  is reported then. Fixed times are Home Assistant's local time, which is not
+  the rig's if it is hosted in another time zone.
+
+For a hosted rig, wire the optional site latitude and longitude inputs to the
+rig's `site_latitude` and `site_longitude` sensors. Both sun gates, night only
+and sun quiet hours, then use the sun where the rig is instead of where Home
+Assistant is. Until N.I.N.A. reports a site, Home Assistant's location stands
+in.
 
 The alert is a persistent notification plus a message to the notify entity you
 choose. It includes how long it has been quiet, the last frame's target and

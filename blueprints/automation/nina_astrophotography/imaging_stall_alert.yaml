@@ -131,6 +131,29 @@ blueprint:
               integration: nina_astrophotography
               domain: sensor
               device_class: timestamp
+        site_latitude:
+          name: Site latitude
+          description: >-
+            Optional, with the longitude below; recommended for a hosted rig.
+            The rig's "Site latitude" sensor. With both, the sun for night only
+            and for sun quiet hours is placed at the rig instead of at Home
+            Assistant. Until N.I.N.A. reports a site, Home Assistant's location
+            stands in.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              multiple: true
+        site_longitude:
+          name: Site longitude
+          description: The rig's "Site longitude" sensor.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+              multiple: true
 
     diagnostics:
       name: What the alert reports
@@ -339,9 +362,10 @@ blueprint:
           name: Only alert at night
           description: >-
             On by default: a sequence's twelve-hour daytime wait for darkness
-            is not a stall. Turn it off if you image the sun. Reads `sun.sun`;
-            if that entity is missing, the gate stays open rather than muting
-            every alert.
+            is not a stall. Turn it off if you image the sun. Reads the sun at
+            the rig when its site is wired above, and `sun.sun` otherwise; if
+            neither can be read, the gate stays open rather than muting every
+            alert.
           default: true
           selector:
             boolean:
@@ -390,9 +414,8 @@ blueprint:
           name: Mute once the rising sun is above
           description: >-
             While the sun is up only. Twilight ends at -6° (civil), -12°
-            (nautical) and -18° (astronomical). The sun is placed at Home
-            Assistant's location; for a rig hosted far away, sunrise there is
-            about four minutes later per degree of longitude west of it.
+            (nautical) and -18° (astronomical). The sun is placed at the rig
+            when its site is wired under Rig, and at Home Assistant otherwise.
           default: -12
           selector:
             number:
@@ -467,6 +490,8 @@ variables:
   safety_unsafe: !input safety_unsafe
   imaging: !input imaging
   last_frame_at: !input last_frame_at
+  site_latitude: !input site_latitude
+  site_longitude: !input site_longitude
   camera_state: !input camera_state
   last_image_target: !input last_image_target
   sequence_target: !input sequence_target
@@ -501,13 +526,20 @@ variables:
        else (now() - running.last_changed).total_seconds() | round(0) }}
   # The sun's geometric altitude and declination, and its hour angle, negative
   # in the morning, from the low-precision solar position (within 0.01° of
-  # astral) at Home Assistant's location; `none` without one, which leaves
-  # every sun gate open. Every trigger renders this, so nothing in it may
-  # raise: a render error would block every alert. The range check keeps `inf`
-  # out of `sin`.
+  # astral). Placed at the rig when its site sensors read numbers, else at Home
+  # Assistant; `none` when neither has coordinates, which leaves every sun gate
+  # open. Every trigger renders this, so nothing in it may raise: a render
+  # error would block every alert. The range check keeps `inf` out of `sin`.
   sun_position: >
-    {% set lat = state_attr('zone.home', 'latitude') | float(none) %}
-    {% set lon = state_attr('zone.home', 'longitude') | float(none) %}
+    {% set rig_lat = expand(site_latitude) | map(attribute='state')
+       | first | default(none) | float(none) %}
+    {% set rig_lon = expand(site_longitude) | map(attribute='state')
+       | first | default(none) | float(none) %}
+    {% set at_rig = rig_lat is number and rig_lon is number %}
+    {% set lat = rig_lat if at_rig
+       else state_attr('zone.home', 'latitude') | float(none) %}
+    {% set lon = rig_lon if at_rig
+       else state_attr('zone.home', 'longitude') | float(none) %}
     {% if lat is number and lon is number
           and -90 <= lat <= 90 and -360 <= lon <= 360 %}
       {% set rad = pi / 180 %}
@@ -524,7 +556,7 @@ variables:
          + cos(lat * rad) * cos(dec) * cos(hour_angle * rad) %}
       {{ {'altitude': asin([[sin_alt, 1] | min, -1] | max) / rad,
           'declination': dec / rad, 'hour_angle': hour_angle,
-          'latitude': lat} }}
+          'latitude': lat, 'at_rig': at_rig} }}
     {% else %}
       {{ none }}
     {% endif %}
@@ -749,10 +781,18 @@ conditions:
           # A template rather than `enabled: !input` on a state condition:
           # `enabled` is honoured on a script action, and these are nested
           # conditions rather than actions.
+          #
+          # Without the rig's site this stays on `sun.sun`, so an install that
+          # never wires the site keeps the integration's own sunset.
           - alias: "Night only, unless the user images the sun"
             condition: template
             value_template: >
-              {{ not night_only or not is_state('sun.sun', 'above_horizon') }}
+              {% if not night_only %} true
+              {% elif sun_position and sun_position.at_rig %}
+                {{ sun_position.altitude <= -0.833 }}
+              {% else %}
+                {{ not is_state('sun.sun', 'above_horizon') }}
+              {% endif %}
 
           - alias: "Frames really have stopped"
             condition: or
