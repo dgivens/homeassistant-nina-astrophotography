@@ -573,10 +573,9 @@ conditions:
          or trigger.entity_id in rig_reachable }}
 
   # Applies to every arm, the unreachable one included: a rig shut down by day
-  # is unreachable on purpose. Equal bounds are an empty window, which is how
-  # the shipped default leaves it off. A window is checked when the trigger
-  # fires, so a rig that went down inside it and is still down when it closes
-  # is not reported until it next changes state.
+  # is unreachable on purpose. A window is checked when the trigger fires, so a
+  # rig that went down inside it and is still down when it closes is not
+  # reported until it next changes state.
   - alias: "Outside the quiet hours"
     condition: template
     value_template: >
@@ -603,9 +602,11 @@ conditions:
            or not (start <= now() < end if start < end
                    else now() >= start or now() < end) }}
       {% elif mute_mode == 'sun' and lat is number and lon is number %}
-        {# Sunrise is `a` minutes ago or earlier and sunset is `b` minutes away
-           or later exactly when the sun is up at both of those moments. -0.833°
-           is where the sun's upper limb meets the horizon. #}
+        {# Sunrise is `after` minutes ago or earlier and sunset `before`
+           minutes away or later exactly when the sun is up at both moments —
+           provided the two moments are closer together than a night is long,
+           which the inputs' ±180 limits keep true outside high-latitude
+           summer. -0.833° is where the sun's upper limb meets the horizon. #}
         {% set after = mute_after_sunrise_minutes | float(0) %}
         {% set before = mute_before_sunset_minutes | float(0) %}
         {{ not (altitude(-after) | float > -0.833

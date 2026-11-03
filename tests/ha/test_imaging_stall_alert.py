@@ -361,6 +361,19 @@ async def test_quiet_hours_mute_an_unreachable_rig(
     assert (alert(hass) is not None) is alerts
 
 
+async def test_quiet_hours_mute_a_quiet_rig(hass: HomeAssistant, watching) -> None:
+    """The window is a top-level condition, not a gate on one arm."""
+    clock = await watching(
+        mute_mode="fixed", mute_from=_local(-60), mute_until=_local(180)
+    )
+    await start_sequence(hass, clock)
+
+    clock.move_to(T0 + STALLED)
+    await tick(hass, T0 + STALLED)
+
+    assert alert(hass) is None
+
+
 async def test_a_rig_with_a_reachable_sensor_is_reported_through_it(
     hass: HomeAssistant, watching
 ) -> None:
