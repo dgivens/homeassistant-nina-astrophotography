@@ -607,6 +607,24 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
     )
 
 
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("site", "mapped"),
+    [
+        ((0, 0), (None, None)),
+        ((0, -110.2977), (0.0, -110.2977)),
+        ((31.5478, 0), (31.5478, 0.0)),
+    ],
+    ids=["unset", "on-the-equator", "on-the-meridian"],
+)
+def test_a_site_of_zero_zero_is_no_site(site, mapped) -> None:
+    latitude, longitude = site
+    profile = map_profile(
+        {"AstrometrySettings": {"Latitude": latitude, "Longitude": longitude}}
+    )
+    assert (profile.site_latitude, profile.site_longitude) == mapped
+
+
 def test_the_dome_interlocks_map_from_a_captured_profile() -> None:
     """The simulator rig's profile."""
     profile = map_profile(load("simulator_dome_parked_profile.json"))

@@ -134,11 +134,11 @@ blueprint:
         site_latitude:
           name: Site latitude
           description: >-
-            Optional, with the longitude below; recommended for a hosted rig.
-            The rig's "Site latitude" sensor. With both, the sun for night only
-            and for sun quiet hours is placed at the rig instead of at Home
-            Assistant. Until N.I.N.A. reports a site, Home Assistant's location
-            stands in.
+            Optional; recommended for a hosted rig. Pick the rig's "Site
+            latitude" sensor, and its "Site longitude" below. With both, night
+            only and sun quiet hours use the sun where the rig is rather than
+            where Home Assistant is. Until N.I.N.A. reports a site, Home
+            Assistant's location stands in.
           default: []
           selector:
             entity:
@@ -782,8 +782,9 @@ conditions:
           # `enabled` is honoured on a script action, and these are nested
           # conditions rather than actions.
           #
-          # Without the rig's site this stays on `sun.sun`, so an install that
-          # never wires the site keeps the integration's own sunset.
+          # Without the rig's site this reads Home Assistant's `sun.sun`, the
+          # same sunset every other automation on the install sees.
+          # -0.833° is sunset: refraction plus the sun's semidiameter.
           - alias: "Night only, unless the user images the sun"
             condition: template
             value_template: >

@@ -48,6 +48,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   the minute its safety monitor turned safe.
 - **The imaging stall alert names only tonight's error.** An error from
   before the sequence started is left out of the message.
+- **A profile whose site was never set reports no site.** Latitude and
+  longitude of exactly 0°, 0° read `unknown` rather than a point in the Gulf
+  of Guinea, so the sky map falls back to Home Assistant's latitude and the
+  stall alert's sun gates to Home Assistant's location.
 - **The sky map's compass letters match the sky it draws.** The map drew north
   at the bottom under the N at the top, so the scope, the stars and the flip
   label all sat under the opposite letter. It is now a sky chart held

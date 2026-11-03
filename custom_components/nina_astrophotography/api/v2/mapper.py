@@ -860,6 +860,12 @@ def map_livestack_status(wire: dict | str) -> LivestackStatus:
 
 def map_profile(wire: dict) -> ProfileSettings:
     """The allowlisted slice of `/profile/show`."""
+    latitude = _number(wire, "AstrometrySettings", "Latitude")
+    longitude = _number(wire, "AstrometrySettings", "Longitude")
+    # 0°N 0°E is open ocean, so the pair is a site nobody set. Read as one, it
+    # would put the sun hours away from the rig and mute its night-only alerts.
+    if latitude == 0 and longitude == 0:
+        latitude = longitude = None
     return ProfileSettings(
         focal_length=_number(wire, "TelescopeSettings", "FocalLength"),
         pixel_size=_number(wire, "CameraSettings", "PixelSize"),
@@ -874,8 +880,8 @@ def map_profile(wire: dict) -> ProfileSettings:
             wire, "MeridianFlipSettings", "MaxMinutesAfterMeridian"
         ),
         use_side_of_pier=_flag(wire, "MeridianFlipSettings", "UseSideOfPier"),
-        site_latitude=_number(wire, "AstrometrySettings", "Latitude"),
-        site_longitude=_number(wire, "AstrometrySettings", "Longitude"),
+        site_latitude=latitude,
+        site_longitude=longitude,
         site_elevation=_number(wire, "AstrometrySettings", "Elevation"),
         dome_close_on_unsafe=_flag(wire, "DomeSettings", "CloseOnUnsafe"),
         dome_refuse_unsafe_shutter_move=_flag(
