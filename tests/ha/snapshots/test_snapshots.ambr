@@ -640,6 +640,13 @@
     }),
     dict({
       'enabled_default': True,
+      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_id': 'sensor.n_i_n_a_site_longitude',
+      'original_name': 'Site longitude',
+      'unique_id': '01JTESTENTRY0000000000000_site_longitude',
+    }),
+    dict({
+      'enabled_default': True,
       'entity_category': None,
       'entity_id': 'sensor.n_i_n_a_wait_ends_at',
       'original_name': 'Wait ends at',
