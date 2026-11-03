@@ -202,12 +202,15 @@ It also stays quiet in these situations you should know about:
 - **In daylight,** because `night_only` is on by default. Turn it off for solar
   imaging. It uses `sun.sun`; without that entity it doesn't suppress anything.
 
-- **During quiet hours,** if you set them. `mute_mode` picks a daily window,
-  either between two times (which may cross midnight) or from sunrise plus an
-  offset to sunset minus an offset, e.g. 30 and 45 minutes to cover a rig that
-  starts 45 minutes before sunset. The window also covers the unreachable
-  alert, so a rig you shut down by day doesn't report itself lost. Sunrise and
-  sunset are for Home Assistant's own location, not the scope's.
+- **During quiet hours,** if you set them, for a rig you shut down by day.
+  `mute_mode` picks the window: between two times, which may cross midnight,
+  or while the sun is up — from when the rising sun passes one altitude until
+  the setting sun drops below another. The defaults are -12° (the end of
+  nautical twilight) and +3° (roughly 20–30 minutes before sunset). The window
+  covers the unreachable alert too, and a rig still unreachable when it closes
+  is reported then. Fixed times are Home Assistant's local time, and the sun is
+  placed at Home Assistant's location, so for a hosted rig both can be off by
+  the difference between the two sites.
 
 The alert is a persistent notification plus a message to the notify entity you
 choose. It includes how long it has been quiet, the last frame's target and

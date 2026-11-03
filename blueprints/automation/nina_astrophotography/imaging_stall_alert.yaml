@@ -348,17 +348,14 @@ blueprint:
       icon: mdi:weather-sunny-off
       collapsed: true
       description: >-
-        A daily window in which no alert is raised, for a rig you shut down by
-        day and start again before dusk. Unlike the gates on the quiet arm, this
-        one also mutes the unreachable alert, because a rig that is switched off
-        on purpose is unreachable. An alert already raised when the window opens
-        carries on to its end; the window only stops new ones.
+        A daily window in which no new alert is raised, for a rig you shut down
+        by day. It mutes the unreachable alert too: a rig switched off on
+        purpose is unreachable. A rig still unreachable when the window closes
+        is reported then. An alert raised before the window opens runs on to
+        its end.
       input:
         mute_mode:
           name: Mute
-          description: >-
-            Off, between two fixed times, or between sunrise and sunset with an
-            offset on each.
           default: "off"
           selector:
             select:
@@ -368,45 +365,51 @@ blueprint:
                   value: "off"
                 - label: Between two times
                   value: fixed
-                - label: Between sunrise and sunset
+                - label: While the sun is up
                   value: sun
         mute_from:
           name: Mute from
-          description: Between two times only. Local time the window opens.
+          description: >-
+            Between two times only. Home Assistant's local time, which is not
+            the rig's if it is hosted in another time zone.
           default: "08:00:00"
           selector:
             time:
         mute_until:
           name: Mute until
           description: >-
-            Between two times only. Local time the window closes. May be earlier
-            than the start, for a window that crosses midnight.
+            Between two times only. May be earlier than the start, for a window
+            that crosses midnight.
           default: "17:00:00"
           selector:
             time:
-        mute_after_sunrise_minutes:
-          name: Mute from sunrise plus
+        mute_morning_altitude:
+          name: Mute once the rising sun is above
           description: >-
-            Between sunrise and sunset only. Minutes after sunrise the window
-            opens; negative opens it before. Sunrise and sunset are computed
-            for Home Assistant's own location.
-          default: 0
+            While the sun is up only. Twilight ends at -6° (civil), -12°
+            (nautical) and -18° (astronomical). The sun is placed at Home
+            Assistant's location; for a rig hosted far away, sunrise there is
+            about four minutes later per degree of longitude west of it.
+          default: -12
           selector:
             number:
-              min: -180
-              max: 180
-              unit_of_measurement: min
-        mute_before_sunset_minutes:
-          name: Mute until sunset minus
+              min: -18
+              max: 15
+              step: 0.5
+              unit_of_measurement: "°"
+        mute_evening_altitude:
+          name: Unmute once the setting sun is below
           description: >-
-            Between sunrise and sunset only. Minutes before sunset the window
-            closes, which is when you start the rig; negative closes it after.
-          default: 0
+            While the sun is up only. Set it to where the sun is when you start
+            the rig: +3° is roughly 20–30 minutes before sunset at mid
+            latitudes.
+          default: 3
           selector:
             number:
-              min: -180
-              max: 180
-              unit_of_measurement: min
+              min: -18
+              max: 15
+              step: 0.5
+              unit_of_measurement: "°"
 
     notifications:
       name: Notifications
@@ -479,8 +482,8 @@ variables:
   mute_mode: !input mute_mode
   mute_from: !input mute_from
   mute_until: !input mute_until
-  mute_after_sunrise_minutes: !input mute_after_sunrise_minutes
-  mute_before_sunset_minutes: !input mute_before_sunset_minutes
+  mute_morning_altitude: !input mute_morning_altitude
+  mute_evening_altitude: !input mute_evening_altitude
   imaging_quiet_minutes: !input imaging_quiet_minutes
   longest_exposure_seconds: !input longest_exposure_seconds
   grace_minutes: !input grace_minutes
@@ -521,6 +524,21 @@ variables:
     {{ frame is none or frame.state in ['unknown', 'unavailable']
        or now().timestamp() - as_timestamp(frame.state, now().timestamp())
           > sequencer_on_seconds | float(0) }}
+  # The arm a run answers for. The minute tick also re-checks reachability,
+  # because the unreachable triggers fire once: one that lands inside the quiet
+  # hours is dropped, and without this a rig that never came back at dusk
+  # would not be reported all night. It watches the same row, held as long,
+  # as those triggers do.
+  arm: >
+    {% if trigger.id != 'quiet' %}
+      {{ trigger.id }}
+    {% else %}
+      {% set row = expand(rig_reachable) | first | default(none)
+         if rig_reachable else states[sequencer_running] %}
+      {% set down = ['off', 'unavailable'] if rig_reachable else ['unavailable'] %}
+      {{ 'unreachable' if row is not none and row.state in down
+         and (now() - row.last_changed).total_seconds() >= 120 else 'quiet' }}
+    {% endif %}
 
 triggers:
   # N.I.N.A. down, the imaging PC rebooted, the tunnel gone. Nothing the rig
@@ -572,45 +590,39 @@ conditions:
          or not rig_reachable
          or trigger.entity_id in rig_reachable }}
 
-  # Applies to every arm, the unreachable one included: a rig shut down by day
-  # is unreachable on purpose. A window is checked when the trigger fires, so a
-  # rig that went down inside it and is still down when it closes is not
-  # reported until it next changes state.
+  # Applies to every arm, the unreachable one included.
   - alias: "Outside the quiet hours"
     condition: template
     value_template: >
-      {% set lat = state_attr('zone.home', 'latitude') %}
-      {% set lon = state_attr('zone.home', 'longitude') %}
-      {# The sun's altitude, degrees, `minutes` from now (low-precision solar
-         position, good to about a minute of sunrise). #}
-      {% macro altitude(minutes) %}
-        {%- set n = (now().timestamp() + minutes * 60) / 86400 + 2440587.5 - 2451545.0 -%}
-        {%- set rad = pi / 180 -%}
-        {%- set g = ((357.528 + 0.9856003 * n) % 360) * rad -%}
-        {%- set l = (280.460 + 0.9856474 * n) % 360 -%}
-        {%- set sun_lon = (l + 1.915 * sin(g) + 0.020 * sin(2 * g)) * rad -%}
-        {%- set eps = (23.439 - 0.0000004 * n) * rad -%}
-        {%- set dec = asin(sin(eps) * sin(sun_lon)) -%}
-        {%- set ra = atan2(cos(eps) * sin(sun_lon), cos(sun_lon)) -%}
-        {%- set hour_angle = ((18.697374558 + 24.06570982441908 * n) % 24) * 15 * rad + lon * rad - ra -%}
-        {{ asin(sin(lat * rad) * sin(dec) + cos(lat * rad) * cos(dec) * cos(hour_angle)) / rad }}
-      {% endmacro %}
+      {% set lat = state_attr('zone.home', 'latitude') | float(none) %}
+      {% set lon = state_attr('zone.home', 'longitude') | float(none) %}
       {% if mute_mode == 'fixed' %}
         {% set start = today_at(mute_from) %}
         {% set end = today_at(mute_until) %}
-        {{ start == end
-           or not (start <= now() < end if start < end
-                   else now() >= start or now() < end) }}
+        {% if start == end %} true
+        {% elif start < end %} {{ not (start <= now() < end) }}
+        {% else %} {{ end <= now() < start }}
+        {% endif %}
       {% elif mute_mode == 'sun' and lat is number and lon is number %}
-        {# Sunrise is `after` minutes ago or earlier and sunset `before`
-           minutes away or later exactly when the sun is up at both moments —
-           provided the two moments are closer together than a night is long,
-           which the inputs' ±180 limits keep true outside high-latitude
-           summer. -0.833° is where the sun's upper limb meets the horizon. #}
-        {% set after = mute_after_sunrise_minutes | float(0) %}
-        {% set before = mute_before_sunset_minutes | float(0) %}
-        {{ not (altitude(-after) | float > -0.833
-                and altitude(before) | float > -0.833) }}
+        {# The sun's geometric altitude now, from the low-precision solar
+           position (within 0.01° of astral). A negative hour angle is the
+           morning, so it picks which threshold applies. #}
+        {% set rad = pi / 180 %}
+        {% set n = now().timestamp() / 86400 + 2440587.5 - 2451545.0 %}
+        {% set g = ((357.528 + 0.9856003 * n) % 360) * rad %}
+        {% set l = (280.460 + 0.9856474 * n) % 360 %}
+        {% set sun_lon = (l + 1.915 * sin(g) + 0.020 * sin(2 * g)) * rad %}
+        {% set eps = (23.439 - 0.0000004 * n) * rad %}
+        {% set dec = asin(sin(eps) * sin(sun_lon)) %}
+        {% set ra = atan2(cos(eps) * sin(sun_lon), cos(sun_lon)) / rad %}
+        {% set gmst = ((18.697374558 + 24.06570982441908 * n) % 24) * 15 %}
+        {% set hour_angle = (gmst + lon - ra + 180) % 360 - 180 %}
+        {% set sin_alt = sin(lat * rad) * sin(dec)
+           + cos(lat * rad) * cos(dec) * cos(hour_angle * rad) %}
+        {% set altitude = asin([[sin_alt, 1] | min, -1] | max) / rad %}
+        {% set limit = mute_morning_altitude if hour_angle < 0
+           else mute_evening_altitude %}
+        {{ altitude <= limit }}
       {% else %}
         true
       {% endif %}
@@ -630,8 +642,8 @@ conditions:
   - alias: "The gates for the arm that fired"
     condition: or
     conditions:
-      - condition: trigger
-        id: unreachable
+      - condition: template
+        value_template: "{{ arm == 'unreachable' }}"
 
       - alias: "A park is only a stall if the sequencer was still running"
         condition: and
@@ -645,8 +657,8 @@ conditions:
       - alias: "Quiet, with all five gates and a threshold passed"
         condition: and
         conditions:
-          - condition: trigger
-            id: quiet
+          - condition: template
+            value_template: "{{ arm == 'quiet' }}"
 
           - alias: "The sequencer is running — a stopped one is not a stall"
             condition: state
@@ -726,10 +738,10 @@ actions:
       # MORE-indented line, so laying the branches out in a block would put
       # hard line breaks through the middle of a sentence.
       reason: >-
-        {%- if trigger.id == 'unreachable' %}
+        {%- if arm == 'unreachable' %}
         Home Assistant cannot reach N.I.N.A. — it has not answered for at least
         two minutes.
-        {%- elif trigger.id == 'parked' %}
+        {%- elif arm == 'parked' %}
         The mount parked itself while the sequencer was still running.
         {%- elif floored %}
         No frames in the {{ quiet_minutes }} minutes since the sequence started.
@@ -747,7 +759,7 @@ actions:
       # mount field in particular would print "not parked" for a park state
       # nothing can currently read, which is worse than saying nothing.
       detail: >-
-        {%- if trigger.id == 'unreachable' %}
+        {%- if arm == 'unreachable' %}
         Nothing further can be read while the rig is unavailable — the last
         known values in Home Assistant are as stale as the connection.
         {%- else %}
