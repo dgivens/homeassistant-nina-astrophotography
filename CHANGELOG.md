@@ -8,6 +8,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
+- **`sensor.<instance>_site_longitude`** reports the longitude N.I.N.A. is
+  configured for, beside the site latitude, so a rig hosted away from Home
+  Assistant can have its own sun placed.
 - **The imaging stall alert has quiet hours,** for a rig that is shut down
   by day. `mute_mode` mutes new alerts, the unreachable one included,
   between two fixed times or while the sun is up: from when the rising sun

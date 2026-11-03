@@ -27,7 +27,6 @@ FOCUSER_POSITION = "sensor.n_i_n_a_focuser_position"
 SEQUENCE_PROGRESS = "sensor.n_i_n_a_sequence_progress"
 WAIT_ENDS_AT = "sensor.n_i_n_a_wait_ends_at"
 LAST_FRAME_AT = "sensor.n_i_n_a_last_frame_at"
-SITE_LATITUDE = "sensor.n_i_n_a_site_latitude"
 GUIDER_RMS = (
     "sensor.n_i_n_a_guider_rms_total",
     "sensor.n_i_n_a_guider_rms_ra",
@@ -296,27 +295,38 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
 
 
 @pytest.mark.synthetic
-async def test_the_site_latitude_is_the_one_nina_is_configured_for(
-    hass: HomeAssistant, config_entry, rig, set_up_at
+@pytest.mark.parametrize(
+    ("entity", "reading"),
+    [
+        ("sensor.n_i_n_a_site_latitude", "31.5478"),
+        ("sensor.n_i_n_a_site_longitude", "-110.2977"),
+    ],
+    ids=["latitude", "longitude"],
+)
+async def test_the_site_is_the_one_nina_is_configured_for(
+    hass: HomeAssistant, config_entry, rig, set_up_at, entity, reading
 ) -> None:
-    """Where the RIG is, which for a hosted rig is not where Home Assistant is —
-    `nina-sky-map-card` projects its whole star field from this.
+    """Where the RIG is, which for a hosted rig is not where Home Assistant is:
+    the sky map card and the stall alert's sun both read it.
 
     Synthetic in `AstrometrySettings`: it is newer in the capture allowlist than
     the corpus is, so the committed projections carry no site.
     """
     await set_up_at(hass, config_entry, rig, "site_configured")
 
-    assert state_of(hass, SITE_LATITUDE).state == "31.5478"
+    assert state_of(hass, entity).state == reading
 
 
-async def test_a_profile_with_no_site_reports_no_latitude(
-    hass: HomeAssistant, loaded_entry
+@pytest.mark.parametrize(
+    "entity", ["sensor.n_i_n_a_site_latitude", "sensor.n_i_n_a_site_longitude"]
+)
+async def test_a_profile_with_no_site_reports_no_site(
+    hass: HomeAssistant, loaded_entry, entity
 ) -> None:
-    """A card falls back to Home Assistant's own location on `unknown`, so this
-    must not read as a number — 0 is the equator, not a missing site.
+    """Readers fall back to Home Assistant's own location on `unknown`, so this
+    must not read as a number — 0 is a real place, not a missing site.
     """
-    assert state_of(hass, SITE_LATITUDE).state == "unknown"
+    assert state_of(hass, entity).state == "unknown"
 
 
 async def test_the_autofocus_readings_exist_before_a_run_reports(

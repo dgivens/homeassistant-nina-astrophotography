@@ -374,6 +374,9 @@
       "site_latitude": {
         "name": "Site latitude"
       },
+      "site_longitude": {
+        "name": "Site longitude"
+      },
       "sky_brightness": {
         "name": "Sky brightness"
       },
