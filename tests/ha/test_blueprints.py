@@ -89,6 +89,11 @@ OPTIONAL: dict[str, dict[str, object]] = {
         # is still the value worth sending — it is the substitution the
         # default never produces.
         "night_only": False,
+        "mute_mode": "sun",
+        "mute_from": "08:00:00",
+        "mute_until": "17:00:00",
+        "mute_after_sunrise_minutes": 30,
+        "mute_before_sunset_minutes": 45,
         "notify_target": ["notify.phone"],
         "escalate_minutes": 90,
         "escalations": 3,

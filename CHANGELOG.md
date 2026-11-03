@@ -8,6 +8,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
+- **The imaging stall alert has quiet hours.** `mute_mode` mutes it, the
+  unreachable alert included, between two fixed times or between sunrise
+  and sunset with an offset on each (`mute_after_sunrise_minutes`,
+  `mute_before_sunset_minutes`), for a rig that is shut down by day and
+  started again before dusk. The default is off. Sunrise and sunset are
+  computed for Home Assistant's own location.
 - **`binary_sensor.<instance>_mount_meridian_flip`** is `on` while N.I.N.A.
   is in a meridian flip, including the wait before the slew, when it turns
   tracking off and the countdown reads `unknown`. Its `slews_at` attribute

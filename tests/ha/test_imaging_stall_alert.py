@@ -17,7 +17,9 @@ import asyncio
 from datetime import datetime, timedelta
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import sun
 from homeassistant.setup import async_setup_component
+from homeassistant.util import dt as dt_util
 import pytest
 from pytest_homeassistant_custom_component.common import (
     async_fire_time_changed,
@@ -320,6 +322,45 @@ async def test_an_unreachable_rig_reports_only_what_it_knows(
     assert "mount" not in message
 
 
+def _local(offset_minutes: int) -> str:
+    """The wall-clock time `offset_minutes` from T0, in the test's time zone."""
+    moment = dt_util.as_local(T0) + timedelta(minutes=offset_minutes)
+    return moment.strftime("%H:%M:%S")
+
+
+@pytest.mark.parametrize(
+    ("window", "alerts"),
+    [
+        ((-60, 60), False),
+        ((-60, -30), True),
+        ((-30, -60), False),
+        ((60, -60), True),
+        ((0, 0), True),
+    ],
+    ids=["inside", "past", "wrapped-inside", "wrapped-outside", "empty"],
+)
+async def test_quiet_hours_mute_an_unreachable_rig(
+    hass: HomeAssistant, watching, window, alerts
+) -> None:
+    """The unreachable arm has no other gate, and a rig switched off by day is
+    unreachable on purpose.
+    """
+    start, end = window
+    clock = await watching(
+        mute_mode="off" if window == (0, 0) else "fixed",
+        mute_from=_local(start),
+        mute_until=_local(end),
+    )
+    await start_sequence(hass, clock)
+    hass.states.async_set("binary_sensor.rig_sequencer_running", "unavailable")
+    await hass.async_block_till_done()
+
+    clock.move_to(T0 + timedelta(minutes=3))
+    await tick(hass, T0 + timedelta(minutes=3))
+
+    assert (alert(hass) is not None) is alerts
+
+
 async def test_a_rig_with_a_reachable_sensor_is_reported_through_it(
     hass: HomeAssistant, watching
 ) -> None:
@@ -382,3 +423,43 @@ async def test_reminders_stop_at_the_configured_count(
 
     reminders = [c for c in sent if "still stalled" in c.data["title"]]
     assert len(reminders) == escalations
+
+
+@pytest.mark.parametrize(
+    ("event", "offset", "after", "muted"),
+    [
+        ("sunrise", 30, -10, False),
+        ("sunrise", 30, 10, True),
+        ("sunset", -45, -10, True),
+        ("sunset", -45, 10, False),
+    ],
+    ids=["before-opening", "after-opening", "before-closing", "after-closing"],
+)
+async def test_sun_quiet_hours_follow_the_horizon_with_offsets(
+    hass: HomeAssistant, watching, event, offset, after, muted
+) -> None:
+    """The window is sunrise + 30 min to sunset - 45 min; its edges are checked
+    against Home Assistant's own sun times, so a slip in the hand-rolled solar
+    position shows up as a wrong side of an edge.
+    """
+    hass.states.async_set(
+        "zone.home",
+        "0",
+        {"latitude": hass.config.latitude, "longitude": hass.config.longitude},
+    )
+    day = dt_util.as_local(T0).date()
+    edge = sun.get_astral_event_date(hass, event, day) + timedelta(minutes=offset)
+    fires = edge + timedelta(minutes=after)
+    clock = await watching(
+        mute_mode="sun",
+        mute_after_sunrise_minutes=30,
+        mute_before_sunset_minutes=45,
+    )
+    await start_sequence(hass, clock, fires - timedelta(minutes=3))
+    hass.states.async_set("binary_sensor.rig_sequencer_running", "unavailable")
+    await hass.async_block_till_done()
+
+    clock.move_to(fires)
+    await tick(hass, fires)
+
+    assert (alert(hass) is None) is muted

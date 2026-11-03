@@ -193,7 +193,7 @@ no earlier than the sequencer did, so the last frame of the previous night
 doesn't trigger an alert as soon as tonight's sequence starts. All of these
 times are blueprint inputs.
 
-It also stays quiet in two situations you should know about:
+It also stays quiet in these situations you should know about:
 
 - **While conditions are unsafe.** The rig waiting out bad weather is working
   correctly, and `weather_abort.yaml` handles that case. If your rig has a
@@ -201,6 +201,13 @@ It also stays quiet in two situations you should know about:
   alert during every weather hold.
 - **In daylight,** because `night_only` is on by default. Turn it off for solar
   imaging. It uses `sun.sun`; without that entity it doesn't suppress anything.
+
+- **During quiet hours,** if you set them. `mute_mode` picks a daily window,
+  either between two times (which may cross midnight) or from sunrise plus an
+  offset to sunset minus an offset, e.g. 30 and 45 minutes to cover a rig that
+  starts 45 minutes before sunset. The window also covers the unreachable
+  alert, so a rig you shut down by day doesn't report itself lost. Sunrise and
+  sunset are for Home Assistant's own location, not the scope's.
 
 The alert is a persistent notification plus a message to the notify entity you
 choose. It includes how long it has been quiet, the last frame's target and

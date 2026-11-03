@@ -343,6 +343,71 @@ blueprint:
           selector:
             boolean:
 
+    quiet_hours:
+      name: Quiet hours
+      icon: mdi:weather-sunny-off
+      collapsed: true
+      description: >-
+        A daily window in which no alert is raised, for a rig you shut down by
+        day and start again before dusk. Unlike the gates on the quiet arm, this
+        one also mutes the unreachable alert, because a rig that is switched off
+        on purpose is unreachable. An alert already raised when the window opens
+        carries on to its end; the window only stops new ones.
+      input:
+        mute_mode:
+          name: Mute
+          description: >-
+            Off, between two fixed times, or between sunrise and sunset with an
+            offset on each.
+          default: "off"
+          selector:
+            select:
+              mode: dropdown
+              options:
+                - label: Never
+                  value: "off"
+                - label: Between two times
+                  value: fixed
+                - label: Between sunrise and sunset
+                  value: sun
+        mute_from:
+          name: Mute from
+          description: Between two times only. Local time the window opens.
+          default: "08:00:00"
+          selector:
+            time:
+        mute_until:
+          name: Mute until
+          description: >-
+            Between two times only. Local time the window closes. May be earlier
+            than the start, for a window that crosses midnight.
+          default: "17:00:00"
+          selector:
+            time:
+        mute_after_sunrise_minutes:
+          name: Mute from sunrise plus
+          description: >-
+            Between sunrise and sunset only. Minutes after sunrise the window
+            opens; negative opens it before. Sunrise and sunset are computed
+            for Home Assistant's own location.
+          default: 0
+          selector:
+            number:
+              min: -180
+              max: 180
+              unit_of_measurement: min
+        mute_before_sunset_minutes:
+          name: Mute until sunset minus
+          description: >-
+            Between sunrise and sunset only. Minutes before sunset the window
+            closes, which is when you start the rig; negative closes it after.
+          default: 0
+          selector:
+            number:
+              min: -180
+              max: 180
+              unit_of_measurement: min
+
     notifications:
       name: Notifications
       icon: mdi:bell
@@ -411,6 +476,11 @@ variables:
   error_event: !input error_event
   settle_minutes: !input settle_minutes
   night_only: !input night_only
+  mute_mode: !input mute_mode
+  mute_from: !input mute_from
+  mute_until: !input mute_until
+  mute_after_sunrise_minutes: !input mute_after_sunrise_minutes
+  mute_before_sunset_minutes: !input mute_before_sunset_minutes
   imaging_quiet_minutes: !input imaging_quiet_minutes
   longest_exposure_seconds: !input longest_exposure_seconds
   grace_minutes: !input grace_minutes
@@ -501,6 +571,48 @@ conditions:
       {{ trigger.id != 'unreachable'
          or not rig_reachable
          or trigger.entity_id in rig_reachable }}
+
+  # Applies to every arm, the unreachable one included: a rig shut down by day
+  # is unreachable on purpose. Equal bounds are an empty window, which is how
+  # the shipped default leaves it off. A window is checked when the trigger
+  # fires, so a rig that went down inside it and is still down when it closes
+  # is not reported until it next changes state.
+  - alias: "Outside the quiet hours"
+    condition: template
+    value_template: >
+      {% set lat = state_attr('zone.home', 'latitude') %}
+      {% set lon = state_attr('zone.home', 'longitude') %}
+      {# The sun's altitude, degrees, `minutes` from now (low-precision solar
+         position, good to about a minute of sunrise). #}
+      {% macro altitude(minutes) %}
+        {%- set n = (now().timestamp() + minutes * 60) / 86400 + 2440587.5 - 2451545.0 -%}
+        {%- set rad = pi / 180 -%}
+        {%- set g = ((357.528 + 0.9856003 * n) % 360) * rad -%}
+        {%- set l = (280.460 + 0.9856474 * n) % 360 -%}
+        {%- set sun_lon = (l + 1.915 * sin(g) + 0.020 * sin(2 * g)) * rad -%}
+        {%- set eps = (23.439 - 0.0000004 * n) * rad -%}
+        {%- set dec = asin(sin(eps) * sin(sun_lon)) -%}
+        {%- set ra = atan2(cos(eps) * sin(sun_lon), cos(sun_lon)) -%}
+        {%- set hour_angle = ((18.697374558 + 24.06570982441908 * n) % 24) * 15 * rad + lon * rad - ra -%}
+        {{ asin(sin(lat * rad) * sin(dec) + cos(lat * rad) * cos(dec) * cos(hour_angle)) / rad }}
+      {% endmacro %}
+      {% if mute_mode == 'fixed' %}
+        {% set start = today_at(mute_from) %}
+        {% set end = today_at(mute_until) %}
+        {{ start == end
+           or not (start <= now() < end if start < end
+                   else now() >= start or now() < end) }}
+      {% elif mute_mode == 'sun' and lat is number and lon is number %}
+        {# Sunrise is `a` minutes ago or earlier and sunset is `b` minutes away
+           or later exactly when the sun is up at both of those moments. -0.833°
+           is where the sun's upper limb meets the horizon. #}
+        {% set after = mute_after_sunrise_minutes | float(0) %}
+        {% set before = mute_before_sunset_minutes | float(0) %}
+        {{ not (altitude(-after) | float > -0.833
+                and altitude(before) | float > -0.833) }}
+      {% else %}
+        true
+      {% endif %}
 
   # These gates live HERE, not in the actions. A bare condition that fails
   # inside a `choose` branch raises `_ConditionFail`, which Home Assistant
