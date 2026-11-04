@@ -569,9 +569,20 @@ variables:
   # across nights while it stays up, so at 20:00 it still reads last night's
   # 05:00 frame. Ties keep the sequencer, which the list puts first.
   #
-  # The sun's hour angle turns 1° every 240 s, so the time since the evening
-  # threshold is the hour angle past the one where the sun crosses it.
+  # The sun's hour angle turns 1° every 240 s, so the time since it set below
+  # an altitude is the hour angle past the one where it crosses it; empty
+  # where it never gets that high.
   clock: >
+    {% macro since_below(sun, altitude) %}
+      {%- set rad = pi / 180 %}
+      {%- set lat = sun.latitude * rad %}
+      {%- set dec = sun.declination * rad %}
+      {%- set cos_crossing = (sin(altitude * rad) - sin(lat) * sin(dec))
+         / (cos(lat) * cos(dec)) %}
+      {%- if cos_crossing < 1 %}
+        {{- (sun.hour_angle - acos([cos_crossing, -1] | max) / rad) % 360 * 240 }}
+      {%- endif %}
+    {%- endmacro %}
     {% set starts = [{'seconds': sequencer_on_seconds | float(0),
                       'from': 'the sequence started'}] %}
     {% set monitor = expand(safety_unsafe) | first | default(none) %}
@@ -580,7 +591,13 @@ variables:
          'seconds': (now() - monitor.last_changed).total_seconds()}] %}
     {% endif %}
     {% set sun = states['sun.sun'] %}
-    {% if night_only and sun is not none and sun.state == 'below_horizon' %}
+    {% if night_only and sun_position and sun_position.at_rig %}
+      {% set since = since_below(sun_position, -0.833) %}
+      {% if since %}
+        {% set starts = starts + [{'from': 'the sun set',
+           'seconds': since | float(0)}] %}
+      {% endif %}
+    {% elif night_only and sun is not none and sun.state == 'below_horizon' %}
       {% set starts = starts + [{'from': 'the sun set',
          'seconds': (now() - sun.last_changed).total_seconds()}] %}
     {% endif %}
@@ -590,15 +607,10 @@ variables:
       {% set starts = starts + [{'from': 'the quiet hours ended',
          'seconds': (now() - end).total_seconds()}] %}
     {% elif mute_mode == 'sun' and sun_position %}
-      {% set rad = pi / 180 %}
-      {% set lat = sun_position.latitude * rad %}
-      {% set dec = sun_position.declination * rad %}
-      {% set cos_crossing = (sin(mute_evening_altitude * rad)
-         - sin(lat) * sin(dec)) / (cos(lat) * cos(dec)) %}
-      {% if cos_crossing < 1 %}
-        {% set crossing = acos([cos_crossing, -1] | max) / rad %}
+      {% set since = since_below(sun_position, mute_evening_altitude) %}
+      {% if since %}
         {% set starts = starts + [{'from': 'the quiet hours ended',
-           'seconds': (sun_position.hour_angle - crossing) % 360 * 240}] %}
+           'seconds': since | float(0)}] %}
       {% endif %}
     {% endif %}
     {{ starts | sort(attribute='seconds') | first }}

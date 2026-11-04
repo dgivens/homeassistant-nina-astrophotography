@@ -656,3 +656,24 @@ async def test_night_only_reads_the_sun_at_the_rig(
     await tick(hass, T0 + STALLED)
 
     assert (alert(hass) is not None) is alerts
+
+
+@pytest.mark.parametrize("site", SITES)
+@pytest.mark.parametrize(("after", "alerts"), [(-5, False), (5, True)])
+async def test_the_quiet_clock_starts_at_sunset_at_the_rig(
+    hass: HomeAssistant, watching, site, after, alerts
+) -> None:
+    """Checked against astral's sunset there. `sun.sun` reads night throughout,
+    so a clock started by it would alert as soon as the rig's own sun set.
+    """
+    await place(hass, SITES[site])
+    observer = LocationInfo(latitude=SITES[site][0], longitude=SITES[site][1]).observer
+    sunset = time_at_elevation(observer, -0.833, T0.date(), SunDirection.SETTING)
+    clock = await watching(safety_unsafe=[], **SITE)
+    await start_sequence(hass, clock, sunset - LET_WORK)
+    when = sunset + timedelta(minutes=QUIET_MINUTES + after)
+
+    clock.move_to(when)
+    await tick(hass, when)
+
+    assert (alert(hass) is not None) is alerts
