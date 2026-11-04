@@ -511,3 +511,95 @@ async def test_sun_quiet_hours_without_a_location_mute_nothing(
     await tick(hass, noon)
 
     assert alert(hass) is not None
+
+
+# How long the sequence runs before the gate under test lets the rig work.
+LET_WORK = timedelta(hours=1)
+
+
+@pytest.mark.parametrize(
+    ("mute_mode", "reopened", "named"),
+    [
+        ("off", (SAFETY, "on", "off"), "conditions turned safe"),
+        ("off", ("sun.sun", "above_horizon", "below_horizon"), "the sun set"),
+        ("fixed", None, "the quiet hours ended"),
+    ],
+    ids=["conditions turned safe", "the sun set", "the quiet hours ended"],
+)
+@pytest.mark.parametrize(("after", "alerts"), [(-1, False), (1, True)])
+async def test_the_quiet_clock_starts_when_the_last_gate_opens(
+    hass: HomeAssistant, watching, mute_mode, reopened, named, after, alerts
+) -> None:
+    """A gate mutes only while it is shut. A clock running from the sequence's
+    start would alert on the first tick after it opens, before the rig has had
+    a chance to cool, focus and take a frame.
+    """
+    window_ends = LET_WORK // timedelta(minutes=1)
+    clock = await watching(
+        mute_mode=mute_mode, mute_from=_local(-60), mute_until=_local(window_ends)
+    )
+    await start_sequence(hass, clock)
+    clock.move_to(T0 + LET_WORK)
+    if reopened:
+        entity, shut, opened = reopened
+        hass.states.async_set(entity, shut)
+        hass.states.async_set(entity, opened)
+    when = T0 + LET_WORK + timedelta(minutes=QUIET_MINUTES + after)
+
+    clock.move_to(when)
+    await tick(hass, when)
+
+    raised = alert(hass)
+    assert (raised is not None) is alerts
+    if raised:
+        assert f"since {named}" in raised["message"]
+
+
+@pytest.mark.parametrize("site", SITES)
+@pytest.mark.parametrize(("after", "alerts"), [(-2, False), (2, True)])
+async def test_the_quiet_clock_starts_when_the_sun_quiet_hours_end(
+    hass: HomeAssistant, watching, site, after, alerts
+) -> None:
+    """Checked against astral's crossing, as the window's own edges are. With
+    no safety monitor and `night_only` off, no other gate opens near it.
+    """
+    hass.config.latitude, hass.config.longitude = SITES[site]
+    assert await async_setup_component(hass, "zone", {})
+    observer = LocationInfo(latitude=SITES[site][0], longitude=SITES[site][1]).observer
+    dusk = time_at_elevation(observer, 3, T0.date(), SunDirection.SETTING)
+    clock = await watching(
+        mute_mode="sun", mute_evening_altitude=3, night_only=False, safety_unsafe=[]
+    )
+    await start_sequence(hass, clock, dusk - LET_WORK)
+    when = dusk + timedelta(minutes=QUIET_MINUTES + after)
+
+    clock.move_to(when)
+    await tick(hass, when)
+
+    assert (alert(hass) is not None) is alerts
+
+
+@pytest.mark.parametrize(
+    ("raised_at", "reported"),
+    [(T0 - timedelta(days=6), False), (T0 + timedelta(minutes=5), True)],
+    ids=["another night's", "tonight's"],
+)
+async def test_the_alert_names_only_tonights_error(
+    hass: HomeAssistant, watching, raised_at, reported
+) -> None:
+    """The error event holds its last value however old, and a week-old
+    plate-solve failure in a 3am alert reads as tonight's.
+    """
+    error = "event.rig_error"
+    clock = await watching(error_event=[error])
+    await start_sequence(hass, clock)
+    hass.states.async_set(
+        error, raised_at.isoformat(), {"event_type": "platesolve_failed"}
+    )
+
+    clock.move_to(T0 + STALLED)
+    await tick(hass, T0 + STALLED)
+
+    raised = alert(hass)
+    assert raised is not None
+    assert ("platesolve_failed" in raised["message"]) is reported

@@ -36,6 +36,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
+- **The imaging stall alert waits for the rig to be let work.** Its quiet
+  clock starts at the latest of the sequencer starting, conditions turning
+  safe, the sun setting and the quiet hours ending. A rig started before
+  dusk that waited out the twilight under a closed roof was reported stalled
+  the minute its safety monitor turned safe.
+- **The imaging stall alert names only tonight's error.** An error from
+  before the sequence started is left out of the message.
 - **The sky map's compass letters match the sky it draws.** The map drew north
   at the bottom under the N at the top, so the scope, the stars and the flip
   label all sat under the opposite letter. It is now a sky chart held

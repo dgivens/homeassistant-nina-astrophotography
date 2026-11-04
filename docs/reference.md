@@ -189,9 +189,10 @@ period later.
 
 The quiet case doesn't fire while the sequencer is stopped, while the scheduler
 is waiting, for 15 minutes after a wait ends, or in daylight. Its timers start
-no earlier than the sequencer did, so the last frame of the previous night
-doesn't trigger an alert as soon as tonight's sequence starts. All of these
-times are blueprint inputs.
+at the latest of the sequencer starting, conditions turning safe, the sun
+setting and the quiet hours ending. So neither the last frame of the previous
+night nor an hour spent waiting for dark triggers an alert the moment the rig
+is let work. All of these times are blueprint inputs.
 
 It also stays quiet in these situations you should know about:
 
@@ -215,7 +216,8 @@ It also stays quiet in these situations you should know about:
 The alert is a persistent notification plus a message to the notify entity you
 choose. It includes how long it has been quiet, the last frame's target and
 filter, the camera state, temperature and cooler power, the guider, whether the
-mount is parked or at home, autofocus, and the latest error. It repeats every
+mount is parked or at home, autofocus, and the latest error if it came after
+the sequence started. It repeats every
 60 minutes, at most twice (set reminders to 0 to turn this off). When a frame
 arrives or the sequencer stops, it dismisses the notification and says which
 happened. A sequence that finishes looks the same as one stopped by hand, so

@@ -17,7 +17,9 @@ blueprint:
     start window, for moon separation, for a safety loop — so the quiet arm is
     gated hard. It is silent while the scheduler is waiting, for a settling
     period after a wait ends, while conditions are unsafe (the abort blueprint
-    owns that case), and, unless you turn that off, in daylight.
+    owns that case), and, unless you turn that off, in daylight. Its clock
+    starts when the last of those opens, not when the sequence started: a rig
+    that has only just been let work has not stalled.
 
     It cannot see a rig that is imaging but producing garbage. Star count, HFR
     and RMS entities exist for that; it is a different alarm with different
@@ -311,7 +313,8 @@ blueprint:
             The observed worst healthy gap between frames is 31.5 minutes, so
             the 30-minute default leaves real headroom where 5 would not. This
             window also covers "the rig never took a first frame tonight",
-            measured from when the sequencer started.
+            measured from when the sequencer started or, if later, when the
+            last gate opened.
           default: 30
           selector:
             number:
@@ -492,38 +495,103 @@ variables:
   # Added, never multiplied — see the input description.
   stale_after_seconds: >
     {{ longest_exposure_seconds | float(600) + grace_minutes | float(30) * 60 }}
-  # NOTHING may be measured from before the sequencer started. `last_frame_at`
-  # holds the newest frame N.I.N.A. knows of, which survives across nights while
-  # it stays up, so at 20:00 it still reads last night's 05:00 frame — fifteen
-  # hours of "quiet" that has nothing to do with tonight. Every clock below is
-  # floored here, which is what makes a freshly started sequence silent through
-  # cool-down, slew, plate-solve and the first autofocus.
   sequencer_on_seconds: >
     {% set running = states[sequencer_running] %}
     {{ 0 if running is none
        else (now() - running.last_changed).total_seconds() | round(0) }}
+  # The sun's geometric altitude and declination, and its hour angle, negative
+  # in the morning, from the low-precision solar position (within 0.01° of
+  # astral) at Home Assistant's location; `none` without one, which leaves
+  # every sun gate open. Every trigger renders this, so nothing in it may
+  # raise: a render error would block every alert. The range check keeps `inf`
+  # out of `sin`.
+  sun_position: >
+    {% set lat = state_attr('zone.home', 'latitude') | float(none) %}
+    {% set lon = state_attr('zone.home', 'longitude') | float(none) %}
+    {% if lat is number and lon is number
+          and -90 <= lat <= 90 and -360 <= lon <= 360 %}
+      {% set rad = pi / 180 %}
+      {% set n = now().timestamp() / 86400 + 2440587.5 - 2451545.0 %}
+      {% set g = ((357.528 + 0.9856003 * n) % 360) * rad %}
+      {% set l = (280.460 + 0.9856474 * n) % 360 %}
+      {% set sun_lon = (l + 1.915 * sin(g) + 0.020 * sin(2 * g)) * rad %}
+      {% set eps = (23.439 - 0.0000004 * n) * rad %}
+      {% set dec = asin(sin(eps) * sin(sun_lon)) %}
+      {% set ra = atan2(cos(eps) * sin(sun_lon), cos(sun_lon)) / rad %}
+      {% set gmst = ((18.697374558 + 24.06570982441908 * n) % 24) * 15 %}
+      {% set hour_angle = (gmst + lon - ra + 180) % 360 - 180 %}
+      {% set sin_alt = sin(lat * rad) * sin(dec)
+         + cos(lat * rad) * cos(dec) * cos(hour_angle * rad) %}
+      {{ {'altitude': asin([[sin_alt, 1] | min, -1] | max) / rad,
+          'declination': dec / rad, 'hour_angle': hour_angle,
+          'latitude': lat} }}
+    {% else %}
+      {{ none }}
+    {% endif %}
+  # Where the quiet clock starts: the latest of the sequencer starting and each
+  # gate opening — conditions turning safe, the sun setting, the quiet hours
+  # ending. A gate mutes only while it is shut, so a clock running from before
+  # it opened alerts on the first tick after, however briefly the rig has been
+  # free to work. NOTHING may be measured from before the sequencer started:
+  # `last_frame_at` holds the newest frame N.I.N.A. knows of, which survives
+  # across nights while it stays up, so at 20:00 it still reads last night's
+  # 05:00 frame. Ties keep the sequencer, which the list puts first.
+  #
+  # The sun's hour angle turns 1° every 240 s, so the time since the evening
+  # threshold is the hour angle past the one where the sun crosses it.
+  clock: >
+    {% set starts = [{'seconds': sequencer_on_seconds | float(0),
+                      'from': 'the sequence started'}] %}
+    {% set monitor = expand(safety_unsafe) | first | default(none) %}
+    {% if monitor is not none and monitor.state == 'off' %}
+      {% set starts = starts + [{'from': 'conditions turned safe',
+         'seconds': (now() - monitor.last_changed).total_seconds()}] %}
+    {% endif %}
+    {% set sun = states['sun.sun'] %}
+    {% if night_only and sun is not none and sun.state == 'below_horizon' %}
+      {% set starts = starts + [{'from': 'the sun set',
+         'seconds': (now() - sun.last_changed).total_seconds()}] %}
+    {% endif %}
+    {% if mute_mode == 'fixed' and mute_from != mute_until %}
+      {% set end = today_at(mute_until) %}
+      {% set end = end - timedelta(days=1) if end > now() else end %}
+      {% set starts = starts + [{'from': 'the quiet hours ended',
+         'seconds': (now() - end).total_seconds()}] %}
+    {% elif mute_mode == 'sun' and sun_position %}
+      {% set rad = pi / 180 %}
+      {% set lat = sun_position.latitude * rad %}
+      {% set dec = sun_position.declination * rad %}
+      {% set cos_crossing = (sin(mute_evening_altitude * rad)
+         - sin(lat) * sin(dec)) / (cos(lat) * cos(dec)) %}
+      {% if cos_crossing < 1 %}
+        {% set crossing = acos([cos_crossing, -1] | max) / rad %}
+        {% set starts = starts + [{'from': 'the quiet hours ended',
+           'seconds': (sun_position.hour_angle - crossing) % 360 * 240}] %}
+      {% endif %}
+    {% endif %}
+    {{ starts | sort(attribute='seconds') | first }}
   # How long the rig has been quiet: time since the last frame, floored at the
-  # sequencer's own uptime. With no frame at all it IS that uptime — "the rig
-  # never took a first frame tonight" is a stall, and testing only for a value
-  # would make this blueprint mute for exactly that case.
+  # clock. With no frame at all it IS the clock — "the rig never took a first
+  # frame tonight" is a stall, and testing only for a value would make this
+  # blueprint mute for exactly that case.
   quiet_seconds: >
     {% set frame = states[last_frame_at] %}
     {% if frame is not none and frame.state not in ['unknown', 'unavailable'] %}
       {{ [now().timestamp() - as_timestamp(frame.state, now().timestamp()),
-          sequencer_on_seconds | float(0)] | min | round(0) }}
+          clock.seconds] | min | round(0) }}
     {% else %}
-      {{ sequencer_on_seconds | float(0) | round(0) }}
+      {{ clock.seconds | round(0) }}
     {% endif %}
   # Whether the floor is what `quiet_seconds` ended up measuring. The first
-  # alert of a night usually reports the sequencer's uptime, not the age of a
-  # frame — `last_frame_at` may still hold last night's — and a message that
-  # called that figure a frame age would have a reader at 3am believing the rig
-  # went quiet minutes ago rather than hours.
+  # alert of a night usually reports the clock, not the age of a frame —
+  # `last_frame_at` may still hold last night's — and a message that called
+  # that figure a frame age would have a reader at 3am believing the rig went
+  # quiet minutes ago rather than hours.
   floored: >
     {% set frame = states[last_frame_at] %}
     {{ frame is none or frame.state in ['unknown', 'unavailable']
        or now().timestamp() - as_timestamp(frame.state, now().timestamp())
-          > sequencer_on_seconds | float(0) }}
+          > clock.seconds }}
   # The arm a run answers for. The minute tick also re-checks reachability,
   # because the unreachable triggers fire once: one that lands inside the quiet
   # hours is dropped, and without this a rig that never came back at dusk
@@ -594,8 +662,6 @@ conditions:
   - alias: "Outside the quiet hours"
     condition: template
     value_template: >
-      {% set lat = state_attr('zone.home', 'latitude') | float(none) %}
-      {% set lon = state_attr('zone.home', 'longitude') | float(none) %}
       {% if mute_mode == 'fixed' %}
         {% set start = today_at(mute_from) %}
         {% set end = today_at(mute_until) %}
@@ -603,26 +669,9 @@ conditions:
         {% elif start < end %} {{ not (start <= now() < end) }}
         {% else %} {{ end <= now() < start }}
         {% endif %}
-      {% elif mute_mode == 'sun' and lat is number and lon is number %}
-        {# The sun's geometric altitude now, from the low-precision solar
-           position (within 0.01° of astral). A negative hour angle is the
-           morning, so it picks which threshold applies. #}
-        {% set rad = pi / 180 %}
-        {% set n = now().timestamp() / 86400 + 2440587.5 - 2451545.0 %}
-        {% set g = ((357.528 + 0.9856003 * n) % 360) * rad %}
-        {% set l = (280.460 + 0.9856474 * n) % 360 %}
-        {% set sun_lon = (l + 1.915 * sin(g) + 0.020 * sin(2 * g)) * rad %}
-        {% set eps = (23.439 - 0.0000004 * n) * rad %}
-        {% set dec = asin(sin(eps) * sin(sun_lon)) %}
-        {% set ra = atan2(cos(eps) * sin(sun_lon), cos(sun_lon)) / rad %}
-        {% set gmst = ((18.697374558 + 24.06570982441908 * n) % 24) * 15 %}
-        {% set hour_angle = (gmst + lon - ra + 180) % 360 - 180 %}
-        {% set sin_alt = sin(lat * rad) * sin(dec)
-           + cos(lat * rad) * cos(dec) * cos(hour_angle * rad) %}
-        {% set altitude = asin([[sin_alt, 1] | min, -1] | max) / rad %}
-        {% set limit = mute_morning_altitude if hour_angle < 0
-           else mute_evening_altitude %}
-        {{ altitude <= limit }}
+      {% elif mute_mode == 'sun' and sun_position %}
+        {{ sun_position.altitude <= (mute_morning_altitude
+           if sun_position.hour_angle < 0 else mute_evening_altitude) }}
       {% else %}
         true
       {% endif %}
@@ -712,15 +761,15 @@ conditions:
               # `last_changed` alone: `imaging` is off all day, so at 20:01 it
               # has been off for hours and the gate would be satisfied the
               # instant the sequencer started — an alert raised before a first
-              # frame is physically possible. Floored at the sequencer's
-              # uptime, the clock starts when the night does.
+              # frame is physically possible. Floored at the clock, it starts
+              # when the rig is let work.
               - alias: "Nothing has been arriving for the quiet period"
                 condition: template
                 value_template: >
                   {% set active = states[imaging] %}
                   {{ active is not none and active.state == 'off'
                      and [(now() - active.last_changed).total_seconds(),
-                          sequencer_on_seconds | float(0)] | min
+                          clock.seconds] | min
                          > imaging_quiet_minutes | float(20) * 60 }}
               - alias: "No frame within one exposure plus the grace"
                 condition: template
@@ -744,7 +793,7 @@ actions:
         {%- elif arm == 'parked' %}
         The mount parked itself while the sequencer was still running.
         {%- elif floored %}
-        No frames in the {{ quiet_minutes }} minutes since the sequence started.
+        No frames in the {{ quiet_minutes }} minutes since {{ clock.from }}.
         {%- else %}
         No frames for {{ quiet_minutes }} minutes.
         {%- endif %}
@@ -758,6 +807,9 @@ actions:
       # `unavailable`, so the line would be a row of the same word — and the
       # mount field in particular would print "not parked" for a park state
       # nothing can currently read, which is worse than saying nothing.
+      #
+      # The error event holds its last value until another arrives, however
+      # old, so one from before the sequence started is left out.
       detail: >-
         {%- if arm == 'unreachable' %}
         Nothing further can be read while the rig is unavailable — the last
@@ -786,8 +838,9 @@ actions:
         {%- if flip %} · flip {{ flip.state }}{% endif %}
         {%- if af %} · autofocus failed {{ af.state }}{% endif %}
         {%- if safety %} · safety monitor connected {{ safety.state }}{% endif %}
-        {%- if err %} · last error {{ err.attributes.event_type | default('none') }}
-        at {{ err.state }}{% endif %}
+        {%- set started = now().timestamp() - sequencer_on_seconds | float(0) %}
+        {%- if err and as_timestamp(err.state, 0) >= started %} · last error
+        {{ err.attributes.event_type | default('none') }} at {{ err.state }}{% endif %}
         {%- endif %}
 
   - alias: "Raise the alert"
