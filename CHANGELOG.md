@@ -8,9 +8,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
-- **The integration sets up on Home Assistant 2026.11.** Setup failed with
-  `TypeError: unsupported operand type(s) for |: 'DeviceInfo' and 'dict'`,
-  as `DeviceInfo` is no longer a dict.
+- **The integration sets up on Home Assistant 2026.11.** Setup failed on
+  that release with
+  `TypeError: unsupported operand type(s) for |: 'DeviceInfo' and 'dict'`.
 
 ## [2.4.0] - 2026-11-05
 

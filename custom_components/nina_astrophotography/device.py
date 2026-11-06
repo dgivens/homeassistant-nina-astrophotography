@@ -155,6 +155,7 @@ def hub_device_info(
         model="Advanced API",
         entry_type=DeviceEntryType.SERVICE,
     )
+    # `update`, not `|`: from Home Assistant 2026.11 `DeviceInfo` is not a dict.
     info.update(
         _present(
             sw_version=version.nina_version,
@@ -257,9 +258,6 @@ def kind_of(entry_id: str, device: dr.DeviceEntry) -> str | None:
 def _present(**fields: str | None) -> DeviceInfo:
     """The fields that carry a value. String-valued keys only: the cast checks
     nothing.
-
-    Merged with `update`, not `|`: `DeviceInfo` is a dataclass, not a dict,
-    from Home Assistant 2026.11.
     """
     return cast(
         DeviceInfo,
