@@ -18,7 +18,7 @@ import { RigEntities } from "./nina-entity-resolver.js";
 import { interval, inUnit, quantity, quantityIn, safe, shown } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
 
-const VERSION = "2.3.0";
+const VERSION = "2.4.0";
 
 // How far the focuser temperature may drift from the run's before the card
 // flags it, when neither `temperature_delta` nor the sequence's "AF After

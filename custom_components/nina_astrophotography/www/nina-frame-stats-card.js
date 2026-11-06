@@ -17,7 +17,7 @@ import { RigEntities } from "./nina-entity-resolver.js";
 import { quantityIn, safe, shown } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
 
-const VERSION = "2.3.0";
+const VERSION = "2.4.0";
 
 // A filter keeps its colour from night to night, whichever others the session
 // used: the chips are the charts' legend, and an imager reads R as red. The
