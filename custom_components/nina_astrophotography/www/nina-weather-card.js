@@ -16,7 +16,10 @@
  * unit Home Assistant shows the reading in:
  *   dew_margin: 3          # dew alert while the air is within this of its dew point
  *   wind_warn: 8           # and wind_danger: 12
- *   show_sky_brightness: false   # leave out the sky brightness cell
+ *
+ * The sky brightness cell can be left out, for a station that reads 0 lx all
+ * night:
+ *   show_sky_brightness: false
  *
  * A reading whose entity is disabled, or that the station never reports, has
  * no cell at all; one that is merely unknown or unavailable shows a dash.
@@ -415,6 +418,22 @@ class NinaWeatherCard extends HTMLElement {
       has(channels.windDir) && windRow("Direction",
         windDir !== null ? windDir.toFixed(0) + "° " + degToCompass(windDir) : "—"),
     ].filter(Boolean);
+    const atmosphere = grid("Atmosphere", [
+      has(channels.temp) && qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > L.tempHigh, tempC !== null && tempC < L.tempLow),
+      has(channels.humid) && cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > L.humidWarn, humid !== null && humid > L.humidDanger),
+      has(channels.dewPt) && qcell("🌫", "Dew Point", dewPt, 1, dewThreat, false),
+      has(channels.press) && qcell("📊", "Pressure", press, 1, false, false, press === null),
+    ]);
+    const skyConditions = grid("Sky conditions", [
+      has(channels.cloud) && cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > L.cloudWarn, cloud !== null && cloud > L.cloudDanger, cloud === null),
+      has(channels.rain) && qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null),
+      has(channels.skyT) && qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null),
+      has(channels.seeing) && cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > L.seeingWarn, seeing !== null && seeing > L.seeingDanger, seeing === null),
+      this._showSkyBrightness && has(channels.skyB) && qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null),
+    ]);
+    // A station that names itself before any of its channels has a reading:
+    // every channel is created on its first one.
+    const nothingShown = !atmosphere && !windRows.length && !skyConditions && skyQ === null;
 
     // The margin as printed: the difference of the two shown numbers, so
     // 20.54/20.46 °C both showing 20.5 reads "at" rather than "within 0.1".
@@ -461,18 +480,20 @@ class NinaWeatherCard extends HTMLElement {
         ` : `
         <div class="body${link.stale ? " stale" : ""}">
 
+          ${nothingShown ? `
+            <div class="not-connected">
+              <div>No readings from this station</div>
+              <div class="hint">A reading appears once the station reports it, unless its entity is disabled.</div>
+            </div>
+          ` : ""}
+
           ${dewThreat ? `
             <div class="dew-alert">
               ⚠ Dew alert — ${dewWhere}
             </div>
           ` : ""}
 
-          ${grid("Atmosphere", [
-            has(channels.temp) && qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > L.tempHigh, tempC !== null && tempC < L.tempLow),
-            has(channels.humid) && cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > L.humidWarn, humid !== null && humid > L.humidDanger),
-            has(channels.dewPt) && qcell("🌫", "Dew Point", dewPt, 1, dewThreat, false),
-            has(channels.press) && qcell("📊", "Pressure", press, 1, false, false, press === null),
-          ])}
+          ${atmosphere}
 
           ${windRows.length ? `
           <div class="section-title">Wind</div>
@@ -485,13 +506,7 @@ class NinaWeatherCard extends HTMLElement {
           </div>
           ` : ""}
 
-          ${grid("Sky conditions", [
-            has(channels.cloud) && cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > L.cloudWarn, cloud !== null && cloud > L.cloudDanger, cloud === null),
-            has(channels.rain) && qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null),
-            has(channels.skyT) && qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null),
-            has(channels.seeing) && cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > L.seeingWarn, seeing !== null && seeing > L.seeingDanger, seeing === null),
-            this._showSkyBrightness && has(channels.skyB) && qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null),
-          ])}
+          ${skyConditions}
 
           <!-- Sky quality -->
           ${skyQ !== null ? `
@@ -605,8 +620,9 @@ class NinaWeatherCard extends HTMLElement {
       {
         name: "show_sky_brightness",
         label: "Show sky brightness",
-        helper: "Turn off for a station that measures only whole lux: "
-          + "it reads 0 all night.",
+        helper: "Turn off if it reads 0 lx all night: a station that measures only "
+          + "whole lux cannot see a night sky, about 0.001 lx moonless and 0.25 lx "
+          + "under a full moon.",
         default: true,
         selector: { boolean: {} },
       },

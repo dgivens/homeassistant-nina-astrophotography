@@ -17,8 +17,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **The weather card leaves out a reading it has no entity for** (#212): one
   disabled in Home Assistant, or a channel the station never reports, such as
-  cloud cover on a station without a cloud sensor. The wind section goes with
-  its last reading. A reading that is only `unknown` or `unavailable` still
+  cloud cover on a station without a cloud sensor. The wind section is left
+  out when none of speed, gust or direction has an entity. A reading that is only `unknown` or `unavailable` still
   shows `—`.
 
 - **The reference covers a contrast-detection autofocus run** (#PR):

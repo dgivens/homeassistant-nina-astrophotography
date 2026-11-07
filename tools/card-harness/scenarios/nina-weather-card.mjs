@@ -172,6 +172,18 @@ export const scenarios = {
         .build(),
   },
 
+  // The source names its station, but no channel has an entity: a station's
+  // first poll all `"NaN"`, or every channel disabled. A placeholder stands in
+  // for the readings.
+  station_unread: {
+    hass: (dump) => {
+      const channels = Object.keys(dump[UP].states)
+        .filter((id) => id.startsWith("sensor.n_i_n_a_weather_") && id !== SOURCE)
+        .map((id) => id.slice("sensor.n_i_n_a_".length));
+      return rig(dump, UP).without(...channels).build();
+    },
+  },
+
   // `unsourced` on a poll where every channel came back `"NaN"`: each reads
   // `unknown`, which an available channel only does while its station is
   // connected. Must still read as connected, with every cell empty.
