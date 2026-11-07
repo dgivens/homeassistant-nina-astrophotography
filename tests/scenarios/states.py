@@ -166,7 +166,11 @@ def _with_site(state: State, **settings: float) -> State:
 
 
 def _with_profile(state: State, section: str, **settings: float) -> State:
-    """A copy of `state` whose profile has `settings` set in `section`."""
+    """A copy of `state` whose profile has `settings` set in `section`.
+
+    For moving a captured setting; the key set stays the wire's. `_with_site`
+    is the exception, its section being absent from every capture.
+    """
     envelope = state["/profile/show?active=true"]
     response = envelope["Response"]
     response = {**response, section: {**response.get(section, {}), **settings}}
@@ -209,8 +213,9 @@ def _hyperbolic_autofocus(name: str) -> dict:
     }
 
 
-def _rejected_autofocus(name: str, *, r_squared: float) -> dict:
-    """The captured autofocus report with its curve fit degraded.
+def _degraded_autofocus(name: str, *, r_squared: float) -> dict:
+    """The captured autofocus report with its curve fit degraded, whether or
+    not the profile's threshold rejects it.
 
     N.I.N.A. writes the report per ATTEMPT, before the verdict, so a run it
     REJECTED is on the wire looking exactly like a good one bar its R² (§4.4).
@@ -569,7 +574,7 @@ STATES: dict[str, State] = {
     # — the only evidence is the report's own R².
     "autofocus_rejected_on_r_squared": {
         **_IMAGING_GUIDING,
-        "/equipment/focuser/last-af": _rejected_autofocus(
+        "/equipment/focuser/last-af": _degraded_autofocus(
             "imaging_guiding_last_af.json", r_squared=0.42
         ),
     },
@@ -578,7 +583,7 @@ STATES: dict[str, State] = {
     "autofocus_fitted_badly_with_the_r_squared_check_off": _with_profile(
         {
             **_IMAGING_GUIDING,
-            "/equipment/focuser/last-af": _rejected_autofocus(
+            "/equipment/focuser/last-af": _degraded_autofocus(
                 "imaging_guiding_last_af.json", r_squared=-0.3
             ),
         },

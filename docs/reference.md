@@ -310,7 +310,7 @@ Things to know when reading them:
   say whether N.I.N.A. accepted it. Use
   `binary_sensor.<instance>_focuser_autofocus_failed`, which compares R² with
   your profile's `RSquaredThreshold`.
-- **A `RSquaredThreshold` of 0 or below turns the R² check off**, in N.I.N.A.
+- **An `RSquaredThreshold` of 0 or below turns the R² check off**, in N.I.N.A.
   and in Hocus Focus alike, so `autofocus_failed` rejects no run. N.I.N.A.'s
   own autofocus then measures HFR at the new position instead, and rejects a
   run more than 15% worse than where it started. That measurement is not in

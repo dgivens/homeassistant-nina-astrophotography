@@ -628,7 +628,7 @@ def test_a_site_of_zero_zero_is_no_site(site, mapped) -> None:
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
     ("wire", "mapped"),
-    [(0.7, 0.7), (0, None), (-0.5, None)],
+    [(0.05, 0.05), (0, None), (-0.5, None)],
     ids=["gated", "zero", "negative"],
 )
 def test_an_r_squared_threshold_of_zero_or_below_is_no_threshold(wire, mapped) -> None:
