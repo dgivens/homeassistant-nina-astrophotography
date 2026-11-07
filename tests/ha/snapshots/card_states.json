@@ -1035,6 +1035,7 @@
        "exposure": 600.0,
        "filter": "O",
        "hfr": 1.4287312385175786,
+       "max": 65535.0,
        "mean": 525.547224000569,
        "stars": 4847,
        "target": "Lobster & Bubble"
@@ -1044,6 +1045,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.7013972198869864,
+       "max": 65535.0,
        "mean": 801.3449311059233,
        "stars": 12594,
        "target": "Wizard Nebula"
@@ -1053,6 +1055,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.7774957255189483,
+       "max": 65535.0,
        "mean": 792.538065514298,
        "stars": 12278,
        "target": "Wizard Nebula"
@@ -1062,6 +1065,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.8911813042358785,
+       "max": 65535.0,
        "mean": 785.0345862783371,
        "stars": 11788,
        "target": "Wizard Nebula"
@@ -1071,6 +1075,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.4801701907077551,
+       "max": 65535.0,
        "mean": 771.2575947674903,
        "stars": 11750,
        "target": "Wizard Nebula"
@@ -1080,6 +1085,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.4827834278430945,
+       "max": 65535.0,
        "mean": 768.1140644699791,
        "stars": 12003,
        "target": "Wizard Nebula"
@@ -1089,6 +1095,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.4977043823029241,
+       "max": 65535.0,
        "mean": 1036.2140051866406,
        "stars": 6174,
        "target": "Dark Shark Nebula"
@@ -1098,6 +1105,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.4897567791449964,
+       "max": 65535.0,
        "mean": 1028.5769539739306,
        "stars": 6148,
        "target": "Dark Shark Nebula"
@@ -1107,6 +1115,7 @@
        "exposure": 300.0,
        "filter": "B",
        "hfr": 1.5127610050034666,
+       "max": 65535.0,
        "mean": 733.7569938089001,
        "stars": 3761,
        "target": "Dark Shark Nebula"
@@ -1116,6 +1125,7 @@
        "exposure": 300.0,
        "filter": "B",
        "hfr": 1.4920380841597314,
+       "max": 65535.0,
        "mean": 729.5857542229605,
        "stars": 3794,
        "target": "Dark Shark Nebula"
@@ -1125,6 +1135,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.525112117642561,
+       "max": 65535.0,
        "mean": 1029.626640256683,
        "stars": 6408,
        "target": "Dark Shark Nebula"
@@ -1134,6 +1145,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.5496147396450335,
+       "max": 65535.0,
        "mean": 1029.456959598719,
        "stars": 6615,
        "target": "Dark Shark Nebula"
@@ -1143,6 +1155,7 @@
        "exposure": 300.0,
        "filter": "B",
        "hfr": 1.4598080230116257,
+       "max": 65535.0,
        "mean": 726.314761374981,
        "stars": 4060,
        "target": "Dark Shark Nebula"
@@ -1152,6 +1165,7 @@
        "exposure": 300.0,
        "filter": "B",
        "hfr": 1.4704588830342908,
+       "max": 65535.0,
        "mean": 724.8957571786957,
        "stars": 4230,
        "target": "Dark Shark Nebula"
@@ -1161,6 +1175,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.6417261289403506,
+       "max": 65535.0,
        "mean": 1030.4278147934542,
        "stars": 6816,
        "target": "Dark Shark Nebula"
@@ -1170,6 +1185,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.5079865954026603,
+       "max": 65535.0,
        "mean": 1019.6780208363995,
        "stars": 6548,
        "target": "Dark Shark Nebula"
@@ -1179,6 +1195,7 @@
        "exposure": 300.0,
        "filter": "B",
        "hfr": 1.6255561003236236,
+       "max": 65535.0,
        "mean": 726.9481671682831,
        "stars": 3957,
        "target": "Dark Shark Nebula"
@@ -1188,6 +1205,7 @@
        "exposure": 300.0,
        "filter": "B",
        "hfr": 1.5968104827760683,
+       "max": 65535.0,
        "mean": 727.9487950320348,
        "stars": 3796,
        "target": "Dark Shark Nebula"
@@ -1197,6 +1215,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.4819969730012468,
+       "max": 65535.0,
        "mean": 1030.663469474983,
        "stars": 6276,
        "target": "Dark Shark Nebula"
@@ -1206,6 +1225,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.4865543469065734,
+       "max": 65535.0,
        "mean": 1026.7353855149356,
        "stars": 6357,
        "target": "Dark Shark Nebula"
@@ -1215,6 +1235,7 @@
        "exposure": 300.0,
        "filter": "B",
        "hfr": 1.5333216343652618,
+       "max": 65535.0,
        "mean": 725.8770664467036,
        "stars": 3936,
        "target": "Dark Shark Nebula"
@@ -1224,6 +1245,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.5027673509169204,
+       "max": 65535.0,
        "mean": 1031.3623193521544,
        "stars": 6542,
        "target": "Dark Shark Nebula"
@@ -1233,6 +1255,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.506467822010592,
+       "max": 65535.0,
        "mean": 1034.0881388941013,
        "stars": 6562,
        "target": "Dark Shark Nebula"
@@ -1242,6 +1265,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.5205542686539038,
+       "max": 65535.0,
        "mean": 1036.8393967678853,
        "stars": 6633,
        "target": "Dark Shark Nebula"
@@ -1251,6 +1275,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.5032223302696406,
+       "max": 65535.0,
        "mean": 1035.4679018741936,
        "stars": 6580,
        "target": "Dark Shark Nebula"
@@ -1260,6 +1285,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.5164829288685995,
+       "max": 65535.0,
        "mean": 1035.8347499169083,
        "stars": 6614,
        "target": "Dark Shark Nebula"
@@ -1269,6 +1295,7 @@
        "exposure": 180.0,
        "filter": "L",
        "hfr": 1.5441758679169437,
+       "max": 65535.0,
        "mean": 1038.9288739063168,
        "stars": 6736,
        "target": "Dark Shark Nebula"
@@ -1278,6 +1305,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.500943775605248,
+       "max": 65535.0,
        "mean": 710.5743705801949,
        "stars": 5119,
        "target": "Dark Shark Nebula"
@@ -1287,6 +1315,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.515065354808976,
+       "max": 65535.0,
        "mean": 712.8277270948926,
        "stars": 5295,
        "target": "Dark Shark Nebula"
@@ -1296,6 +1325,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.5390213057877216,
+       "max": 65535.0,
        "mean": 713.6667390269868,
        "stars": 5358,
        "target": "Dark Shark Nebula"
@@ -1305,6 +1335,7 @@
        "exposure": 300.0,
        "filter": "R",
        "hfr": 1.469360161473101,
+       "max": 65535.0,
        "mean": 718.4551208877263,
        "stars": 4799,
        "target": "Dark Shark Nebula"
@@ -1314,6 +1345,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4879714884712043,
+       "max": 65535.0,
        "mean": 524.0029992739439,
        "stars": 5880,
        "target": "NGC 281"
@@ -1323,6 +1355,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.5046228174836611,
+       "max": 65535.0,
        "mean": 528.8062754794178,
        "stars": 5505,
        "target": "NGC 281"
@@ -1332,6 +1365,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.5194240793577305,
+       "max": 65535.0,
        "mean": 534.1819763933654,
        "stars": 5274,
        "target": "NGC 281"
@@ -1341,6 +1375,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.525784767378304,
+       "max": 65535.0,
        "mean": 538.2210569067926,
        "stars": 5038,
        "target": "NGC 281"
@@ -1350,6 +1385,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.5219324820383204,
+       "max": 65535.0,
        "mean": 541.4867347206279,
        "stars": 4765,
        "target": "NGC 281"
@@ -1359,6 +1395,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.5327020065168409,
+       "max": 65535.0,
        "mean": 543.42758935733,
        "stars": 4702,
        "target": "NGC 281"
@@ -1368,6 +1405,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4525867335896483,
+       "max": 65535.0,
        "mean": 545.0458319842426,
        "stars": 4132,
        "target": "NGC 281"
@@ -1377,6 +1415,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4431592637693726,
+       "max": 65535.0,
        "mean": 545.8051988513719,
        "stars": 4019,
        "target": "NGC 281"
@@ -1386,6 +1425,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4349362588038816,
+       "max": 65535.0,
        "mean": 545.6360500494258,
        "stars": 3972,
        "target": "NGC 281"
@@ -1395,6 +1435,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4368966916927637,
+       "max": 65535.0,
        "mean": 545.886599612259,
        "stars": 3886,
        "target": "NGC 281"
@@ -1404,6 +1445,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4387331686627034,
+       "max": 65535.0,
        "mean": 546.7955797962628,
        "stars": 3808,
        "target": "NGC 281"
@@ -1413,6 +1455,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4358612143243517,
+       "max": 65535.0,
        "mean": 546.7804444548692,
        "stars": 3758,
        "target": "NGC 281"
@@ -1422,6 +1465,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4431177726242659,
+       "max": 65535.0,
        "mean": 547.0275154716176,
        "stars": 3896,
        "target": "NGC 281"
@@ -1431,6 +1475,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4545141938846564,
+       "max": 65535.0,
        "mean": 547.3086148103791,
        "stars": 4005,
        "target": "NGC 281"
@@ -1440,6 +1485,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.462737541620279,
+       "max": 65535.0,
        "mean": 547.8899740254046,
        "stars": 3993,
        "target": "NGC 281"
@@ -1449,6 +1495,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4774146328732825,
+       "max": 65535.0,
        "mean": 547.3009908764675,
        "stars": 4143,
        "target": "NGC 281"
@@ -1458,6 +1505,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4983375210460097,
+       "max": 65535.0,
        "mean": 547.1878245866263,
        "stars": 4327,
        "target": "NGC 281"
@@ -1467,6 +1515,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.5291442183845172,
+       "max": 65535.0,
        "mean": 547.923081133089,
        "stars": 4453,
        "target": "NGC 281"
@@ -1476,6 +1525,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.5275410873303297,
+       "max": 65535.0,
        "mean": 548.1816649527083,
        "stars": 4561,
        "target": "NGC 281"
@@ -1485,6 +1535,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.5017368522768233,
+       "max": 65535.0,
        "mean": 548.0636847852616,
        "stars": 4439,
        "target": "NGC 281"
@@ -1494,6 +1545,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4768412745965063,
+       "max": 65535.0,
        "mean": 547.9329035099661,
        "stars": 4389,
        "target": "NGC 281"
@@ -1503,6 +1555,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4458624754457572,
+       "max": 65535.0,
        "mean": 548.18020199414,
        "stars": 4014,
        "target": "NGC 281"
@@ -1512,6 +1565,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.460498636371034,
+       "max": 65535.0,
        "mean": 548.4207762959243,
        "stars": 4266,
        "target": "NGC 281"
@@ -1521,6 +1575,7 @@
        "exposure": 600.0,
        "filter": "S",
        "hfr": 1.4544567960330983,
+       "max": 65535.0,
        "mean": 548.592163745272,
        "stars": 4158,
        "target": "NGC 281"
