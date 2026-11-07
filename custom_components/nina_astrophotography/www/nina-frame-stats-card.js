@@ -278,24 +278,24 @@ const TREND_EPSILON = 0.03;
 // at 16 bits, scaled to the camera's full scale.
 const STARS_MIN_SPAN = 0.1;
 const ADU_MIN_SPAN = 10;
-// A camera that does not scale its data to 16 bits reports ADU 4 or 16 times
-// smaller. N.I.N.A.'s bit depth is a profile setting for ASCOM and DSLR
-// cameras, typed by the user and blind to whether the driver scales, so the
-// full scale is read from the night's brightest pixel: a hot pixel or star
-// core saturates in nearly every light. A night with none underestimates it,
-// which only draws the chart more sensitive.
 const MIN_BITS = 12;
 const MAX_BITS = 16;
+// Headroom above and below a run, as a fraction of its span.
+const RUN_HEADROOM = 0.1;
 
+// ADU_MIN_SPAN scaled to the camera's full scale. A camera that does not scale
+// its data to 16 bits reports ADU up to 16 times smaller, and N.I.N.A.'s bit
+// depth can't say so: for ASCOM and DSLR cameras it is a profile setting the
+// user types. So the full scale is the night's brightest pixel rounded up to a
+// bit depth; a hot pixel or star core saturates in nearly every light. A night
+// with none underestimates it, and the chart draws its scatter taller.
 function aduFloor(maxima) {
   const known = maxima.filter((v) => Number.isFinite(v) && v > 0);
   if (!known.length) return ADU_MIN_SPAN;
-  const bits = Math.min(MAX_BITS,
-    Math.max(MIN_BITS, Math.ceil(Math.log2(Math.max(...known) + 1))));
+  const depth = Math.ceil(Math.log2(Math.max(...known) + 1));
+  const bits = Math.min(MAX_BITS, Math.max(MIN_BITS, depth));
   return ADU_MIN_SPAN * 2 ** (bits - MAX_BITS);
 }
-// Headroom above and below a run, as a fraction of its span.
-const RUN_HEADROOM = 0.1;
 
 function hfrTrend(recent, previous, delta) {
   if (recent === null || previous === null) return "unknown";

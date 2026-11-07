@@ -10,7 +10,9 @@
  * 122 frames the count sensor reports.
  *
  * Every captured light has a filter from one wheel of single letters, so the
- * filter scenarios relabel that night rather than invent one.
+ * filter scenarios relabel that night rather than invent one. Every captured
+ * camera delivers 16-bit data, so the bit-depth scenarios divide that night's
+ * ADU by a power of two, which is exact, rather than invent a camera.
  *
  * The newest run — the lights since the last target change sharing the newest
  * light's filter and exposure — scales the star and ADU charts and bounds the
@@ -102,21 +104,24 @@ function relabelled(dump, names, { wheel = true } = {}) {
       { ...states[WHEEL].attributes, options: slots });
 }
 
-// The night with every light's mean and Max divided by `factor`, as a camera
-// that does not scale its data to 16 bits reports them. Max moves with the
-// mean because a saturated pixel reads the camera's own full scale; 65535
-// divides to 4095 or 16383 rounding down. The last-image mean is the newest
-// light's, so it moves too.
+// The night with every ADU reading divided by `factor`, as a camera that does
+// not scale its data to 16 bits reports them. Max is that camera's full scale,
+// so 65535 floors to 4095 or 16383.
 function unscaled(dump, factor) {
   const states = dump[NIGHT].states;
-  const lights = states[HFR].attributes.recent_lights.map((light) => ({
-    ...light,
-    mean: light.mean / factor,
-    max: Math.floor(light.max / factor),
-  }));
+  const scaled = (frame, keys) => ({
+    ...frame,
+    ...Object.fromEntries(keys.map((key) => [key, frame[key] / factor])),
+    max: Math.floor(frame.max / factor),
+  });
+  const lights = states[HFR].attributes.recent_lights.map(
+    (light) => scaled(light, ["mean"]));
+  const frames = states[MEAN].attributes.recent_frames.map(
+    (frame) => scaled(frame, ["mean", "median", "min"]));
   return rig(dump, NIGHT)
     .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
-    .override(MEAN, lights[lights.length - 1].mean, states[MEAN].attributes);
+    .override(MEAN, Number(states[MEAN].state) / factor,
+      { ...states[MEAN].attributes, recent_frames: frames });
 }
 
 // No `draw` hook: the three sparklines are painted from the frame the render
@@ -223,12 +228,10 @@ export const scenarios = {
     },
   },
 
-  // The night as a camera delivering its native 12 or 14 bits would report
-  // it: each light's mean and Max divided by 16 or 4, which moves the mean
-  // off the 16-bit pedestal with the sky and leaves the Max where that
-  // camera saturates. A power of two divides exactly, so the canvas ops must
-  // match `session`'s but for the ADU chart's newest-reading label: the chart
-  // draws the same background at any depth.
+  // The night from a 12- or 14-bit camera that does not scale to 16 bits. The
+  // chart draws a run by its span about its centre, so the pedestal, scaled
+  // with the sky, cannot show: the ops match `session`'s but for the ADU
+  // chart's newest-reading label.
   unscaled_12_bit: { hass: (dump) => unscaled(dump, 16).build() },
   unscaled_14_bit: { hass: (dump) => unscaled(dump, 4).build() },
 

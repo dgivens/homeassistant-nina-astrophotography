@@ -162,8 +162,8 @@ async def test_recent_lights_name_their_target(
 async def test_recent_lights_carry_each_lights_max(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance
 ) -> None:
-    """The card reads the camera's full scale from the frames' own `Max`:
-    N.I.N.A.'s bit depth is a profile setting for ASCOM and DSLR cameras.
+    """The card reads the camera's full scale from this, not from N.I.N.A.'s
+    bit depth, which for ASCOM and DSLR cameras is a profile setting.
     """
     await advance("dawn_flats")
     lights = state_of(hass, LAST_IMAGE_HFR).attributes["recent_lights"]
