@@ -809,8 +809,8 @@ def _curve_fits(wire: dict) -> tuple[CurveFit, ...]:
 
 
 def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
-    """Every `Intersections` entry, keyed by the wire's own name: the
-    non-trendline entry is named for whichever curve was fitted.
+    """Every `Intersections` entry with a position, keyed by the wire's own
+    name, which differs by autofocuser (see `FitMinimum`).
     """
     intersections = wire.get("Intersections")
     if not isinstance(intersections, dict):

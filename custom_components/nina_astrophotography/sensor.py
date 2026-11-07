@@ -611,8 +611,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="focuser",
-        # The fit's minimum, which N.I.N.A. moved to: an artifact of the curve
-        # fitting, often far below any frame the camera measured.
+        # The focus point the fitting chose: an artifact of the curve fitting,
+        # far below any frame the camera measured wherever trend lines enter it.
         value=_autofocus("fitted_hfr"),
     ),
     NinaSensorDescription(

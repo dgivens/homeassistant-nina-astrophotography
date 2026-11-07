@@ -299,7 +299,7 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
     [
         # The mean of the trend-line intersection and the quadratic minimum.
         ("imaging_guiding", 1.0932570683996303),
-        # The hyperbolic minimum alone: the trend lines' 0.333 is not averaged in.
+        # A HYPERBOLIC run's focus point is the hyperbola's minimum.
         pytest.param(
             "autofocus_hyperbolic_with_a_flat_trend_line",
             1.8,
@@ -311,8 +311,8 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
 async def test_the_last_autofocus_publishes_the_fitted_hfr_its_fitting_chose(
     hass: HomeAssistant, config_entry, rig, set_up_at, rig_state: str, fitted_hfr: float
 ) -> None:
-    """Only a `TREND*` fitting averages its minima, so a card cannot derive
-    this from `minima`, and the `autofocus_fitted_hfr` sensor ships disabled.
+    """A card reads this attribute: the `autofocus_fitted_hfr` sensor ships
+    disabled, and `minima` carries curves the fitting ignores.
     """
     await set_up_at(hass, config_entry, rig, rig_state)
     attributes = state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").attributes

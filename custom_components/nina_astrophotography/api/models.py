@@ -362,10 +362,13 @@ class FocusPoint:
 class FitMinimum:
     """Where one of the report's fits puts best focus.
 
-    `name` is the wire's key. Besides `TrendLineIntersection`, the entry is
-    named for the fitted curve (`QuadraticMinimum` under TRENDPARABOLIC; the
-    spec says `HyperbolicMinimum`). `TrendLineIntersection`'s value lands far
-    below any measured star, so a chart must not scale to it.
+    `name` is the wire's key, and which keys arrive depends on the
+    autofocuser. Built-in N.I.N.A. reports `TrendLineIntersection`,
+    `HyperbolicMinimum`, `QuadraticMinimum` and `GaussianMaximum` whatever it
+    fitted. Hocus Focus fits trend lines on every run to end its sweep, so it
+    reports `TrendLineIntersection` beside the minimum of the curve its
+    fitting uses, if any. `TrendLineIntersection`'s value lands far below any
+    measured star, so a chart must not scale to it.
     """
 
     name: str
@@ -418,7 +421,9 @@ class AutoFocusReport:
     """
     star_detector: str | None
     position: int | None
-    """Where the run left the focuser."""
+    """The focus point the run's fitting chose. A rejected run never took it:
+    the focuser goes back to `initial_position`.
+    """
     hfr: float | None
     """The lowest HFR measured in the sweep, which compares run to run.
 
@@ -427,7 +432,10 @@ class AutoFocusReport:
     fitted_hfr: float | None
     """`CalculatedFocusPoint.Value`, an artifact of the fit. `TRENDLINES` uses
     the trend-line intersection, far below any measured star; `PARABOLIC` and
-    `HYPERBOLIC` the curve's minimum alone; `TREND*` the mean of the two.
+    `HYPERBOLIC` the curve's minimum alone; `TRENDPARABOLIC` and
+    `TRENDHYPERBOLIC` the mean of the two. None under CONTRASTDETECTION,
+    whose focus point is a contrast score, or where the fit put it at or
+    below zero.
     """
     curve: tuple[FocusPoint, ...]
     """Every position the sweep visited, ascending, including those that
@@ -438,9 +446,9 @@ class AutoFocusReport:
     undocumented, so a card cannot re-derive them.
     """
     minima: tuple[FitMinimum, ...]
-    """Every entry of `Intersections`, including those the fitting ignores:
-    built-in N.I.N.A. reports all four whatever it fitted. `position` and
-    `fitted_hfr` are the point it chose.
+    """Every `Intersections` entry with a position, including ones the
+    fitting ignores (see `FitMinimum`). `position` and `fitted_hfr` are the
+    point the fitting chose.
     """
     measured_points: int | None
     """How many of `curve`'s positions measured something."""

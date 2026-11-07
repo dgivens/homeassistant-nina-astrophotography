@@ -261,9 +261,8 @@ class NinaAutofocusCard extends HTMLElement {
       || String(method).toUpperCase() !== "CONTRASTDETECTION";
 
     // `autofocus_fitted_hfr`/`autofocus_r2` ship disabled, so both are taken
-    // from attributes. The fitted HFR is not derivable from `minima`: only a
-    // TREND* fitting averages two of them, and N.I.N.A. reports every minimum
-    // whatever it fitted.
+    // from attributes. `minima` cannot stand in for the fitted HFR: it carries
+    // curves the run's fitting ignores.
     const fitted = this._attr(run, "fitted_hfr");
     // Only the curves the run's fitting uses: a hyperbolic run also reports trend
     // lines, and a poor one of those does not stop N.I.N.A. applying the result.
@@ -708,7 +707,7 @@ class NinaAutofocusCard extends HTMLElement {
       }
     }
 
-    // Where the focuser was left: the point the run's fitting chose.
+    // The focus point the run's fitting chose; a rejected run never took it.
     if (Number.isFinite(run.position)) {
       const x = xOf(run.position);
       ctx.strokeStyle = theme[FINAL];

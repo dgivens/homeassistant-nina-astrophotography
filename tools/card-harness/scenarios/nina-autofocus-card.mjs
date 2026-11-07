@@ -23,9 +23,8 @@ const verdict = (dump, changes) => ({
 });
 
 // The fitting, R²s, verdict and focus point are invented: no capture holds a
-// hyperbolic run. The focus point is the hyperbola's minimum, where N.I.N.A.
-// leaves a HYPERBOLIC run, so it moves with the fitting. The fits stay the
-// captured ones otherwise.
+// hyperbolic run. The focus point is the hyperbola's minimum, where a
+// HYPERBOLIC run puts it; the fits and minima are otherwise the captured ones.
 const hyperbolic = (dump) => {
   const run = dump[UP].states[RUN].attributes;
   return rig(dump, UP)
@@ -74,8 +73,7 @@ export const scenarios = {
   hyperbolic: { hass: (dump) => hyperbolic(dump).build() },
 
   // The same run with no starting HFR to compare against, which is the one
-  // place the card prints the fitted HFR: the hyperbola's 1.80, not a mean
-  // with the trend lines' crossing.
+  // place the card prints the fitted HFR: the hyperbola's 1.80.
   hyperbolic_unmeasured_start: {
     hass: (dump) => hyperbolic(dump).without("focuser_autofocus_starting_hfr").build(),
   },

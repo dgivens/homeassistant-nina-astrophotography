@@ -20,11 +20,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   R² threshold with those curves alone, so a trend line beside a
   `HYPERBOLIC` fit does not fail the run, and a contrast-detection run is not
   gated on R². The autofocus card marks the other curves `not judged`.
-- **The autofocus card shows the fitted HFR N.I.N.A. chose** (#202). Only a
-  `TREND*` fitting averages the trend-line intersection with a curve's
-  minimum; a `HYPERBOLIC` or `PARABOLIC` run uses the curve's minimum alone.
-  `sensor.<instance>_focuser_last_autofocus` carries that value as its
-  `fitted_hfr` attribute, which the card reads.
+- **The autofocus card shows the fitted HFR N.I.N.A. chose** (#202): the
+  trend-line intersection under `TRENDLINES`, the curve's minimum under
+  `PARABOLIC` or `HYPERBOLIC`, and the mean of the two under
+  `TRENDPARABOLIC` or `TRENDHYPERBOLIC`.
+  `sensor.<instance>_focuser_last_autofocus` carries it as its `fitted_hfr`
+  attribute, which the card reads.
 
 ## [2.4.1] - 2026-11-05
 

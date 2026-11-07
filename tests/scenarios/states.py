@@ -179,10 +179,11 @@ def _dimmable(channel: dict) -> dict:
 
 def _hyperbolic_autofocus(name: str) -> dict:
     """The captured autofocus report refitted HYPERBOLIC, its hyperbolic curve
-    scoring 0.988 beside a right trend line scoring 0.0. The corpus holds only
-    TRENDPARABOLIC runs, so the fitting, the hyperbolic equation, the R²
-    values and the focus point, which a HYPERBOLIC run places at the
-    hyperbola's own minimum, are derived.
+    scoring 0.988 beside a right trend line scoring 0.0.
+
+    The corpus holds only TRENDPARABOLIC runs, so the fitting, the hyperbolic
+    equation, both R² values and the focus point are derived. The focus point
+    sits at the hyperbola's minimum, where a HYPERBOLIC run puts it.
     """
     envelope = load_envelope(name)
     response = envelope["Response"]

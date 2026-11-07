@@ -413,12 +413,15 @@ fitted_hfr: 1.0932570683996303
   run can also report trend lines. They have `judged: false`, and a low R² on
   them doesn't reject the run. A contrast-detection run, whose `fitting` is
   `GAUSSIAN`, has every fit `judged: false`.
-- `minima` lists the minima N.I.N.A. computed, including ones your curve
-  fitting ignores: built-in N.I.N.A. reports all four (`TrendLineIntersection`,
+- `minima` lists the minima the autofocus routine computed, and which ones
+  depends on the routine. The example above is a Hocus Focus run. Hocus Focus
+  fits trend lines on every run to decide when the sweep ends, so it lists
+  `TrendLineIntersection` beside the minimum of the curve your fitting uses,
+  if any. Built-in N.I.N.A. lists all four (`TrendLineIntersection`,
   `HyperbolicMinimum`, `QuadraticMinimum`, `GaussianMaximum`) whatever it
-  fitted. Don't average them to get the final focus point. `fitted_hfr` is
-  that point's value and `autofocus_position` its position, picked by
-  `fitting`:
+  fitted. Read the final focus point from `fitted_hfr` and
+  `autofocus_position` rather than working it out from `minima`. N.I.N.A.
+  picks it by `fitting`:
 
   | `fitting` | Final focus point |
   |---|---|
