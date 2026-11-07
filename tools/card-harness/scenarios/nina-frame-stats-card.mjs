@@ -102,6 +102,23 @@ function relabelled(dump, names, { wheel = true } = {}) {
       { ...states[WHEEL].attributes, options: slots });
 }
 
+// The night with every light's mean and Max divided by `factor`, as a camera
+// that does not scale its data to 16 bits reports them. Max moves with the
+// mean because a saturated pixel reads the camera's own full scale; 65535
+// divides to 4095 or 16383 rounding down. The last-image mean is the newest
+// light's, so it moves too.
+function unscaled(dump, factor) {
+  const states = dump[NIGHT].states;
+  const lights = states[HFR].attributes.recent_lights.map((light) => ({
+    ...light,
+    mean: light.mean / factor,
+    max: Math.floor(light.max / factor),
+  }));
+  return rig(dump, NIGHT)
+    .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
+    .override(MEAN, lights[lights.length - 1].mean, states[MEAN].attributes);
+}
+
 // No `draw` hook: the three sparklines are painted from the frame the render
 // queues, which the runner fires.
 
@@ -205,6 +222,15 @@ export const scenarios = {
         .build();
     },
   },
+
+  // The night as a camera delivering its native 12 or 14 bits would report
+  // it: each light's mean and Max divided by 16 or 4, which moves the mean
+  // off the 16-bit pedestal with the sky and leaves the Max where that
+  // camera saturates. A power of two divides exactly, so the canvas ops must
+  // match `session`'s but for the ADU chart's newest-reading label: the chart
+  // draws the same background at any depth.
+  unscaled_12_bit: { hass: (dump) => unscaled(dump, 16).build() },
+  unscaled_14_bit: { hass: (dump) => unscaled(dump, 4).build() },
 
   // No lights in the session, so no charts: the waiting panel under the
   // header's session totals.
