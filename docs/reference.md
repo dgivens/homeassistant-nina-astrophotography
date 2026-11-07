@@ -298,10 +298,11 @@ show N.I.N.A.'s report from the most recent autofocus run:
 Things to know when reading them:
 
 - **`autofocus_hfr` is a measured value, not N.I.N.A.'s calculated focus
-  point.** With a `TREND*` curve fitting, the calculated value partly
-  extrapolates from the trend lines and can be smaller than any star your
-  optics produce (1.09 px against a best measured 1.55 px on one run). That
-  value is `autofocus_fitted_hfr`.
+  point.** With a `TREND*` curve fitting, the calculated value extrapolates,
+  wholly or partly, from the trend lines and can be smaller than any star
+  your optics produce (1.09 px against a best measured 1.55 px on one run). That
+  value is `autofocus_fitted_hfr`, and the `fitted_hfr` attribute of
+  `sensor.<instance>_focuser_last_autofocus`.
 - **The best measured HFR can be worse than the starting HFR on a run that
   improved focus.** N.I.N.A. moves to a fitted position between two sweep
   steps, and never measures HFR there. So don't treat the two as a reliable
@@ -397,6 +398,8 @@ minima:
   - name: QuadraticMinimum
     position: 2336
     value: 1.8534560537596008
+
+fitted_hfr: 1.0932570683996303
 ```
 
 - `coefficients` are highest power first: `[a, b, c]` is `a·x² + b·x + c`.
@@ -410,9 +413,24 @@ minima:
   run can also report trend lines. They have `judged: false`, and a low R² on
   them doesn't reject the run. A contrast-detection run, whose `fitting` is
   `GAUSSIAN`, has every fit `judged: false`.
-- `minima` lists the minima N.I.N.A. computed. Pick the second by position in
-  the list, not by name; its name depends on the curve fitting in your profile.
-  The final focuser position is the average of the two.
+- `minima` lists the minima N.I.N.A. computed, including ones your curve
+  fitting ignores: built-in N.I.N.A. reports all four (`TrendLineIntersection`,
+  `HyperbolicMinimum`, `QuadraticMinimum`, `GaussianMaximum`) whatever it
+  fitted. Don't average them to get the final focus point. `fitted_hfr` is
+  that point's value and `autofocus_position` its position, picked by
+  `fitting`:
+
+  | `fitting` | Final focus point |
+  |---|---|
+  | `TRENDLINES` | the trend-line intersection |
+  | `PARABOLIC` | the quadratic minimum |
+  | `HYPERBOLIC` | the hyperbolic minimum |
+  | `TRENDPARABOLIC` | the mean of the trend-line intersection and the quadratic minimum |
+  | `TRENDHYPERBOLIC` | the mean of the trend-line intersection and the hyperbolic minimum |
+
+  `fitted_hfr` is `null` on a contrast-detection run, whose focus point is
+  the gaussian maximum of a contrast score, and wherever the fit put it at
+  or below zero.
 - Don't scale your y-axis to include `TrendLineIntersection`. It is where the
   extrapolated trend lines cross, well below any real star size (0.333 px
   above, against 1.552 px measured). Scale to the measured points.

@@ -425,9 +425,9 @@ class AutoFocusReport:
     Quantized by the sweep's step. None under CONTRASTDETECTION.
     """
     fitted_hfr: float | None
-    """`CalculatedFocusPoint.Value`, an artifact of the fit: under `TREND*`
-    fittings it averages in the trendline intersection, far below any
-    measured star.
+    """`CalculatedFocusPoint.Value`, an artifact of the fit. `TRENDLINES` uses
+    the trend-line intersection, far below any measured star; `PARABOLIC` and
+    `HYPERBOLIC` the curve's minimum alone; `TREND*` the mean of the two.
     """
     curve: tuple[FocusPoint, ...]
     """Every position the sweep visited, ascending, including those that
@@ -438,8 +438,9 @@ class AutoFocusReport:
     undocumented, so a card cannot re-derive them.
     """
     minima: tuple[FitMinimum, ...]
-    """Every entry of `Intersections`. `position`/`fitted_hfr` is their mean,
-    so they show which one pulled the result.
+    """Every entry of `Intersections`, including those the fitting ignores:
+    built-in N.I.N.A. reports all four whatever it fitted. `position` and
+    `fitted_hfr` are the point it chose.
     """
     measured_points: int | None
     """How many of `curve`'s positions measured something."""
