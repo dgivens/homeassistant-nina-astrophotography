@@ -8,14 +8,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
-- **The weather card can leave out the sky brightness cell** (#PR), with
+- **The weather card can leave out the sky brightness cell** (#212), with
   `show_sky_brightness: false` or the switch in its editor. A station that
   measures only whole lux reads `0 lx` all night, since a dark sky is about
   0.001 lx (#117).
 
 ### Changed
 
-- **The weather card leaves out a reading it has no entity for** (#PR): one
+- **The weather card leaves out a reading it has no entity for** (#212): one
   disabled in Home Assistant, or a channel the station never reports, such as
   cloud cover on a station without a cloud sensor. The wind section goes with
   its last reading. A reading that is only `unknown` or `unavailable` still
