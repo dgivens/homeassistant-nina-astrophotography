@@ -16,6 +16,10 @@
  * unit Home Assistant shows the reading in:
  *   dew_margin: 3          # dew alert while the air is within this of its dew point
  *   wind_warn: 8           # and wind_danger: 12
+ *   show_sky_brightness: false   # leave out the sky brightness cell
+ *
+ * A reading whose entity is disabled, or that the station never reports, has
+ * no cell at all; one that is merely unknown or unavailable shows a dash.
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
@@ -216,6 +220,8 @@ class NinaWeatherCard extends HTMLElement {
       seeingWarn: limit(cfg.seeing_warn, LIMITS.seeing_warn),
       seeingDanger: limit(cfg.seeing_danger, LIMITS.seeing_danger),
     };
+    // Off only when set false: the editor sends a cleared toggle as `undefined`.
+    this._showSkyBrightness = cfg.show_sky_brightness !== false;
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
     this._view.reset();
@@ -386,6 +392,29 @@ class NinaWeatherCard extends HTMLElement {
     const qcell = (icon, label, q, decimals, ...flags) =>
       cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
     const withUnit = (q, decimals) => q ? `${displayed(q, decimals)} ${q.unit ?? ""}`.trim() : "—";
+    // No state row at all: the entity is disabled, or the station never
+    // reported the channel and so it was never created.
+    const has = (id) => this._shown.states?.[id] !== undefined;
+    const grid = (title, cells) => {
+      const shown = cells.filter(Boolean);
+      return shown.length ? `
+          <div class="section-title">${title}</div>
+          <div class="weather-grid">
+            ${shown.join("\n            ")}
+          </div>` : "";
+    };
+    const windRow = (label, value, style = "") => `
+              <div class="wind-row">
+                <span class="lbl">${label}</span>
+                <span${style}>${value}</span>
+              </div>`;
+    const windRows = [
+      has(channels.windSpd) && windRow("Speed", withUnit(windSpd, 1),
+        ` style="font-weight:700;color:${windColor}"`),
+      has(channels.windGst) && windRow("Gust", withUnit(windGst, 1)),
+      has(channels.windDir) && windRow("Direction",
+        windDir !== null ? windDir.toFixed(0) + "° " + degToCompass(windDir) : "—"),
+    ].filter(Boolean);
 
     // The margin as printed: the difference of the two shown numbers, so
     // 20.54/20.46 °C both showing 20.5 reads "at" rather than "within 0.1".
@@ -438,48 +467,31 @@ class NinaWeatherCard extends HTMLElement {
             </div>
           ` : ""}
 
-          <!-- Temperature & humidity -->
-          <div class="section-title">Atmosphere</div>
-          <div class="weather-grid">
-            ${qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > L.tempHigh, tempC !== null && tempC < L.tempLow)}
-            ${cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > L.humidWarn, humid !== null && humid > L.humidDanger)}
-            ${qcell("🌫", "Dew Point", dewPt, 1, dewThreat, false)}
-            ${qcell("📊", "Pressure", press, 1, false, false, press === null)}
-          </div>
+          ${grid("Atmosphere", [
+            has(channels.temp) && qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > L.tempHigh, tempC !== null && tempC < L.tempLow),
+            has(channels.humid) && cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > L.humidWarn, humid !== null && humid > L.humidDanger),
+            has(channels.dewPt) && qcell("🌫", "Dew Point", dewPt, 1, dewThreat, false),
+            has(channels.press) && qcell("📊", "Pressure", press, 1, false, false, press === null),
+          ])}
 
-          <!-- Wind -->
+          ${windRows.length ? `
           <div class="section-title">Wind</div>
           <div class="wind-rose-wrap">
             <div class="wind-rose">
               <canvas id="wind-rose-canvas" width="64" height="64"></canvas>
             </div>
-            <div class="wind-info">
-              <div class="wind-row">
-                <span class="lbl">Speed</span>
-                <span style="font-weight:700;color:${windColor}">
-                  ${withUnit(windSpd, 1)}
-                </span>
-              </div>
-              <div class="wind-row">
-                <span class="lbl">Gust</span>
-                <span>${withUnit(windGst, 1)}</span>
-              </div>
-              <div class="wind-row">
-                <span class="lbl">Direction</span>
-                <span>${windDir !== null ? windDir.toFixed(0) + "° " + degToCompass(windDir) : "—"}</span>
-              </div>
+            <div class="wind-info">${windRows.join("")}
             </div>
           </div>
+          ` : ""}
 
-          <!-- Sky conditions -->
-          <div class="section-title">Sky conditions</div>
-          <div class="weather-grid">
-            ${cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > L.cloudWarn, cloud !== null && cloud > L.cloudDanger, cloud === null)}
-            ${qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null)}
-            ${qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null)}
-            ${cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > L.seeingWarn, seeing !== null && seeing > L.seeingDanger, seeing === null)}
-            ${qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null)}
-          </div>
+          ${grid("Sky conditions", [
+            has(channels.cloud) && cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > L.cloudWarn, cloud !== null && cloud > L.cloudDanger, cloud === null),
+            has(channels.rain) && qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null),
+            has(channels.skyT) && qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null),
+            has(channels.seeing) && cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > L.seeingWarn, seeing !== null && seeing > L.seeingDanger, seeing === null),
+            this._showSkyBrightness && has(channels.skyB) && qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null),
+          ])}
 
           <!-- Sky quality -->
           ${skyQ !== null ? `
@@ -590,6 +602,14 @@ class NinaWeatherCard extends HTMLElement {
     // Nameless, so each limit stays a top-level key instead of nesting under it.
     const pair = (schema) => ({ type: "grid", name: "", schema });
     return configForm([
+      {
+        name: "show_sky_brightness",
+        label: "Show sky brightness",
+        helper: "Turn off for a station that measures only whole lux: "
+          + "it reads 0 all night.",
+        default: true,
+        selector: { boolean: {} },
+      },
       {
         type: "expandable",
         name: "",
