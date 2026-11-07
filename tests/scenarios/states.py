@@ -162,8 +162,14 @@ def _with_site(state: State, **settings: float) -> State:
     (§8.3), so no committed projection carries a site and the mapper reads none.
     A re-capture replaces this in place.
     """
+    return _with_profile(state, "AstrometrySettings", **settings)
+
+
+def _with_profile(state: State, section: str, **settings: float) -> State:
+    """A copy of `state` whose profile has `settings` set in `section`."""
     envelope = state["/profile/show?active=true"]
-    response = {**envelope["Response"], "AstrometrySettings": settings}
+    response = envelope["Response"]
+    response = {**response, section: {**response.get(section, {}), **settings}}
     return {**state, "/profile/show?active=true": {**envelope, "Response": response}}
 
 
@@ -567,6 +573,18 @@ STATES: dict[str, State] = {
             "imaging_guiding_last_af.json", r_squared=0.42
         ),
     },
+    # A run whose fit scored below 0 under a profile threshold of 0, which
+    # turns N.I.N.A.'s R² check off. Synthetic in the R² and `RSquaredThreshold`.
+    "autofocus_fitted_badly_with_the_r_squared_check_off": _with_profile(
+        {
+            **_IMAGING_GUIDING,
+            "/equipment/focuser/last-af": _rejected_autofocus(
+                "imaging_guiding_last_af.json", r_squared=-0.3
+            ),
+        },
+        "FocuserSettings",
+        RSquaredThreshold=0,
+    ),
     # A HYPERBOLIC run that passed beside a trend line its fitting doesn't use.
     "autofocus_hyperbolic_with_a_flat_trend_line": {
         **_IMAGING_GUIDING,

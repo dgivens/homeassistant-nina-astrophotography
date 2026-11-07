@@ -889,13 +889,18 @@ def map_profile(wire: dict) -> ProfileSettings:
     # would put the sun hours away from the rig and mute its night-only alerts.
     if latitude == 0 and longitude == 0:
         latitude = longitude = None
+    # N.I.N.A. checks R² only against a threshold above 0. An R² can be
+    # negative, so a threshold of 0 kept as one would reject runs it applied.
+    r_squared_threshold = _number(wire, "FocuserSettings", "RSquaredThreshold")
+    if r_squared_threshold is not None and r_squared_threshold <= 0:
+        r_squared_threshold = None
     return ProfileSettings(
         focal_length=_number(wire, "TelescopeSettings", "FocalLength"),
         pixel_size=_number(wire, "CameraSettings", "PixelSize"),
         autofocus_timeout_seconds=_number(
             wire, "FocuserSettings", "AutoFocusTimeoutSeconds"
         ),
-        r_squared_threshold=_number(wire, "FocuserSettings", "RSquaredThreshold"),
+        r_squared_threshold=r_squared_threshold,
         min_minutes_after_meridian=_number(
             wire, "MeridianFlipSettings", "MinutesAfterMeridian"
         ),

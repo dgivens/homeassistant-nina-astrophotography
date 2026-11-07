@@ -625,6 +625,20 @@ def test_a_site_of_zero_zero_is_no_site(site, mapped) -> None:
     assert (profile.site_latitude, profile.site_longitude) == mapped
 
 
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("wire", "mapped"),
+    [(0.7, 0.7), (0, None), (-0.5, None)],
+    ids=["gated", "zero", "negative"],
+)
+def test_an_r_squared_threshold_of_zero_or_below_is_no_threshold(wire, mapped) -> None:
+    """N.I.N.A. and Hocus Focus check R² only against a threshold above 0. An
+    R² can be negative, so 0 is not a threshold every fit passes.
+    """
+    profile = map_profile({"FocuserSettings": {"RSquaredThreshold": wire}})
+    assert profile.r_squared_threshold == mapped
+
+
 def test_the_dome_interlocks_map_from_a_captured_profile() -> None:
     """The simulator rig's profile."""
     profile = map_profile(load("simulator_dome_parked_profile.json"))

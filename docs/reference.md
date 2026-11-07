@@ -310,6 +310,11 @@ Things to know when reading them:
   say whether N.I.N.A. accepted it. Use
   `binary_sensor.<instance>_focuser_autofocus_failed`, which compares R² with
   your profile's `RSquaredThreshold`.
+- **A `RSquaredThreshold` of 0 or below turns the R² check off**, in N.I.N.A.
+  and in Hocus Focus alike, so `autofocus_failed` rejects no run. N.I.N.A.'s
+  own autofocus then measures HFR at the new position instead, and rejects a
+  run more than 15% worse than where it started. That measurement is not in
+  the report, so `autofocus_failed` cannot see that rejection.
 - **A run that hangs writes no report**, so the sensors keep showing the
   previous run. The failed sensor catches this too.
 - **The report survives restarts.** It may be days old; check
@@ -328,7 +333,7 @@ Things to know when reading them:
 |---|---|
 | `reason` | `hung`, `rejected`, or absent. A hung run usually means a sequence problem; a rejected one means the focus range or star detection needs adjusting. Only for `hung` do the other autofocus sensors show a different run from the one that failed. |
 | `r_squared` | the R² used for the decision: the worst among the curves the run's curve fitting uses |
-| `r_squared_threshold` | your profile's `RSquaredThreshold` |
+| `r_squared_threshold` | your profile's `RSquaredThreshold`, or `null` when it is 0 or below and the check is off |
 | `refocus_temperature_delta` | the °C of focuser drift past which your sequence's "AF After Temperature Change" trigger refocuses, or `null` with no such trigger. With several, the smallest: which one is in scope cannot be told. The autofocus card flags drift against it. |
 
 If you check R² yourself, compare against this `r_squared` attribute, not

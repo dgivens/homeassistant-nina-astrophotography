@@ -563,6 +563,9 @@ class ProfileSettings:
     autofocus_timeout_seconds: float | None
     """How long an autofocus may run before it counts as failed."""
     r_squared_threshold: float | None
+    """The R² an autofocus fit must reach. `None` where the profile sets 0 or
+    below, which turns the check off.
+    """
     min_minutes_after_meridian: float | None
     max_minutes_after_meridian: float | None
     use_side_of_pier: bool | None

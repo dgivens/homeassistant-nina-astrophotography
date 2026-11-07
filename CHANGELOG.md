@@ -15,6 +15,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
+- **An R² threshold of 0 or below leaves an autofocus unjudged** (#203).
+  N.I.N.A. checks R² only against a threshold above 0, so
+  `binary_sensor.<instance>_focuser_autofocus_failed` rejects no run on a
+  profile with the check off, even one whose fit scored below 0. Its
+  `r_squared_threshold` attribute is `null` there, and the autofocus card
+  shows no pass or fail on the fit.
 - **An autofocus run is judged only on the curves its fitting uses** (#201).
   `binary_sensor.<instance>_focuser_autofocus_failed` compares the profile's
   R² threshold with those curves alone, so a trend line beside a
