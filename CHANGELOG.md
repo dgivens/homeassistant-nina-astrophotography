@@ -6,6 +6,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Changed
+
+- **The reference covers a contrast-detection autofocus run** (#PR):
+  `autofocus_r2` reads `unknown` and every fit is `judged: false`, since no
+  R² threshold applies to one. The synthetic `HYPERBOLIC` test run carries a
+  hyperbolic curve beside its R².
+
 ### Fixed
 
 - **An autofocus run is judged only on the curves its fitting uses** (#201).
