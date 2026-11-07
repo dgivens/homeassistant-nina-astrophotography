@@ -318,8 +318,9 @@ Things to know when reading them:
   the last attempt is reported, so `autofocus_duration` understates the time a
   bad run cost.
 - On a `CONTRASTDETECTION` run the HFR sensors read `unknown`, because that
-  method measures contrast rather than star size. Positions and duration still
-  work.
+  method measures contrast rather than star size. So does `autofocus_r2`: N.I.N.A.
+  applies no R² threshold to a contrast run, so `autofocus_failed` never rejects
+  one. Positions and duration still work.
 
 `autofocus_failed` has these attributes:
 
@@ -407,7 +408,8 @@ minima:
   is what a pass/fail threshold wants.
 - `judged` says whether the run's curve fitting uses that curve. A `HYPERBOLIC`
   run can also report trend lines. They have `judged: false`, and a low R² on
-  them doesn't reject the run.
+  them doesn't reject the run. A contrast-detection run, whose `fitting` is
+  `GAUSSIAN`, has every fit `judged: false`.
 - `minima` lists the minima N.I.N.A. computed. Pick the second by position in
   the list, not by name; its name depends on the curve fitting in your profile.
   The final focuser position is the average of the two.
