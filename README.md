@@ -1,8 +1,3 @@
-> [!NOTE]
-> **AI-Assisted Development**
->  
-> [![AI Assisted](https://img.shields.io/badge/built%20with-Claude%20AI-7b8de8?style=flat-square&logo=anthropic)](https://claude.ai) All code has been reviewed, tested against a live N.I.N.A. instance, and is maintained by a human author. AI assistance was used to accelerate development — the design decisions, testing, and ongoing maintenance are my own.
-
 # N.I.N.A. Astrophotography – Home Assistant Integration
 
 Monitor and control a [N.I.N.A.](https://nighttime-imaging.eu) imaging rig from
@@ -25,8 +20,7 @@ It provides:
 
 This is a maintained fork of
 [C3X0Astro/homeassistant-nina-astrophotography](https://github.com/C3X0Astro/homeassistant-nina-astrophotography),
-which is no longer updated. Licensed under the
-[GNU General Public License v3.0](LICENSE), like the original.
+which is no longer updated.
 
 **Upgrading from 1.4.x?** Follow [the upgrade guide](docs/upgrading-to-2.0.md)
 first.
@@ -132,7 +126,6 @@ Configure**. Saving reloads the entry.
 
 | Option | Default | Range | Meaning |
 |---|---|---|---|
-| **Poll Interval** | 10 s | 5–60 s | How often Home Assistant polls N.I.N.A. Most changes arrive at once over the event stream, so the poll is a backstop; see [Data updates](#data-updates). |
 | **Session Rollover Hour** | 12 | 0–23 | The hour, on the imaging PC's clock, where one session ends and the next begins. If that clock runs UTC, set it to a real midday on site, or a night's statistics split in two. |
 | **Outage Grace Period** | 30 s | 0–300 s | How long N.I.N.A. may stop answering before its entities go `unavailable`. Until then they keep their last values. `0` marks them unavailable on the first failed poll. `binary_sensor.<instance>_reachable` turns `off` at once either way. |
 
@@ -140,14 +133,18 @@ Configure**. Saving reloads the entry.
 
 - **Push.** The integration holds a WebSocket open to the Advanced API, and
   most changes reach the entities as soon as N.I.N.A. reports them.
-- **Poll.** Equipment state is also read every **Poll Interval** (default
-  10 s), as a backstop for anything the event stream doesn't carry.
+- **Poll.** Equipment state is also read every 10 seconds, as a backstop for
+  anything the event stream doesn't carry. The interval is fixed. For a
+  different cadence, turn off **Enable polling for changes** under the entry's
+  **⋮ → System options**, and call `homeassistant.update_entity` on one of the
+  rig's entities from an automation; each call requests one poll. Pushed changes
+  keep arriving either way.
 - **Slower reads.** The loaded sequence is read every 30 s while the rig is
   imaging and every 5 minutes otherwise, and when a sequence starts or
   finishes.
   Flat-run status, Livestack status, the N.I.N.A. profile and the last
-  autofocus run are read every 5 minutes. These ride on the poll, so a longer
-  poll interval can delay them.
+  autofocus run are read every 5 minutes. These ride on the poll, so with
+  polling turned off they are read only when a poll runs.
 - **Reconnects.** When the WebSocket drops, the integration reconnects,
   re-reads the image history so a frame saved during the drop still counts,
   and replays N.I.N.A.'s event history into the entities. The replayed events
@@ -506,3 +503,17 @@ behind, pointing at a route nothing serves.
    `config/custom_components/nina_astrophotography/` if you installed it by
    hand.
 5. **Restart Home Assistant.**
+
+## Development
+
+> [!NOTE]
+> **AI-Assisted Development**
+>  
+> [![AI Assisted](https://img.shields.io/badge/built%20with-Claude%20AI-7b8de8?style=flat-square&logo=anthropic)](https://claude.ai) All code has been reviewed, tested against a live N.I.N.A. instance, and is maintained by a human author. AI assistance was used to accelerate development — the design decisions, testing, and ongoing maintenance are my own.
+
+## License
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version (GPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.

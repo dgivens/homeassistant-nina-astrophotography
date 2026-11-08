@@ -11,8 +11,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The README covers installing from Home Assistant's Marketplace**, with a
   link that adds the repository (#249). It documents every setup field and
   option, each action's fields with their defaults and ranges, how data
-  updates, the known limitations, and the order to remove the integration in.
-  The upgrade guide covers the sky brightness sensor's long-term statistics.
+  updates and how to poll at another cadence, the known limitations, and the
+  order to remove the integration in. It states the license as
+  GPL-3.0-or-later. The upgrade guide covers the sky brightness sensor's
+  long-term statistics.
 
 ### Fixed
 
