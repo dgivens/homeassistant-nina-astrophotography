@@ -35,7 +35,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   (#232). The poll interval is set in **Configure** alone: the add form asks
   for the connection and the instance name, and an existing entry's interval
   carries over into its options when Home Assistant starts. An interval
-  already saved through Configure takes precedence.
+  already saved through Configure takes precedence. An entry added before 2.0
+  takes its title as its instance name at the same time, so renaming the entry
+  afterwards leaves its devices' names alone, as for an entry added since.
 
 ---
 

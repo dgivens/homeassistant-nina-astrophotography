@@ -14,17 +14,25 @@ from ha.registry import get_device
 
 
 @pytest.mark.parametrize(
-    ("options", "polled"),
-    [({}, 30), ({CONF_POLL_INTERVAL: 20}, 20)],
-    ids=["chosen-at-setup", "saved-in-configure"],
+    ("options", "chosen", "polled"),
+    [({}, 30, 30), ({CONF_POLL_INTERVAL: 20}, 30, 20), ({}, 120, 120)],
+    ids=["chosen-at-setup", "saved-in-configure", "above-the-form-range"],
 )
 async def test_an_upgraded_entry_polls_at_the_interval_in_effect(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig, options, polled
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    rig,
+    options: dict,
+    chosen: int,
+    polled: int,
 ) -> None:
+    """1.4.x allowed up to 300 s; an interval above the options form's 60 is
+    carried over rather than clamped.
+    """
     config_entry.add_to_hass(hass)
     hass.config_entries.async_update_entry(
         config_entry,
-        data={**config_entry.data, CONF_POLL_INTERVAL: 30},
+        data={**config_entry.data, CONF_POLL_INTERVAL: chosen},
         options=options,
     )
     assert await hass.config_entries.async_setup(config_entry.entry_id)
