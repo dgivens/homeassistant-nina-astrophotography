@@ -162,8 +162,18 @@ def _with_site(state: State, **settings: float) -> State:
     (§8.3), so no committed projection carries a site and the mapper reads none.
     A re-capture replaces this in place.
     """
+    return _with_profile(state, "AstrometrySettings", **settings)
+
+
+def _with_profile(state: State, section: str, **settings: float) -> State:
+    """A copy of `state` whose profile has `settings` set in `section`.
+
+    For moving a captured setting; the key set stays the wire's. `_with_site`
+    is the exception, its section being absent from every capture.
+    """
     envelope = state["/profile/show?active=true"]
-    response = {**envelope["Response"], "AstrometrySettings": settings}
+    response = envelope["Response"]
+    response = {**response, section: {**response.get(section, {}), **settings}}
     return {**state, "/profile/show?active=true": {**envelope, "Response": response}}
 
 
@@ -179,9 +189,11 @@ def _dimmable(channel: dict) -> dict:
 
 def _hyperbolic_autofocus(name: str) -> dict:
     """The captured autofocus report refitted HYPERBOLIC, its hyperbolic curve
-    scoring 0.988 beside a right trend line scoring 0.0. The corpus holds only
-    TRENDPARABOLIC runs, so the fitting, the hyperbolic equation and the R²
-    values are derived.
+    scoring 0.988 beside a right trend line scoring 0.0.
+
+    The corpus holds only TRENDPARABOLIC runs, so the fitting, the hyperbolic
+    equation, both R² values and the focus point are derived. The focus point
+    sits at the hyperbola's minimum, where a HYPERBOLIC run puts it.
     """
     envelope = load_envelope(name)
     response = envelope["Response"]
@@ -190,6 +202,11 @@ def _hyperbolic_autofocus(name: str) -> dict:
         "Response": {
             **response,
             "Fitting": "HYPERBOLIC",
+            "CalculatedFocusPoint": {
+                **response["CalculatedFocusPoint"],
+                "Position": 2336,
+                "Value": 1.8,
+            },
             "Fittings": {
                 **response["Fittings"],
                 "Hyperbolic": "y = 1.8 * cosh(asinh((x - 2336) / 40))",
@@ -203,8 +220,9 @@ def _hyperbolic_autofocus(name: str) -> dict:
     }
 
 
-def _rejected_autofocus(name: str, *, r_squared: float) -> dict:
-    """The captured autofocus report with its curve fit degraded.
+def _degraded_autofocus(name: str, *, r_squared: float) -> dict:
+    """The captured autofocus report with its curve fit degraded, whether or
+    not the profile's threshold rejects it.
 
     N.I.N.A. writes the report per ATTEMPT, before the verdict, so a run it
     REJECTED is on the wire looking exactly like a good one bar its R² (§4.4).
@@ -563,10 +581,22 @@ STATES: dict[str, State] = {
     # — the only evidence is the report's own R².
     "autofocus_rejected_on_r_squared": {
         **_IMAGING_GUIDING,
-        "/equipment/focuser/last-af": _rejected_autofocus(
+        "/equipment/focuser/last-af": _degraded_autofocus(
             "imaging_guiding_last_af.json", r_squared=0.42
         ),
     },
+    # A run whose fit scored below 0 under a profile threshold of 0, which
+    # turns N.I.N.A.'s R² check off. Synthetic in the R² and `RSquaredThreshold`.
+    "autofocus_fitted_badly_with_the_r_squared_check_off": _with_profile(
+        {
+            **_IMAGING_GUIDING,
+            "/equipment/focuser/last-af": _degraded_autofocus(
+                "imaging_guiding_last_af.json", r_squared=-0.3
+            ),
+        },
+        "FocuserSettings",
+        RSquaredThreshold=0,
+    ),
     # A HYPERBOLIC run that passed beside a trend line its fitting doesn't use.
     "autofocus_hyperbolic_with_a_flat_trend_line": {
         **_IMAGING_GUIDING,

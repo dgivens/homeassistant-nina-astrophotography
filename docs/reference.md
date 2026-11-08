@@ -298,10 +298,11 @@ show N.I.N.A.'s report from the most recent autofocus run:
 Things to know when reading them:
 
 - **`autofocus_hfr` is a measured value, not N.I.N.A.'s calculated focus
-  point.** With a `TREND*` curve fitting, the calculated value partly
-  extrapolates from the trend lines and can be smaller than any star your
-  optics produce (1.09 px against a best measured 1.55 px on one run). That
-  value is `autofocus_fitted_hfr`.
+  point.** With a `TREND*` curve fitting, the calculated value extrapolates,
+  wholly or partly, from the trend lines and can be smaller than any star
+  your optics produce (1.09 px against a best measured 1.55 px on one run). That
+  value is `autofocus_fitted_hfr`, and the `fitted_hfr` attribute of
+  `sensor.<instance>_focuser_last_autofocus`.
 - **The best measured HFR can be worse than the starting HFR on a run that
   improved focus.** N.I.N.A. moves to a fitted position between two sweep
   steps, and never measures HFR there. So don't treat the two as a reliable
@@ -310,6 +311,11 @@ Things to know when reading them:
   say whether N.I.N.A. accepted it. Use
   `binary_sensor.<instance>_focuser_autofocus_failed`, which compares R² with
   your profile's `RSquaredThreshold`.
+- **An `RSquaredThreshold` of 0 or below turns the R² check off**, in N.I.N.A.
+  and in Hocus Focus alike, so `autofocus_failed` rejects no run. N.I.N.A.'s
+  own autofocus then measures HFR at the new position instead, and rejects a
+  run more than 15% worse than where it started. That measurement is not in
+  the report, so `autofocus_failed` cannot see that rejection.
 - **A run that hangs writes no report**, so the sensors keep showing the
   previous run. The failed sensor catches this too.
 - **The report survives restarts.** It may be days old; check
@@ -328,7 +334,7 @@ Things to know when reading them:
 |---|---|
 | `reason` | `hung`, `rejected`, or absent. A hung run usually means a sequence problem; a rejected one means the focus range or star detection needs adjusting. Only for `hung` do the other autofocus sensors show a different run from the one that failed. |
 | `r_squared` | the R² used for the decision: the worst among the curves the run's curve fitting uses |
-| `r_squared_threshold` | your profile's `RSquaredThreshold` |
+| `r_squared_threshold` | your profile's `RSquaredThreshold`, or `null` when it is 0 or below and the check is off |
 | `refocus_temperature_delta` | the °C of focuser drift past which your sequence's "AF After Temperature Change" trigger refocuses, or `null` with no such trigger. With several, the smallest: which one is in scope cannot be told. The autofocus card flags drift against it. |
 
 If you check R² yourself, compare against this `r_squared` attribute, not
@@ -397,6 +403,8 @@ minima:
   - name: QuadraticMinimum
     position: 2336
     value: 1.8534560537596008
+
+fitted_hfr: 1.0932570683996303
 ```
 
 - `coefficients` are highest power first: `[a, b, c]` is `a·x² + b·x + c`.
@@ -410,9 +418,27 @@ minima:
   run can also report trend lines. They have `judged: false`, and a low R² on
   them doesn't reject the run. A contrast-detection run, whose `fitting` is
   `GAUSSIAN`, has every fit `judged: false`.
-- `minima` lists the minima N.I.N.A. computed. Pick the second by position in
-  the list, not by name; its name depends on the curve fitting in your profile.
-  The final focuser position is the average of the two.
+- `minima` lists the minima the autofocus routine computed, and which ones
+  depends on the routine. The example above is a Hocus Focus run. Hocus Focus
+  fits trend lines on every run to decide when the sweep ends, so it lists
+  `TrendLineIntersection` beside the minimum of the curve your fitting uses,
+  if any. Built-in N.I.N.A. lists all four (`TrendLineIntersection`,
+  `HyperbolicMinimum`, `QuadraticMinimum`, `GaussianMaximum`) whatever it
+  fitted. Read the final focus point from `fitted_hfr` and
+  `autofocus_position` rather than working it out from `minima`. N.I.N.A.
+  picks it by `fitting`:
+
+  | `fitting` | Final focus point |
+  |---|---|
+  | `TRENDLINES` | the trend-line intersection |
+  | `PARABOLIC` | the quadratic minimum |
+  | `HYPERBOLIC` | the hyperbolic minimum |
+  | `TRENDPARABOLIC` | the mean of the trend-line intersection and the quadratic minimum |
+  | `TRENDHYPERBOLIC` | the mean of the trend-line intersection and the hyperbolic minimum |
+
+  `fitted_hfr` is `null` on a contrast-detection run, whose focus point is
+  the gaussian maximum of a contrast score, and wherever the fit put it at
+  or below zero.
 - Don't scale your y-axis to include `TrendLineIntersection`. It is where the
   extrapolated trend lines cross, well below any real star size (0.333 px
   above, against 1.552 px measured). Scale to the measured points.

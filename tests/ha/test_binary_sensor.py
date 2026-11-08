@@ -353,12 +353,22 @@ async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judge
             {"reason": None, "r_squared": 0.988},
             marks=pytest.mark.synthetic,
         ),
+        # A threshold of 0 or below turns N.I.N.A.'s R² check off, and an R²
+        # can be negative: the run was applied, so nothing judges it.
+        pytest.param(
+            "inside_the_guiding_session",
+            "autofocus_fitted_badly_with_the_r_squared_check_off",
+            "off",
+            {"reason": None, "r_squared": -0.3, "r_squared_threshold": None},
+            marks=pytest.mark.synthetic,
+        ),
     ],
     ids=[
         "fitted well",
         "unanswered start",
         "report older than the session",
         "unused curve fitted badly",
+        "R² check off",
     ],
 )
 async def test_the_autofocus_problem_sensor_judges_this_sessions_runs(

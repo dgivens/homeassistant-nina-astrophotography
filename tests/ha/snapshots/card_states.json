@@ -3702,6 +3702,7 @@
        "r_squared": 0.9998991212499581
       }
      ],
+     "fitted_hfr": 1.0932570683996303,
      "fitting": "TRENDPARABOLIC",
      "friendly_name": "N.I.N.A. Focuser Last autofocus",
      "measured_points": 9,
@@ -11830,6 +11831,7 @@
        "r_squared": 0.9998991212499581
       }
      ],
+     "fitted_hfr": 1.0932570683996303,
      "fitting": "TRENDPARABOLIC",
      "friendly_name": "N.I.N.A. Focuser Last autofocus",
      "measured_points": 9,
@@ -13583,6 +13585,7 @@
        "r_squared": 0.9998991212499581
       }
      ],
+     "fitted_hfr": 1.0932570683996303,
      "fitting": "TRENDPARABOLIC",
      "friendly_name": "N.I.N.A. Focuser Last autofocus",
      "measured_points": 9,

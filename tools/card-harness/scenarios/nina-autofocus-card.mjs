@@ -12,6 +12,7 @@ import { rig } from "../hass.mjs";
 const UP = "site_configured";
 const VERDICT = "binary_sensor.n_i_n_a_focuser_autofocus_failed";
 const RUN = "sensor.n_i_n_a_focuser_last_autofocus";
+const POSITION = "sensor.n_i_n_a_focuser_autofocus_position";
 
 // `override` replaces an attribute map wholesale, so a verdict is patched onto
 // the rig's own: the profile's R² threshold stays whatever the capture holds,
@@ -20,6 +21,30 @@ const verdict = (dump, changes) => ({
   ...dump[UP].states[VERDICT].attributes,
   ...changes,
 });
+
+// The fitting, R²s, verdict and focus point are invented: no capture holds a
+// hyperbolic run. The focus point is the hyperbola's minimum, where a
+// HYPERBOLIC run puts it; the fits and minima are otherwise the captured ones.
+const hyperbolic = (dump) => {
+  const run = dump[UP].states[RUN].attributes;
+  return rig(dump, UP)
+    .override(RUN, dump[UP].states[RUN].state, {
+      ...run,
+      fitting: "HYPERBOLIC",
+      fitted_hfr: 1.8,
+      fits: [
+        ...run.fits.map((fit) => ({
+          ...fit,
+          judged: false,
+          r_squared: fit.name === "RightTrend" ? 0 : fit.r_squared,
+        })),
+        { name: "Hyperbolic", equation: "y = 1.8 * cosh(asinh((x - 2336) / 40))",
+          coefficients: null, r_squared: 0.988, judged: true },
+      ],
+    })
+    .override(POSITION, 2336)
+    .override(VERDICT, "off", verdict(dump, { r_squared: 0.988, reason: null }));
+};
 
 export const scenarios = {
   // Every id resolved, and a run that passed.
@@ -44,29 +69,13 @@ export const scenarios = {
         .build(),
   },
 
-  // A hyperbolic run that passed beside a trend line scoring 0.000. The fitting,
-  // R²s and the verdict are invented: no capture holds a hyperbolic run. The
-  // fits stay the captured ones otherwise.
-  hyperbolic: {
-    hass: (dump) => {
-      const run = dump[UP].states[RUN].attributes;
-      return rig(dump, UP)
-        .override(RUN, dump[UP].states[RUN].state, {
-          ...run,
-          fitting: "HYPERBOLIC",
-          fits: [
-            ...run.fits.map((fit) => ({
-              ...fit,
-              judged: false,
-              r_squared: fit.name === "RightTrend" ? 0 : fit.r_squared,
-            })),
-            { name: "Hyperbolic", equation: "y = 1.8 * cosh(asinh((x - 2336) / 40))",
-              coefficients: null, r_squared: 0.988, judged: true },
-          ],
-        })
-        .override(VERDICT, "off", verdict(dump, { r_squared: 0.988, reason: null }))
-        .build();
-    },
+  // A hyperbolic run that passed beside a trend line scoring 0.000.
+  hyperbolic: { hass: (dump) => hyperbolic(dump).build() },
+
+  // The same run with no starting HFR to compare against, which is the one
+  // place the card prints the fitted HFR: the hyperbola's 1.80.
+  hyperbolic_unmeasured_start: {
+    hass: (dump) => hyperbolic(dump).without("focuser_autofocus_starting_hfr").build(),
   },
 
   // A hung run wrote no report, so the curve below the banner is an earlier

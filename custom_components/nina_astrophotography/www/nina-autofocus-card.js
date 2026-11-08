@@ -261,12 +261,9 @@ class NinaAutofocusCard extends HTMLElement {
       || String(method).toUpperCase() !== "CONTRASTDETECTION";
 
     // `autofocus_fitted_hfr`/`autofocus_r2` ship disabled, so both are taken
-    // from the attributes: the fitted HFR is the mean of the minima, N.I.N.A.'s
-    // own rule, and only holds if every minimum survived — the mapper drops a
-    // negative trend-line intersection, and averaging what is left would quietly
-    // report the quadratic minimum alone.
-    const fitted = minima.map((minimum) => minimum.value).filter(Number.isFinite);
-    const whole = minima.length > 0 && fitted.length === minima.length;
+    // from attributes. `minima` cannot stand in for the fitted HFR: it carries
+    // curves the run's fitting ignores.
+    const fitted = this._attr(run, "fitted_hfr");
     // Only the curves the run's fitting uses: a hyperbolic run also reports trend
     // lines, and a poor one of those does not stop N.I.N.A. applying the result.
     const scored = fits.filter((fit) => fit.judged !== false && Number.isFinite(fit.r_squared));
@@ -309,9 +306,7 @@ class NinaAutofocusCard extends HTMLElement {
       position: this._number(
         this._eid("sensor", "autofocus_position", "focuser_autofocus_position")),
       hfr: this._number(this._eid("sensor", "autofocus_hfr", "focuser_autofocus_hfr")),
-      fittedHfr: whole && isHfr
-        ? fitted.reduce((total, value) => total + value, 0) / fitted.length
-        : null,
+      fittedHfr: isHfr && Number.isFinite(fitted) ? fitted : null,
       // The sensor is only a fallback for a report with no fits at all, and
       // it ships disabled, so this read is on the prefix path.
       worstSquare: worst ? worst.r_squared : this._number(
@@ -712,7 +707,7 @@ class NinaAutofocusCard extends HTMLElement {
       }
     }
 
-    // Where the focuser was left: the minima's mean, rounded to a step.
+    // The focus point the run's fitting chose; a rejected run never took it.
     if (Number.isFinite(run.position)) {
       const x = xOf(run.position);
       ctx.strokeStyle = theme[FINAL];

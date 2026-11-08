@@ -294,6 +294,32 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
     )
 
 
+@pytest.mark.parametrize(
+    ("rig_state", "fitted_hfr"),
+    [
+        # The mean of the trend-line intersection and the quadratic minimum.
+        ("imaging_guiding", 1.0932570683996303),
+        # A HYPERBOLIC run's focus point is the hyperbola's minimum.
+        pytest.param(
+            "autofocus_hyperbolic_with_a_flat_trend_line",
+            1.8,
+            marks=pytest.mark.synthetic,
+        ),
+    ],
+    ids=["trend parabolic", "hyperbolic"],
+)
+async def test_the_last_autofocus_publishes_the_fitted_hfr_its_fitting_chose(
+    hass: HomeAssistant, config_entry, rig, set_up_at, rig_state: str, fitted_hfr: float
+) -> None:
+    """A card reads this attribute: the `autofocus_fitted_hfr` sensor ships
+    disabled, and `minima` carries curves the fitting ignores.
+    """
+    await set_up_at(hass, config_entry, rig, rig_state)
+    attributes = state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").attributes
+
+    assert attributes["fitted_hfr"] == pytest.approx(fitted_hfr)
+
+
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
     ("entity", "reading"),
