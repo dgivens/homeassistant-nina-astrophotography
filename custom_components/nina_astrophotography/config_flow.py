@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
 
@@ -47,9 +48,8 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for N.I.N.A. Astrophotography."""
 
     VERSION = 1
-    # 2: no poll interval, and an instance name on every entry; see
-    # `async_migrate_entry`.
-    MINOR_VERSION = 2
+    # `async_migrate_entry` brings an earlier minor version up to this one.
+    MINOR_VERSION = 3
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -62,11 +62,14 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 **user_input,
                 CONF_HOST: user_input[CONF_HOST].strip().lower(),
             }
-            # Host and port: the API reports no stable id of its own.
-            await self.async_set_unique_id(
-                f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}"
+            # No unique id: the API reports no stable id of its own, and an
+            # address is not one.
+            self._async_abort_entries_match(
+                {
+                    CONF_HOST: user_input[CONF_HOST],
+                    CONF_PORT: user_input[CONF_PORT],
+                }
             )
-            self._abort_if_unique_id_configured()
             if self._name_in_use(user_input[CONF_INSTANCE_NAME]):
                 errors[CONF_INSTANCE_NAME] = "name_in_use"
             else:
@@ -109,6 +112,7 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     @staticmethod
+    @callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> NinaOptionsFlow:

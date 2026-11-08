@@ -4,9 +4,10 @@
 # which ones a step returns depends on its type — which each test asserts first.
 # pyright: reportTypedDictNotRequiredAccess=false
 
-from unittest.mock import patch
+from collections.abc import Generator
+from unittest.mock import AsyncMock, patch
 
-from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.config_entries import SOURCE_USER, ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 import pytest
@@ -39,26 +40,55 @@ SETUP = "custom_components.nina_astrophotography.async_setup_entry"
 
 VERSIONS = VersionInfo(api_version="2.2.15.2", nina_version="3.2.0.9001")
 ROOFTOP = {CONF_HOST: "nina.local", CONF_PORT: 1888, CONF_INSTANCE_NAME: "Rooftop"}
+ELSEWHERE = {CONF_HOST: "other.local", CONF_PORT: 1888}
 
 
-async def _submit(hass: HomeAssistant, user_input: dict, **probe) -> ConfigFlowResult:
-    """Open the user step and answer it once, with `get_versions` stubbed."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"}
+@pytest.fixture
+def probe() -> Generator[AsyncMock]:
+    """`get_versions`, answering as a working rig until a test says otherwise."""
+    with patch(PROBE, return_value=VERSIONS) as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_setup_entry() -> Generator[AsyncMock]:
+    with patch(SETUP, return_value=True) as mock:
+        yield mock
+
+
+@pytest.fixture
+def configured(hass: HomeAssistant, config_entry: MockConfigEntry) -> MockConfigEntry:
+    """A rig already added, as a 1.4.x entry: titled, with no instance name."""
+    config_entry.add_to_hass(hass)
+    return config_entry
+
+
+async def _user_step(hass: HomeAssistant) -> ConfigFlowResult:
+    return await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
     )
-    with patch(PROBE, **probe), patch(SETUP, return_value=True):
-        return await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input
-        )
+
+
+async def _answer(
+    hass: HomeAssistant, result: ConfigFlowResult, user_input: dict
+) -> ConfigFlowResult:
+    return await hass.config_entries.flow.async_configure(result["flow_id"], user_input)
 
 
 async def test_a_valid_rig_creates_an_entry_titled_by_its_instance_name(
-    hass: HomeAssistant,
+    hass: HomeAssistant, probe: AsyncMock, mock_setup_entry: AsyncMock
 ) -> None:
-    result = await _submit(hass, ROOFTOP, return_value=VERSIONS)
+    result = await _user_step(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {}
+
+    result = await _answer(hass, result, ROOFTOP)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Rooftop"
     assert result["data"] == ROOFTOP
+    assert result["result"].unique_id is None
+    mock_setup_entry.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -73,77 +103,82 @@ async def test_a_valid_rig_creates_an_entry_titled_by_its_instance_name(
     ],
     ids=["unreachable", "unavailable", "refusing", "no-endpoint", "malformed", "other"],
 )
-async def test_a_failing_probe_shows_why(
-    hass: HomeAssistant, raised: Exception, shown: str
+async def test_a_failing_probe_shows_why_and_a_retry_succeeds(
+    hass: HomeAssistant,
+    probe: AsyncMock,
+    mock_setup_entry: AsyncMock,
+    raised: Exception,
+    shown: str,
 ) -> None:
     """Bronze test-before-configure: the probe decides, and says which way."""
-    result = await _submit(hass, ROOFTOP, side_effect=raised)
+    probe.side_effect = raised
+    result = await _answer(hass, await _user_step(hass), ROOFTOP)
+    assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {"base": shown}
 
-
-async def test_the_form_recovers_after_an_error(hass: HomeAssistant) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": "user"}
-    )
-    with patch(PROBE, side_effect=NinaConnectionError("refused")):
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], ROOFTOP
-        )
-    with patch(PROBE, return_value=VERSIONS), patch(SETUP, return_value=True):
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], ROOFTOP
-        )
+    probe.side_effect = None
+    result = await _answer(hass, result, ROOFTOP)
     assert result["type"] is FlowResultType.CREATE_ENTRY
+    mock_setup_entry.assert_called_once()
 
 
 @pytest.mark.parametrize("host", ["nina.local", "NINA.local", "  nina.local  "])
 async def test_the_same_host_and_port_cannot_be_added_twice(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, host: str
+    hass: HomeAssistant, configured: MockConfigEntry, probe: AsyncMock, host: str
 ) -> None:
     """Hostnames are case-insensitive, so all three name the configured rig.
     The probe never runs: a duplicate costs no HTTP call.
     """
-    result = await _submit(
-        hass, ROOFTOP | {CONF_HOST: host}, side_effect=AssertionError("probed")
-    )
+    result = await _answer(hass, await _user_step(hass), ROOFTOP | {CONF_HOST: host})
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+    probe.assert_not_called()
 
 
 async def test_a_second_rig_may_not_reuse_an_instance_name(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
+    hass: HomeAssistant,
+    configured: MockConfigEntry,
+    probe: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
     """Two rigs called the same thing name their devices identically, and the
-    second set collides into `_2` entity ids. The configured entry is a 1.4.x
-    one, whose title is its instance name.
+    second set collides into `_2` entity ids.
     """
-    result = await _submit(
-        hass,
-        {CONF_HOST: "other.local", CONF_PORT: 1888, CONF_INSTANCE_NAME: "N.I.N.A."},
-        return_value=VERSIONS,
+    result = await _answer(
+        hass, await _user_step(hass), ELSEWHERE | {CONF_INSTANCE_NAME: "N.I.N.A."}
     )
+    assert result["type"] is FlowResultType.FORM
     assert result["errors"] == {CONF_INSTANCE_NAME: "name_in_use"}
 
+    result = await _answer(hass, result, ELSEWHERE | {CONF_INSTANCE_NAME: "Dome"})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
 
-async def test_a_second_rig_on_a_different_host_is_allowed(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
+
+async def test_a_second_rig_on_the_same_host_and_another_port_is_allowed(
+    hass: HomeAssistant,
+    configured: MockConfigEntry,
+    probe: AsyncMock,
+    mock_setup_entry: AsyncMock,
 ) -> None:
-    """Two rigs must coexist — that is why the instance name exists."""
-    result = await _submit(
+    """Both parts of the address decide: two N.I.N.A. instances may share a PC."""
+    result = await _answer(
         hass,
-        {CONF_HOST: "other.local", CONF_PORT: 1888, CONF_INSTANCE_NAME: "Dome"},
-        return_value=VERSIONS,
+        await _user_step(hass),
+        {CONF_HOST: "nina.local", CONF_PORT: 1889, CONF_INSTANCE_NAME: "Dome"},
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
 @pytest.mark.parametrize("name", ["", "   "], ids=["empty", "blank"])
-async def test_a_blank_instance_name_is_refused(hass: HomeAssistant, name: str) -> None:
+async def test_a_blank_instance_name_is_refused(
+    hass: HomeAssistant, probe: AsyncMock, name: str
+) -> None:
     """It would title the entry "" and name every device " Camera" — and a
     length check alone accepts a string of spaces.
     """
+    result = await _user_step(hass)
     with pytest.raises(vol.Invalid):
-        await _submit(hass, ROOFTOP | {CONF_INSTANCE_NAME: name}, return_value=VERSIONS)
+        await _answer(hass, result, ROOFTOP | {CONF_INSTANCE_NAME: name})
     assert not hass.config_entries.async_entries(DOMAIN)
 
 
