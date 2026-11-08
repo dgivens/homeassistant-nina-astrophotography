@@ -3677,6 +3677,8 @@
         1671.5984427459177
        ],
        "equation": "y = 0.0003058854621319121 * x^2 + -1.4293365331583652 * x + 1671.5984427459177",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "Quadratic",
        "r_squared": 0.9710548595560263
@@ -3687,6 +3689,8 @@
         111.1161540435258
        ],
        "equation": "y = -0.04727009756935714 * x + 111.1161540435258",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "LeftTrend",
        "r_squared": 0.9902518159347956
@@ -3697,6 +3701,8 @@
         -131.29156185332315
        ],
        "equation": "y = 0.056162978412705115 * x + -131.29156185332315",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "RightTrend",
        "r_squared": 0.9998991212499581
@@ -11808,6 +11814,8 @@
         1671.5984427459177
        ],
        "equation": "y = 0.0003058854621319121 * x^2 + -1.4293365331583652 * x + 1671.5984427459177",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "Quadratic",
        "r_squared": 0.9710548595560263
@@ -11818,6 +11826,8 @@
         111.1161540435258
        ],
        "equation": "y = -0.04727009756935714 * x + 111.1161540435258",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "LeftTrend",
        "r_squared": 0.9902518159347956
@@ -11828,6 +11838,8 @@
         -131.29156185332315
        ],
        "equation": "y = 0.056162978412705115 * x + -131.29156185332315",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "RightTrend",
        "r_squared": 0.9998991212499581
@@ -13564,6 +13576,8 @@
         1671.5984427459177
        ],
        "equation": "y = 0.0003058854621319121 * x^2 + -1.4293365331583652 * x + 1671.5984427459177",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "Quadratic",
        "r_squared": 0.9710548595560263
@@ -13574,6 +13588,8 @@
         111.1161540435258
        ],
        "equation": "y = -0.04727009756935714 * x + 111.1161540435258",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "LeftTrend",
        "r_squared": 0.9902518159347956
@@ -13584,6 +13600,8 @@
         -131.29156185332315
        ],
        "equation": "y = 0.056162978412705115 * x + -131.29156185332315",
+       "gaussian": null,
+       "hyperbola": null,
        "judged": true,
        "name": "RightTrend",
        "r_squared": 0.9998991212499581
