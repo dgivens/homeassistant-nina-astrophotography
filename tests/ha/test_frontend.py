@@ -1,10 +1,10 @@
-"""The bundled Lovelace cards: served statically and self-registered.
+"""The bundled Lovelace cards: served and self-registered.
 
 The byte-for-byte check below is only to prove `URL_PREFIX` and `WWW_DIR`
-actually point at each other — not a test of Home Assistant's static route
-itself. What's ours beyond that: which files are exposed, that registering
-them is idempotent, that it degrades gracefully without lovelace, and that a
-failure in it can't take the rest of the integration down with it.
+actually point at each other. What's ours beyond that: which files are
+exposed and how they are cached, that registering them is idempotent, that it
+degrades gracefully without lovelace, and that a failure in it can't take the
+rest of the integration down with it.
 """
 
 import re
@@ -83,6 +83,24 @@ async def test_whatever_a_card_imports_is_served_at_that_path(
         resp = await client.get(f"{URL_PREFIX}/{filename}")
         assert resp.status == 200, filename
         assert "javascript" in resp.content_type
+
+
+async def test_every_file_is_revalidated_on_each_load(
+    hass, loaded_entry, hass_client
+) -> None:
+    """A card cached from one release importing a module from another fails
+    to load, so no file may be reused unchecked.
+    """
+    client = await hass_client()
+    for path in WWW_DIR.iterdir():
+        resp = await client.get(f"{URL_PREFIX}/{path.name}")
+        assert resp.headers["Cache-Control"] == "no-cache", path.name
+
+
+async def test_only_files_in_www_are_served(hass, loaded_entry, hass_client) -> None:
+    client = await hass_client()
+    resp = await client.get(f"{URL_PREFIX}/frontend.py")
+    assert resp.status == 404
 
 
 async def test_a_registration_failure_does_not_sink_the_integration(

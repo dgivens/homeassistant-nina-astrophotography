@@ -78,6 +78,7 @@ from .entity import NinaEntityDescription, refusals_raised, usable
 from .frontend import (
     async_ensure_frontend_resources,
     async_register_frontend_resources,
+    async_serve_cards,
     async_unregister_frontend_resources,
 )
 from .views import async_register_views
@@ -117,6 +118,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the actions, the image proxy and the Lovelace cards."""
     _register_services(hass)
     async_register_views(hass)
+    await async_serve_cards(hass)
     await async_register_frontend_resources(hass)
     return True
 

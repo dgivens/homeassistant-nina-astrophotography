@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from homeassistant.components.http.server import StaticPathConfig
+from aiohttp import hdrs, web
 from homeassistant.components.lovelace.const import CONF_RESOURCE_TYPE_WS, LOVELACE_DATA
 from homeassistant.components.lovelace.resources import (
     ResourceStorageCollection,
@@ -11,6 +11,7 @@ from homeassistant.components.lovelace.resources import (
 )
 from homeassistant.const import CONF_ID, CONF_URL
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.http import HomeAssistantView
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +33,41 @@ CARD_URLS = tuple(f"{URL_PREFIX}/{filename}" for filename in CARD_FILENAMES)
 _RESOURCES_REMOVED = "nina_astrophotography_frontend_resources_removed"
 
 
+class CardFilesView(HomeAssistantView):
+    """Serve `www/`, each file revalidated on every load.
+
+    A card and the modules it imports must come from the same release: a new
+    card importing a name its cached module lacks never defines its element.
+    Without `Cache-Control` a browser picks each file's freshness itself, so
+    `no-cache` it is; an unchanged file answers 304.
+
+    Public, like `/local/`: a browser fetches a module with no token, so
+    nothing private belongs in `www/`.
+    """
+
+    url = URL_PREFIX + "/{filename}"
+    name = "nina_astrophotography:cards"
+    requires_auth = False
+
+    def __init__(self, filenames: frozenset[str]) -> None:
+        self._filenames = filenames
+
+    async def get(self, request: web.Request, filename: str) -> web.FileResponse:
+        if filename not in self._filenames:
+            raise web.HTTPNotFound
+        response = web.FileResponse(WWW_DIR / filename)
+        response.headers[hdrs.CACHE_CONTROL] = "no-cache"
+        return response
+
+
+async def async_serve_cards(hass: HomeAssistant) -> None:
+    """Serve `www/`. Once per process: a view cannot be registered twice."""
+    filenames = await hass.async_add_executor_job(
+        lambda: frozenset(path.name for path in WWW_DIR.iterdir() if path.is_file())
+    )
+    hass.http.register_view(CardFilesView(filenames))
+
+
 async def _async_ensure_loaded(resources: ResourceStorageCollection) -> None:
     """Load the collection, which answers `async_items()` empty until then.
 
@@ -43,7 +79,7 @@ async def _async_ensure_loaded(resources: ResourceStorageCollection) -> None:
 
 
 async def async_register_frontend_resources(hass: HomeAssistant) -> None:
-    """Serve `www/` and register each card as a Lovelace resource.
+    """Register each card as a Lovelace resource.
 
     Never fails the integration: a broken resource store costs the cards,
     not the entities and actions.
@@ -55,15 +91,7 @@ async def async_register_frontend_resources(hass: HomeAssistant) -> None:
 
 
 async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
-    """Serve `www/` and register each card as a Lovelace resource.
-
-    Like `/local/`, the static route is public, as a browser fetches a module
-    with no token; nothing private belongs in `www/`.
-    """
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig(URL_PREFIX, str(WWW_DIR), False)]
-    )
-
+    """Register each card as a Lovelace resource."""
     # Lovelace is absent from a configuration without `default_config`.
     lovelace_data = hass.data.get(LOVELACE_DATA)
     if lovelace_data is None:
