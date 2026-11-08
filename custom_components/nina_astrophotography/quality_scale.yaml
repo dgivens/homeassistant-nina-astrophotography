@@ -11,14 +11,25 @@
 rules:
   # Bronze
   action-setup: done
-  appropriate-polling: done
+  appropriate-polling:
+    status: done
+    comment: >-
+      The poll interval is a user option, 5 to 60 s, by choice. The event
+      socket carries most state and the poll is a backstop, whose cost depends
+      on the imaging PC and the link to it, which only the user knows. 1.x
+      offered a user-set interval too.
   brands:
     status: done
     comment: >-
       Served from the integration's own `brand/` directory, which Home
       Assistant and HACS both read; there is no home-assistant/brands entry.
   common-modules: done
-  config-flow: done
+  config-flow:
+    status: done
+    comment: >-
+      The form asks for an instance name besides host and port. The Advanced
+      API reports no name for the rig, and the name prefixes every entity id
+      and tells two rigs apart.
   config-flow-test-coverage: done
   dependency-transparency:
     status: exempt

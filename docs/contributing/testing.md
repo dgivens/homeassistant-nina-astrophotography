@@ -50,8 +50,8 @@ body does not show it.
 **`advance()` cannot reach a state that differs only in a tier-polled
 endpoint** — `/profile/show`, `/livestack/status`,
 `/equipment/focuser/last-af`. Only the states built from a whole capture serve
-those (`tests/scenarios/README.md`, "Whole captures"); the dawn family withholds
-them, so starting there fires the coordinator's not-served latch at setup, and
+those (`tests/scenarios/README.md`, "Whole captures"); the dawn and restart
+families withhold them, so starting there fires the coordinator's not-served latch at setup, and
 one refresh will not retry. Set the entry up with the rig already in the state instead
 (the `set_up_at` fixture in `tests/ha/conftest.py`). The same applies to
 `/event-history`, which is replayed once.
