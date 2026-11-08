@@ -74,3 +74,37 @@ async def test_a_pushed_event_says_which_rig_it_came_from(
 
     assert [event["entry_id"] for event in fired] == [second.entry_id]
     assert fired[0]["instance"] == second.title
+
+
+async def test_a_socket_connecting_says_which_rig_it_came_from(
+    hass: HomeAssistant, two_rigs
+) -> None:
+    """The socket itself is silenced, so the transition is driven on the
+    stream directly, as `_dispatch` drives a push.
+    """
+    fired: list[dict] = []
+    hass.bus.async_listen(
+        "nina_websocket_connected", lambda e: fired.append(dict(e.data))
+    )
+
+    second = two_rigs.entries[1]
+    second.runtime_data.events._set_connected(True)  # noqa: SLF001
+    await hass.async_block_till_done()
+
+    assert fired == [{"instance": second.title, "entry_id": second.entry_id}]
+
+
+async def test_unloading_a_connected_rig_says_which_one_disconnected(
+    hass: HomeAssistant, two_rigs
+) -> None:
+    fired: list[dict] = []
+    hass.bus.async_listen(
+        "nina_websocket_disconnected", lambda e: fired.append(dict(e.data))
+    )
+
+    second = two_rigs.entries[1]
+    second.runtime_data.events.connected = True  # as a live socket would leave it
+    assert await hass.config_entries.async_unload(second.entry_id)
+    await hass.async_block_till_done()
+
+    assert fired == [{"instance": second.title, "entry_id": second.entry_id}]

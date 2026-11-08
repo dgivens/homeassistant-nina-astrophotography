@@ -258,7 +258,10 @@ Every event N.I.N.A. sends becomes a Home Assistant event as it happens:
 ```
 
 `nina_websocket_connected` and `nina_websocket_disconnected` fire when the
-connection to N.I.N.A. drops or comes back.
+event connection to N.I.N.A. comes up or drops. They carry only `instance` and
+`entry_id` from the table above, and do not fire as `nina_event`. `connected`
+also fires on the first connect after setup, and `disconnected` also fires
+when the instance is unloaded while connected.
 
 `event.<instance>_error` records plate-solve failures, camera download timeouts
 and autofocus timeouts. It misses some errors; see
