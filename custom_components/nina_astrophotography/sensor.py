@@ -660,7 +660,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         kind="focuser",
-        # Per attempt, like the whole report: retries cost more than this.
+        # From the start of the run, earlier attempts included.
         value=_autofocus("duration_seconds"),
     ),
     NinaSensorDescription(

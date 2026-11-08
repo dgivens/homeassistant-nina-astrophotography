@@ -13,11 +13,10 @@ rules:
   action-setup: done
   appropriate-polling: done
   brands:
-    status: todo
+    status: done
     comment: >-
-      There is no home-assistant/brands entry for this fork, and the HACS
-      validation job passes `ignore: brands` accordingly. Submitting one is the
-      remaining Bronze gap.
+      Served from the integration's own `brand/` directory, which Home
+      Assistant and HACS both read; there is no home-assistant/brands entry.
   common-modules: done
   config-flow: done
   config-flow-test-coverage: done

@@ -236,8 +236,9 @@ def _degraded_autofocus(name: str, *, r_squared: float) -> dict:
     """The captured autofocus report with its curve fit degraded, whether or
     not the profile's threshold rejects it.
 
-    N.I.N.A. writes the report per ATTEMPT, before the verdict, so a run it
-    REJECTED is on the wire looking exactly like a good one bar its R² (§4.4).
+    Built-in N.I.N.A. writes a report per ATTEMPT and Hocus Focus one per
+    run, and both write a run they REJECTED, so it is on the wire looking
+    exactly like a good one bar its R² (§4.4).
     The corpus holds only successful runs — every captured `RSquares` is above
     the profile's 0.7 threshold — so the rejected case has to be derived, and
     only the R² values move. `Hyperbolic` stays `"NaN"`: this run fitted

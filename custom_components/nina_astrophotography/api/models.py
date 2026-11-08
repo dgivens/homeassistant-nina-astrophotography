@@ -460,11 +460,11 @@ class CurveFit:
 class AutoFocusReport:
     """The newest `/equipment/focuser/last-af`.
 
-    The report is written per attempt, before the verdict, and carries no
-    failure flag, so a rejected run overwrites the last good one; only
-    `r_squared` against the profile's `RSquaredThreshold`, and
-    `outside_sweep`, judge it. It survives a restart, so date it against the
-    session before use.
+    Built-in N.I.N.A. writes a report per attempt, Hocus Focus one per run,
+    rejected runs included. It carries no failure flag, so a rejected run
+    overwrites the last good one; only `r_squared` against the profile's
+    `RSquaredThreshold`, and `outside_sweep`, judge it. It survives a
+    restart, so date it against the session before use.
     """
 
     timestamp: datetime | None
@@ -518,7 +518,7 @@ class AutoFocusReport:
     initial_hfr: float | None
     """The HFR measured at `initial_position`."""
     duration_seconds: float | None
-    """The attempt's duration; retries cost more."""
+    """Time since the run started, earlier attempts included."""
     r_squared: float | None
     """The worst R² among the judged curves, which is what a threshold
     judges. `None` if none of them reports one.

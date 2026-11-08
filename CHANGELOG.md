@@ -20,6 +20,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   gives the `out_of_range` reason, `refocus_temperature_delta`, each fit's
   `hyperbola`, `gaussian` and `judged`, and each minimum's `used`, and an
   untargeted action resolves against configured entries, not loaded ones.
+- **`sensor.<instance>_focuser_autofocus_duration` is documented as the
+  whole run's duration** (#234). N.I.N.A. and Hocus Focus both time a run
+  from its start, so a retried run's duration includes its failed attempts,
+  while the curve and focus position in the report are the last attempt's.
+- **`nina_websocket_connected` and `nina_websocket_disconnected` say which rig
+  they came from** (#236): both carry `instance` and `entry_id`, as every
+  other `nina_*` event does, so an automation with two rigs can tell which one
+  lost or regained its event connection.
+- **Home Assistant shows the integration's icon** on the integrations page,
+  the add-integration dialog and the device pages (#230). The icon and logo
+  ship in the integration's own `brand/` directory, which HACS validates.
+
+---
 
 ## [2.5.0] - 2026-11-08
 

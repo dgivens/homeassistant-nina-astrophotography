@@ -57,7 +57,7 @@ async def test_unloading_stops_the_event_stream(
 
 
 async def test_a_pushed_event_says_which_rig_it_came_from(
-    hass: HomeAssistant, two_rigs, rig
+    hass: HomeAssistant, two_rigs, push
 ) -> None:
     """The event types are shared by every instance, so an automation with two
     rigs configured needs the payload to discriminate — which is what the flip
@@ -67,10 +67,39 @@ async def test_a_pushed_event_says_which_rig_it_came_from(
     hass.bus.async_listen("nina_image_save", lambda e: fired.append(dict(e.data)))
 
     second = two_rigs.entries[1]
-    second.runtime_data.events._dispatch(  # noqa: SLF001
-        load_fixture("live_image_save_push.json")
-    )
+    push(load_fixture("live_image_save_push.json"), second)
     await hass.async_block_till_done()
 
     assert [event["entry_id"] for event in fired] == [second.entry_id]
     assert fired[0]["instance"] == second.title
+
+
+async def test_a_socket_connecting_says_which_rig_it_came_from(
+    hass: HomeAssistant, two_rigs, socket_state
+) -> None:
+    fired: list[dict] = []
+    hass.bus.async_listen(
+        "nina_websocket_connected", lambda e: fired.append(dict(e.data))
+    )
+
+    second = two_rigs.entries[1]
+    socket_state(second, connected=True)
+    await hass.async_block_till_done()
+
+    assert fired == [{"instance": second.title, "entry_id": second.entry_id}]
+
+
+async def test_unloading_a_connected_rig_says_which_one_disconnected(
+    hass: HomeAssistant, two_rigs, socket_state
+) -> None:
+    fired: list[dict] = []
+    hass.bus.async_listen(
+        "nina_websocket_disconnected", lambda e: fired.append(dict(e.data))
+    )
+
+    second = two_rigs.entries[1]
+    socket_state(second, connected=True)
+    assert await hass.config_entries.async_unload(second.entry_id)
+    await hass.async_block_till_done()
+
+    assert fired == [{"instance": second.title, "entry_id": second.entry_id}]
