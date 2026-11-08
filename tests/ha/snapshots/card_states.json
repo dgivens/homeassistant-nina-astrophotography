@@ -3711,11 +3711,13 @@
       {
        "name": "TrendLineIntersection",
        "position": 2344,
+       "used": true,
        "value": 0.3330580830396599
       },
       {
        "name": "QuadraticMinimum",
        "position": 2336,
+       "used": true,
        "value": 1.8534560537596008
       }
      ],
@@ -11840,11 +11842,13 @@
       {
        "name": "TrendLineIntersection",
        "position": 2344,
+       "used": true,
        "value": 0.3330580830396599
       },
       {
        "name": "QuadraticMinimum",
        "position": 2336,
+       "used": true,
        "value": 1.8534560537596008
       }
      ],
@@ -13594,11 +13598,13 @@
       {
        "name": "TrendLineIntersection",
        "position": 2344,
+       "used": true,
        "value": 0.3330580830396599
       },
       {
        "name": "QuadraticMinimum",
        "position": 2336,
+       "used": true,
        "value": 1.8534560537596008
       }
      ],
