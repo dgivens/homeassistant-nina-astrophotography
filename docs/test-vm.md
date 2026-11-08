@@ -195,7 +195,8 @@ contributor can reproduce. The rig replaces it:
   - add optional **SSL and authentication**;
   - switch the web server to **SimpleW**;
   - remove base64 image support from v2. The integration requests images with
-    `stream=true` (`api/v2/client.py:313`), so that removal alone does not affect it.
+    `stream=true` (`get_image_bytes` and `get_livestack_image_bytes` in
+    `api/v2/client.py`), so that removal alone does not affect it.
 - **Neither nightly has a stable "latest" URL.**
   - N.I.N.A.'s nightly download path carries the build number
     ([download page][nina-dl]).
@@ -205,14 +206,14 @@ contributor can reproduce. The rig replaces it:
 ### 3.4 This repository
 
 - The upgrade harness runs Home Assistant in bridged Docker
-  (`-p {PORT}:8123`, `tools/upgrade-harness/harness.py:237`). From inside that
+  (`-p {PORT}:8123`, `up` in `tools/upgrade-harness/harness.py`). From inside that
   container, a port forwarded on the host is `host.docker.internal`, not
   `127.0.0.1`.
 - The harness defaults `--host` to a fixed LAN address
   (`SIM_HOST`, `tools/upgrade-harness/harness.py:44`). No machine is permanently
   at that address.
 - `scripts/capture_fixtures.py` always writes to `tests/fixtures/`
-  (`FIXTURES`, `scripts/capture_fixtures.py:27`).
+  (`FIXTURES` in `scripts/capture_fixtures.py`).
 - The redaction guard `scripts/check_fixtures.py` parses JSON only, and
   pre-commit runs it only on `^tests/fixtures/.*\.json$`.
 - FakeRig answers every command `Success: true` and records it in `rig.sent`, and
@@ -465,9 +466,10 @@ Stage 1 answers these, and the answers are recorded here:
 This is input to a future design. Nothing here is decided.
 
 - **Authentication.** If a user enables it, `quality_scale.yaml`'s
-  `reauthentication-flow` exemption (line 55: "The N.I.N.A. Advanced API has no
-  authentication of any kind") no longer holds.
-- **SSL.** The client assumes `http://` (`api/v2/client.py:87`).
+  `reauthentication-flow` exemption, which rests on the 2.2.x plugin having no
+  authentication, no longer holds.
+- **SSL.** The client assumes `http://` (`NinaClientV2.__init__` in
+  `api/v2/client.py`).
 - **The web-server change.** Moving to SimpleW may change two behaviours the
   client relies on: "the HTTP status is almost always 200", and "routing failures
   return HTML". The channel comparison (§4.6) and the `tests/rig/` tier show
@@ -1329,3 +1331,16 @@ dictionary they are, like N.I.N.A.'s `KeyValueOf…` runs.
 | `up stable`, installing the channel | 53–69 s |
 | `up stable` on an installed channel | 2 s |
 | `wait`, from the guest's start | 154–158 s |
+
+---
+
+## 2026-11-08 — The repository changes of §4.7
+
+§4.7's changes to the repository are made, so two of §3.4's findings describe
+the code as it stood before them. This replaces §3.4's second and third
+bullets:
+
+- The upgrade harness has no default address: `up` requires `--host` (`main`
+  in `tools/upgrade-harness/harness.py`).
+- `scripts/capture_fixtures.py` writes to `--out`, which defaults to
+  `tests/fixtures/` (`FIXTURES`).

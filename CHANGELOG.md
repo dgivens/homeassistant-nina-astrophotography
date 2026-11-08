@@ -6,6 +6,17 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Changed
+
+- **The quality-scale register matches Home Assistant's current rules**
+  (#PR). `dependency-transparency` is exempt, since the integration has no
+  external dependencies. `log-when-unavailable` is not yet met: an outage is
+  logged at `warning` rather than `info`, and the event socket logs every
+  failed reconnect. `reauthentication-flow`'s exemption holds for the
+  supported 2.2.x Advanced API plugin. The design doc's §10 lists the same
+  rules as `quality_scale.yaml`, and `CLAUDE.md` and the contributor docs
+  match the code they describe.
+
 ### Fixed
 
 - **The entity reference matches the integration** (#240): a dome adds up to

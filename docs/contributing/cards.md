@@ -82,7 +82,7 @@ Traps when changing a card:
 - A card's `_s`/`_f`/`_state` fallback applies only when the entity is
   **missing**, not when it reads `unavailable` or `unknown` — so a down driver
   renders as the literal text `unavailable`, and `_f` turns it into `0`.
-  `nina-observatory-card`'s `shown()` is the pattern, and every card now
+  `nina-observatory-card`'s `shown()` is the pattern, and every card
   follows it. The image panel's `_f` reads are safe only because it prints
   each one solely above zero.
 - **The link to N.I.N.A. is `linkState`** (`nina-entity-resolver.js`, whose

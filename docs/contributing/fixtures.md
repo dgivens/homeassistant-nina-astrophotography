@@ -75,12 +75,19 @@ not a regression.
 
 `/profile/show` is captured as an **allowlist projection** — only
 `TelescopeSettings.FocalLength`, `FocuserSettings.{AutoFocusTimeoutSeconds,
-RSquaredThreshold}`, `MeridianFlipSettings.*`, `CameraSettings.PixelSize` and
+RSquaredThreshold}`, `MeridianFlipSettings.*`, `CameraSettings.PixelSize`,
 `AstrometrySettings.{Latitude,Longitude,Elevation}` (field by field: the section
-also holds `HorizonFilePath`). Never denylist it: its secret surface is too large
-to redact confidently, and it held a live `WeatherUndergroundAPIKey` on a trial
-capture. The committed corpus predates the astrometry fields, so no profile
-fixture carries a site until a re-capture.
+also holds `HorizonFilePath`) and the seven `DomeSettings` interlocks,
+`{CloseOnUnsafe, RefuseUnsafeShutterMove, RefuseUnsafeShutterOpenSansSafetyDevice,
+RefuseUnparkWithoutShutterOpen, ParkMountBeforeShutterMove,
+ParkDomeBeforeShutterMove, FindHomeBeforePark}` (field by field: the section
+also names the dome driver). `PROFILE_ALLOWLIST` in `tests/redaction.py` is the
+list itself. Never denylist it: its secret surface is too large to redact
+confidently, and it held a live `WeatherUndergroundAPIKey` on a trial capture.
+The real rig's profile fixtures predate the astrometry and dome fields, so none
+of them carries a site. The four `simulator_*_profile.json` fixtures carry the
+simulator profile's `AstrometrySettings`, and the two `simulator_dome_*` ones
+its `DomeSettings` as well.
 
 The corpus needs **states**, not one snapshot — imaging, dawn flats (calibration
 sentinels), before the first sub, equipment disconnected, sequence complete,
