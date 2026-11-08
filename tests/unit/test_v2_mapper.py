@@ -1087,8 +1087,8 @@ def test_a_minimum_is_used_where_the_fitting_focuses_on_it(
 
 @pytest.mark.synthetic
 def test_a_minimum_nobody_named_is_used() -> None:
-    """Fabricates an `Intersections` key. Unused is a claim the run ignored
-    it, which a name the mapper cannot place does not support.
+    """Fabricates an `Intersections` key. Unused claims the run ignored a
+    minimum, which a name the mapper cannot place does not support.
     """
     wire = load("imaging_guiding_last_af.json")
     wire["Intersections"]["MoffatMinimum"] = {"Position": 2339, "Value": 1.7}

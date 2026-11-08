@@ -26,7 +26,8 @@ const verdict = (dump, changes) => ({
 });
 
 // One of the run's captured minima, which a HYPERBOLIC focus point is not
-// built from: the trend-line intersection, or the quadratic minimum.
+// built from: the trend-line intersection, or the quadratic minimum built-in
+// N.I.N.A. also reports.
 const unused = (dump, name) => ({
   ...dump[UP].states[RUN].attributes.minima.find((minimum) => minimum.name === name),
   used: false,
@@ -34,8 +35,11 @@ const unused = (dump, name) => ({
 
 // The fitting, R²s, verdict and focus point are invented: no capture holds a
 // hyperbolic run. The focus point is the hyperbola's minimum, where a
-// HYPERBOLIC run puts it; the fits and minima are otherwise the captured ones,
-// judged and used as that fitting would. `changes` lands on the run's
+// HYPERBOLIC run puts it, and the hyperbolic minimum sits on it too. The fits
+// and the trend-line intersection are otherwise the captured ones, judged and
+// used as that fitting would. Hocus Focus computes only the trend lines and the
+// hyperbola on such a run, so it reports no quadratic minimum; the captured
+// quadratic fit stays in `fits` all the same. `changes` lands on the run's
 // attributes.
 const hyperbolic = (dump, changes = {}) => {
   const run = dump[UP].states[RUN].attributes;
@@ -53,7 +57,10 @@ const hyperbolic = (dump, changes = {}) => {
         { name: "Hyperbolic", equation: "y = 1.8 * cosh(asinh((x - 2336) / 40))",
           coefficients: null, r_squared: 0.988, judged: true },
       ],
-      minima: run.minima.map((minimum) => unused(dump, minimum.name)),
+      minima: [
+        unused(dump, "TrendLineIntersection"),
+        { name: "HyperbolicMinimum", position: 2336, value: 1.8, used: true },
+      ],
       ...changes,
     })
     .override(POSITION, 2336)
@@ -64,7 +71,8 @@ const hyperbolic = (dump, changes = {}) => {
 // its own order, and "NINA" as both autofocuser and star detector. Derived:
 // the hyperbolic minimum is the invented hyperbola's own vertex, and the
 // gaussian maximum is a guess — built-in N.I.N.A. fits a gaussian to an HFR
-// sweep too, and no capture shows where it lands; here, up the right arm.
+// sweep too, and no capture shows where it lands; here, up the right arm. Its
+// gaussian fit is left out of `fits` rather than given an invented equation.
 const builtIn = (dump) => hyperbolic(dump, {
   autofocuser: "NINA",
   star_detector: "NINA",

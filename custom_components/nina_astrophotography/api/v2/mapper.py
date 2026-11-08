@@ -780,8 +780,9 @@ def _polynomial(equation: str) -> tuple[float, ...] | None:
     return tuple(powers.get(power, 0.0) for power in range(max(powers), -1, -1))
 
 
-# The curves each `Fitting` places focus with, which are the ones a threshold
-# judges. N.I.N.A. can compute others beside them: a HYPERBOLIC run also reports
+# The curves whose R² each `Fitting` judges against a threshold: the ones it
+# places focus with, except a contrast run's gaussian. N.I.N.A. can compute
+# others beside them: a HYPERBOLIC run also reports
 # trend lines, and one scoring 0.000 does not stop it being applied. GAUSSIAN is
 # what a contrast-detection run writes, and no R² threshold applies to one.
 _TREND_LINES = frozenset({"LeftTrend", "RightTrend"})
@@ -796,8 +797,9 @@ _JUDGED_FITS = {
 
 
 def _judged_curves(wire: dict) -> frozenset[str] | None:
-    """The curves this run's fitting uses, or `None` for a fitting the table
-    does not know, which judges every curve: the cautious reading of a new one.
+    """The curves whose R² this run's fitting judges, or `None` for a fitting
+    the table does not know, which judges every curve: the cautious reading of
+    a new one.
     """
     return _JUDGED_FITS.get((_text(wire, "Fitting") or "").upper())
 
@@ -876,8 +878,8 @@ def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
 def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     """The newest autofocus report, or `None` where the rig has never run one.
 
-    `r_squared` is the worst R² among the curves the run's fitting uses, and
-    `None` where it uses none or all of those read `"NaN"`. A
+    `r_squared` is the worst R² among the judged curves, and `None` where
+    there are none or all of those read `"NaN"`. A
     CONTRASTDETECTION run's focus points are a contrast score, not pixels, so
     the HFR fields are dropped; positions stay.
 

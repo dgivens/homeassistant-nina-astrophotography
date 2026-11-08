@@ -377,7 +377,8 @@ class FitMinimum:
     used: bool
     """Whether the run's final focus point is built from this minimum, which
     `fitting` decides; a contrast-detection run focuses at `GaussianMaximum`.
-    Not `CurveFit.judged`: no R² check applies to that gaussian.
+    Independent of R² and of `CurveFit.judged`: that gaussian is used, though
+    its fit is not judged.
     """
 
 
@@ -397,8 +398,9 @@ class CurveFit:
     r_squared: float | None
     """This fit's own R², unlike the worst judged one in `AutoFocusReport`."""
     judged: bool
-    """Whether the run's fitting uses this curve, so its R² counts against the
-    profile's threshold. A hyperbolic run also computes trend lines that do not.
+    """Whether this curve's R² counts against the profile's threshold, which
+    `fitting` decides. A hyperbolic run also computes trend lines that do not
+    count, and no R² check applies to a contrast run's gaussian.
     """
 
 
@@ -466,8 +468,8 @@ class AutoFocusReport:
     duration_seconds: float | None
     """The attempt's duration; retries cost more."""
     r_squared: float | None
-    """The worst R² among the curves the run's fitting uses, which is what a
-    threshold judges. `None` if none of them reports one.
+    """The worst R² among the judged curves, which is what a threshold
+    judges. `None` if none of them reports one.
     """
     outside_sweep: bool
     """`position` lies outside the positions `curve` visited, which the

@@ -340,7 +340,7 @@ async def test_the_last_autofocus_publishes_the_fitted_hfr_its_fitting_chose(
         ),
         pytest.param(
             "autofocus_hyperbolic_with_a_flat_trend_line",
-            {"TrendLineIntersection": False, "QuadraticMinimum": False},
+            {"TrendLineIntersection": False, "HyperbolicMinimum": True},
             marks=pytest.mark.synthetic,
         ),
     ],

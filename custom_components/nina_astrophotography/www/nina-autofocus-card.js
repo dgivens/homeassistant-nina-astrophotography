@@ -265,11 +265,12 @@ class NinaAutofocusCard extends HTMLElement {
       || String(method).toUpperCase() !== "CONTRASTDETECTION";
 
     // `autofocus_fitted_hfr`/`autofocus_r2` ship disabled, so both are taken
-    // from attributes. `minima` cannot stand in for the fitted HFR: it carries
-    // curves the run's fitting ignores.
+    // from attributes. `minima` cannot stand in for the fitted HFR: a minimum
+    // at or below zero arrives with no value, so a blended fitting's mean
+    // cannot be rebuilt.
     const fitted = this._attr(run, "fitted_hfr");
-    // Only the curves the run's fitting uses: a hyperbolic run also reports trend
-    // lines, and a poor one of those does not stop N.I.N.A. applying the result.
+    // Only the judged curves: a hyperbolic run also reports trend lines, and a
+    // poor one of those does not stop N.I.N.A. applying the result.
     const scored = fits.filter((fit) => fit.judged !== false && Number.isFinite(fit.r_squared));
     const worst = scored.reduce(
       (lowest, fit) => (lowest === null || fit.r_squared < lowest.r_squared ? fit : lowest),
@@ -779,7 +780,7 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.stroke();
       // Its real value beside it, or the chevron's height reads as the value.
       if (off) {
-        // Faded text is unreadable at this size; the muted text colour is not.
+        // Faded text is unreadable at this size; ink at the muted alpha is not.
         if (!used) ctx.fillStyle = theme.ink(0.45);
         ctx.font = "9px sans-serif";
         ctx.textAlign = x > W / 2 ? "right" : "left";

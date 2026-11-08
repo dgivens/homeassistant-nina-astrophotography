@@ -194,6 +194,10 @@ def _hyperbolic_autofocus(name: str) -> dict:
     The corpus holds only TRENDPARABOLIC runs, so the fitting, the hyperbolic
     equation, both R² values and the focus point are derived. The focus point
     sits at the hyperbola's minimum, where a HYPERBOLIC run puts it.
+    `HyperbolicMinimum` replaces the captured `QuadraticMinimum` with that
+    invented vertex: Hocus Focus computes only the trend lines and the
+    hyperbola on a HYPERBOLIC run, so those are the two minima it reports. The
+    captured quadratic fit stays in `Fittings` all the same.
     """
     envelope = load_envelope(name)
     response = envelope["Response"]
@@ -206,6 +210,12 @@ def _hyperbolic_autofocus(name: str) -> dict:
                 **response["CalculatedFocusPoint"],
                 "Position": 2336,
                 "Value": 1.8,
+            },
+            "Intersections": {
+                "TrendLineIntersection": response["Intersections"][
+                    "TrendLineIntersection"
+                ],
+                "HyperbolicMinimum": {"Position": 2336, "Value": 1.8, "Error": 0},
             },
             "Fittings": {
                 **response["Fittings"],
