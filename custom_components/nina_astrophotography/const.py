@@ -40,6 +40,9 @@ DEFAULT_ROLLOVER_HOUR = 12
 # Seconds a failing rig keeps its last data before its entities go unavailable.
 DEFAULT_OUTAGE_GRACE = 30
 
+# No setpoint range reaches the wire; wide enough for any cooled camera.
+CAMERA_SETPOINT_RANGE = (-50, 50)
+
 SERVICE_CAMERA_COOL = "camera_cool"
 SERVICE_CAMERA_WARM = "camera_warm"
 SERVICE_CAMERA_CAPTURE = "camera_capture"

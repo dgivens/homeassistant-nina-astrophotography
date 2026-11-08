@@ -337,6 +337,11 @@ def map_filter_wheel(wire: dict) -> FilterWheelModel:
         selected_filter=_text(readings, "SelectedFilter", "Name"),
         available_filters=_names(wire.get("AvailableFilters")),
         filter_slots=_slots(wire.get("AvailableFilters")),
+        filter_ids=frozenset(
+            index
+            for entry in wire.get("AvailableFilters") or ()
+            if isinstance(entry, dict) and (index := _integer(entry, "Id")) is not None
+        ),
         is_moving=_flag(readings, "IsMoving"),
     )
 

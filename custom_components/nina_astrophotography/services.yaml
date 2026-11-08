@@ -23,14 +23,16 @@ camera_cool:
     minutes:
       name: Ramp Time
       description: >-
-        Minutes over which to ramp to the target temperature, from 1 to 60.
-        Omit to use the ramp N.I.N.A.'s own profile specifies for this camera.
+        Minimum minutes over which to ramp to the target temperature, 0 or
+        more. Omit to use the ramp N.I.N.A.'s own profile specifies for this
+        camera.
       example: 10
       selector:
         number:
-          min: 1
-          max: 60
+          min: 0
+          step: "any"
           unit_of_measurement: min
+          mode: box
 
 camera_warm:
   name: Warm Camera
@@ -47,14 +49,15 @@ camera_warm:
     minutes:
       name: Ramp Time
       description: >-
-        Minutes over which to ramp back to ambient, from 1 to 60. Omit to use
-        the ramp N.I.N.A.'s own profile specifies for this camera.
+        Minimum minutes over which to ramp back to ambient, 0 or more. Omit to
+        use the ramp N.I.N.A.'s own profile specifies for this camera.
       example: 10
       selector:
         number:
-          min: 1
-          max: 60
+          min: 0
+          step: "any"
           unit_of_measurement: min
+          mode: box
 
 camera_capture:
   name: Capture Image
@@ -71,7 +74,8 @@ camera_capture:
     duration:
       name: Exposure
       description: >-
-        Exposure duration in seconds, within the range the camera reports.
+        Exposure duration in seconds, up to the camera's own maximum. 0 is
+        sent to the camera driver as it is.
       required: true
       example: 120
       selector:
@@ -83,11 +87,12 @@ camera_capture:
     gain:
       name: Gain
       description: >-
-        Camera gain override (optional), from 0 up to the camera's own maximum.
+        Camera gain override (optional), from 1 up to the camera's own
+        maximum. Omit to use the camera's default gain; the API cannot set 0.
       example: 100
       selector:
         number:
-          min: 0
+          min: 1
           mode: box
     save:
       name: Save to Disk
@@ -204,13 +209,14 @@ focuser_move:
           integration: nina_astrophotography
     position:
       name: Position
-      description: Absolute focuser position in steps, from 0 to 200000.
+      description: >-
+        Absolute focuser position in steps, from 0 up to the focuser's own
+        maximum.
       required: true
       example: 25000
       selector:
         number:
           min: 0
-          max: 200000
           mode: box
           unit_of_measurement: steps
 

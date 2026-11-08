@@ -437,7 +437,7 @@
         },
         "minutes": {
           "name": "Ramp Time (minutes)",
-          "description": "Minutes over which to ramp to the target temperature, from 1 to 60. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
+          "description": "Minimum minutes over which to ramp to the target temperature, 0 or more. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
         }
       }
     },
@@ -451,7 +451,7 @@
         },
         "minutes": {
           "name": "Ramp Time (minutes)",
-          "description": "Minutes over which to ramp back to ambient, from 1 to 60. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
+          "description": "Minimum minutes over which to ramp back to ambient, 0 or more. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
         }
       }
     },
@@ -465,11 +465,11 @@
         },
         "duration": {
           "name": "Exposure (seconds)",
-          "description": "Exposure duration in seconds, within the range the camera reports."
+          "description": "Exposure duration in seconds, up to the camera's own maximum. 0 is sent to the camera driver as it is."
         },
         "gain": {
           "name": "Gain",
-          "description": "Camera gain override (optional), from 0 up to the camera's own maximum."
+          "description": "Camera gain override (optional), from 1 up to the camera's own maximum. Omit to use the camera's default gain; the API cannot set 0."
         },
         "save": {
           "name": "Save to Disk",
@@ -549,7 +549,7 @@
         },
         "position": {
           "name": "Position (steps)",
-          "description": "Absolute focuser position in steps, from 0 to 200000."
+          "description": "Absolute focuser position in steps, from 0 up to the focuser's own maximum."
         }
       }
     },
@@ -685,6 +685,9 @@
     "entry_not_loaded": {
       "message": "N.I.N.A. instance {instance} is not loaded, so the action was not sent."
     },
+    "gain_not_settable": {
+      "message": "The API cannot set a gain of {value}: it applies only a gain of 1 or more, and leaves the camera at its default gain otherwise. The capture was not sent."
+    },
     "no_cooling_setpoint": {
       "message": "The cooler cannot be started: the camera reports no target temperature."
     },
@@ -698,7 +701,7 @@
       "message": "{field} must be {limits}: N.I.N.A. clamps {value} silently and reports success, so the action was not sent."
     },
     "outside_device_range": {
-      "message": "{field} must be {limits}, the range the {device} reports, so {value} was not sent."
+      "message": "{field} must be {limits} on this {device}, so {value} was not sent."
     },
     "unknown_filter": {
       "message": "The filter wheel does not report a slot for \"{option}\", so the change was not sent."

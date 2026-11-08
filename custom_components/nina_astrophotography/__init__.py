@@ -40,6 +40,7 @@ from .api.errors import (
 from .api.models import NinaEvent
 from .api.v2 import NinaClientV2, NinaEventStream
 from .const import (
+    CAMERA_SETPOINT_RANGE,
     CONF_HOST,
     CONF_INSTANCE_NAME,
     CONF_OUTAGE_GRACE,
@@ -348,12 +349,6 @@ _TARGET_FIELDS = (
     ATTR_LABEL_ID,
 )
 
-# The ranges `services.yaml` documents for the fields no device reports a
-# range for.
-_SETPOINT_RANGE = (-50, 50)
-_RAMP_MINUTES = (1, 60)
-_FOCUSER_MAX_STEP = 200_000
-
 
 async def _entry_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaConfigEntry:
     """Resolve which rig a call means.
@@ -404,10 +399,19 @@ async def _client_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaClie
     return (await _entry_for_target(hass, call)).runtime_data.coordinator.client
 
 
-def _limits(minimum: float, maximum: float | None) -> str:
+def _format(value: float) -> str:
+    """A number as written, unrounded: `2000`, not `2000.0` or `2e+03`."""
+    if isinstance(value, float) and value.is_integer() and abs(value) < 1e15:
+        return str(int(value))
+    return str(value)
+
+
+def _limits(minimum: float | None, maximum: float | None) -> str:
     if maximum is None:
-        return f"{minimum:g} or more"
-    return f"between {minimum:g} and {maximum:g}"
+        return f"{_format(minimum or 0)} or more"
+    if minimum is None:
+        return f"{_format(maximum)} or less"
+    return f"between {_format(minimum)} and {_format(maximum)}"
 
 
 def _bounded(
@@ -426,7 +430,7 @@ def _bounded(
                 translation_key="out_of_range",
                 translation_placeholders={
                     "field": field,
-                    "value": f"{value:g}",
+                    "value": _format(value),
                     "limits": _limits(minimum, maximum),
                 },
             )
@@ -436,23 +440,27 @@ def _bounded(
 
 
 def _within_device_range(
-    field: str, value: float, device: str, limits: tuple[float, float] | None
+    field: str,
+    value: float,
+    device: str,
+    minimum: float | None,
+    maximum: float | None,
 ) -> None:
-    """Refuse a value outside the range the device itself reports.
+    """Refuse a value outside the limits the device itself reports.
 
     A device reporting no range, or not connected, leaves the value to
     N.I.N.A., which refuses a command to a disconnected device itself.
     """
-    if limits is None or limits[0] <= value <= limits[1]:
+    if (minimum is None or value >= minimum) and (maximum is None or value <= maximum):
         return
     raise ServiceValidationError(
         translation_domain=DOMAIN,
         translation_key="outside_device_range",
         translation_placeholders={
             "field": field,
-            "value": f"{value:g}",
+            "value": _format(value),
             "device": device,
-            "limits": _limits(*limits),
+            "limits": _limits(minimum, maximum),
         },
     )
 
@@ -532,17 +540,17 @@ def _register_services(hass: HomeAssistant) -> None:
         )
 
     # `minutes` has no default: the client then sends -1, which asks N.I.N.A.
-    # for the ramp the profile specifies for this camera. No setpoint range
-    # reaches the wire, so the temperature bounds are the target temperature
-    # number's.
+    # for the ramp the profile specifies for this camera. `minutes` is a
+    # minimum, so it has no ceiling. No setpoint range reaches the wire, so the
+    # temperature bounds are the target temperature number's.
     register(
         SERVICE_CAMERA_COOL,
         handle_camera_cool,
         {
             vol.Required("temperature"): _bounded(
-                "Target temperature", float, *_SETPOINT_RANGE
+                "Target temperature", float, *CAMERA_SETPOINT_RANGE
             ),
-            vol.Optional("minutes"): _bounded("Ramp time", float, *_RAMP_MINUTES),
+            vol.Optional("minutes"): _bounded("Ramp time", float, 0),
         },
     )
 
@@ -554,30 +562,41 @@ def _register_services(hass: HomeAssistant) -> None:
         SERVICE_CAMERA_WARM,
         handle_camera_warm,
         {
-            vol.Optional("minutes"): _bounded("Ramp time", float, *_RAMP_MINUTES),
+            vol.Optional("minutes"): _bounded("Ramp time", float, 0),
         },
     )
 
     async def handle_camera_capture(call: ServiceCall) -> None:
         coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
         duration, gain = call.data["duration"], call.data.get("gain")
-        if (camera := coordinator.data.snapshot.camera) is not None:
-            _within_device_range("Duration", duration, "camera", camera.exposure_range)
-            if gain is not None:
-                _within_device_range("Gain", gain, "camera", camera.gain_range)
+        if gain is not None and gain < 1:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="gain_not_settable",
+                translation_placeholders={"value": str(gain)},
+            )
+        camera = coordinator.data.snapshot.camera
+        if camera is not None and camera.exposure_range is not None:
+            # Held to the maximum alone: a 0 s exposure is a bias frame, which
+            # a driver may take below its `ExposureMin`.
+            maximum = camera.exposure_range[1]
+            _within_device_range("Duration", duration, "camera", None, maximum)
+        if camera is not None and camera.gain_range is not None and gain is not None:
+            low, high = camera.gain_range
+            _within_device_range("Gain", gain, "camera", max(low, 1), high)
         await coordinator.client.capture_image(
             duration, gain=gain, save=call.data["save"]
         )
 
     # No `binning` or `filter_index`: `/equipment/camera/capture` binds neither.
-    # Gain stays floored at 0 where a camera reports a negative minimum: no
-    # negative gain has been sent to a rig.
+    # The API applies only a gain above 0, so a lower one is refused rather
+    # than replaced by the camera's default.
     register(
         SERVICE_CAMERA_CAPTURE,
         handle_camera_capture,
         {
             vol.Required("duration"): _bounded("Duration", float, 0),
-            vol.Optional("gain"): _bounded("Gain", int, 0),
+            vol.Optional("gain"): vol.Coerce(int),
             vol.Optional("save", default=False): cv.boolean,
         },
     )
@@ -618,13 +637,12 @@ def _register_services(hass: HomeAssistant) -> None:
         client = await _client_for_target(hass, call)
         await client.move_focuser(call.data["position"])
 
-    # Travel is per focuser, but no `MaxStep` reaches the wire, so the bound
-    # is the focuser position number's.
+    # No ceiling: travel is per focuser, and no `MaxStep` reaches the wire.
     register(
         SERVICE_FOCUSER_MOVE,
         handle_focuser_move,
         {
-            vol.Required("position"): _bounded("Position", int, 0, _FOCUSER_MAX_STEP),
+            vol.Required("position"): _bounded("Position", int, 0),
         },
     )
 
@@ -635,7 +653,7 @@ def _register_services(hass: HomeAssistant) -> None:
         index = call.data["filter_index"]
         wheel = coordinator.data.snapshot.filter_wheel
         # Slots are the wheel's own `Id`s, which need not run 0..n-1.
-        slots = sorted(set(wheel.filter_slots.values())) if wheel else []
+        slots = sorted(wheel.filter_ids) if wheel else []
         if wheel is not None and wheel.connected and slots and index not in slots:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,

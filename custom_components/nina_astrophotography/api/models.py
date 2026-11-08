@@ -122,6 +122,8 @@ class FilterWheelModel:
     """Name → the wheel's own `Id`, which `change-filter` takes. Slots need not
     be numbered in list order.
     """
+    filter_ids: frozenset[int]
+    """Every slot's `Id`, including slots that share a name or have none."""
     is_moving: bool | None
 
 

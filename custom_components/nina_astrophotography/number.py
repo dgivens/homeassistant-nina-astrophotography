@@ -33,7 +33,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
-from .const import DOMAIN
+from .const import CAMERA_SETPOINT_RANGE, DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .device import (
     channel_key,
@@ -102,9 +102,8 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         unique_id_suffix="camera_cooling_setpoint",
         device_class=NumberDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
-        # No setpoint range on the wire; wide enough for any cooled camera.
-        native_min_value=-50,
-        native_max_value=50,
+        native_min_value=CAMERA_SETPOINT_RANGE[0],
+        native_max_value=CAMERA_SETPOINT_RANGE[1],
         native_step=0.5,
         mode=NumberMode.BOX,
         kind="camera",

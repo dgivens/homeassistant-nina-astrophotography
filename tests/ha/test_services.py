@@ -244,17 +244,16 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": 91}),
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": -91}),
         ("focuser_move", {"position": -1}),
-        ("focuser_move", {"position": 200_001}),
         ("camera_cool", {"temperature": 51}),
         ("camera_cool", {"temperature": -51}),
-        ("camera_cool", {"temperature": -10, "minutes": 0}),
-        ("camera_cool", {"temperature": -10, "minutes": 61}),
-        ("camera_warm", {"minutes": 0}),
-        ("camera_warm", {"minutes": 61}),
-        ("camera_capture", {"duration": 30, "gain": -1}),
+        ("camera_cool", {"temperature": -10, "minutes": -1}),
+        ("camera_warm", {"minutes": -1}),
+        ("camera_capture", {"duration": -1}),
+        # The API applies only a gain above 0.
+        ("camera_capture", {"duration": 30, "gain": 0}),
         # The rig's camera reports GainMax 700 and ExposureMax 2000.
         ("camera_capture", {"duration": 30, "gain": 701}),
-        ("camera_capture", {"duration": 2001}),
+        ("camera_capture", {"duration": 2000.5}),
         # The rig's wheel reports slots 0 to 6.
         ("filterwheel_change_filter", {"filter_index": 7}),
         ("filterwheel_change_filter", {"filter_index": -1}),
@@ -265,14 +264,12 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         "dec-above-90",
         "dec-below-90",
         "position-negative",
-        "position-above-max",
         "temperature-above-50",
         "temperature-below-50",
-        "cool-ramp-zero",
-        "cool-ramp-above-60",
-        "warm-ramp-zero",
-        "warm-ramp-above-60",
-        "gain-negative",
+        "cool-ramp-negative",
+        "warm-ramp-negative",
+        "duration-negative",
+        "gain-zero",
         "gain-above-the-cameras",
         "duration-above-the-cameras",
         "filter-the-wheel-lacks",
@@ -294,13 +291,14 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
 @pytest.mark.parametrize(
     ("service", "data", "path"),
     [
-        ("focuser_move", {"position": 200_000}, "/equipment/focuser/move"),
-        (
-            "camera_cool",
-            {"temperature": -50, "minutes": 60},
-            "/equipment/camera/cool",
-        ),
-        ("camera_warm", {"minutes": 1}, "/equipment/camera/warm"),
+        ("focuser_move", {"position": 0}, "/equipment/focuser/move"),
+        # Past any one focuser's travel: no `MaxStep` reaches the wire.
+        ("focuser_move", {"position": 1_000_000}, "/equipment/focuser/move"),
+        ("camera_cool", {"temperature": -50, "minutes": 0}, "/equipment/camera/cool"),
+        ("camera_cool", {"temperature": 50, "minutes": 90.5}, "/equipment/camera/cool"),
+        ("camera_warm", {"minutes": 0}, "/equipment/camera/warm"),
+        # A bias frame, below the camera's ExposureMin.
+        ("camera_capture", {"duration": 0, "gain": 1}, "/equipment/camera/capture"),
         (
             "camera_capture",
             {"duration": 2000, "gain": 700},
@@ -312,13 +310,118 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
             "/equipment/filterwheel/change-filter",
         ),
     ],
-    ids=["position", "cool", "warm", "capture", "filter"],
+    ids=[
+        "position-zero",
+        "position-past-any-cap",
+        "cool-coldest-at-once",
+        "cool-warmest-slowly",
+        "warm-at-once",
+        "capture-bias",
+        "capture-at-the-cameras-maximum",
+        "filter-last-slot",
+    ],
 )
 async def test_a_value_at_its_limit_is_sent(
     hass: HomeAssistant, loaded_entry, rig, service: str, data: dict, path: str
 ) -> None:
     await _call(hass, service, **data)
     assert rig.sent[-1][0] == path
+
+
+def _serve_with(rig, device: str, block: dict | None) -> None:
+    """Serve the current state with one `/equipment/info` device block
+    replaced, or left out when `block` is None.
+    """
+    envelope = rig.states[rig.state_name]["/equipment/info"]
+    response = dict(envelope["Response"])
+    if block is None:
+        del response[device]
+    else:
+        response[device] = {**response[device], **block}
+    rig.respond("/equipment/info", {**envelope, "Response": response})
+
+
+@pytest.mark.parametrize(
+    ("state", "device", "block", "service", "data"),
+    [
+        pytest.param(
+            "partial_equipment_connection",
+            None,
+            None,
+            "filterwheel_change_filter",
+            {"filter_index": 9},
+            id="wheel-disconnected",
+        ),
+        pytest.param(
+            "equipment_disconnected",
+            None,
+            None,
+            "camera_capture",
+            {"duration": 5000, "gain": 5000},
+            id="camera-disconnected",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "imaging",
+            "Camera",
+            None,
+            "camera_capture",
+            {"duration": 5000, "gain": 5000},
+            id="camera-absent",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "imaging",
+            "Camera",
+            {"GainMin": 0, "GainMax": 0, "ExposureMin": 0, "ExposureMax": 0},
+            "camera_capture",
+            {"duration": 5000, "gain": 5000},
+            id="camera-reports-no-range",
+            marks=pytest.mark.synthetic,
+        ),
+    ],
+)
+async def test_a_device_that_reports_no_limit_leaves_the_value_to_nina(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    state: str,
+    device: str | None,
+    block: dict | None,
+    service: str,
+    data: dict,
+) -> None:
+    """A disconnected device's command is N.I.N.A.'s to refuse, with its own
+    reason, rather than this integration's against a range it cannot see.
+    """
+    rig.goto(state)
+    if device is not None:
+        _serve_with(rig, device, block)
+    await set_up_at(hass, config_entry, rig, state)
+
+    await _call(hass, service, **data)
+
+    assert rig.sent != []
+
+
+@pytest.mark.synthetic
+async def test_a_slot_whose_name_another_slot_shares_is_sent(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """Two slots named alike, as unused slots often are, are two slots."""
+    filters = [
+        {"Name": "L", "Id": 0},
+        {"Name": "Empty", "Id": 1},
+        {"Name": "Empty", "Id": 2},
+        {"Name": "Ha", "Id": 3},
+    ]
+    _serve_with(rig, "FilterWheel", {"AvailableFilters": filters})
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    await _call(hass, "filterwheel_change_filter", filter_index=1)
+
+    assert rig.sent[-1] == ("/equipment/filterwheel/change-filter", {"filterId": 1})
 
 
 async def test_a_gain_is_held_to_the_cameras_own_range(
@@ -331,10 +434,7 @@ async def test_a_gain_is_held_to_the_cameras_own_range(
 
     await _call(hass, "camera_capture", duration=1, gain=6000)
 
-    assert rig.sent[-1] == (
-        "/equipment/camera/capture",
-        {"duration": 1.0, "gain": 6000, "save": "false"},
-    )
+    assert rig.sent[-1][1]["gain"] == 6000
 
 
 @pytest.mark.parametrize(

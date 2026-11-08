@@ -134,6 +134,7 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("focuser", "position", 2332),
         ("filter_wheel", "selected_filter", "R"),
         ("filter_wheel", "available_filters", ("L", "R", "G", "B", "H", "O", "S")),
+        ("filter_wheel", "filter_ids", frozenset(range(7))),
         ("guider", "state", None),  # the dawn guider is disconnected
         ("rotator", "synced", True),
         ("dome", "azimuth", None),  # "NaN" on a dome that never existed
