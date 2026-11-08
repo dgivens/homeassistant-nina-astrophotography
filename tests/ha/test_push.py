@@ -114,25 +114,20 @@ async def test_a_replayed_event_pushed_live_is_not_folded_again(
 
 
 async def test_only_a_socket_reconnect_reseeds_and_replays(
-    hass: HomeAssistant, loaded_entry, rig: FakeRig
+    hass: HomeAssistant, loaded_entry, rig: FakeRig, socket_state
 ) -> None:
     """A reconnect needs both halves: `/event-history` carries `{Event, Time}`
     only, so the statistics a missed `IMAGE-SAVE` push held come back from
     `?all=true` and nowhere else. The FIRST connection needs neither — setup
     has just done both.
-
-    `_set_connected` is the one private call: pytest-socket refuses the real
-    connection and `start` is stubbed, so driving the transition by hand is the
-    minimal seam. Everything it reaches is public.
     """
-    connect = loaded_entry.runtime_data.events._set_connected  # noqa: SLF001
     rig.requests.clear()
 
-    connect(True)
+    socket_state(loaded_entry, connected=True)
     await hass.async_block_till_done()
     first = (rig.reseeds(), rig.reads("/event-history"))
-    connect(False)
-    connect(True)
+    socket_state(loaded_entry, connected=False)
+    socket_state(loaded_entry, connected=True)
     await hass.async_block_till_done()
 
     assert (first, (rig.reseeds(), rig.reads("/event-history"))) == ((0, 0), (1, 1))
