@@ -16,6 +16,7 @@ from ha.registry import registered
 from helpers import state_of
 
 CLOUD_COVER = "sensor.n_i_n_a_weather_cloud_cover"
+DEW_POINT = "sensor.n_i_n_a_weather_dew_point"
 SKY_BRIGHTNESS = "sensor.n_i_n_a_weather_sky_brightness"
 SKY_TEMPERATURE = "sensor.n_i_n_a_weather_sky_temperature"
 WEATHER_SOURCE = "sensor.n_i_n_a_weather_source"
@@ -125,6 +126,25 @@ async def test_a_channel_its_own_source_reads_nan_for_stays_available(
     """
     await advance("weather_station_channel_nan")
     assert state_of(hass, SKY_BRIGHTNESS).state == "unknown"
+
+
+@pytest.mark.synthetic
+async def test_a_station_without_a_dew_point_gets_one_from_temperature_and_humidity(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig, set_up_at
+) -> None:
+    """The captured station's DewPoint is replaced with "NaN". Without a
+    derived one the weather card's dew alert cannot fire, however close the air
+    is to saturation.
+    """
+    await set_up_at(hass, config_entry, rig, "weather_station_without_dew_point")
+    assert float(state_of(hass, DEW_POINT).state) == pytest.approx(21.5, abs=0.05)
+
+
+async def test_the_stations_own_dew_point_wins_over_the_derived_one(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry
+) -> None:
+    """Derived from the same reading, the dew point is 21.51 °C."""
+    assert state_of(hass, DEW_POINT).state == "21.5"
 
 
 async def test_the_unique_id_does_not_change_with_the_source(

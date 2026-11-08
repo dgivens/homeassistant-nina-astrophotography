@@ -541,6 +541,12 @@ STATES: dict[str, State] = {
             "SkyBrightness": "NaN",
         },
     ),
+    # The physical station reading temperature and humidity — 26.3 °C at 75 %,
+    # captured beside its own 21.5 °C dew point — with DewPoint "NaN", as a
+    # station without a dew point sensor reports it.
+    "weather_station_without_dew_point": _with_readings(
+        _IMAGING, "WeatherData", DewPoint="NaN"
+    ),
     # The same rig with `?count=true` one frame ahead of `?all=true`, which is
     # what a frame saved between the two reads looks like. The count is a
     # scalar, so this varies the captured envelope's one number rather than

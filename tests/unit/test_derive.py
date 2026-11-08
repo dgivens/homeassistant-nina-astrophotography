@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from nina_astrophotography.derive import (
+    dew_point,
     flip_offset_minutes,
     hfr_arcsec,
     hours_to_meridian,
@@ -116,3 +117,32 @@ def test_the_flip_fires_before_the_reading_reaches_zero() -> None:
     the flip rather than ten minutes ahead of it.
     """
     assert flip_offset_minutes(min_minutes_after=5, max_minutes_after=15) == 10
+
+
+@pytest.mark.parametrize(
+    ("temperature", "humidity", "expected"),
+    [
+        # Captured readings beside the station's own dew point: the dawn
+        # station, and the simulator's below-freezing one.
+        (26.3, 75.0, pytest.approx(21.5, abs=0.05)),
+        (7.1, 54.83333333333347, pytest.approx(-1.3706, abs=0.05)),
+        # Saturated air is at its dew point; a reading past 100 % is too.
+        (10.0, 100.0, pytest.approx(10.0)),
+        (10.0, 102.0, pytest.approx(10.0)),
+        # Dry air has no dew point, and a missing reading gives none.
+        (10.0, 0.0, None),
+        (None, 50.0, None),
+        (10.0, None, None),
+    ],
+    ids=[
+        "station",
+        "below-freezing",
+        "saturated",
+        "past-100",
+        "dry",
+        "no-temp",
+        "no-rh",
+    ],
+)
+def test_the_dew_point_is_the_magnus_formula(temperature, humidity, expected) -> None:
+    assert dew_point(temperature, humidity) == expected

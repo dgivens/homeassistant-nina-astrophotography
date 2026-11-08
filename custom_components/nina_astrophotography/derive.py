@@ -1,6 +1,7 @@
 """Pure maths. Values arrive with the mapper's sentinels already `None`."""
 
 from datetime import datetime, timedelta
+import math
 
 _ARCSEC_PER_RADIAN_MICRON_MM = 206.265
 
@@ -65,3 +66,23 @@ def flip_offset_minutes(min_minutes_after: float, max_minutes_after: float) -> f
     (Max − Min), not zero, and per profile.
     """
     return max_minutes_after - min_minutes_after
+
+
+# Magnus coefficients over water (Sonntag 1990): within 0.35 °C from −45 to
+# 60 °C, well inside any dew margin.
+_MAGNUS_B = 17.62
+_MAGNUS_C = 243.12
+
+
+def dew_point(temperature_c: float | None, humidity_pct: float | None) -> float | None:
+    """The Magnus dew point, in °C.
+
+    A reading above 100 % is the station's error at saturation, so it is taken
+    as 100 % rather than putting the dew point above the air. Dry air has none.
+    """
+    if temperature_c is None or humidity_pct is None or humidity_pct <= 0:
+        return None
+    gamma = math.log(min(humidity_pct, 100) / 100) + (
+        _MAGNUS_B * temperature_c / (_MAGNUS_C + temperature_c)
+    )
+    return _MAGNUS_C * gamma / (_MAGNUS_B - gamma)

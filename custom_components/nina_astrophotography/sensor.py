@@ -51,7 +51,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import derive
-from .api.models import Frame, ShutterState, TargetBreakdown
+from .api.models import Frame, ShutterState, TargetBreakdown, WeatherModel
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .device import channel_key, channels_for, read_field
@@ -812,10 +812,25 @@ FLATS: tuple[NinaSensorDescription, ...] = (
 DESCRIPTIONS: tuple[NinaSensorDescription, ...] = SESSION + EQUIPMENT + FLATS
 
 
+def _reading(weather: WeatherModel | None, key: str) -> float | None:
+    """The source's reading of one channel.
+
+    A source that reads temperature and humidity but not dew point gets the
+    dew point derived from them; its own reading wins whenever it has one.
+    """
+    if weather is None:
+        return None
+    reading = weather.channels.get(key)
+    if reading is None and key == "dew_point":
+        return derive.dew_point(
+            weather.channels.get("temperature"), weather.channels.get("humidity")
+        )
+    return reading
+
+
 def _channel(key: str) -> Callable[[NinaData], float | None]:
     def value(data: NinaData) -> float | None:
-        weather = data.snapshot.weather
-        return None if weather is None else weather.channels.get(key)
+        return _reading(data.snapshot.weather, key)
 
     return value
 
@@ -987,7 +1002,7 @@ class NinaWeatherSensor(NinaSensor):
         device_id = weather.meta.device_id
         if device_id is None or device_id == self._established_by:
             return
-        if weather.channels.get(self.entity_description.key) is None:
+        if _reading(weather, self.entity_description.key) is None:
             return
         self._established_by = device_id
         er.async_get(self.hass).async_update_entity_options(
@@ -1002,7 +1017,7 @@ class NinaWeatherSensor(NinaSensor):
         # Without a reading, available only if the active source established
         # the channel: otherwise it cannot produce one at all.
         return (
-            weather.channels.get(self.entity_description.key) is not None
+            _reading(weather, self.entity_description.key) is not None
             or self._established_by == weather.meta.device_id
         )
 
@@ -1079,8 +1094,7 @@ async def async_setup_entry(
         weather = data.snapshot.weather
         for description in WEATHER_CHANNELS:
             key = description.key
-            reading = None if weather is None else weather.channels.get(key)
-            if key in established or reading is not None:
+            if key in established or _reading(weather, key) is not None:
                 yield (
                     key,
                     partial(

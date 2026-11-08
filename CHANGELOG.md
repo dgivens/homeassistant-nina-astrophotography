@@ -8,6 +8,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
+- **A weather source without a dew point gets one from temperature and
+  humidity** (#214). `sensor.<instance>_weather_dew_point` is computed with
+  the Magnus formula when the source reports both but its own dew point is
+  `NaN`, so the weather card's dew alert can fire. The source's own reading is
+  used whenever it has one.
 - **The weather card can leave out the sky brightness cell** (#212), with
   `show_sky_brightness: false` or the switch in its editor. A station that
   measures only whole lux reads `0 lx` all night, since a dark sky is about

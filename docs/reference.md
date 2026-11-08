@@ -249,6 +249,13 @@ A channel reads `unknown` while its source has no value for it, and
 `unavailable` when you've switched to a different source that doesn't provide
 that channel at all.
 
+A source that reports temperature and humidity but no dew point gets
+`sensor.<instance>_weather_dew_point` computed from those two with the Magnus
+formula, which adds under 0.35 °C to the error of the humidity reading itself.
+The weather card's dew alert and any automation on the sensor then work as
+they would with a dew point sensor.
+The source's own dew point is used whenever it reports one.
+
 Don't use weather readings to decide it's safe to image. Forecast-based
 sources such as OpenMeteo are gridded forecasts updated every 10 minutes, and
 can report 0% cloud while you're under one. Use
