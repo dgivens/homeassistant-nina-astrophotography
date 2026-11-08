@@ -9,7 +9,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Added
 
 - **A weather source without a dew point gets one from temperature and
-  humidity** (#214). `sensor.<instance>_weather_dew_point` is computed with
+  humidity** (#218). `sensor.<instance>_weather_dew_point` is computed with
   the Magnus formula when the source reports both but its own dew point is
   `NaN`, so the weather card's dew alert can fire. The source's own reading is
   used whenever it has one.
