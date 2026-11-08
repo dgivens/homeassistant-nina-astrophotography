@@ -61,5 +61,9 @@ Home Assistant 2026.9.0 or later is required.
   minutes, and both it and `sensor.<instance>_session_image_count` changed
   state class. Their long-term statistics start over; the old history isn't
   carried across.
+- `sensor.<instance>_weather_sky_brightness` is in `lx` instead of `lux`,
+  which Home Assistant doesn't accept for illuminance. Seeing two units, the
+  recorder stops compiling the sensor's long-term statistics until you fix or
+  delete the old unit's statistics under **Developer tools → Statistics**.
 
 See [`CHANGELOG.md`](../CHANGELOG.md) for the full list.

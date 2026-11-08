@@ -6,6 +6,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Changed
+
+- **The README covers installing from Home Assistant's Marketplace**, with a
+  link that adds the repository. It documents every setup field and option,
+  each action's fields with their defaults and ranges, how data updates, the
+  known limitations, and the order to remove the integration in. The upgrade
+  guide covers the sky brightness sensor's long-term statistics.
+
 ### Fixed
 
 - **The entity reference matches the integration** (#240): a dome adds up to
@@ -31,6 +39,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Home Assistant shows the integration's icon** on the integrations page,
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
+- **The README's `nina_image_save` example works on flat, dark and bias
+  frames** (#233), whose `hfr` is `null`.
 
 ---
 
@@ -789,7 +799,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   time after you organise the hub into an area stayed arealess forever. This
   only helps equipment observed for the first time from here on; anything
   already registered keeps its current area. See the entity-id-prefix caveat
-  this can produce in [Troubleshooting](#troubleshooting).
+  this can produce in [Troubleshooting](README.md#troubleshooting).
 - **The image panel card shows images again on an HTTPS dashboard.** It used
   to fetch straight from N.I.N.A.'s (HTTP-only) Advanced API from the
   browser, which an HTTPS-served Home Assistant blocks as mixed content — the
