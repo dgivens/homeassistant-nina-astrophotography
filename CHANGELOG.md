@@ -35,6 +35,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   with `Cache-Control: no-cache`, so the browser checks each one for changes
   instead of running a new card with an old cached module. That mix showed as
   "Custom element doesn't exist".
+- **A card removed in an upgrade no longer leaves its dashboard resource
+  behind.** The integration deletes it at startup, so dashboards stop
+  requesting a file that no longer exists. With YAML-managed resources, a
+  warning names the ones to remove.
 
 ---
 

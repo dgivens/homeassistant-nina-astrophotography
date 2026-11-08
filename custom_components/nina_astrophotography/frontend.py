@@ -28,6 +28,19 @@ CARD_FILENAMES = (
 )
 CARD_URLS = tuple(f"{URL_PREFIX}/{filename}" for filename in CARD_FILENAMES)
 
+
+def _stale(url: str) -> bool:
+    """Whether `url` is one of ours for a card this release no longer ships.
+
+    A query string is ignored, so a current card added by hand with `?v=` is
+    not stale.
+    """
+    return (
+        url.startswith(f"{URL_PREFIX}/")
+        and url.split("?", maxsplit=1)[0] not in CARD_URLS
+    )
+
+
 # Set when removing the last entry deletes the resources, so the next entry
 # set up re-registers them: `async_setup` runs once per process.
 _RESOURCES_REMOVED = "nina_astrophotography_frontend_resources_removed"
@@ -107,6 +120,13 @@ async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
     # A YAML collection cannot be written to.
     if isinstance(resources, ResourceYAMLCollection):
         registered = {item[CONF_URL] for item in resources.async_items()}
+        if stale := sorted(url for url in registered if _stale(url)):
+            _LOGGER.warning(
+                "These Lovelace resources are for cards this version no "
+                "longer ships. Remove them from the `resources:` key of your "
+                "`lovelace:` config:\n%s",
+                "\n".join(f"  - {url}" for url in stale),
+            )
         if missing := [url for url in CARD_URLS if url not in registered]:
             _LOGGER.warning(
                 "Lovelace resources are managed through YAML "
@@ -120,6 +140,13 @@ async def _async_register_frontend_resources(hass: HomeAssistant) -> None:
         return
 
     await _async_ensure_loaded(resources)
+
+    # A card removed or renamed in an upgrade leaves its resource behind, and
+    # every dashboard load would request it and get a 404.
+    for item in resources.async_items():
+        if _stale(item[CONF_URL]):
+            await resources.async_delete_item(item[CONF_ID])
+            _LOGGER.debug("Removed the stale Lovelace resource %s", item[CONF_URL])
 
     registered = {item[CONF_URL] for item in resources.async_items()}
     for url in CARD_URLS:
@@ -151,7 +178,7 @@ async def _async_unregister_frontend_resources(hass: HomeAssistant) -> None:
     await _async_ensure_loaded(resources)
 
     for item in resources.async_items():
-        if item[CONF_URL] in CARD_URLS:
+        if item[CONF_URL] in CARD_URLS or _stale(item[CONF_URL]):
             await resources.async_delete_item(item[CONF_ID])
     hass.data[_RESOURCES_REMOVED] = True
 
