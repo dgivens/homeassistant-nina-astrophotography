@@ -31,14 +31,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Home Assistant shows the integration's icon** on the integrations page,
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
-- **Cards no longer fail to load after an upgrade.** Their files are served
-  with `Cache-Control: no-cache`, so the browser checks each one for changes
-  instead of running a new card with an old cached module. That mix showed as
+- **The cards load after an upgrade.** Their files are served with
+  `Cache-Control: no-cache`, so the browser checks each one for changes
+  rather than running a new card with an old cached module, which shows as
   "Custom element doesn't exist".
-- **A card removed in an upgrade no longer leaves its dashboard resource
-  behind.** The integration deletes it at startup, so dashboards stop
-  requesting a file that no longer exists. With YAML-managed resources, a
-  warning names the ones to remove.
+- **A card removed in an upgrade takes its dashboard resource with it.** The
+  integration deletes the resource at startup, so dashboards don't request a
+  file that is gone. With YAML-managed resources, a warning names the ones to
+  remove.
 
 ---
 
