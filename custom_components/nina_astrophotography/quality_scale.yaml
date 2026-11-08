@@ -66,12 +66,12 @@ rules:
       readings, and the Reachable sensor turns off at the first missed poll.
   integration-owner: done
   log-when-unavailable:
-    status: todo
+    status: done
     comment: >-
-      The poll logs an outage and its recovery once each, but the outage at
-      `warning` where the rule asks for `info`, and beside the coordinator's
-      own "Error fetching" line. The event socket logs a warning on every
-      failed reconnect while the rig is down, every 5 s backing off to 60 s.
+      The poll logs the rig's outage and recovery once each at `info`, after
+      the outage grace, and a device's disconnection and reconnection likewise.
+      The event socket logs its reconnect attempts at `debug`, leaving the
+      outage to the poll.
   parallel-updates: done
   reauthentication-flow:
     status: exempt

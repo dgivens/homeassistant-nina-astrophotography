@@ -79,34 +79,56 @@ async def test_every_answer_restarts_the_grace(
     assert state_of(hass, LIGHT).state != "unavailable"
 
 
-async def test_an_outage_is_logged_once_and_the_recovery_once(
+def _levels(caplog, text: str) -> list[int]:
+    """The level of every record whose message contains `text`."""
+    return [r.levelno for r in caplog.records if text in r.getMessage()]
+
+
+async def test_an_outage_is_logged_once_at_info(
+    hass: HomeAssistant, outage, loaded_entry: MockConfigEntry, caplog
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    await outage()
+    await outage()
+    assert _levels(caplog, "is unavailable") == [logging.INFO]
+
+
+async def test_a_recovery_is_logged_once_at_info(
     hass: HomeAssistant, outage, loaded_entry: MockConfigEntry, advance, caplog
 ) -> None:
-    caplog.set_level(logging.INFO)
     await outage()
-    await outage()
-    assert caplog.text.count("is unavailable") == 1
-
+    caplog.set_level(logging.DEBUG)
     await advance("imaging")
-    assert caplog.text.count("is back online") == 1
+    await advance("imaging")
+    assert _levels(caplog, "is back online") == [logging.INFO]
 
 
 @pytest.mark.synthetic
-async def test_a_device_disconnection_is_logged_once_and_the_reconnection_once(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, caplog
+@pytest.mark.parametrize(
+    ("states", "message"),
+    [
+        (["equipment_disconnected"] * 2, "Flat Panel disconnected"),
+        (["equipment_disconnected", "imaging", "imaging"], "Flat Panel reconnected"),
+    ],
+    ids=["disconnection", "reconnection"],
+)
+async def test_a_device_transition_is_logged_once_at_info(
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    advance,
+    caplog,
+    states: list[str],
+    message: str,
 ) -> None:
     """Per device, under the label the device registry shows.
 
     No capture holds the flat panel down, so its disconnected block is derived
     by the rule the corpus does show.
     """
-    caplog.set_level(logging.INFO)
-    await advance("equipment_disconnected")
-    await advance("equipment_disconnected")
-    assert caplog.text.count("Flat Panel disconnected") == 1
-
-    await advance("imaging")
-    assert caplog.text.count("Flat Panel reconnected") == 1
+    caplog.set_level(logging.DEBUG)
+    for state in states:
+        await advance(state)
+    assert _levels(caplog, message) == [logging.INFO]
 
 
 async def test_first_sight_of_a_device_is_not_a_reconnection(

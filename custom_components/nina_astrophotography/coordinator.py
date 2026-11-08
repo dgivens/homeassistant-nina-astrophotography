@@ -257,9 +257,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 # Kept on failure: the reachable sensor reads it while every
                 # other entity is unavailable.
                 self.data = held
-            # Once per outage, not once per tick.
+            # Once per outage, not once per tick. The event socket leaves the
+            # outage to this message: the poll is what takes entities down.
             if not self._unavailable_logged:
-                _LOGGER.warning("N.I.N.A. at %s is unavailable: %s", self._host, exc)
+                _LOGGER.info("N.I.N.A. at %s is unavailable: %s", self._host, exc)
                 self._unavailable_logged = True
             raise UpdateFailed(str(exc)) from exc
 
@@ -521,7 +522,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             if after.connected:
                 _LOGGER.info("%s reconnected on %s", label, self._host)
             else:
-                _LOGGER.warning("%s disconnected on %s", label, self._host)
+                _LOGGER.info("%s disconnected on %s", label, self._host)
 
     def _since_last_image_save(self) -> float:
         """Seconds since the last IMAGE-SAVE; infinite before the first."""
