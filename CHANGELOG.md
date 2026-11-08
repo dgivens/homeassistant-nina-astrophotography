@@ -9,8 +9,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Fixed
 
 - **Home Assistant shows the integration's icon** on the integrations page,
-  the add-integration dialog and the device pages. The icon and logo ship in
-  the integration's own `brand/` directory, which HACS validates.
+  the add-integration dialog and the device pages (#230). The icon and logo
+  ship in the integration's own `brand/` directory, which HACS validates.
 
 ---
 
