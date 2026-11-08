@@ -8,9 +8,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
-- **The entity reference matches the integration**: a dome adds up to eleven
-  entities, the per-device table lists the meridian flip, dome synchronized,
-  reachable and site entities, and the disabled-by-default list is complete.
+- **The entity reference matches the integration** (#240): a dome adds up to
+  eleven entities, the per-device table lists the meridian flip, dome
+  synchronized, reachable and site entities, and the disabled-by-default list
+  is complete.
   It covers which dome entities a driver's capabilities give, the shutter's
   states and interlock attributes, `image.<instance>_livestack`, the switch
   device's channel entity ids, and `last_autofocus`'s `autofocuser` and
