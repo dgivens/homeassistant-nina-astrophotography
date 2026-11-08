@@ -441,6 +441,13 @@ fitted_hfr: 1.0932570683996303
   have `judged: false`, and a low R² on them doesn't reject the run. A
   contrast-detection run, whose `fitting` is `GAUSSIAN`, has every fit
   `judged: false`.
+- `judged` comes from the report alone, so it doesn't know whether the
+  profile's R² check is on. When
+  `binary_sensor.<instance>_focuser_autofocus_failed` has
+  `r_squared_threshold: null`, either the check is off or the profile hasn't
+  been read yet. The two look the same, so the autofocus card marks every fit
+  `not judged`, whatever `judged` says. The minima keep their `used`, which
+  R² doesn't touch.
 - `minima` lists the minima the autofocus routine computed, and which ones
   depends on the routine. The example above is a Hocus Focus run. Hocus Focus
   fits trend lines on every run to decide when the sweep ends, so it lists

@@ -75,6 +75,12 @@ function isTrend(name) {
 // so the legend still pairs it with that fit.
 const FADED = 0.4;
 
+// Whether the profile's R² check judged a fit: the run's fitting has to use
+// it, and the check has to be on.
+function isJudged(fit, run) {
+  return fit.judged !== false && !run.checkOff;
+}
+
 // `coefficients` are highest power first, as the mapper parses them out of
 // N.I.N.A.'s equation string: [a, b, c] is a·x² + b·x + c. A fit whose
 // equation was not a polynomial — a hyperbola, a Gaussian — arrives with
@@ -292,6 +298,13 @@ class NinaAutofocusCard extends HTMLElement {
     const verdict = this._eid("binary_sensor", "autofocus_failed", "focuser_autofocus_failed");
     const verdictSquare = this._attr(verdict, "r_squared");
     const threshold = this._attr(verdict, "r_squared_threshold");
+    // The verdict publishes a null threshold where it judges no run: the
+    // profile's check off, or a profile not read, which it cannot tell apart.
+    // A missing or disabled verdict, or an unavailable one, carries no such
+    // key, and says nothing either way.
+    const verdictAttributes = this._hass?.states?.[verdict]?.attributes ?? {};
+    const checkOff = "r_squared_threshold" in verdictAttributes
+      && verdictAttributes.r_squared_threshold === null;
     // A trigger at 0 refocuses before every frame: no drift worth flagging.
     const trigger = this._attr(verdict, "refocus_temperature_delta");
     const triggered = this._temperatureDelta === null
@@ -309,6 +322,7 @@ class NinaAutofocusCard extends HTMLElement {
       reason: this._attr(verdict, "reason"),
       verdictSquare: Number.isFinite(verdictSquare) ? verdictSquare : null,
       threshold: Number.isFinite(threshold) ? threshold : null,
+      checkOff,
       position: this._number(
         this._eid("sensor", "autofocus_position", "focuser_autofocus_position")),
       hfr: this._number(this._eid("sensor", "autofocus_hfr", "focuser_autofocus_hfr")),
@@ -546,7 +560,7 @@ class NinaAutofocusCard extends HTMLElement {
         <span class="swatch" style="border-top-color:var(--${drawn ? colour : "muted"});border-top-style:${drawn ? dash : "dotted"}"></span>
         <span${drawn ? "" : ` style="color:var(--muted)"`}>${pretty(fit.name)}</span>
         <span class="reading">R² ${fixed(fit.r_squared, 3)}${
-          fit.judged === false ? " · not judged" : ""}${drawn ? "" : " · not plotted"}</span></div>`);
+          isJudged(fit, run) ? "" : " · not judged"}${drawn ? "" : " · not plotted"}</span></div>`);
     }
     // Against the axis the chart actually uses, padding included — otherwise a
     // minimum landing inside that padding is called below the axis here and

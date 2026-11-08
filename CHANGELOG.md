@@ -52,6 +52,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   camera's flat at half its full scale draws where a 16-bit camera's does,
   and a gridline past full scale is left off. The full scale is 12, 14 or
   16 bits, so dim 16-bit flats do not read as a 15-bit camera's.
+- **The autofocus card marks no fit judged when the profile's R² check is
+  off** (#217). Where `binary_sensor.<instance>_focuser_autofocus_failed`
+  has `r_squared_threshold: null`, which a profile not yet read also gives,
+  every fit reads `not judged`. The minima keep their `used` look. A
+  disabled or unavailable verdict entity leaves the fits as they are.
 - **The autofocus card marks the minima the focus point was not built
   from** (#216). Each entry in the `minima` attribute of
   `sensor.<instance>_focuser_last_autofocus` carries `used`, true where

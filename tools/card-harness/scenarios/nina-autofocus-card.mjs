@@ -156,6 +156,23 @@ export const scenarios = {
         .build(),
   },
 
+  // A profile with N.I.N.A.'s R² check off, which the integration publishes as
+  // a null threshold: no fit was judged, though the minima the focus point
+  // came from were still used. Only the threshold is moved; the captured run
+  // passed and stays unrejected.
+  r_squared_check_off: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(VERDICT, "off", verdict(dump, { r_squared_threshold: null }))
+        .build(),
+  },
+
+  // No verdict entity at all, as when it is disabled: no threshold to read,
+  // and nothing to say the check was off, so the fits keep their own `judged`.
+  no_verdict: {
+    hass: (dump) => rig(dump, UP).without("focuser_autofocus_failed").build(),
+  },
+
   // A hyperbolic run that passed beside a trend line scoring 0.000.
   hyperbolic: { hass: (dump) => hyperbolic(dump).build() },
 
