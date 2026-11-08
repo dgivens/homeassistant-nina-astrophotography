@@ -736,6 +736,64 @@ def test_a_focus_point_of_zero_is_no_measurement() -> None:
     assert _autofocus(wire).initial_hfr is None
 
 
+def _focused_at(position: float, **changes: object) -> dict:
+    """The captured report, its fitted focus point moved to `position`."""
+    wire = load("imaging_guiding_last_af.json")
+    return dict(
+        wire,
+        CalculatedFocusPoint={**wire["CalculatedFocusPoint"], "Position": position},
+        **changes,
+    )
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("fitted", "rounded"),
+    [(2340.4, 2340), (2340.5, 2340), (2341.5, 2342), (2340.6, 2341)],
+)
+def test_a_fitted_focus_point_rounds_as_the_autofocuser_does(
+    fitted: float, rounded: int
+) -> None:
+    """N.I.N.A.'s fittings round their own focus point, but Hocus Focus
+    reports a hyperbola's minimum unrounded and moves to `Math.Round` of it,
+    which rounds half to even.
+    """
+    assert _autofocus(_focused_at(fitted)).position == rounded
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("autofocuser", "method", "position", "outside"),
+    [
+        ("Hocus Focus", "STARHFR", 2527, True),
+        ("Hocus Focus", "STARHFR", 2177, True),
+        # The sweep's ends are inside it.
+        ("Hocus Focus", "STARHFR", 2492, False),
+        ("Hocus Focus", "STARHFR", 2212, False),
+        # Judged once rounded.
+        ("Hocus Focus", "STARHFR", 2492.5, False),
+        ("Hocus Focus", "STARHFR", 2492.6, True),
+        # N.I.N.A. checks every method; Hocus Focus only STARHFR.
+        ("NINA", "CONTRASTDETECTION", 2527, True),
+        ("Hocus Focus", "CONTRASTDETECTION", 2527, False),
+    ],
+)
+def test_a_focus_point_outside_the_sweep_is_flagged(
+    autofocuser: str, method: str, position: float, outside: bool
+) -> None:
+    """Fabricates the focus point, the autofocuser and the method: no capture
+    holds a run whose fit left its sweep of 2212-2492. Both autofocusers
+    reject such a run whatever the R² threshold.
+    """
+    wire = _focused_at(position, AutoFocuserName=autofocuser, Method=method)
+    assert _autofocus(wire).outside_sweep is outside
+
+
+@pytest.mark.synthetic
+def test_a_report_without_a_sweep_is_not_outside_it() -> None:
+    assert _autofocus(_focused_at(2527, MeasurePoints=[])).outside_sweep is False
+
+
 def test_the_autofocus_curve_ascends_in_focuser_position() -> None:
     """A plot needs monotonic x, and the report does not state its own order."""
     curve = _autofocus(load("imaging_guiding_last_af.json")).curve

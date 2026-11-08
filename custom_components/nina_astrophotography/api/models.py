@@ -403,8 +403,9 @@ class AutoFocusReport:
 
     The report is written per attempt, before the verdict, and carries no
     failure flag, so a rejected run overwrites the last good one; only
-    `r_squared` against the profile's `RSquaredThreshold` judges it. It
-    survives a restart, so date it against the session before use.
+    `r_squared` against the profile's `RSquaredThreshold`, and
+    `outside_sweep`, judge it. It survives a restart, so date it against the
+    session before use.
     """
 
     timestamp: datetime | None
@@ -421,8 +422,9 @@ class AutoFocusReport:
     """
     star_detector: str | None
     position: int | None
-    """The focus point the run's fitting chose. A rejected run never took it:
-    the focuser goes back to `initial_position`.
+    """The focus point the run's fitting chose, rounded as the autofocuser
+    rounds it to move there. A rejected run never took it: the focuser goes
+    back to `initial_position`.
     """
     hfr: float | None
     """The lowest HFR measured in the sweep, which compares run to run.
@@ -461,6 +463,12 @@ class AutoFocusReport:
     r_squared: float | None
     """The worst R² among the curves the run's fitting uses, which is what a
     threshold judges. `None` if none of them reports one.
+    """
+    outside_sweep: bool
+    """`position` lies outside the positions `curve` visited, which the
+    autofocuser rejects whatever the R² threshold. The sweep's ends are
+    inside it. N.I.N.A. checks every method, but Hocus Focus checks only
+    STARHFR, so its contrast-detection runs are never flagged.
     """
 
 

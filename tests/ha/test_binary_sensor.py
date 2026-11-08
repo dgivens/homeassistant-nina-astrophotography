@@ -362,6 +362,37 @@ async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judge
             {"reason": None, "r_squared": -0.3, "r_squared_threshold": None},
             marks=pytest.mark.synthetic,
         ),
+        # Focus outside the positions the sweep measured is rejected whatever
+        # the fit scored, and with the R² check off too.
+        pytest.param(
+            "inside_the_guiding_session",
+            "autofocus_focus_outside_the_sweep",
+            "on",
+            {"reason": "out_of_range"},
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "inside_the_guiding_session",
+            "autofocus_outside_the_sweep_with_the_r_squared_check_off",
+            "on",
+            {"reason": "out_of_range"},
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "inside_the_guiding_session",
+            "autofocus_focus_on_the_sweeps_last_position",
+            "off",
+            {"reason": None},
+            marks=pytest.mark.synthetic,
+        ),
+        # The R² check runs first, so it names a run failing both.
+        pytest.param(
+            "inside_the_guiding_session",
+            "autofocus_rejected_on_r_squared_outside_the_sweep",
+            "on",
+            {"reason": "rejected"},
+            marks=pytest.mark.synthetic,
+        ),
     ],
     ids=[
         "fitted well",
@@ -369,6 +400,10 @@ async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judge
         "report older than the session",
         "unused curve fitted badly",
         "R² check off",
+        "focus outside the sweep",
+        "outside the sweep with the R² check off",
+        "focus on the sweep's last position",
+        "fitted badly and outside the sweep",
     ],
 )
 async def test_the_autofocus_problem_sensor_judges_this_sessions_runs(

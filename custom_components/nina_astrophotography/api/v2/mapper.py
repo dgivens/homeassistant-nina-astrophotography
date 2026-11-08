@@ -117,6 +117,9 @@ _TIMESPAN = re.compile(
 # The only method whose focus points are HFR in pixels. An allowlist, so an
 # unknown method's numbers are never published as pixels.
 _HFR_METHODS = frozenset({"STARHFR"})
+# `AutoFocuserName` of the plugin that checks the sweep's range on STARHFR runs
+# only; N.I.N.A.'s own autofocus checks it under every method.
+_HOCUS_FOCUS = "Hocus Focus"
 
 
 def nan_to_none(value: Any) -> Any:
@@ -151,6 +154,12 @@ def _number(wire: Any, *path: str) -> float | None:
 def _integer(wire: Any, *path: str) -> int | None:
     value = _dig(wire, *path)
     return int(value) if _is_number(value) else None
+
+
+def _rounded(wire: Any, *path: str) -> int | None:
+    """Half to even, as .NET's `Math.Round` and Python's `round` both do."""
+    value = _dig(wire, *path)
+    return round(value) if _is_number(value) and math.isfinite(value) else None
 
 
 def _range(wire: Any, low_key: str, high_key: str) -> tuple[float, float] | None:
@@ -733,6 +742,17 @@ def _focus_curve(wire: dict) -> tuple[FocusPoint, ...]:
     return tuple(sorted(swept, key=lambda point: point.position))
 
 
+def _outside_sweep(
+    position: int | None, curve: tuple[FocusPoint, ...], *, checked: bool
+) -> bool:
+    """Whether the autofocuser rejects the run for a focus point outside the
+    positions it visited. `curve` ascends, and its ends are inside.
+    """
+    if not checked or position is None or not curve:
+        return False
+    return not curve[0].position <= position <= curve[-1].position
+
+
 _TERM = re.compile(
     r"^(?P<coefficient>[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?)"
     r"(?:\s*\*\s*x(?:\^(?P<power>\d+))?)?$"
@@ -836,6 +856,10 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     `None` where it uses none or all of those read `"NaN"`. A
     CONTRASTDETECTION run's focus points are a contrast score, not pixels, so
     the HFR fields are dropped; positions stay.
+
+    `CalculatedFocusPoint.Position` is rounded: Hocus Focus reports a
+    hyperbola's minimum unrounded, then moves to and judges `Math.Round` of it.
+    N.I.N.A.'s own fittings round it before writing.
     """
     if not wire:
         return None
@@ -851,6 +875,7 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     ]
     curve = _focus_curve(wire)
     measured = [point.value for point in curve if point.value is not None]
+    position = _rounded(wire, "CalculatedFocusPoint", "Position")
     return AutoFocusReport(
         timestamp=_timestamp(wire.get("Timestamp")),
         filter_name=_text(wire, "Filter") or None,
@@ -859,7 +884,7 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         fitting=_text(wire, "Fitting"),
         autofocuser=_text(wire, "AutoFocuserName"),
         star_detector=_text(wire, "StarDetectorName"),
-        position=_integer(wire, "CalculatedFocusPoint", "Position"),
+        position=position,
         hfr=min(measured) if measured and is_hfr else None,
         fitted_hfr=_hfr(wire, "CalculatedFocusPoint") if is_hfr else None,
         curve=curve,
@@ -870,6 +895,11 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
         initial_hfr=_hfr(wire, "InitialFocusPoint") if is_hfr else None,
         duration_seconds=_timespan_seconds(wire.get("Duration")),
         r_squared=min(computed) if computed else None,
+        outside_sweep=_outside_sweep(
+            position,
+            curve,
+            checked=is_hfr or _text(wire, "AutoFocuserName") != _HOCUS_FOCUS,
+        ),
     )
 
 

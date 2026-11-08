@@ -13,6 +13,7 @@ const UP = "site_configured";
 const VERDICT = "binary_sensor.n_i_n_a_focuser_autofocus_failed";
 const RUN = "sensor.n_i_n_a_focuser_last_autofocus";
 const POSITION = "sensor.n_i_n_a_focuser_autofocus_position";
+const FOCUSER = "number.n_i_n_a_focuser_position";
 
 // `override` replaces an attribute map wholesale, so a verdict is patched onto
 // the rig's own: the profile's R² threshold stays whatever the capture holds,
@@ -66,6 +67,19 @@ export const scenarios = {
     hass: (dump) =>
       rig(dump, UP)
         .override(VERDICT, "on", verdict(dump, { r_squared: 0.42, reason: "rejected" }))
+        .build(),
+  },
+
+  // A run whose fit put focus outside the positions it measured, which fails
+  // whatever its R² — so the captured 0.971 stays and passes. No capture holds
+  // one: the focus point is moved a step past the sweep's 2492, and the
+  // focuser is back at the run's 2352 start, where a discarded run leaves it.
+  out_of_range: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(POSITION, 2527)
+        .override(FOCUSER, 2352)
+        .override(VERDICT, "on", verdict(dump, { reason: "out_of_range" }))
         .build(),
   },
 

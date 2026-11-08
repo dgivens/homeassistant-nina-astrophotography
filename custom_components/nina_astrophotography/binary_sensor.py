@@ -63,25 +63,35 @@ def _unsafe(data: NinaData) -> bool | None:
 
 
 def _autofocus_reason(data: NinaData) -> str | None:
-    """`"hung"`, `"rejected"`, or `None` if the last autofocus did neither.
+    """`"hung"`, `"rejected"`, `"out_of_range"`, or `None` if the last
+    autofocus failed none of those ways.
 
     A hung run is a start with no finish past the profile's timeout, decided
     by the fold; it writes no report, so the report on hand is an earlier
-    run's. A rejected run finishes normally, and only its R² falling under
-    the profile's `RSquaredThreshold` shows it; with the check off, no run
-    is rejected. A report older than the session start is a previous
-    night's and is ignored.
+    run's. The other two finish normally, and only their report shows the
+    failure. A rejected run's R² falls under the profile's
+    `RSquaredThreshold`; with that check off, no run is rejected. An
+    out-of-range run put focus outside the positions its sweep measured,
+    which fails whatever the threshold. The R² check runs first, so it names
+    a run that fails both. A report older than the session start is a
+    previous night's and is ignored.
     """
     if data.session.autofocus.failed:
         return "hung"
     report = data.autofocus_report
-    threshold = data.profile.r_squared_threshold
-    if report is None or report.r_squared is None or threshold is None:
+    if report is None:
         return None
     start = data.session.session_start
     if report.timestamp is None or (start is not None and report.timestamp < start):
         return None
-    return "rejected" if report.r_squared < threshold else None
+    threshold = data.profile.r_squared_threshold
+    if (
+        threshold is not None
+        and report.r_squared is not None
+        and report.r_squared < threshold
+    ):
+        return "rejected"
+    return "out_of_range" if report.outside_sweep else None
 
 
 def _autofocus_failed(data: NinaData) -> bool | None:
@@ -92,9 +102,11 @@ def _autofocus_failed(data: NinaData) -> bool | None:
 def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
     """Why the verdict was reached, and the R² and threshold it compared.
 
-    A hung run and a rejected one need different fixes. The R² sensor ships
-    disabled, so the value judged is carried here. The sequence's refocus
-    threshold rides along for the autofocus card's drift flag.
+    Each reason needs a different fix: a hung run the sequence, a rejected
+    one the fit, and an out-of-range one a sweep that starts nearer focus or
+    reaches further. The R² sensor ships disabled, so the value judged is
+    carried here. The sequence's refocus threshold rides along for the
+    autofocus card's drift flag.
     """
     return {
         "reason": _autofocus_reason(data),

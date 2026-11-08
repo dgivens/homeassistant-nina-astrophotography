@@ -282,7 +282,8 @@ class NinaAutofocusCard extends HTMLElement {
     const at = inUnit(then, unit);
 
     // `reason` separates a hung run — which wrote no report, so the curve
-    // below is an earlier run's — from one rejected on its fit.
+    // below is an earlier run's — from one rejected on its fit or for focus
+    // outside its sweep.
     const verdict = this._eid("binary_sensor", "autofocus_failed", "focuser_autofocus_failed");
     const verdictSquare = this._attr(verdict, "r_squared");
     const threshold = this._attr(verdict, "r_squared_threshold");
@@ -414,6 +415,12 @@ class NinaAutofocusCard extends HTMLElement {
     // last finished, not the failure.
     const hung = run.reason === "hung";
     const rejected = run.reason === "rejected";
+    const outside = run.reason === "out_of_range";
+    // Either way the run finished, and the focuser never took its position.
+    const discarded = rejected || outside;
+    const sweep = swept.length
+      ? `the ${Math.min(...swept)}–${Math.max(...swept)} it measured`
+      : "the positions it measured";
     const quality = run.verdictSquare ?? run.worstSquare;
 
     return `
@@ -421,10 +428,16 @@ class NinaAutofocusCard extends HTMLElement {
         <div class="banner">
           <span style="font-size:1.1rem">⚠️</span>
           <div>
-            <div class="what">${hung ? "An autofocus run hung" : "The last autofocus was rejected"}</div>
+            <div class="what">${hung ? "An autofocus run hung"
+              : outside ? "The last autofocus put focus outside its sweep"
+              : "The last autofocus was rejected"}</div>
             <div class="why">${hung
               ? `It never finished, so it wrote no report — the run charted below is the last one
                  that did, from ${ago(run.timestamp) || "earlier"}, and not the one that failed.`
+              : outside
+              ? `Its fit chose ${shown(run.position)}, outside ${sweep}, so N.I.N.A. discarded it
+                 and the focuser stayed where it was. Start the run nearer focus, or widen the
+                 sweep with a larger step size or more steps.`
               : `${run.threshold === null ? "Its fit was not good enough"
                   : `Its fit scored ${fixed(run.verdictSquare, 3)} against the ${fixed(run.threshold, 2)}
                      your profile requires`}. The focuser stayed where it was, so frames since are
@@ -434,9 +447,10 @@ class NinaAutofocusCard extends HTMLElement {
 
       <div class="stat-row">
         <div class="stat-box">
-          <div class="label">${rejected ? "Computed position" : "Focus position"}</div>
+          <div class="label">${discarded ? "Computed position" : "Focus position"}</div>
           <div class="value">${shown(run.position)} <span class="unit">steps</span></div>
           <div class="sub">${rejected ? "Not applied — rejected"
+            : outside ? "Not applied — outside the sweep"
             : moved === null ? "&nbsp;"
             : `${moved >= 0 ? "+" : "−"}${Math.abs(moved)} from ${run.startPosition}`}</div>
         </div>
@@ -475,7 +489,7 @@ class NinaAutofocusCard extends HTMLElement {
               <div class="label">Focuser now</div>
               <div class="value">${run.nowPosition} <span class="unit">steps</span></div>
               <div class="sub">${
-                rejected
+                discarded
                   ? (run.nowPosition === run.startPosition
                       ? "Back where the run started" : "Not at the computed position")
                   : away === 0 ? "Where the run left it"
@@ -498,7 +512,7 @@ class NinaAutofocusCard extends HTMLElement {
       <div class="meta">
         ${blind ? `<span class="chip" style="border-color:rgba(231,111,81,0.45)">
           <span class="k">Measured nothing</span> ${blind} ${blind === 1 ? "position" : "positions"}</span>` : ""}
-        ${atEdge ? `<span class="chip" style="border-color:rgba(244,162,97,0.45)">
+        ${atEdge && !outside ? `<span class="chip" style="border-color:rgba(244,162,97,0.45)">
           <span class="k">Focus at the edge of the sweep</span> widen the range</span>` : ""}
         ${lonely ? `<span class="chip" style="border-color:rgba(244,162,97,0.45)">
           <span class="k">No spread to report</span> ${lonely} ${lonely === 1 ? "position" : "positions"}</span>` : ""}

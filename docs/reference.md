@@ -317,12 +317,19 @@ Things to know when reading them:
 - **A rejected run still replaces the previous report.** The report doesn't
   say whether N.I.N.A. accepted it. Use
   `binary_sensor.<instance>_focuser_autofocus_failed`, which compares R² with
-  your profile's `RSquaredThreshold`.
+  your profile's `RSquaredThreshold` and checks the focus position against
+  the sweep.
+- **A run whose focus position falls outside the positions it measured is
+  rejected whatever its R².** A position on the sweep's first or last step is
+  inside it. N.I.N.A. checks this under every autofocus method; Hocus Focus
+  checks it on `STARHFR` runs only. `autofocus_failed` reports it as
+  `out_of_range`.
 - **An `RSquaredThreshold` of 0 or below turns the R² check off**, in N.I.N.A.
-  and in Hocus Focus alike, so `autofocus_failed` rejects no run. N.I.N.A.'s
-  own autofocus then measures HFR at the new position instead, and rejects a
-  run more than 15% worse than where it started. That measurement is not in
-  the report, so `autofocus_failed` cannot see that rejection.
+  and in Hocus Focus alike, so `autofocus_failed` rejects no run on its R².
+  It still catches a focus position outside the sweep. N.I.N.A.'s own
+  autofocus then measures HFR at the new position instead, and rejects a run
+  more than 15% worse than where it started. That measurement is not in the
+  report, so `autofocus_failed` cannot see that rejection.
 - **A run that hangs writes no report**, so the sensors keep showing the
   previous run. The failed sensor catches this too.
 - **The report survives restarts.** It may be days old; check
@@ -333,13 +340,13 @@ Things to know when reading them:
 - On a `CONTRASTDETECTION` run the HFR sensors read `unknown`, because that
   method measures contrast rather than star size. So does `autofocus_r2`: N.I.N.A.
   applies no R² threshold to a contrast run, so `autofocus_failed` never rejects
-  one. Positions and duration still work.
+  one on its R². Positions and duration still work.
 
 `autofocus_failed` has these attributes:
 
 | Attribute | Meaning |
 |---|---|
-| `reason` | `hung`, `rejected`, or absent. A hung run usually means a sequence problem; a rejected one means the focus range or star detection needs adjusting. Only for `hung` do the other autofocus sensors show a different run from the one that failed. |
+| `reason` | `hung`, `rejected`, `out_of_range`, or absent. A hung run usually means a sequence problem. A rejected one failed the R² check, and means the focus range or star detection needs adjusting. An out-of-range one put focus outside the positions it measured: start the run nearer focus, or widen the sweep with a larger step size or more steps. A run failing both the R² and the range check reads `rejected`, the check N.I.N.A. runs first. Only for `hung` do the other autofocus sensors show a different run from the one that failed. |
 | `r_squared` | the R² used for the decision: the worst among the curves the run's curve fitting uses |
 | `r_squared_threshold` | your profile's `RSquaredThreshold`, or `null` when it is 0 or below and the check is off |
 | `refocus_temperature_delta` | the °C of focuser drift past which your sequence's "AF After Temperature Change" trigger refocuses, or `null` with no such trigger. With several, the smallest: which one is in scope cannot be told. The autofocus card flags drift against it. |

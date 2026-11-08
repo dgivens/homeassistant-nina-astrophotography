@@ -245,6 +245,26 @@ def _degraded_autofocus(name: str, *, r_squared: float) -> dict:
     }
 
 
+def _focused_at(envelope: dict, position: int) -> dict:
+    """An autofocus report with only its fitted focus point moved.
+
+    No capture holds a run whose fit landed outside its sweep, so the
+    position is derived; the fits and minima still place focus where the
+    capture did.
+    """
+    response = envelope["Response"]
+    return {
+        **envelope,
+        "Response": {
+            **response,
+            "CalculatedFocusPoint": {
+                **response["CalculatedFocusPoint"],
+                "Position": position,
+            },
+        },
+    }
+
+
 def _rangeless(channel: dict) -> dict:
     """A writable channel whose driver reports no usable range.
 
@@ -598,6 +618,37 @@ STATES: dict[str, State] = {
             **_IMAGING_GUIDING,
             "/equipment/focuser/last-af": _degraded_autofocus(
                 "imaging_guiding_last_af.json", r_squared=-0.3
+            ),
+        },
+        "FocuserSettings",
+        RSquaredThreshold=0,
+    ),
+    # Runs whose fit put focus one step past the sweep's last position, 2492,
+    # or on it. Synthetic in the focus point, and in the R² or the threshold
+    # where the name says so.
+    "autofocus_focus_outside_the_sweep": {
+        **_IMAGING_GUIDING,
+        "/equipment/focuser/last-af": _focused_at(
+            load_envelope("imaging_guiding_last_af.json"), 2527
+        ),
+    },
+    "autofocus_focus_on_the_sweeps_last_position": {
+        **_IMAGING_GUIDING,
+        "/equipment/focuser/last-af": _focused_at(
+            load_envelope("imaging_guiding_last_af.json"), 2492
+        ),
+    },
+    "autofocus_rejected_on_r_squared_outside_the_sweep": {
+        **_IMAGING_GUIDING,
+        "/equipment/focuser/last-af": _focused_at(
+            _degraded_autofocus("imaging_guiding_last_af.json", r_squared=0.42), 2527
+        ),
+    },
+    "autofocus_outside_the_sweep_with_the_r_squared_check_off": _with_profile(
+        {
+            **_IMAGING_GUIDING,
+            "/equipment/focuser/last-af": _focused_at(
+                load_envelope("imaging_guiding_last_af.json"), 2527
             ),
         },
         "FocuserSettings",
