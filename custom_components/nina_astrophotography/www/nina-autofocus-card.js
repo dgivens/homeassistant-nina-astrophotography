@@ -71,6 +71,10 @@ function isTrend(name) {
   return /trend/i.test(String(name));
 }
 
+// A minimum the focus point was not built from keeps its fit's colour, faded,
+// so the legend still pairs it with that fit.
+const FADED = 0.4;
+
 // `coefficients` are highest power first, as the mapper parses them out of
 // N.I.N.A.'s equation string: [a, b, c] is a·x² + b·x + c. A fit whose
 // equation was not a polynomial — a hyperbola, a Gaussian — arrives with
@@ -552,12 +556,17 @@ class NinaAutofocusCard extends HTMLElement {
       // A negative minimum the mapper dropped has no value to plot.
       const plotted = Number.isFinite(minimum.value);
       const under = plotted && minimum.value < floor;
+      const used = minimum.used !== false;
+      const fill = !plotted ? "var(--muted)"
+        : used ? `var(--${colour})`
+        : `color-mix(in srgb, var(--${colour}) ${FADED * 100}%, transparent)`;
       items.push(`<div class="item">
-        <span class="diamond" style="background:var(--${plotted ? colour : "muted"})"></span>
+        <span class="diamond" style="background:${fill}"></span>
         <span${plotted ? "" : ` style="color:var(--muted)"`}>${pretty(minimum.name)}</span>
         <span class="reading">${shown(minimum.position)} · ${
-          plotted ? `${reading(minimum.value)} ${run.unit}` : "negative · not plotted"}${
-          under ? " · below the axis" : ""}</span></div>`);
+          plotted ? `${reading(minimum.value)} ${run.unit}` : "negative"}${
+          under ? " · below the axis" : ""}${used ? "" : " · not used"}${
+          plotted ? "" : " · not plotted"}</span></div>`);
     }
     if (Number.isFinite(run.position)) {
       items.push(`<div class="item">
@@ -734,7 +743,10 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.setLineDash([]);
     }
 
-    for (const minimum of run.minima) {
+    // Unused minima first, so the ones the focus point came from land on top.
+    const minima = [...run.minima].sort(
+      (a, b) => Number(a.used !== false) - Number(b.used !== false));
+    for (const minimum of minima) {
       if (!Number.isFinite(minimum.value) || !Number.isFinite(minimum.position)) continue;
       // Near-parallel trend lines can cross well outside the sweep; the
       // legend still carries its position.
@@ -742,8 +754,10 @@ class NinaAutofocusCard extends HTMLElement {
       const x = xOf(minimum.position);
       const below = minimum.value < yMin;
       const y = yOf(Math.min(Math.max(minimum.value, yMin), yMax));
-      ctx.fillStyle = theme[isTrend(minimum.name) ? TREND : FIT];
-      ctx.strokeStyle = theme.ink(0.5);
+      const colour = isTrend(minimum.name) ? TREND : FIT;
+      const used = minimum.used !== false;
+      ctx.fillStyle = used ? theme[colour] : theme.tint(colour, FADED);
+      ctx.strokeStyle = theme.ink(used ? 0.5 : 0.25);
       ctx.lineWidth = 0.8;
       const off = below || minimum.value > yMax;
       ctx.beginPath();
@@ -765,6 +779,8 @@ class NinaAutofocusCard extends HTMLElement {
       ctx.stroke();
       // Its real value beside it, or the chevron's height reads as the value.
       if (off) {
+        // Faded text is unreadable at this size; the muted text colour is not.
+        if (!used) ctx.fillStyle = theme.ink(0.45);
         ctx.font = "9px sans-serif";
         ctx.textAlign = x > W / 2 ? "right" : "left";
         ctx.fillText(reading(minimum.value), x + (x > W / 2 ? -8 : 8), y + (below ? -5 : 5));

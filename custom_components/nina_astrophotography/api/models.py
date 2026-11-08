@@ -374,6 +374,11 @@ class FitMinimum:
     name: str
     position: int
     value: float | None
+    used: bool
+    """Whether the run's final focus point is built from this minimum, which
+    `fitting` decides; a contrast-detection run focuses at `GaussianMaximum`.
+    Not `CurveFit.judged`: no R² check applies to that gaussian.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -449,8 +454,8 @@ class AutoFocusReport:
     """
     minima: tuple[FitMinimum, ...]
     """Every `Intersections` entry with a position, including ones the
-    fitting ignores (see `FitMinimum`). `position` and `fitted_hfr` are the
-    point the fitting chose.
+    fitting ignores, which carry `used` False (see `FitMinimum`).
+    `position` and `fitted_hfr` are the point the fitting chose.
     """
     measured_points: int | None
     """How many of `curve`'s positions measured something."""

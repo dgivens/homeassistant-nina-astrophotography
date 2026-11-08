@@ -52,6 +52,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   camera's flat at half its full scale draws where a 16-bit camera's does,
   and a gridline past full scale is left off. The full scale is 12, 14 or
   16 bits, so dim 16-bit flats do not read as a 15-bit camera's.
+- **The autofocus card marks the minima the focus point was not built
+  from** (#216). Each entry in the `minima` attribute of
+  `sensor.<instance>_focuser_last_autofocus` carries `used`, true where
+  N.I.N.A.'s final focus point comes from that minimum. The card draws an
+  unused minimum faded and labels it `not used`: the trend-line intersection
+  beside a `HYPERBOLIC` fit, or the three minima built-in N.I.N.A. reports
+  beside the one it focused on. A contrast-detection run's gaussian maximum
+  is the one it uses.
 - **The frame statistics card's mean ADU chart shows a background climb on a
   camera that does not scale to 16 bits** (#174). The chart's 10 ADU minimum
   span is scaled to the camera's full scale, read from the frames' max ADU,

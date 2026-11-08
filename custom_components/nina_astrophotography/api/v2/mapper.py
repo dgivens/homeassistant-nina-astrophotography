@@ -828,6 +828,29 @@ def _curve_fits(wire: dict) -> tuple[CurveFit, ...]:
     )
 
 
+# The `Intersections` each `Fitting` builds its final focus point from, as
+# N.I.N.A. and Hocus Focus pick it: one minimum, or the mean of two. Any method
+# but STARHFR writes GAUSSIAN and focuses at the gaussian maximum.
+_FOCUS_MINIMA = {
+    "TRENDLINES": frozenset({"TrendLineIntersection"}),
+    "PARABOLIC": frozenset({"QuadraticMinimum"}),
+    "HYPERBOLIC": frozenset({"HyperbolicMinimum"}),
+    "TRENDPARABOLIC": frozenset({"TrendLineIntersection", "QuadraticMinimum"}),
+    "TRENDHYPERBOLIC": frozenset({"TrendLineIntersection", "HyperbolicMinimum"}),
+    "GAUSSIAN": frozenset({"GaussianMaximum"}),
+}
+_KNOWN_MINIMA = frozenset().union(*_FOCUS_MINIMA.values())
+
+
+def _minimum_used(wire: dict, name: str) -> bool:
+    """Whether the final focus point is built from this minimum. A fitting or
+    a name the table does not know counts as used: calling it unused would
+    claim the run ignored it.
+    """
+    used = _FOCUS_MINIMA.get((_text(wire, "Fitting") or "").upper())
+    return used is None or name not in _KNOWN_MINIMA or name in used
+
+
 def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
     """Every `Intersections` entry with a position, keyed by the wire's own
     name, which differs by autofocuser (see `FitMinimum`).
@@ -844,6 +867,7 @@ def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
                     name=name,
                     position=position,
                     value=_positive(_number(point, "Value")),
+                    used=_minimum_used(wire, name),
                 )
             )
     return tuple(found)

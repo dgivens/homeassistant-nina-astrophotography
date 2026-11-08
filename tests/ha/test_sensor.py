@@ -331,6 +331,40 @@ async def test_the_last_autofocus_publishes_the_fitted_hfr_its_fitting_chose(
     assert attributes["fitted_hfr"] == pytest.approx(fitted_hfr)
 
 
+@pytest.mark.parametrize(
+    ("rig_state", "used"),
+    [
+        (
+            "imaging_guiding",
+            {"TrendLineIntersection": True, "QuadraticMinimum": True},
+        ),
+        pytest.param(
+            "autofocus_hyperbolic_with_a_flat_trend_line",
+            {"TrendLineIntersection": False, "QuadraticMinimum": False},
+            marks=pytest.mark.synthetic,
+        ),
+    ],
+    ids=["trend parabolic", "hyperbolic"],
+)
+async def test_the_last_autofocus_says_which_minima_its_focus_point_used(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    rig_state: str,
+    used: dict[str, bool],
+) -> None:
+    """Hocus Focus reports the trend-line intersection on every run, and a
+    HYPERBOLIC fitting ignores it.
+    """
+    await set_up_at(hass, config_entry, rig, rig_state)
+    minima = state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").attributes[
+        "minima"
+    ]
+
+    assert {minimum["name"]: minimum["used"] for minimum in minima} == used
+
+
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
     ("entity", "reading"),

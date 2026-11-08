@@ -420,9 +420,11 @@ minima:
   - name: TrendLineIntersection
     position: 2344
     value: 0.3330580830396599
+    used: true
   - name: QuadraticMinimum
     position: 2336
     value: 1.8534560537596008
+    used: true
 
 fitted_hfr: 1.0932570683996303
 ```
@@ -459,6 +461,11 @@ fitted_hfr: 1.0932570683996303
   `fitted_hfr` is `null` on a contrast-detection run, whose focus point is
   the gaussian maximum of a contrast score, and wherever the fit put it at
   or below zero.
+- A minimum's `used` says whether the final focus point is built from it,
+  by the table above. `used: false` marks a minimum the run ignored, such as
+  the intersection on a `HYPERBOLIC` run. A contrast-detection run, whose
+  `fitting` is `GAUSSIAN`, uses `GaussianMaximum`. `used` has nothing to do
+  with R²: that gaussian is used, but its fit is `judged: false`.
 - Don't scale your y-axis to include `TrendLineIntersection`. It is where the
   extrapolated trend lines cross, well below any real star size (0.333 px
   above, against 1.552 px measured). Scale to the measured points.

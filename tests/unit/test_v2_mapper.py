@@ -1041,6 +1041,61 @@ def test_the_fit_minima_are_read_by_the_names_the_rig_uses() -> None:
     ]
 
 
+_TREND = "TrendLineIntersection"
+_QUADRATIC = "QuadraticMinimum"
+_HYPERBOLIC = "HyperbolicMinimum"
+_GAUSSIAN = "GaussianMaximum"
+
+
+def _four_minima(fitting: str) -> dict:
+    """The captured report as built-in N.I.N.A. sends it, with all four
+    `Intersections` whatever it fitted; the hyperbolic and gaussian entries
+    are fabricated.
+    """
+    wire = load("imaging_guiding_last_af.json")
+    return dict(
+        wire,
+        Fitting=fitting,
+        Intersections={
+            **wire["Intersections"],
+            _HYPERBOLIC: {"Position": 2338, "Value": 1.62, "Error": 0},
+            _GAUSSIAN: {"Position": 2341, "Value": 1.9, "Error": 0},
+        },
+    )
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("fitting", "used"),
+    [
+        ("TRENDLINES", {_TREND}),
+        ("PARABOLIC", {_QUADRATIC}),
+        ("TRENDPARABOLIC", {_TREND, _QUADRATIC}),
+        ("HYPERBOLIC", {_HYPERBOLIC}),
+        ("TRENDHYPERBOLIC", {_TREND, _HYPERBOLIC}),
+        # Any method but STARHFR writes GAUSSIAN and focuses at the maximum.
+        ("GAUSSIAN", {_GAUSSIAN}),
+        ("A FUTURE FITTING", {_TREND, _QUADRATIC, _HYPERBOLIC, _GAUSSIAN}),
+    ],
+)
+def test_a_minimum_is_used_where_the_fitting_focuses_on_it(
+    fitting: str, used: set[str]
+) -> None:
+    minima = _autofocus(_four_minima(fitting)).minima
+    assert {m.name for m in minima if m.used} == used
+
+
+@pytest.mark.synthetic
+def test_a_minimum_nobody_named_is_used() -> None:
+    """Fabricates an `Intersections` key. Unused is a claim the run ignored
+    it, which a name the mapper cannot place does not support.
+    """
+    wire = load("imaging_guiding_last_af.json")
+    wire["Intersections"]["MoffatMinimum"] = {"Position": 2339, "Value": 1.7}
+    minima = _autofocus(wire).minima
+    assert [m.used for m in minima if m.name == "MoffatMinimum"] == [True]
+
+
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
     ("equation", "expected"),
