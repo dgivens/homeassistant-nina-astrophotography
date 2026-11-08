@@ -46,6 +46,8 @@ class CameraModel:
     cooler_power: float | None
     dew_heater_on: bool | None
     gain: int | None
+    gain_range: tuple[float, float] | None
+    """`(GainMin, GainMax)`, per camera; `None` while the camera is down."""
     offset: int | None
     usb_limit: int | None
     usb_limit_range: tuple[float, float] | None
@@ -54,6 +56,9 @@ class CameraModel:
     is_exposing: bool | None
     pixel_size: float | None
     """Microns."""
+    exposure_range: tuple[float, float] | None
+    """`(ExposureMin, ExposureMax)` in seconds, per camera; `None` while the
+    camera is down."""
     has_battery: bool | None
     battery: float | None
     """Percent; `None` for a camera without one."""

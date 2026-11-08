@@ -56,6 +56,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Home Assistant shows the integration's icon** on the integrations page,
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
+- **An action value outside its range is refused before it reaches N.I.N.A.**
+  (#231), which would clamp it silently and report success.
+  `camera_capture`'s `duration` and `gain` are held to the range the camera
+  reports, with `gain` 0 or more, and `filterwheel_change_filter`'s
+  `filter_index` to the slots the wheel reports. The fields no device reports
+  a range for have fixed bounds, which the action editor shares:
+  `camera_cool`'s `temperature` −50 to 50 °C, `camera_cool` and
+  `camera_warm`'s `minutes` 1 to 60, and `focuser_move`'s `position` 0 to
+  200000.
 
 ---
 

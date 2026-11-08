@@ -433,11 +433,11 @@
         },
         "temperature": {
           "name": "Target Temperature (°C)",
-          "description": "Target sensor temperature in degrees Celsius."
+          "description": "Target sensor temperature in degrees Celsius, from -50 to 50."
         },
         "minutes": {
           "name": "Ramp Time (minutes)",
-          "description": "Time over which to ramp to target temperature."
+          "description": "Minutes over which to ramp to the target temperature, from 1 to 60. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
         }
       }
     },
@@ -451,7 +451,7 @@
         },
         "minutes": {
           "name": "Ramp Time (minutes)",
-          "description": "Time over which to ramp back to ambient."
+          "description": "Minutes over which to ramp back to ambient, from 1 to 60. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
         }
       }
     },
@@ -465,11 +465,11 @@
         },
         "duration": {
           "name": "Exposure (seconds)",
-          "description": "Exposure duration in seconds."
+          "description": "Exposure duration in seconds, within the range the camera reports."
         },
         "gain": {
           "name": "Gain",
-          "description": "Camera gain (optional, uses current setting if omitted)."
+          "description": "Camera gain override (optional), from 0 up to the camera's own maximum."
         },
         "save": {
           "name": "Save to Disk",
@@ -549,7 +549,7 @@
         },
         "position": {
           "name": "Position (steps)",
-          "description": "Target focuser position in steps."
+          "description": "Absolute focuser position in steps, from 0 to 200000."
         }
       }
     },
@@ -573,7 +573,7 @@
         },
         "filter_index": {
           "name": "Filter Index",
-          "description": "Zero-based index of the target filter."
+          "description": "Zero-based index of the target filter slot, one the filter wheel reports."
         }
       }
     },
@@ -697,8 +697,14 @@
     "out_of_range": {
       "message": "{field} must be {limits}: N.I.N.A. clamps {value} silently and reports success, so the action was not sent."
     },
+    "outside_device_range": {
+      "message": "{field} must be {limits}, the range the {device} reports, so {value} was not sent."
+    },
     "unknown_filter": {
       "message": "The filter wheel does not report a slot for \"{option}\", so the change was not sent."
+    },
+    "unknown_filter_slot": {
+      "message": "The filter wheel reports no slot {value}; its slots are {slots}. The change was not sent."
     },
     "unknown_target": {
       "message": "The target does not name a configured N.I.N.A. instance, so the action was not sent."

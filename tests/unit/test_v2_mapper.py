@@ -124,6 +124,9 @@ def test_the_per_device_endpoint_shape_maps_too() -> None:
         ("camera", "battery", None),  # Battery -1 with HasBattery false
         # Per-camera, and narrower than the 0-100 a range-free reading suggests.
         ("camera", "usb_limit_range", (40, 100)),
+        # A ZWO driver's own floor is below zero.
+        ("camera", "gain_range", (-25, 700)),
+        ("camera", "exposure_range", (3.2e-05, 2000)),
         ("mount", "epoch", "JNOW"),
         # The wire's own spelling, never the spec's enum ('Siderial').
         ("mount", "tracking_mode", "Stopped"),

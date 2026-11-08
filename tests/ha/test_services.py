@@ -244,8 +244,40 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": 91}),
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": -91}),
         ("focuser_move", {"position": -1}),
+        ("focuser_move", {"position": 200_001}),
+        ("camera_cool", {"temperature": 51}),
+        ("camera_cool", {"temperature": -51}),
+        ("camera_cool", {"temperature": -10, "minutes": 0}),
+        ("camera_cool", {"temperature": -10, "minutes": 61}),
+        ("camera_warm", {"minutes": 0}),
+        ("camera_warm", {"minutes": 61}),
+        ("camera_capture", {"duration": 30, "gain": -1}),
+        # The rig's camera reports GainMax 700 and ExposureMax 2000.
+        ("camera_capture", {"duration": 30, "gain": 701}),
+        ("camera_capture", {"duration": 2001}),
+        # The rig's wheel reports slots 0 to 6.
+        ("filterwheel_change_filter", {"filter_index": 7}),
+        ("filterwheel_change_filter", {"filter_index": -1}),
     ],
-    ids=["ra-above-360", "ra-negative", "dec-above-90", "dec-below-90", "position"],
+    ids=[
+        "ra-above-360",
+        "ra-negative",
+        "dec-above-90",
+        "dec-below-90",
+        "position-negative",
+        "position-above-max",
+        "temperature-above-50",
+        "temperature-below-50",
+        "cool-ramp-zero",
+        "cool-ramp-above-60",
+        "warm-ramp-zero",
+        "warm-ramp-above-60",
+        "gain-negative",
+        "gain-above-the-cameras",
+        "duration-above-the-cameras",
+        "filter-the-wheel-lacks",
+        "filter-negative",
+    ],
 )
 async def test_out_of_range_input_is_refused_rather_than_clamped(
     hass: HomeAssistant, loaded_entry, rig, service: str, data: dict
@@ -257,6 +289,52 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
     with pytest.raises(ServiceValidationError):
         await _call(hass, service, **data)
     assert rig.sent == []
+
+
+@pytest.mark.parametrize(
+    ("service", "data", "path"),
+    [
+        ("focuser_move", {"position": 200_000}, "/equipment/focuser/move"),
+        (
+            "camera_cool",
+            {"temperature": -50, "minutes": 60},
+            "/equipment/camera/cool",
+        ),
+        ("camera_warm", {"minutes": 1}, "/equipment/camera/warm"),
+        (
+            "camera_capture",
+            {"duration": 2000, "gain": 700},
+            "/equipment/camera/capture",
+        ),
+        (
+            "filterwheel_change_filter",
+            {"filter_index": 6},
+            "/equipment/filterwheel/change-filter",
+        ),
+    ],
+    ids=["position", "cool", "warm", "capture", "filter"],
+)
+async def test_a_value_at_its_limit_is_sent(
+    hass: HomeAssistant, loaded_entry, rig, service: str, data: dict, path: str
+) -> None:
+    await _call(hass, service, **data)
+    assert rig.sent[-1][0] == path
+
+
+async def test_a_gain_is_held_to_the_cameras_own_range(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """The simulator camera reports GainMax 10000, past any one constant that
+    would also fit the rig's camera, whose GainMax is 700.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+
+    await _call(hass, "camera_capture", duration=1, gain=6000)
+
+    assert rig.sent[-1] == (
+        "/equipment/camera/capture",
+        {"duration": 1.0, "gain": 6000, "save": "false"},
+    )
 
 
 @pytest.mark.parametrize(
