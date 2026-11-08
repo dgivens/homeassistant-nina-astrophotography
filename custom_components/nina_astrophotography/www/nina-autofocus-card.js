@@ -75,8 +75,8 @@ function isTrend(name) {
 // so the legend still pairs it with that fit.
 const FADED = 0.4;
 
-// Whether the profile's R² check judged a fit: the run's fitting has to use
-// it, and the check has to be on.
+// Whether a fit's R² counted toward the verdict, as far as the card can tell:
+// the mapper marked it `judged`, and the verdict's threshold is not null.
 function isJudged(fit, run) {
   return fit.judged !== false && !run.checkOff;
 }
@@ -299,7 +299,8 @@ class NinaAutofocusCard extends HTMLElement {
     const verdictSquare = this._attr(verdict, "r_squared");
     const threshold = this._attr(verdict, "r_squared_threshold");
     // The verdict publishes a null threshold where it judges no run: the
-    // profile's check off, or a profile not read, which it cannot tell apart.
+    // profile's check off, or a profile not yet read; the card cannot tell
+    // which.
     // A missing or disabled verdict, or an unavailable one, carries no such
     // key, and says nothing either way.
     const verdictAttributes = this._hass?.states?.[verdict]?.attributes ?? {};

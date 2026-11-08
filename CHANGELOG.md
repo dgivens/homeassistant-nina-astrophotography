@@ -55,8 +55,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The autofocus card marks no fit judged when the profile's R² check is
   off** (#217). Where `binary_sensor.<instance>_focuser_autofocus_failed`
   has `r_squared_threshold: null`, which a profile not yet read also gives,
-  every fit reads `not judged`. The minima keep their `used` look. A
-  disabled or unavailable verdict entity leaves the fits as they are.
+  every fit reads `not judged`. Each minimum's `used` marking is
+  unaffected. A disabled or unavailable verdict entity leaves each fit as
+  its `judged` says.
 - **The autofocus card marks the minima the focus point was not built
   from** (#216). Each entry in the `minima` attribute of
   `sensor.<instance>_focuser_last_autofocus` carries `used`, true where

@@ -158,8 +158,8 @@ export const scenarios = {
 
   // A profile with N.I.N.A.'s R² check off, which the integration publishes as
   // a null threshold: no fit was judged, though the minima the focus point
-  // came from were still used. Only the threshold is moved; the captured run
-  // passed and stays unrejected.
+  // came from were still used. Only the threshold changes; the captured run
+  // passed, so the verdict stays off.
   r_squared_check_off: {
     hass: (dump) =>
       rig(dump, UP)
