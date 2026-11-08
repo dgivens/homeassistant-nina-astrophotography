@@ -12,6 +12,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   they came from** (#236): both carry `instance` and `entry_id`, as every
   other `nina_*` event does, so an automation with two rigs can tell which one
   lost or regained its event connection.
+- **Home Assistant shows the integration's icon** on the integrations page,
+  the add-integration dialog and the device pages (#230). The icon and logo
+  ship in the integration's own `brand/` directory, which HACS validates.
+
+---
 
 ## [2.5.0] - 2026-11-08
 
