@@ -291,24 +291,24 @@ Actions not listed here take no fields.
 | Action | Field | Required | Default | Range | Meaning |
 |---|---|---|---|---|---|
 | `camera_cool` | `temperature` | yes | — | −50 to 50 °C | Target sensor temperature. |
-| `camera_cool` | `minutes` | no | the profile's ramp | 1–60 min | Time to ramp to the target. Omitted, N.I.N.A. uses the ramp its profile sets for the camera. |
-| `camera_warm` | `minutes` | no | the profile's ramp | 1–60 min | Time to ramp back to ambient. Omitted, as for `camera_cool`. |
-| `camera_capture` | `duration` | yes | — | the camera's exposure range | Exposure length, in seconds. |
+| `camera_cool` | `minutes` | no | the profile's ramp | 0 or more, in minutes | The shortest time to ramp to the target over. Omitted, N.I.N.A. uses the ramp its profile sets for the camera. |
+| `camera_warm` | `minutes` | no | the profile's ramp | 0 or more, in minutes | The shortest time to ramp back to ambient over. Omitted, as for `camera_cool`. |
+| `camera_capture` | `duration` | yes | — | `0`, or within the camera's exposure range | Exposure length, in seconds. `0` takes the camera's shortest exposure, as for a bias frame. |
 | `camera_capture` | `gain` | no | left to N.I.N.A. | the camera's gain range, and at least 0 | Gain for this exposure. |
 | `camera_capture` | `save` | no | `false` | — | Save the frame to disk on the imaging PC. |
 | `mount_slew` | `ra_degrees` | yes | — | 0–360° | J2000 right ascension, in **degrees**. A catalogue RA in hours × 15. |
 | `mount_slew` | `dec_degrees` | yes | — | −90 to 90° | J2000 declination. |
 | `mount_set_tracking` | `enabled` | yes | — | — | `true` tracks at the sidereal rate; `false` stops tracking. |
-| `focuser_move` | `position` | yes | — | 0–200000 steps | Absolute focuser position. |
+| `focuser_move` | `position` | yes | — | 0 or more steps | Absolute focuser position. The API reports no maximum, so travel beyond the focuser's is left to N.I.N.A. and its driver. |
 | `filterwheel_change_filter` | `filter_index` | yes | — | one of the wheel's slots | **Zero-based** slot: the first filter is `0`. |
 | `guider_start` | `force_calibration` | no | `false` | — | Calibrate before guiding starts. |
 | `sequence_load` | `sequence_name` | yes | — | — | The sequence's name as N.I.N.A. lists it, without the `.ninasequence` extension. Not a path. |
 
 Out-of-range values are rejected with an error rather than sent to N.I.N.A.,
-which would silently clamp them. That holds for the fixed ranges above and for
+which would silently clamp them. That holds for the fixed limits above and for
 the ranges the connected equipment reports: the camera's exposure and gain
 range, and the filter wheel's slots. Equipment that reports no range, or is
-disconnected, leaves the value to N.I.N.A. There is no dither action; the API
+disconnected, leaves the value to N.I.N.A., as does the focuser's upper limit. There is no dither action; the API
 doesn't provide one.
 
 ```yaml
