@@ -1,4 +1,5 @@
-"""`www/nina-units.js` against core's own unit converters.
+"""`www/nina-units.js` against core's own unit converters, and its other
+pure helpers.
 
 A card converts a reading into the unit the integration publishes before it
 compares it with a threshold, so every unit Home Assistant can show one of our
@@ -217,6 +218,9 @@ def test_a_flip_under_way_reads_as_its_phase(
         ([4095.0], 4095),
         # A DSLR raw saturates below its ADC's full scale.
         ([15520.0], 16383),
+        # Dim 16-bit flats with nothing saturated.
+        ([30000.0], 65535),
+        ([5000.0], 16383),
         # Nothing over 12 bits still reads as 12.
         ([800.0], 4095),
         ([None, 4095.0], 4095),

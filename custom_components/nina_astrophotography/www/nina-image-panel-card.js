@@ -66,9 +66,9 @@ const THUMB_WIDTH = 64;
 // Device pixels across for a preview the card could not measure.
 const FALLBACK_PREVIEW_WIDTH = 1600;
 
-// The ADU bar is logarithmic, from 0 to the camera's full scale: a light's
-// background sits in the hundreds to a few thousand, a flat's at a third to a
-// half of full scale. A gridline past full scale is left off.
+// The ADU bar is logarithmic, from 0 to the camera's full scale. In 16-bit
+// data a light's background sits in the hundreds to a few thousand, and a
+// flat's at a third to a half of full scale.
 const ADU_GRIDLINES = [[100, "100"], [1000, "1k"], [10000, "10k"]];
 
 // An absent field is undefined; the integration publishes no reading as null.
@@ -744,19 +744,27 @@ class NinaImagePanelCard extends HTMLElement {
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
     const theme = palette(this);
-    // The full scale from every frame the card holds, not the one on screen:
-    // a short flat or a dark may saturate nothing.
+    // The full scale from every frame the card holds, not only the one on
+    // screen: a flat or a dark may saturate nothing, and the session's lights
+    // outlast a calibration run.
+    const lights = this._attr(this._eid("sensor", "last_image_hfr"), "recent_lights", []);
     const fullScale = aduFullScale(
-      [frame, ...this._recentFrames()].map((f) => f.max));
-    const x = (adu) => W * Math.log1p(Math.max(adu, 0)) / Math.log1p(fullScale);
+      [frame, ...this._recentFrames(), ...lights].map((f) => f.max));
+    // In 16-bit units, so a frame sits where the same exposure would on a
+    // camera that scales its data: a log axis from 0 is not scale-invariant.
+    const per16 = 2 ** 16 / (fullScale + 1);
+    const x = (adu) => W * Math.log1p(Math.max(adu, 0) * per16) / Math.log1p(fullScale * per16);
 
     ctx.font = "8px sans-serif";
     ctx.textBaseline = "top";
-    for (const [adu, text] of ADU_GRIDLINES.filter(([adu]) => adu < fullScale)) {
+    for (const [adu, text] of ADU_GRIDLINES) {
+      if (adu >= fullScale) continue;
       ctx.fillStyle = theme.ink(0.08);
       ctx.fillRect(x(adu), 0, 1, H);
       ctx.fillStyle = theme.ink(0.3);
-      ctx.fillText(text, x(adu) + 2, 1);
+      // A label that would run off the right edge sits left of its line.
+      const width = ctx.measureText(text).width;
+      ctx.fillText(text, x(adu) + 2 + width > W ? x(adu) - 2 - width : x(adu) + 2, 1);
     }
 
     // A whisker, not a box: min and max are single pixels — a cold one and a

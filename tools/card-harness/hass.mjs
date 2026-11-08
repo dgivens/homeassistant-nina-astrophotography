@@ -15,6 +15,9 @@
 /** Home Assistant's own location in the test instance, for the fallback path. */
 export const HOME_LATITUDE = 32.87336;
 
+const LAST_HFR = "sensor.n_i_n_a_last_image_hfr";
+const LAST_MEAN_ADU = "sensor.n_i_n_a_last_image_mean_adu";
+
 // What a restored row keeps: the registry's name, icon, device class, unit and
 // supported features, and the capability attributes of this integration's
 // platforms.
@@ -155,22 +158,24 @@ export function rig(dump, rigState) {
  * floors to 4095 or 16383.
  */
 export function unscaled(dump, rigState, factor) {
-  const HFR = "sensor.n_i_n_a_last_image_hfr";
-  const MEAN = "sensor.n_i_n_a_last_image_mean_adu";
   const states = dump[rigState].states;
   const scaled = (frame, keys) => ({
     ...frame,
     ...Object.fromEntries(keys.map((key) => [key, frame[key] / factor])),
     max: Math.floor(frame.max / factor),
   });
-  const lights = (states[HFR].attributes.recent_lights ?? []).map(
+  const lights = states[LAST_HFR].attributes.recent_lights.map(
     (light) => scaled(light, ["mean"]));
-  const frames = states[MEAN].attributes.recent_frames.map(
+  const frames = states[LAST_MEAN_ADU].attributes.recent_frames.map(
     (frame) => scaled(frame, ["mean", "median", "min"]));
+  // `unknown` with no light this session stays as it is.
+  const mean = Number(states[LAST_MEAN_ADU].state);
   return rig(dump, rigState)
-    .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
-    .override(MEAN, Number(states[MEAN].state) / factor,
-      { ...states[MEAN].attributes, recent_frames: frames });
+    .override(LAST_HFR, states[LAST_HFR].state,
+      { ...states[LAST_HFR].attributes, recent_lights: lights })
+    .override(LAST_MEAN_ADU,
+      Number.isFinite(mean) ? mean / factor : states[LAST_MEAN_ADU].state,
+      { ...states[LAST_MEAN_ADU].attributes, recent_frames: frames });
 }
 
 /**

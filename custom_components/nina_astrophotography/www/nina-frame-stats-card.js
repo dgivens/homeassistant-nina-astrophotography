@@ -342,8 +342,7 @@ class NinaFrameStatsCard extends HTMLElement {
     this._hfr = lights.map((light) => light.hfr ?? null);
     this._stars = lights.map((light) => light.stars ?? null);
     this._adu = lights.map((light) => light.mean ?? null);
-    // A night with nothing saturated underestimates the full scale, and the
-    // chart draws its scatter taller.
+    // An underestimated full scale draws the scatter taller.
     const fullScale = aduFullScale(lights.map((light) => light.max));
     this._aduFloor = ADU_MIN_SPAN * (fullScale + 1) / 2 ** 16;
     this._filters = lights.map((light) => light.filter ?? null);

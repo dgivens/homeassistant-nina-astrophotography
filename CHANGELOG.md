@@ -30,8 +30,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **The image panel's ADU bar runs to the camera's full scale** (#213), read
   from the frames' max ADU as the frame statistics card reads it. A 12-bit
-  camera's flat at half well draws near the right end, as a 16-bit camera's
-  does, and a gridline past full scale is left off.
+  camera's flat at half its full scale draws where a 16-bit camera's does,
+  and a gridline past full scale is left off. The full scale is 12, 14 or
+  16 bits, so dim 16-bit flats do not read as a 15-bit camera's.
 - **The frame statistics card's mean ADU chart shows a background climb on a
   camera that does not scale to 16 bits** (#174). The chart's 10 ADU minimum
   span is scaled to the camera's full scale, read from the frames' max ADU,
@@ -225,9 +226,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   can both be read. The card has no pixel data, so this is a range, not a
   histogram, and it cannot show how much of a frame is clipped. A max of
   65535 is normal: star cores and hot pixels saturate. A camera whose driver
-  does not scale to 16 bits saturates lower, and the axis ends at that
-  camera's full scale (#213). The `show_histogram` option still turns it on
-  and off.
+  does not scale to 16 bits saturates lower, so its whisker stops short of
+  the right edge until #213 scales the axis to it. The `show_histogram`
+  option still turns it on and off.
 - **The frame statistics card reads the newest run, not the whole night**
   (#105). A run is the lights since the last target change that share the
   newest light's filter and exposure, interleaved filters and all. The star
