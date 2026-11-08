@@ -34,15 +34,15 @@ _RESOURCES_REMOVED = "nina_astrophotography_frontend_resources_removed"
 
 
 class CardFilesView(HomeAssistantView):
-    """Serve `www/`, each file revalidated on every load.
+    """Serve the files in `www/` with `Cache-Control: no-cache`.
 
-    A card and the modules it imports must come from the same release: a new
-    card importing a name its cached module lacks never defines its element.
-    Without `Cache-Control` a browser picks each file's freshness itself, so
-    `no-cache` it is; an unchanged file answers 304.
+    Without that header, browsers decide for themselves how long to cache each
+    file. After an upgrade they can run a new card with an old cached copy of a
+    module it imports, and the card fails to load. `no-cache` makes the browser
+    check every file on each load; an unchanged file costs only a 304.
 
-    Public, like `/local/`: a browser fetches a module with no token, so
-    nothing private belongs in `www/`.
+    The route needs no login, because browsers fetch modules without a token.
+    Nothing private may go in `www/`.
     """
 
     url = URL_PREFIX + "/{filename}"
@@ -61,7 +61,7 @@ class CardFilesView(HomeAssistantView):
 
 
 async def async_serve_cards(hass: HomeAssistant) -> None:
-    """Serve `www/`. Once per process: a view cannot be registered twice."""
+    """Serve `www/`. Call this once: a view cannot be registered twice."""
     filenames = await hass.async_add_executor_job(
         lambda: frozenset(path.name for path in WWW_DIR.iterdir() if path.is_file())
     )

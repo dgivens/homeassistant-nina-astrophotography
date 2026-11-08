@@ -88,8 +88,8 @@ async def test_whatever_a_card_imports_is_served_at_that_path(
 async def test_every_file_is_revalidated_on_each_load(
     hass, loaded_entry, hass_client
 ) -> None:
-    """A card cached from one release importing a module from another fails
-    to load, so no file may be reused unchecked.
+    """A browser that reuses a cached file can run a new card with an old
+    module, and the card then fails to load.
     """
     client = await hass_client()
     for path in WWW_DIR.iterdir():
