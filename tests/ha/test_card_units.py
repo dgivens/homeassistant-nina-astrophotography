@@ -204,3 +204,27 @@ def test_a_flip_under_way_reads_as_its_phase(
     underway: dict[str, object], shown: str
 ) -> None:
     assert _run([["flipStatus", underway]]) == [shown]
+
+
+@pytest.mark.parametrize(
+    ("maxima", "full_scale"),
+    [
+        ([65535.0], 65535),
+        # 12- and 14-bit data shifted up to 16 bits.
+        ([65520.0], 65535),
+        ([65532.0], 65535),
+        ([16383.0, 9000.0], 16383),
+        ([4095.0], 4095),
+        # A DSLR raw saturates below its ADC's full scale.
+        ([15520.0], 16383),
+        # Nothing over 12 bits still reads as 12.
+        ([800.0], 4095),
+        ([None, 4095.0], 4095),
+        ([], 65535),
+        ([None, 0], 65535),
+    ],
+)
+def test_the_full_scale_is_the_brightest_pixel_rounded_up_to_a_bit_depth(
+    maxima: list[float | None], full_scale: int
+) -> None:
+    assert _run([["aduFullScale", maxima]]) == [full_scale]

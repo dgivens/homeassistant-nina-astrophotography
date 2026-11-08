@@ -1,7 +1,7 @@
 /**
  * Readings in the unit Home Assistant shows them in, the meridian flip window
- * read from them and the flip under way, and text off the rig made safe to
- * print.
+ * read from them and the flip under way, the camera's ADU full scale, and text
+ * off the rig made safe to print.
  *
  * Not a card, so not in `frontend.py`'s `CARD_FILENAMES`.
  *
@@ -193,6 +193,21 @@ export function flipStatus({ waiting, slewsIn }) {
   return slewsIn === null
     ? "Waiting to flip"
     : `Waiting to flip · slews in ${Math.ceil(slewsIn)} min`;
+}
+
+/**
+ * The largest ADU the camera reports, from frames' max ADU: 65535 for data
+ * scaled to 16 bits, 16383 or 4095 for a camera delivering its native 14 or 12.
+ * N.I.N.A.'s bit depth can't say which: for ASCOM and DSLR cameras it is a
+ * profile setting the user types. A hot pixel or star core saturates in nearly
+ * every light, so the brightest pixel, rounded up to a bit depth, is the full
+ * scale. Frames with none saturated underestimate it; no max at all is 65535.
+ */
+export function aduFullScale(maxima) {
+  const known = maxima.filter((v) => Number.isFinite(v) && v > 0);
+  if (!known.length) return 2 ** 16 - 1;
+  const depth = Math.ceil(Math.log2(Math.max(...known) + 1));
+  return 2 ** Math.min(16, Math.max(12, depth)) - 1;
 }
 
 /**

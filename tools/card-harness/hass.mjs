@@ -148,6 +148,32 @@ export function rig(dump, rigState) {
 }
 
 /**
+ * `rigState` from a camera that does not scale its data to 16 bits: every ADU
+ * reading divided by `factor`, 16 for 12 bits or 4 for 14. Every captured
+ * camera delivers 16-bit data, so this scales one rather than invent another;
+ * a power of two divides exactly. Max is that camera's full scale, so 65535
+ * floors to 4095 or 16383.
+ */
+export function unscaled(dump, rigState, factor) {
+  const HFR = "sensor.n_i_n_a_last_image_hfr";
+  const MEAN = "sensor.n_i_n_a_last_image_mean_adu";
+  const states = dump[rigState].states;
+  const scaled = (frame, keys) => ({
+    ...frame,
+    ...Object.fromEntries(keys.map((key) => [key, frame[key] / factor])),
+    max: Math.floor(frame.max / factor),
+  });
+  const lights = (states[HFR].attributes.recent_lights ?? []).map(
+    (light) => scaled(light, ["mean"]));
+  const frames = states[MEAN].attributes.recent_frames.map(
+    (frame) => scaled(frame, ["mean", "median", "min"]));
+  return rig(dump, rigState)
+    .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
+    .override(MEAN, Number(states[MEAN].state) / factor,
+      { ...states[MEAN].attributes, recent_frames: frames });
+}
+
+/**
  * Lost-link scenarios around the live `site_configured` rig, for every card
  * that shows one:
  *

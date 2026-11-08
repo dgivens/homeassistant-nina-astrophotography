@@ -28,7 +28,7 @@
  * before its first light.
  */
 
-import { rig } from "../hass.mjs";
+import { rig, unscaled } from "../hass.mjs";
 
 const NIGHT = "dawn_flats";
 const EXPOSURE = "sensor.n_i_n_a_last_image_exposure";
@@ -102,26 +102,6 @@ function relabelled(dump, names, { wheel = true } = {}) {
     .override(FILTER, label(states[FILTER].state) ?? "unknown", states[FILTER].attributes)
     .override(WHEEL, wheel ? label(states[WHEEL].state) ?? states[WHEEL].state : states[WHEEL].state,
       { ...states[WHEEL].attributes, options: slots });
-}
-
-// The night with every ADU reading divided by `factor`, as a camera that does
-// not scale its data to 16 bits reports them. Max is that camera's full scale,
-// so 65535 floors to 4095 or 16383.
-function unscaled(dump, factor) {
-  const states = dump[NIGHT].states;
-  const scaled = (frame, keys) => ({
-    ...frame,
-    ...Object.fromEntries(keys.map((key) => [key, frame[key] / factor])),
-    max: Math.floor(frame.max / factor),
-  });
-  const lights = states[HFR].attributes.recent_lights.map(
-    (light) => scaled(light, ["mean"]));
-  const frames = states[MEAN].attributes.recent_frames.map(
-    (frame) => scaled(frame, ["mean", "median", "min"]));
-  return rig(dump, NIGHT)
-    .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
-    .override(MEAN, Number(states[MEAN].state) / factor,
-      { ...states[MEAN].attributes, recent_frames: frames });
 }
 
 // No `draw` hook: the three sparklines are painted from the frame the render
@@ -232,8 +212,8 @@ export const scenarios = {
   // chart draws a run by its span about its centre, so the pedestal, scaled
   // with the sky, cannot show: the ops match `session`'s but for the ADU
   // chart's newest-reading label.
-  unscaled_12_bit: { hass: (dump) => unscaled(dump, 16).build() },
-  unscaled_14_bit: { hass: (dump) => unscaled(dump, 4).build() },
+  unscaled_12_bit: { hass: (dump) => unscaled(dump, NIGHT, 16).build() },
+  unscaled_14_bit: { hass: (dump) => unscaled(dump, NIGHT, 4).build() },
 
   // No lights in the session, so no charts: the waiting panel under the
   // header's session totals.

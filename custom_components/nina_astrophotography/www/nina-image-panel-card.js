@@ -48,7 +48,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
-import { quantityIn, shown } from "./nina-units.js";
+import { aduFullScale, quantityIn, shown } from "./nina-units.js";
 import { ON_IMAGE, THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.4.1";
@@ -66,12 +66,9 @@ const THUMB_WIDTH = 64;
 // Device pixels across for a preview the card could not measure.
 const FALLBACK_PREVIEW_WIDTH = 1600;
 
-// N.I.N.A. holds frames as 16-bit unsigned, so no statistic exceeds this; a
-// camera whose driver does not scale to 16 bits saturates lower.
-const ADU_FULL_SCALE = 65535;
-
-// The ADU bar is logarithmic: a light's background sits in the hundreds to a
-// few thousand, a flat's in the tens of thousands.
+// The ADU bar is logarithmic, from 0 to the camera's full scale: a light's
+// background sits in the hundreds to a few thousand, a flat's at a third to a
+// half of full scale. A gridline past full scale is left off.
 const ADU_GRIDLINES = [[100, "100"], [1000, "1k"], [10000, "10k"]];
 
 // An absent field is undefined; the integration publishes no reading as null.
@@ -747,11 +744,15 @@ class NinaImagePanelCard extends HTMLElement {
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr, dpr);
     const theme = palette(this);
-    const x = (adu) => W * Math.log1p(Math.max(adu, 0)) / Math.log1p(ADU_FULL_SCALE);
+    // The full scale from every frame the card holds, not the one on screen:
+    // a short flat or a dark may saturate nothing.
+    const fullScale = aduFullScale(
+      [frame, ...this._recentFrames()].map((f) => f.max));
+    const x = (adu) => W * Math.log1p(Math.max(adu, 0)) / Math.log1p(fullScale);
 
     ctx.font = "8px sans-serif";
     ctx.textBaseline = "top";
-    for (const [adu, text] of ADU_GRIDLINES) {
+    for (const [adu, text] of ADU_GRIDLINES.filter(([adu]) => adu < fullScale)) {
       ctx.fillStyle = theme.ink(0.08);
       ctx.fillRect(x(adu), 0, 1, H);
       ctx.fillStyle = theme.ink(0.3);
