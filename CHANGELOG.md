@@ -9,7 +9,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Added
 
 - **The integration names its category in the Marketplace** (#250):
-  `computers_network.monitoring`. `hacs.json` carries only the keys the
+  `computers_network`. `hacs.json` carries only the keys the
   Marketplace reads, `name` and `homeassistant`.
 
 ### Fixed
