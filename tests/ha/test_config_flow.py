@@ -7,7 +7,11 @@
 from collections.abc import Generator
 from unittest.mock import AsyncMock, patch
 
-from homeassistant.config_entries import SOURCE_USER, ConfigFlowResult
+from homeassistant.config_entries import (
+    SOURCE_USER,
+    ConfigEntryDisabler,
+    ConfigFlowResult,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 import pytest
@@ -122,17 +126,37 @@ async def test_a_failing_probe_shows_why_and_a_retry_succeeds(
     mock_setup_entry.assert_called_once()
 
 
-@pytest.mark.parametrize("host", ["nina.local", "NINA.local", "  nina.local  "])
+@pytest.mark.parametrize(
+    "host", ["nina.local", "NINA.local", "  nina.local  ", "nina.local."]
+)
 async def test_the_same_host_and_port_cannot_be_added_twice(
     hass: HomeAssistant, configured: MockConfigEntry, probe: AsyncMock, host: str
 ) -> None:
-    """Hostnames are case-insensitive, so all three name the configured rig.
-    The probe never runs: a duplicate costs no HTTP call.
+    """Hostnames are case-insensitive and a trailing dot names the same host,
+    so each names the configured rig. The probe never runs: a duplicate costs
+    no HTTP call.
     """
     result = await _answer(hass, await _user_step(hass), ROOFTOP | {CONF_HOST: host})
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"
     probe.assert_not_called()
+
+
+async def test_a_disabled_rig_from_before_2_0_cannot_be_added_again(
+    hass: HomeAssistant, probe: AsyncMock
+) -> None:
+    """A disabled entry is never set up, so never migrated: its host keeps the
+    capitals it was typed with.
+    """
+    MockConfigEntry(
+        domain=DOMAIN,
+        title="N.I.N.A.",
+        data={CONF_HOST: "NINA.local", CONF_PORT: 1888},
+        disabled_by=ConfigEntryDisabler.USER,
+    ).add_to_hass(hass)
+    result = await _answer(hass, await _user_step(hass), ROOFTOP)
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
 
 
 async def test_a_second_rig_may_not_reuse_an_instance_name(

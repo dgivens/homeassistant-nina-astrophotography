@@ -28,6 +28,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
+    normalize_host,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,19 +58,14 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Hostnames are case-insensitive, so the duplicate guard normalises.
             user_input = {
                 **user_input,
-                CONF_HOST: user_input[CONF_HOST].strip().lower(),
+                CONF_HOST: normalize_host(user_input[CONF_HOST]),
             }
             # No unique id: the API reports no stable id of its own, and an
             # address is not one.
-            self._async_abort_entries_match(
-                {
-                    CONF_HOST: user_input[CONF_HOST],
-                    CONF_PORT: user_input[CONF_PORT],
-                }
-            )
+            if self._address_in_use(user_input[CONF_HOST], user_input[CONF_PORT]):
+                return self.async_abort(reason="already_configured")
             if self._name_in_use(user_input[CONF_INSTANCE_NAME]):
                 errors[CONF_INSTANCE_NAME] = "name_in_use"
             else:
@@ -98,6 +94,18 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
+        )
+
+    def _address_in_use(self, host: str, port: int) -> bool:
+        """Whether another entry already reads this host and port.
+
+        Each stored host is normalised here too: a disabled entry is never
+        migrated, so one from before 2.0 keeps the host as it was typed.
+        """
+        return any(
+            normalize_host(entry.data[CONF_HOST]) == host
+            and entry.data[CONF_PORT] == port
+            for entry in self._async_current_entries(include_ignore=False)
         )
 
     def _name_in_use(self, name: str) -> bool:

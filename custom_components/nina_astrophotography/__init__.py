@@ -70,6 +70,7 @@ from .const import (
     SERVICE_SEQUENCE_START,
     SERVICE_SEQUENCE_STOP,
     TrackingMode,
+    normalize_host,
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData, NinaRuntimeData
 from .device import async_sync_devices, kind_of, refused_while_unsafe
@@ -263,7 +264,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bo
     if entry.version == 1 and entry.minor_version < 3:
         hass.config_entries.async_update_entry(
             entry,
-            data={**entry.data, CONF_HOST: entry.data[CONF_HOST].strip().lower()},
+            data={**entry.data, CONF_HOST: normalize_host(entry.data[CONF_HOST])},
             unique_id=None,
             minor_version=3,
         )

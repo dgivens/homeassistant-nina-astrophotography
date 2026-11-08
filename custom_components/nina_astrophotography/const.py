@@ -59,3 +59,11 @@ SERVICE_DOME_PARK = "dome_park"
 SERVICE_SEQUENCE_START = "sequence_start"
 SERVICE_SEQUENCE_STOP = "sequence_stop"
 SERVICE_SEQUENCE_LOAD = "sequence_load"
+
+
+def normalize_host(host: str) -> str:
+    """The host as an entry stores it, so one rig has one spelling.
+
+    Hostnames are case-insensitive, and a trailing dot names the same host.
+    """
+    return host.strip().lower().rstrip(".")

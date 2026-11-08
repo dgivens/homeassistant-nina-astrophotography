@@ -17,9 +17,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   instance name at the same time, so renaming the entry afterwards leaves its
   devices' names alone, as for an entry added since.
 - **A rig already added is recognised by its host and port, and its entry has
-  no unique ID** (#242), since an address is not a stable identity. The host
-  is stored lower-cased, so `NINA.local` and `nina.local` are the same rig; an
-  entry added before 2.0 is converted when Home Assistant starts.
+  no unique ID** (#242), since an address is not a stable identity. Hosts are
+  compared case-insensitively and without a trailing dot, so `NINA.local.` and
+  `nina.local` are the same rig, and a disabled rig added before 2.0 counts
+  too. An entry's host is stored in that form, converted for an existing entry
+  when Home Assistant starts.
 
 ### Fixed
 
