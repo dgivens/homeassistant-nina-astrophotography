@@ -9,10 +9,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Changed
 
 - **The README covers installing from Home Assistant's Marketplace**, with a
-  link that adds the repository. It documents every setup field and option,
-  each action's fields with their defaults and ranges, how data updates, the
-  known limitations, and the order to remove the integration in. The upgrade
-  guide covers the sky brightness sensor's long-term statistics.
+  link that adds the repository (#249). It documents every setup field and
+  option, each action's fields with their defaults and ranges, how data
+  updates, the known limitations, and the order to remove the integration in.
+  The upgrade guide covers the sky brightness sensor's long-term statistics.
 
 ### Fixed
 
@@ -40,7 +40,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
 - **The README's `nina_image_save` example works on flat, dark and bias
-  frames** (#233), whose `hfr` is `null`.
+  frames** (#249), whose `hfr` is `null`.
 
 ---
 

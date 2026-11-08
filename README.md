@@ -89,7 +89,14 @@ along with the rest of HACS.
 2. Restart Home Assistant.
 3. Continue with [Setup](#setup).
 
-### Setup
+### Updating
+
+The Marketplace (or HACS) offers each new release as an update. Updating a
+loaded integration takes effect after a restart; the Marketplace raises a
+repair with a restart button. Update a manual install by replacing the folder
+and restarting.
+
+## Setup
 
 [![Add the N.I.N.A. Astrophotography integration to your Home Assistant.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=nina_astrophotography)
 
@@ -111,9 +118,9 @@ delete the entry and add it again.
 
 | Field | Default | Meaning |
 |---|---|---|
-| **Host** | — (required) | The imaging PC's IP address or hostname. |
-| **Port** | `1888` | The Advanced API plugin's port, as set under **Options → Advanced API** in N.I.N.A. |
-| **Instance name** | `N.I.N.A.` | Names the rig. It titles the entry, names the hub device and prefixes every entity id (`N.I.N.A.` gives `sensor.n_i_n_a_…`), so choose it before you build dashboards. Each rig needs its own name. |
+| **Host / IP Address** | — (required) | The imaging PC's IP address or hostname. |
+| **API Port** | `1888` | The Advanced API plugin's port, as set under **Options → Advanced API** in N.I.N.A. |
+| **Instance Name** | `N.I.N.A.` | Names the rig. It titles the entry, names the hub device and prefixes every entity id (`N.I.N.A.` gives `sensor.n_i_n_a_…`), so choose it before you build dashboards. Each rig needs its own name. |
 
 The same host and port can't be added twice, whatever the host's letter case;
 the same host on another port is a separate rig.
@@ -136,14 +143,15 @@ Configure**. Saving reloads the entry.
 - **Poll.** Equipment state is also read every **Poll Interval** (default
   10 s), as a backstop for anything the event stream doesn't carry.
 - **Slower reads.** The loaded sequence is read every 30 s while the rig is
-  imaging and every 5 minutes otherwise, and when an event says it changed.
+  imaging and every 5 minutes otherwise, and when a sequence starts or
+  finishes.
   Flat-run status, Livestack status, the N.I.N.A. profile and the last
   autofocus run are read every 5 minutes. These ride on the poll, so a longer
   poll interval can delay them.
-- **Reconnects.** When the WebSocket drops, the integration reconnects and
-  replays N.I.N.A.'s event history into the entities, so a frame saved during
-  the drop still counts. The replayed events are not fired again as Home
-  Assistant events.
+- **Reconnects.** When the WebSocket drops, the integration reconnects,
+  re-reads the image history so a frame saved during the drop still counts,
+  and replays N.I.N.A.'s event history into the entities. The replayed events
+  are not fired again as Home Assistant events.
 - **Outages.** If N.I.N.A. stops answering, entities keep their last values for
   the **Outage Grace Period** (default 30 s), then go `unavailable`.
   [The reference](docs/reference.md#availability) has the detail.
@@ -242,7 +250,7 @@ on the imported blueprint and pick your rig's entities.
 
 | Blueprint | What it does |
 |---|---|
-| [Unsafe conditions abort](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/weather_abort.yaml) | When the safety monitor reports unsafe or stops reporting: stop the sequence, park, warm the camera and, if you enable it, close the dome once the mount confirms park — given the shutter status, it alerts if the dome does not close. Can resume when conditions clear. Given the rig's Reachable sensor, notifies when N.I.N.A. itself stops answering. |
+| [Unsafe conditions abort](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/weather_abort.yaml) | When the safety monitor reports unsafe or stops reporting: stop the sequence, park, warm the camera and, if you enable it, close the dome once the mount confirms park — given the shutter status, it alerts if the dome does not close. Can resume when conditions clear. Notifies when N.I.N.A. itself stops answering, soonest with the rig's Reachable sensor. |
 | [Session startup](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/session_startup.yaml) | At a set time, if the safety monitor reads safe: unpark, optionally open the dome, cool the camera and wait out the ramp, check safety again, then load a named sequence (or keep the loaded one) and start it. It leaves tracking to the sequence's first slew. |
 | [Session shutdown](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/session_shutdown.yaml) | At a set time, first waits up to two hours for the sequence to finish (on by default), then stops it if it's still running, parks, optionally closes the dome over a parked mount — alerting if it does not close — and warms the camera. |
 | [Meridian flip warning](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/meridian_flip_warning.yaml) | Notifies before a meridian flip, when it starts, and when it finishes. |
@@ -272,7 +280,7 @@ command, not when the equipment finishes.
 | `filterwheel_change_filter` | Change filter |
 | `guider_start` / `guider_stop` | Start / stop guiding |
 | `dome_open` | Open the dome shutter; refused while the safety monitor reports unsafe |
-| `dome_close` / `dome_park` | Close / park the dome; park closes the shutter too |
+| `dome_close` / `dome_park` | Close the shutter / park the dome. Whether parking also closes the shutter is up to the dome's driver |
 | `sequence_load` | Load a sequence, without starting it |
 | `sequence_start` / `sequence_stop` | Start the loaded sequence / stop the running one |
 
@@ -356,7 +364,8 @@ once it reconnects, but are not fired as Home Assistant events.
 `frame` holds `date`, `filename`, `target_name`, `filter_name`, `image_type`
 (`LIGHT`, `FLAT`, `DARK`, `BIAS`, …), `exposure_time` (s), `hfr`, `stars`,
 `mean`, `median`, `std_dev`, `min`, `max`, `rms_arcsec`, `temperature`,
-`gain`, `offset` and `focal_length`. `hfr` and `stars` are `null` on flat,
+`gain`, `offset`, `focal_length` and `generation` (when the N.I.N.A. process
+that saved it started). `hfr` and `stars` are `null` on flat,
 dark and bias frames, and on a light frame with no stars measured, so give
 them a default in a template:
 
@@ -388,8 +397,6 @@ and autofocus timeouts. It misses some errors; see
 
 ## Known limitations
 
-- **One entry per N.I.N.A. instance.** Each rig is its own entry, with its own
-  instance name; the same host and port can't be added twice.
 - **No dither action.** The Advanced API has no dither command.
   `nina_guider_dither` does fire, but N.I.N.A. raises it even for a dither it
   skipped, so it doesn't prove one happened.
@@ -431,6 +438,9 @@ but doesn't serve the Advanced API's v2 routes: either another service owns
 the port, or the plugin is too old. Check the port, and update the plugin to
 2.2.15.x.
 
+**"This N.I.N.A. instance is already configured".** An entry for that host and
+port already exists. To change its instance name, delete it and add it again.
+
 **"Another N.I.N.A. instance already uses this name".** Give the second rig
 its own instance name.
 
@@ -469,9 +479,9 @@ others. Cards aren't affected, but your automations are.
 **Dome problems.** The dome support has been tested against a simulated dome,
 not real hardware. A dome only gets the controls its driver says it supports, so
 a roll-off roof gets the shutter status and the open and close buttons. Opening
-is refused while the safety monitor reports unsafe. Dome park closes the shutter
-as well, so a dashboard button for it wants the same `confirmation:` as dome
-close. Please
+is refused while the safety monitor reports unsafe. Whether dome park also
+closes the shutter is up to the dome's driver, so a dashboard button for it
+wants the same `confirmation:` as dome close. Please
 [open an issue](https://github.com/dgivens/homeassistant-nina-astrophotography/issues)
 with what you see.
 
