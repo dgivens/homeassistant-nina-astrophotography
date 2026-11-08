@@ -427,10 +427,6 @@
       "name": "Cool Camera",
       "description": "Start cooling the camera to a target temperature.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "temperature": {
           "name": "Target Temperature (°C)",
           "description": "Target sensor temperature in degrees Celsius, from -50 to 50."
@@ -445,10 +441,6 @@
       "name": "Warm Camera",
       "description": "Gradually warm the camera sensor.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "minutes": {
           "name": "Ramp Time (minutes)",
           "description": "Minimum minutes over which to ramp back to ambient, 0 or more. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
@@ -459,10 +451,6 @@
       "name": "Capture Image",
       "description": "Take a single exposure.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "duration": {
           "name": "Exposure (seconds)",
           "description": "Exposure duration in seconds, up to the camera's own maximum. 0 is sent to the camera driver as it is."
@@ -479,22 +467,12 @@
     },
     "camera_abort_capture": {
       "name": "Abort Capture",
-      "description": "Abort the current camera exposure.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Abort the current camera exposure."
     },
     "mount_slew": {
       "name": "Slew Mount",
       "description": "Slew the mount to J2000 RA/Dec coordinates, in degrees.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "ra_degrees": {
           "name": "RA (degrees)",
           "description": "Right ascension in J2000 decimal degrees (0-360)."
@@ -507,32 +485,16 @@
     },
     "mount_park": {
       "name": "Park Mount",
-      "description": "Park the telescope mount.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Park the telescope mount."
     },
     "mount_unpark": {
       "name": "Unpark Mount",
-      "description": "Unpark the telescope mount.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Unpark the telescope mount."
     },
     "mount_set_tracking": {
       "name": "Set Tracking",
       "description": "Enable or disable mount tracking.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "enabled": {
           "name": "Tracking Enabled",
           "description": "True to enable tracking, false to disable."
@@ -543,10 +505,6 @@
       "name": "Move Focuser",
       "description": "Move the focuser to an absolute position.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "position": {
           "name": "Position (steps)",
           "description": "Absolute focuser position in steps, from 0 up to the focuser's own maximum."
@@ -555,22 +513,12 @@
     },
     "focuser_auto_focus": {
       "name": "Auto Focus",
-      "description": "Run an autofocus routine.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Run an autofocus routine."
     },
     "filterwheel_change_filter": {
       "name": "Change Filter",
       "description": "Rotate the filter wheel to a given filter.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "filter_index": {
           "name": "Filter Index",
           "description": "Zero-based index of the target filter slot, one the filter wheel reports."
@@ -581,10 +529,6 @@
       "name": "Start Guiding",
       "description": "Start autoguiding.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "force_calibration": {
           "name": "Force Calibration",
           "description": "Force a new calibration before guiding."
@@ -593,72 +537,32 @@
     },
     "guider_stop": {
       "name": "Stop Guiding",
-      "description": "Stop autoguiding.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Stop autoguiding."
     },
     "dome_open": {
       "name": "Open Dome",
-      "description": "Open the dome shutter. Refused while the safety monitor reports unsafe.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Open the dome shutter. Refused while the safety monitor reports unsafe."
     },
     "dome_close": {
       "name": "Close Dome",
-      "description": "Close the dome shutter.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Close the dome shutter."
     },
     "dome_park": {
       "name": "Park Dome",
-      "description": "Park the dome.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Park the dome."
     },
     "sequence_start": {
       "name": "Start Sequence",
-      "description": "Start the loaded imaging sequence.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Start the loaded imaging sequence."
     },
     "sequence_stop": {
       "name": "Stop Sequence",
-      "description": "Stop the running sequence.",
-      "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        }
-      }
+      "description": "Stop the running sequence."
     },
     "sequence_load": {
       "name": "Load Sequence",
       "description": "Load a sequence by name.",
       "fields": {
-        "device_id": {
-          "name": "Rig",
-          "description": "Which N.I.N.A. instance to act on. Optional while one instance is configured, and required once a second is."
-        },
         "sequence_name": {
           "name": "Sequence name",
           "description": "The sequence's name as N.I.N.A. lists it. Not a path."
@@ -668,7 +572,7 @@
   },
   "exceptions": {
     "ambiguous_target": {
-      "message": "Several N.I.N.A. instances are configured, so the action needs a device to say which one it means."
+      "message": "Several N.I.N.A. instances are configured, so the action needs a target to say which one it means."
     },
     "channel_gone": {
       "message": "N.I.N.A.'s switch device no longer reports the channel \"{channel}\", so the command was not sent."

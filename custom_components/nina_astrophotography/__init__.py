@@ -489,8 +489,10 @@ def _register_services(hass: HomeAssistant) -> None:
     ) -> None:
         """Register a wrapped action accepting every target field.
 
-        `services.yaml` declares a `target:` block, so the picker can send an
-        area, floor or label as well as a device.
+        `services.yaml`'s `target:` filters on this integration's entities,
+        since hassfest refuses a device filter there; the picker then offers
+        only the devices, areas, floors and labels holding one. A target
+        field sent in `data` rather than `target` binds the same.
         """
         hass.services.async_register(
             DOMAIN,

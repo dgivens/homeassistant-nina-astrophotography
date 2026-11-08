@@ -30,6 +30,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `nina.local` are the same rig, and a disabled rig added before 2.0 counts
   too. An entry's host is stored in that form, converted for an existing entry
   when Home Assistant starts.
+- **Every action picks its rig with a target picker** (#235), filtered to
+  this integration: one of its devices or entities, or an area, floor or
+  label holding one. A `device_id` sent under `data` binds the same as one
+  under `target`, and an untargeted call reaches the only configured rig.
 
 ### Fixed
 
