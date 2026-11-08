@@ -22,14 +22,15 @@ behaviour that are expensive to rediscover.
 
 ```bash
 uv sync                                                  # the `test` group only — no Home Assistant
-uv run pytest tests/unit -p no:homeassistant -q          # fast: well under a second
+uv run pytest tests/unit -p no:homeassistant -q          # fast: about two seconds
 uv run --group test-ha pytest tests/ha -q                # the Home Assistant suite; never -n auto
 uv run --group dev --group test-ha pyright                      # custom_components/, scripts/, tests/, tools/
 uv run --group dev ruff check --fix . && uv run --group dev ruff format .   # lint and format
 ```
 
-`just ci` runs everything CI checks; the coverage floors and the redaction
-guard are in `docs/contributing/testing.md`.
+`just ci` runs everything CI checks except hassfest and the HACS action, which
+run only in CI; the coverage floors and the redaction guard are in
+`docs/contributing/testing.md`.
 
 - **Always name the suite.** A bare `uv run pytest` collects both and loads
   Home Assistant before collection.
@@ -75,6 +76,9 @@ custom_components/nina_astrophotography/
   www/                6 Lovelace cards and four shared modules; see
                       docs/contributing/cards.md. `frontend.py` serves them and
                       registers each as a Lovelace resource
+  views.py            the image proxy: a card fetches frames through Home
+                      Assistant's own origin, since N.I.N.A. serves plain HTTP
+  brand/              the icon and logo, which Home Assistant and HACS read
 blueprints/automation/nina_astrophotography/   6 automation blueprints; entities
                       come from typed `!input` selectors, never hardcoded, and
                       each is instantiated for real in tests/ha/test_blueprints.py
@@ -88,8 +92,9 @@ disk proves nothing.
 ## Entity rules
 
 - **A platform is a descriptor table**, not a class per entity: a frozen
-  dataclass carrying `value` (a lambda over `NinaData`), `kind` (the child
-  device, `None` for the hub) and `verified`. Copy `binary_sensor.py`.
+  dataclass carrying `value` (a lambda over `NinaData`) and `kind` (the child
+  device, `None` for the hub), and optionally `supported` (a capability the
+  driver must report). Copy `binary_sensor.py`.
 - **An entity is created only once its `kind`'s model is non-`None`**, and a
   listener adds the ones whose device appears later: `entity.async_add_observed`. A descriptor whose slot is
   absent must not be registered: it would mint a nameless device and take the

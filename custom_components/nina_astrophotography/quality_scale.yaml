@@ -11,16 +11,28 @@
 rules:
   # Bronze
   action-setup: done
-  appropriate-polling: done
+  appropriate-polling:
+    status: done
+    comment: >-
+      The interval is fixed at 10 s, a backstop to the push socket.
   brands:
     status: done
     comment: >-
       Served from the integration's own `brand/` directory, which Home
       Assistant and HACS both read; there is no home-assistant/brands entry.
   common-modules: done
-  config-flow: done
+  config-flow:
+    status: done
+    comment: >-
+      The form asks for an instance name besides host and port. The Advanced
+      API reports no name for the rig, and the name prefixes every entity id
+      and tells two rigs apart.
   config-flow-test-coverage: done
-  dependency-transparency: done
+  dependency-transparency:
+    status: exempt
+    comment: >-
+      The integration has no external dependencies: `requirements` in
+      manifest.json is empty.
   docs-actions: done
   docs-conditions:
     status: exempt
@@ -46,15 +58,27 @@ rules:
   config-entry-unloading: done
   docs-configuration-parameters: done
   docs-installation-parameters: done
-  entity-unavailable: done
+  entity-unavailable:
+    status: done
+    comment: >-
+      Entities go unavailable once the outage grace period has passed: 30 s by
+      default, 0 to 300 in the options. Until then they hold their last
+      readings, and the Reachable sensor turns off at the first missed poll.
   integration-owner: done
-  log-when-unavailable: done
+  log-when-unavailable:
+    status: todo
+    comment: >-
+      The poll logs an outage and its recovery once each, but the outage at
+      `warning` where the rule asks for `info`, and beside the coordinator's
+      own "Error fetching" line. The event socket logs a warning on every
+      failed reconnect while the rig is down, every 5 s backing off to 60 s.
   parallel-updates: done
   reauthentication-flow:
     status: exempt
     comment: >-
-      The N.I.N.A. Advanced API has no authentication of any kind, so there are
-      no credentials to re-enter.
+      The supported 2.2.x Advanced API plugin has no authentication of any
+      kind, so there are no credentials to re-enter. The 3.0 pre-release adds
+      optional authentication, which this integration does not support.
   test-coverage:
     status: todo
     comment: >-

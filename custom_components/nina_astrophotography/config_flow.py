@@ -5,6 +5,7 @@ from typing import Any
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import voluptuous as vol
 
@@ -20,20 +21,17 @@ from .const import (
     CONF_HOST,
     CONF_INSTANCE_NAME,
     CONF_OUTAGE_GRACE,
-    CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
     DEFAULT_INSTANCE_NAME,
     DEFAULT_OUTAGE_GRACE,
-    DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
+    normalize_host,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-_POLL_INTERVAL = vol.All(int, vol.Range(min=5, max=60))
 
 STEP_USER_SCHEMA = vol.Schema(
     {
@@ -43,7 +41,6 @@ STEP_USER_SCHEMA = vol.Schema(
         vol.Required(CONF_INSTANCE_NAME, default=DEFAULT_INSTANCE_NAME): vol.All(
             str, vol.Strip, vol.Length(min=1)
         ),
-        vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): _POLL_INTERVAL,
     }
 )
 
@@ -52,6 +49,8 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for N.I.N.A. Astrophotography."""
 
     VERSION = 1
+    # `async_migrate_entry` brings an earlier minor version up to this one.
+    MINOR_VERSION = 3
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -59,16 +58,14 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            # Hostnames are case-insensitive, so the duplicate guard normalises.
             user_input = {
                 **user_input,
-                CONF_HOST: user_input[CONF_HOST].strip().lower(),
+                CONF_HOST: normalize_host(user_input[CONF_HOST]),
             }
-            # Host and port: the API reports no stable id of its own.
-            await self.async_set_unique_id(
-                f"{user_input[CONF_HOST]}:{user_input[CONF_PORT]}"
-            )
-            self._abort_if_unique_id_configured()
+            # No unique id: the API reports no stable id of its own, and an
+            # address is not one.
+            if self._address_in_use(user_input[CONF_HOST], user_input[CONF_PORT]):
+                return self.async_abort(reason="already_configured")
             if self._name_in_use(user_input[CONF_INSTANCE_NAME]):
                 errors[CONF_INSTANCE_NAME] = "name_in_use"
             else:
@@ -99,9 +96,23 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
         )
 
+    def _address_in_use(self, host: str, port: int) -> bool:
+        """Whether another entry already reads this host and port.
+
+        Each stored host is normalised here too: a disabled entry is never
+        migrated, so one from before 2.0 keeps the host as it was typed.
+        """
+        return any(
+            normalize_host(entry.data[CONF_HOST]) == host
+            and entry.data[CONF_PORT] == port
+            for entry in self._async_current_entries(include_ignore=False)
+        )
+
     def _name_in_use(self, name: str) -> bool:
-        """Whether another entry already has this instance name, or, from
-        before 2.0, this title.
+        """Whether another entry already has this instance name.
+
+        The title stands in for an entry from before 2.0 that has not been
+        migrated yet, as a disabled one never is.
         """
         return any(
             entry.data.get(CONF_INSTANCE_NAME, entry.title) == name
@@ -109,6 +120,7 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     @staticmethod
+    @callback
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> NinaOptionsFlow:
@@ -116,10 +128,10 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return NinaOptionsFlow()
 
 
-class NinaOptionsFlow(config_entries.OptionsFlow):
+class NinaOptionsFlow(config_entries.OptionsFlowWithReload):
     """Handle options for the N.I.N.A. integration.
 
-    Not `OptionsFlowWithReload`: the entry's update listener already reloads.
+    Each option is read once at setup, so a change reloads the entry.
     """
 
     async def async_step_init(
@@ -133,10 +145,6 @@ class NinaOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        CONF_POLL_INTERVAL,
-                        default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-                    ): _POLL_INTERVAL,
                     vol.Optional(
                         CONF_ROLLOVER_HOUR,
                         default=options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR),

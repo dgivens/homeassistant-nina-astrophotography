@@ -6,6 +6,41 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Added
+
+- **The integration names its category in the Marketplace** (#250):
+  `computers_network`. `hacs.json` carries only the keys the
+  Marketplace reads, `name` and `homeassistant`.
+
+### Changed
+
+- **The quality-scale register matches Home Assistant's current rules**
+  (#244). `dependency-transparency` is exempt, since the integration has no
+  external dependencies. `log-when-unavailable` is not yet met: an outage is
+  logged at `warning` rather than `info`, and the event socket logs every
+  failed reconnect. `reauthentication-flow`'s exemption holds for the
+  supported 2.2.x Advanced API plugin. The design doc's §10 lists the same
+  rules as `quality_scale.yaml`, and `CLAUDE.md` and the contributor docs
+  match the code they describe.
+- **N.I.N.A. is polled every 10 seconds, and the poll interval is not a
+  setting** (#232), so saving **Configure** cannot reset one. An interval an
+  entry was set up or configured with is dropped when Home Assistant starts.
+  For another cadence, turn off **Enable polling for changes** in the
+  integration entry's system options and call `homeassistant.update_entity`
+  from an automation. An entry added before 2.0 takes its title as its
+  instance name at the same time, so renaming the entry afterwards leaves its
+  devices' names alone, as for an entry added since.
+- **A rig already added is recognised by its host and port, and its entry has
+  no unique ID** (#242), since an address is not a stable identity. Hosts are
+  compared case-insensitively and without a trailing dot, so `NINA.local.` and
+  `nina.local` are the same rig, and a disabled rig added before 2.0 counts
+  too. An entry's host is stored in that form, converted for an existing entry
+  when Home Assistant starts.
+- **Every action picks its rig with a target picker** (#235), filtered to
+  this integration: one of its devices or entities, or an area, floor or
+  label holding one. A `device_id` sent under `data` binds the same as one
+  under `target`, and an untargeted call reaches the only configured rig.
+
 ### Fixed
 
 - **The entity reference matches the integration** (#240): a dome adds up to
@@ -39,6 +74,20 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   integration deletes the resource at startup, so dashboards don't request a
   file that is gone. With YAML-managed resources, a warning names the ones to
   remove.
+- **The action editor shows each action's whole text** (#247): the ramp
+  time's profile default, the sequence name's lack of an extension, and the
+  rest of what `services.yaml` documents. A unit test holds the translations
+  to `services.yaml`, field for field.
+- **An action value outside its range is refused before it reaches N.I.N.A.**
+  (#231), which would clamp it silently and report success.
+  `camera_capture`'s `duration` is held to the camera's own maximum, with 0
+  allowed for a bias frame, and its `gain` to the camera's own range and to 1
+  or more, since the API applies no gain below 1.
+  `filterwheel_change_filter`'s `filter_index` must be a slot the wheel
+  reports. `camera_cool`'s `temperature` is −50 to 50 °C, and `minutes` on
+  `camera_cool` and `camera_warm`, and `focuser_move`'s `position`, are 0 or
+  more. A device that is disconnected or reports no range leaves the value to
+  N.I.N.A.
 
 ---
 

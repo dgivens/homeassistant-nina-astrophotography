@@ -23,7 +23,7 @@
   its squash SHA goes into `.git-blame-ignore-revs` after it merges. Git never
   sees a squashed branch as merged (`--merged`, `git cherry`), so check the
   PR's state before `git branch -D`.
-- **Every PR a user would notice adds a `CHANGELOG.md` entry** under
+- **Every PR adds a `CHANGELOG.md` entry**, tooling and docs included, under
   `## [Unreleased]`, in `Added`, `Changed` or `Fixed`: a bold lead sentence,
   then the issue or PR number. State what is true now, not what changed — no
   "no longer" or "now". Start the section if a release has just closed it.
@@ -51,6 +51,7 @@ rules as guidance rather than gates. The Bronze rules that bind us:
 - `has-entity-name` — entity names derive from their device
 - `appropriate-polling`, `entity-unique-id`, `entity-event-setup`
 
-`reauthentication-flow` is **exempt**: the Advanced API has no authentication.
+`reauthentication-flow` is **exempt**: the supported 2.2.x Advanced API plugin
+has no authentication.
 Record exemptions in `quality_scale.yaml` rather than leaving them looking
 unimplemented.

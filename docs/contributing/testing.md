@@ -49,9 +49,10 @@ body does not show it.
 
 **`advance()` cannot reach a state that differs only in a tier-polled
 endpoint** — `/profile/show`, `/livestack/status`,
-`/equipment/focuser/last-af`. Every state but `imaging_guiding` withholds
-those, so the coordinator's not-served latch fires at setup and one refresh
-will not retry. Set the entry up with the rig already in the state instead
+`/equipment/focuser/last-af`. Only the states built from a whole capture serve
+those (`tests/scenarios/README.md`, "Whole captures"); the dawn and restart
+families withhold them, so starting there fires the coordinator's not-served latch at setup, and
+one refresh will not retry. Set the entry up with the rig already in the state instead
 (the `set_up_at` fixture in `tests/ha/conftest.py`). The same applies to
 `/event-history`, which is replayed once.
 
@@ -74,6 +75,7 @@ git ref to another against a N.I.N.A. and holds the result to
 
 `docs/test-vm.md` designs the simulated rig: a disposable
 Windows VM on macOS/Apple silicon running stable or nightly N.I.N.A. against
-simulators. It also defines the `tests/rig/` tier. Host-specific code belongs
+simulators. It also designs the `tests/rig/` tier, which is planned and does
+not exist yet. Host-specific code belongs
 only in its host backend (§4.1 there). `tools/windows-rig/` builds and runs
 it; its README has the commands, and a build needs `dangerouslyDisableSandbox`.
