@@ -46,6 +46,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   label holding one. A `device_id` sent under `data` binds the same as one
   under `target`, and an untargeted call reaches the only configured rig.
 
+### Added
+
+- **The observatory card shows the rotator's sky angle**, and its mechanical
+  angle once `number.<instance>_rotator_mechanical_position` is enabled.
+
 ### Fixed
 
 - **A rig that is down logs one line when it goes and one when it returns**
@@ -110,8 +115,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
-- **The observatory card shows the rotator's sky angle**, and its mechanical
-  angle once `number.<instance>_rotator_mechanical_position` is enabled.
 - **A weather source without a dew point gets one from temperature and
   humidity** (#218). `sensor.<instance>_weather_dew_point` is computed with
   the Magnus formula when the source reports both but its own dew point is
