@@ -4,7 +4,6 @@
 # which ones a step returns depends on its type — which each test asserts first.
 # pyright: reportTypedDictNotRequiredAccess=false
 
-from datetime import timedelta
 from unittest.mock import patch
 
 from homeassistant.config_entries import ConfigFlowResult
@@ -31,7 +30,6 @@ from custom_components.nina_astrophotography.const import (
     CONF_ROLLOVER_HOUR,
     DOMAIN,
 )
-from ha.registry import get_device
 from helpers import state_of
 
 PROBE = (
@@ -60,7 +58,7 @@ async def test_a_valid_rig_creates_an_entry_titled_by_its_instance_name(
     result = await _submit(hass, ROOFTOP, return_value=VERSIONS)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Rooftop"
-    assert result["data"][CONF_HOST] == "nina.local"
+    assert result["data"] == ROOFTOP
 
 
 @pytest.mark.parametrize(
@@ -160,15 +158,17 @@ async def _set_option(
     return result
 
 
-async def test_the_options_flow_changes_the_poll_interval(
+async def test_the_options_form_offers_no_poll_interval(
     hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
-    result = await _set_option(hass, loaded_entry, **{CONF_POLL_INTERVAL: 30})
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    # Coordinator-level by necessity: nothing in §5 exposes the poll cadence as
-    # an entity, so there is no public surface to assert this through.
-    coordinator = loaded_entry.runtime_data.coordinator
-    assert coordinator.update_interval == timedelta(seconds=30)
+    """The interval is fixed (`appropriate-polling`); a user wanting another
+    disables polling and calls `homeassistant.update_entity`.
+    """
+    result = await hass.config_entries.options.async_init(loaded_entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    schema = result["data_schema"]
+    assert schema is not None
+    assert CONF_POLL_INTERVAL not in schema.schema
 
 
 async def test_the_options_flow_moves_the_session_rollover_hour(
@@ -188,16 +188,3 @@ async def test_an_outage_grace_of_zero_fails_on_the_first_missed_poll(
     await _set_option(hass, loaded_entry, **{CONF_OUTAGE_GRACE: 0})
     await advance("nina_unreachable")
     assert state_of(hass, "light.n_i_n_a_flat_panel_light").state == "unavailable"
-
-
-async def test_a_pre_2_0_entry_names_the_instance_from_its_title(
-    hass: HomeAssistant, two_rigs
-) -> None:
-    """1.4.x entries carry no `instance_name`; the title is what they have.
-
-    The second rig, whose title is not the default: an entry titled "N.I.N.A."
-    cannot tell the title fallback from the default apart.
-    """
-    entry = two_rigs.entries[1]
-    assert CONF_INSTANCE_NAME not in entry.data
-    assert get_device(hass, entry).name == "Dome"

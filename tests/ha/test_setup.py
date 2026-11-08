@@ -1,6 +1,5 @@
 """Setup and unload, through public interfaces only."""
 
-from datetime import timedelta
 from unittest.mock import patch
 
 from homeassistant.config_entries import ConfigEntryState
@@ -14,7 +13,7 @@ from custom_components.nina_astrophotography.api.errors import (
     NinaEndpointError,
     NinaUnavailableError,
 )
-from custom_components.nina_astrophotography.const import CONF_POLL_INTERVAL, DOMAIN
+from custom_components.nina_astrophotography.const import DOMAIN
 
 CLIENT = "custom_components.nina_astrophotography.api.v2.client.NinaClientV2"
 
@@ -72,19 +71,6 @@ async def test_the_actions_outlive_an_unloaded_entry(
     await hass.async_block_till_done()
     assert loaded_entry.state is ConfigEntryState.NOT_LOADED
     assert hass.services.has_service(DOMAIN, "mount_park")
-
-
-async def test_an_options_update_reloads_the_entry(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry
-) -> None:
-    """The interval is read once at setup, so a new value needs a reload."""
-    hass.config_entries.async_update_entry(
-        loaded_entry, options={CONF_POLL_INTERVAL: 30}
-    )
-    await hass.async_block_till_done()
-    assert loaded_entry.runtime_data.coordinator.update_interval == timedelta(
-        seconds=30
-    )
 
 
 async def test_home_assistant_started_before_nina_loads_once_the_rig_answers(
