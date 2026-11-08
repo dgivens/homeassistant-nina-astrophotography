@@ -40,6 +40,7 @@ from .api.errors import (
 from .api.models import NinaEvent
 from .api.v2 import NinaClientV2, NinaEventStream
 from .const import (
+    CAMERA_SETPOINT_RANGE,
     CONF_HOST,
     CONF_INSTANCE_NAME,
     CONF_OUTAGE_GRACE,
@@ -47,10 +48,9 @@ from .const import (
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
     DEFAULT_OUTAGE_GRACE,
-    DEFAULT_POLL_INTERVAL,
-    DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
+    POLL_INTERVAL,
     SERVICE_CAMERA_ABORT_CAPTURE,
     SERVICE_CAMERA_CAPTURE,
     SERVICE_CAMERA_COOL,
@@ -71,6 +71,7 @@ from .const import (
     SERVICE_SEQUENCE_START,
     SERVICE_SEQUENCE_STOP,
     TrackingMode,
+    normalize_host,
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData, NinaRuntimeData
 from .device import async_sync_devices, kind_of, refused_while_unsafe
@@ -78,6 +79,7 @@ from .entity import NinaEntityDescription, refusals_raised, usable
 from .frontend import (
     async_ensure_frontend_resources,
     async_register_frontend_resources,
+    async_serve_cards,
     async_unregister_frontend_resources,
 )
 from .views import async_register_views
@@ -117,6 +119,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the actions, the image proxy and the Lovelace cards."""
     _register_services(hass)
     async_register_views(hass)
+    await async_serve_cards(hass)
     await async_register_frontend_resources(hass)
     return True
 
@@ -128,15 +131,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     await async_ensure_frontend_resources(hass)
 
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, DEFAULT_PORT)
-    poll_interval = entry.options.get(
-        CONF_POLL_INTERVAL,
-        entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-    )
+    port = entry.data[CONF_PORT]
+    instance_name = entry.data[CONF_INSTANCE_NAME]
     rollover_hour = entry.options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR)
     outage_grace = entry.options.get(CONF_OUTAGE_GRACE, DEFAULT_OUTAGE_GRACE)
-    # Entries created before 2.0 carry no instance name; the title stands in.
-    instance_name = entry.data.get(CONF_INSTANCE_NAME, entry.title)
 
     session = async_get_clientsession(hass)
     client = NinaClientV2(host, port, session)
@@ -158,7 +156,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         hass,
         client,
         config_entry=entry,
-        update_interval=timedelta(seconds=poll_interval),
+        update_interval=POLL_INTERVAL,
         version=version,
         rollover_hour=rollover_hour,
         outage_grace=timedelta(seconds=outage_grace),
@@ -188,6 +186,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 
     def _fire_connection_event(connected: bool) -> None:
         nonlocal connected_before
+        coordinator.socket_changed(connected)
         hass.bus.async_fire(
             "nina_websocket_connected" if connected else "nina_websocket_disconnected",
             {"instance": instance_name, "entry_id": entry.entry_id},
@@ -245,8 +244,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     # `async_added_to_hass`, and replay does not re-fire, so an ERROR-* that
     # arrived before it subscribed would be lost.
     await events.start()
+    return True
 
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
+async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
+    """Bring an entry from an earlier minor version up to the current one.
+
+    Minor 2 drops the poll interval, which is fixed, from `data` and
+    `options` alike. An entry from before 2.0 has no instance name, and its
+    title stands in.
+
+    Minor 3 drops the unique id, which was the address. The duplicate guard
+    compares host and port in `data` instead, so the host is normalised the
+    way the config flow stores it.
+    """
+    if entry.version == 1 and entry.minor_version < 2:
+        data = {k: v for k, v in entry.data.items() if k != CONF_POLL_INTERVAL}
+        options = {k: v for k, v in entry.options.items() if k != CONF_POLL_INTERVAL}
+        data.setdefault(CONF_INSTANCE_NAME, entry.title)
+        hass.config_entries.async_update_entry(
+            entry, data=data, options=options, minor_version=2
+        )
+    if entry.version == 1 and entry.minor_version < 3:
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, CONF_HOST: normalize_host(entry.data[CONF_HOST])},
+            unique_id=None,
+            minor_version=3,
+        )
     return True
 
 
@@ -317,11 +342,6 @@ async def async_remove_config_entry_device(
     return getattr(entry.runtime_data.coordinator.data.snapshot, kind) is None
 
 
-async def _async_update_listener(hass: HomeAssistant, entry: NinaConfigEntry) -> None:
-    """Reload to apply changed options."""
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
 # ─── Service registration ─────────────────────────────────────────────────────
 
 _TARGET_FIELDS = (
@@ -382,6 +402,21 @@ async def _client_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaClie
     return (await _entry_for_target(hass, call)).runtime_data.coordinator.client
 
 
+def _format(value: float) -> str:
+    """A number as written, unrounded: `2000`, not `2000.0` or `2e+03`."""
+    if isinstance(value, float) and value.is_integer() and abs(value) < 1e15:
+        return str(int(value))
+    return str(value)
+
+
+def _limits(minimum: float | None, maximum: float | None) -> str:
+    if maximum is None:
+        return f"{_format(minimum or 0)} or more"
+    if minimum is None:
+        return f"{_format(maximum)} or less"
+    return f"between {_format(minimum)} and {_format(maximum)}"
+
+
 def _bounded(
     field: str, kind: type[int | float], minimum: float, maximum: float | None = None
 ) -> vol.All:
@@ -390,10 +425,6 @@ def _bounded(
     N.I.N.A. silently clamps out-of-range input and answers `Success: true`,
     and `services.yaml`'s selectors bind nothing from a script.
     """
-    if maximum is None:
-        limits = f"{minimum} or more"
-    else:
-        limits = f"between {minimum} and {maximum}"
 
     def validate(value: float) -> float:
         if value < minimum or (maximum is not None and value > maximum):
@@ -402,13 +433,39 @@ def _bounded(
                 translation_key="out_of_range",
                 translation_placeholders={
                     "field": field,
-                    "value": str(value),
-                    "limits": limits,
+                    "value": _format(value),
+                    "limits": _limits(minimum, maximum),
                 },
             )
         return value
 
     return vol.All(vol.Coerce(kind), validate)
+
+
+def _within_device_range(
+    field: str,
+    value: float,
+    device: str,
+    minimum: float | None,
+    maximum: float | None,
+) -> None:
+    """Refuse a value outside the limits the device itself reports.
+
+    A device reporting no range, or not connected, leaves the value to
+    N.I.N.A., which refuses a command to a disconnected device itself.
+    """
+    if (minimum is None or value >= minimum) and (maximum is None or value <= maximum):
+        return
+    raise ServiceValidationError(
+        translation_domain=DOMAIN,
+        translation_key="outside_device_range",
+        translation_placeholders={
+            "field": field,
+            "value": _format(value),
+            "device": device,
+            "limits": _limits(minimum, maximum),
+        },
+    )
 
 
 def _service(handler: Callable[[ServiceCall], Awaitable[None]]):
@@ -435,8 +492,10 @@ def _register_services(hass: HomeAssistant) -> None:
     ) -> None:
         """Register a wrapped action accepting every target field.
 
-        `services.yaml` declares a `target:` block, so the picker can send an
-        area, floor or label as well as a device.
+        `services.yaml`'s `target:` filters on this integration's entities,
+        since hassfest refuses a device filter there; the picker then offers
+        only the devices, areas, floors and labels holding one. A target
+        field sent in `data` rather than `target` binds the same.
         """
         hass.services.async_register(
             DOMAIN,
@@ -486,12 +545,16 @@ def _register_services(hass: HomeAssistant) -> None:
         )
 
     # `minutes` has no default: the client then sends -1, which asks N.I.N.A.
-    # for the ramp the profile specifies for this camera.
+    # for the ramp the profile specifies for this camera. `minutes` is a
+    # minimum, so it has no ceiling. No setpoint range reaches the wire, so the
+    # temperature bounds are the target temperature number's.
     register(
         SERVICE_CAMERA_COOL,
         handle_camera_cool,
         {
-            vol.Required("temperature"): vol.Coerce(float),
+            vol.Required("temperature"): _bounded(
+                "Target temperature", float, *CAMERA_SETPOINT_RANGE
+            ),
             vol.Optional("minutes"): _bounded("Ramp time", float, 0),
         },
     )
@@ -509,18 +572,36 @@ def _register_services(hass: HomeAssistant) -> None:
     )
 
     async def handle_camera_capture(call: ServiceCall) -> None:
-        client = await _client_for_target(hass, call)
-        await client.capture_image(
-            call.data["duration"], gain=call.data.get("gain"), save=call.data["save"]
+        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        duration, gain = call.data["duration"], call.data.get("gain")
+        if gain is not None and gain < 1:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="gain_not_settable",
+                translation_placeholders={"value": str(gain)},
+            )
+        camera = coordinator.data.snapshot.camera
+        if camera is not None and camera.exposure_range is not None:
+            # Held to the maximum alone: a 0 s exposure is a bias frame, which
+            # a driver may take below its `ExposureMin`.
+            maximum = camera.exposure_range[1]
+            _within_device_range("Duration", duration, "camera", None, maximum)
+        if camera is not None and camera.gain_range is not None and gain is not None:
+            low, high = camera.gain_range
+            _within_device_range("Gain", gain, "camera", max(low, 1), high)
+        await coordinator.client.capture_image(
+            duration, gain=gain, save=call.data["save"]
         )
 
     # No `binning` or `filter_index`: `/equipment/camera/capture` binds neither.
+    # The API applies only a gain above 0, so a lower one is refused rather
+    # than replaced by the camera's default.
     register(
         SERVICE_CAMERA_CAPTURE,
         handle_camera_capture,
         {
             vol.Required("duration"): _bounded("Duration", float, 0),
-            vol.Optional("gain"): _bounded("Gain", int, 0),
+            vol.Optional("gain"): vol.Coerce(int),
             vol.Optional("save", default=False): cv.boolean,
         },
     )
@@ -561,7 +642,7 @@ def _register_services(hass: HomeAssistant) -> None:
         client = await _client_for_target(hass, call)
         await client.move_focuser(call.data["position"])
 
-    # No upper bound: travel is per focuser.
+    # No ceiling: travel is per focuser, and no `MaxStep` reaches the wire.
     register(
         SERVICE_FOCUSER_MOVE,
         handle_focuser_move,
@@ -573,8 +654,21 @@ def _register_services(hass: HomeAssistant) -> None:
     # ── Filter Wheel ─────────────────────────────────────────────────────────
 
     async def handle_filterwheel_change_filter(call: ServiceCall) -> None:
-        client = await _client_for_target(hass, call)
-        await client.change_filter(call.data["filter_index"])
+        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        index = call.data["filter_index"]
+        wheel = coordinator.data.snapshot.filter_wheel
+        # Slots are the wheel's own `Id`s, which need not run 0..n-1.
+        slots = sorted(wheel.filter_ids) if wheel else []
+        if wheel is not None and wheel.connected and slots and index not in slots:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_filter_slot",
+                translation_placeholders={
+                    "value": str(index),
+                    "slots": ", ".join(map(str, slots)),
+                },
+            )
+        await coordinator.client.change_filter(index)
 
     register(
         SERVICE_FILTERWHEEL_CHANGE,

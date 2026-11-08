@@ -39,6 +39,7 @@ from .api.models import (
     VersionInfo,
 )
 from .api.v2 import NinaClientV2, NinaEventStream
+from .api.v2.events import MAX_RECONNECT_DELAY
 from .const import CONF_HOST, DEFAULT_OUTAGE_GRACE, DEFAULT_ROLLOVER_HOUR
 from .derive import flip_offset_minutes
 from .device import KINDS
@@ -66,6 +67,11 @@ from .session import (
 _LOGGER = logging.getLogger(__name__)
 
 FAST_INTERVAL = timedelta(seconds=10)
+
+# How long the event socket may stay down while polls succeed before the log
+# says so: twice the socket's longest backoff, so a socket that reconnects on
+# the attempt after a full capped wait never trips it.
+SOCKET_QUIET = 2 * MAX_RECONNECT_DELAY
 
 # endpoint -> (the attribute the model is stored on, the client getter).
 _TIER_READS: dict[str, tuple[str, str]] = {
@@ -202,6 +208,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._observed: set[str] = set()
         self._rejection_logged = False
         self._unavailable_logged = False
+        self._socket_down = False
+        # When the socket-only outage began: the later of the socket's drop and
+        # the poll's last recovery. `None` while the poll is failing.
+        self._socket_quiet_since: float | None = None
+        self._socket_warned = False
         self._grace = OutageGrace(outage_grace.total_seconds())
         self._reachable = True
         self._restart = RestartDetector()
@@ -249,6 +260,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             return replace(self.data, reachable=True)
         except NinaError as exc:
             self._reachable = False
+            # The whole rig is down, which this branch logs; the socket's
+            # silence is measured again from the poll's recovery.
+            self._socket_quiet_since = None
             if self.data is not None:
                 held = replace(self.data, reachable=False)
                 if self._grace.failed():
@@ -257,14 +271,16 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 # Kept on failure: the reachable sensor reads it while every
                 # other entity is unavailable.
                 self.data = held
-            # Once per outage, not once per tick.
+            # Once per outage, not once per tick. The event socket leaves the
+            # outage to this message: the poll is what takes entities down.
             if not self._unavailable_logged:
-                _LOGGER.warning("N.I.N.A. at %s is unavailable: %s", self._host, exc)
+                _LOGGER.info("N.I.N.A. at %s is unavailable: %s", self._host, exc)
                 self._unavailable_logged = True
             raise UpdateFailed(str(exc)) from exc
 
         self._rejection_logged = False
         self._note_reachable()
+        self._note_socket_quiet()
         snapshot = self._latch_observed(snapshot)
         self._guider_stop.observe(
             snapshot.guider.state if snapshot.guider is not None else None,
@@ -365,6 +381,40 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             self.config_entry.async_create_task(
                 self.hass, self.async_request_refresh(), "nina_event_refresh"
             )
+
+    def socket_changed(self, connected: bool) -> None:
+        """Track the event socket, whose outage the poll can outlive.
+
+        Only a reported drop starts the clock: a socket the server rejects
+        outright logs its own warning from the receive loop.
+        """
+        if connected:
+            if self._socket_warned:
+                _LOGGER.info("N.I.N.A. event socket at %s is back", self._host)
+            self._socket_down = False
+            self._socket_quiet_since = None
+            self._socket_warned = False
+            return
+        self._socket_down = True
+        self._socket_quiet_since = time.monotonic()
+
+    def _note_socket_quiet(self) -> None:
+        """Warn once when the socket stays down while the rig answers polls."""
+        if not self._socket_down or self._socket_warned:
+            return
+        now = time.monotonic()
+        if self._socket_quiet_since is None:
+            self._socket_quiet_since = now
+            return
+        if now - self._socket_quiet_since < SOCKET_QUIET:
+            return
+        _LOGGER.warning(
+            "N.I.N.A. at %s answers polls, but its event socket has been down "
+            "for %d s; entities update only by polling until it reconnects",
+            self._host,
+            now - self._socket_quiet_since,
+        )
+        self._socket_warned = True
 
     def schedule_reconnect(self) -> None:
         """Run the reconnect recovery on the entry, so unload cancels it."""
@@ -521,7 +571,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             if after.connected:
                 _LOGGER.info("%s reconnected on %s", label, self._host)
             else:
-                _LOGGER.warning("%s disconnected on %s", label, self._host)
+                _LOGGER.info("%s disconnected on %s", label, self._host)
 
     def _since_last_image_save(self) -> float:
         """Seconds since the last IMAGE-SAVE; infinite before the first."""

@@ -16,9 +16,11 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DEFAULT_OUTAGE_GRACE
+from custom_components.nina_astrophotography.coordinator import SOCKET_QUIET
 from helpers import state_of
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
+SOCKET_DOWN = "event socket has been down"
 
 
 async def test_a_disconnected_device_makes_its_entities_unavailable(
@@ -79,34 +81,123 @@ async def test_every_answer_restarts_the_grace(
     assert state_of(hass, LIGHT).state != "unavailable"
 
 
-async def test_an_outage_is_logged_once_and_the_recovery_once(
+def _levels(caplog, text: str) -> list[int]:
+    """The level of every record whose message contains `text`."""
+    return [r.levelno for r in caplog.records if text in r.getMessage()]
+
+
+async def test_an_outage_is_logged_once_at_info(
+    hass: HomeAssistant, outage, loaded_entry: MockConfigEntry, caplog
+) -> None:
+    caplog.set_level(logging.DEBUG)
+    await outage()
+    await outage()
+    assert _levels(caplog, "is unavailable") == [logging.INFO]
+
+
+async def test_a_recovery_is_logged_once_at_info(
     hass: HomeAssistant, outage, loaded_entry: MockConfigEntry, advance, caplog
 ) -> None:
-    caplog.set_level(logging.INFO)
     await outage()
-    await outage()
-    assert caplog.text.count("is unavailable") == 1
-
+    caplog.set_level(logging.DEBUG)
     await advance("imaging")
-    assert caplog.text.count("is back online") == 1
+    await advance("imaging")
+    assert _levels(caplog, "is back online") == [logging.INFO]
 
 
 @pytest.mark.synthetic
-async def test_a_device_disconnection_is_logged_once_and_the_reconnection_once(
-    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, caplog
+@pytest.mark.parametrize(
+    ("states", "message"),
+    [
+        (["equipment_disconnected"] * 2, "Flat Panel disconnected"),
+        (["equipment_disconnected", "imaging", "imaging"], "Flat Panel reconnected"),
+    ],
+    ids=["disconnection", "reconnection"],
+)
+async def test_a_device_transition_is_logged_once_at_info(
+    hass: HomeAssistant,
+    loaded_entry: MockConfigEntry,
+    advance,
+    caplog,
+    states: list[str],
+    message: str,
 ) -> None:
     """Per device, under the label the device registry shows.
 
     No capture holds the flat panel down, so its disconnected block is derived
     by the rule the corpus does show.
     """
-    caplog.set_level(logging.INFO)
-    await advance("equipment_disconnected")
-    await advance("equipment_disconnected")
-    assert caplog.text.count("Flat Panel disconnected") == 1
+    caplog.set_level(logging.DEBUG)
+    for state in states:
+        await advance(state)
+    assert _levels(caplog, message) == [logging.INFO]
 
+
+@pytest.mark.parametrize(
+    ("down_for", "levels"),
+    [(SOCKET_QUIET - 1, []), (SOCKET_QUIET, [logging.WARNING])],
+    ids=["inside the threshold", "past it"],
+)
+async def test_a_socket_down_while_polls_succeed_is_warned_once(
+    hass: HomeAssistant,
+    freezer,
+    loaded_entry: MockConfigEntry,
+    socket_state,
+    advance,
+    caplog,
+    down_for: int,
+    levels: list[int],
+) -> None:
+    """The socket's own attempts log at `debug`, so without this a socket that
+    cannot reconnect while the rig answers leaves pushed state stale unexplained.
+    """
+    socket_state(loaded_entry, connected=True)
+    socket_state(loaded_entry, connected=False)
+    caplog.set_level(logging.DEBUG)
+    freezer.tick(down_for)
     await advance("imaging")
-    assert caplog.text.count("Flat Panel reconnected") == 1
+    await advance("imaging")
+    assert _levels(caplog, SOCKET_DOWN) == levels
+
+
+async def test_a_rig_outage_does_not_count_toward_the_socket_warning(
+    hass: HomeAssistant,
+    freezer,
+    outage,
+    loaded_entry: MockConfigEntry,
+    socket_state,
+    advance,
+    caplog,
+) -> None:
+    """The poll logs the outage itself, and a socket waiting out its backoff
+    after the rig returns is not a socket fault.
+    """
+    socket_state(loaded_entry, connected=True)
+    socket_state(loaded_entry, connected=False)
+    caplog.set_level(logging.DEBUG)
+    await outage()
+    freezer.tick(SOCKET_QUIET)
+    await outage()
+    await advance("imaging")
+    assert _levels(caplog, SOCKET_DOWN) == []
+
+
+async def test_a_socket_reconnecting_after_the_warning_is_logged_at_info(
+    hass: HomeAssistant,
+    freezer,
+    loaded_entry: MockConfigEntry,
+    socket_state,
+    advance,
+    caplog,
+) -> None:
+    socket_state(loaded_entry, connected=True)
+    socket_state(loaded_entry, connected=False)
+    freezer.tick(SOCKET_QUIET)
+    await advance("imaging")
+    caplog.set_level(logging.DEBUG)
+    socket_state(loaded_entry, connected=True)
+    await hass.async_block_till_done()
+    assert _levels(caplog, "event socket at nina.local is back") == [logging.INFO]
 
 
 async def test_first_sight_of_a_device_is_not_a_reconnection(

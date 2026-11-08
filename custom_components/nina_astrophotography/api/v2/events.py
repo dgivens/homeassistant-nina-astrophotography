@@ -25,8 +25,8 @@ _LOGGER = logging.getLogger(__name__)
 
 WS_URL = "ws://{host}:{port}/v2/socket"
 
-_RECONNECT_DELAY = 5
-_MAX_RECONNECT_DELAY = 60
+RECONNECT_DELAY = 5
+MAX_RECONNECT_DELAY = 60
 
 
 class NinaEventStream:
@@ -127,7 +127,16 @@ class NinaEventStream:
             _LOGGER.exception("A N.I.N.A. connection listener raised")
 
     async def _run(self) -> None:
-        delay = _RECONNECT_DELAY
+        """Connect, listen, and reconnect with backoff until stopped.
+
+        A rig going down or coming back is logged by the coordinator's poll, at
+        `info` and after its outage grace, because the poll is what takes the
+        entities unavailable. The socket therefore logs its own losses and
+        reconnections at `debug`, so one outage is not announced twice.
+        """
+        delay = RECONNECT_DELAY
+        # Whether this outage has logged an unexpected error's traceback.
+        traced = False
         while self._running:
             try:
                 _LOGGER.debug("N.I.N.A. event socket: connecting to %s", self._url)
@@ -139,21 +148,32 @@ class NinaEventStream:
                     timeout=aiohttp.ClientWSTimeout(ws_receive=60),  # pyright: ignore[reportCallIssue]
                 ) as ws:
                     self._ws = ws
-                    delay = _RECONNECT_DELAY  # reset backoff on a live connection
-                    _LOGGER.info("N.I.N.A. event socket: connected to %s", self._url)
+                    delay = RECONNECT_DELAY  # reset backoff on a live connection
+                    traced = False
+                    _LOGGER.debug("N.I.N.A. event socket: connected to %s", self._url)
                     self._set_connected(True)
                     await self._listen(ws)
-            except aiohttp.ClientConnectorError:
-                _LOGGER.warning(
-                    "N.I.N.A. event socket: connection refused – retrying in %ds", delay
+            except (aiohttp.ClientConnectionError, TimeoutError) as exc:
+                # Refused, unreachable, or timed out: a rig PC switched off
+                # behind a VPN times out rather than refusing.
+                _LOGGER.debug(
+                    "N.I.N.A. event socket: cannot reach %s (%s) – retrying in %ds",
+                    self._url,
+                    exc,
+                    delay,
                 )
             except Exception as exc:
-                # With the traceback: this catch keeps the socket reconnecting,
-                # so an unanticipated failure would otherwise loop with nothing
-                # to diagnose it by.
-                _LOGGER.warning(
-                    "N.I.N.A. event socket: unexpected error: %s", exc, exc_info=True
+                # With the traceback once per outage: this catch keeps the
+                # socket reconnecting, so an unanticipated failure would
+                # otherwise loop with nothing to diagnose it by.
+                _LOGGER.log(
+                    logging.DEBUG if traced else logging.WARNING,
+                    "N.I.N.A. event socket: unexpected error: %s – retrying in %ds",
+                    exc,
+                    delay,
+                    exc_info=not traced,
                 )
+                traced = True
             finally:
                 self._ws = None
 
@@ -161,7 +181,7 @@ class NinaEventStream:
             if not self._running:
                 return
             await asyncio.sleep(delay)
-            delay = min(delay * 2, _MAX_RECONNECT_DELAY)
+            delay = min(delay * 2, MAX_RECONNECT_DELAY)
 
     async def _listen(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         async for msg in ws:

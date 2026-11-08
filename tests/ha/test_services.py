@@ -8,10 +8,15 @@ at the call site can tell.
 """
 
 from pathlib import Path
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+)
 from homeassistant.helpers.selector import selector
 from homeassistant.setup import async_setup_component
 import pytest
@@ -33,8 +38,10 @@ SERVICES_YAML = yaml.safe_load(
 _TARGET_FIELDS = {"area_id", "device_id", "entity_id", "floor_id", "label_id"}
 
 
-async def _call(hass: HomeAssistant, service: str, **data) -> None:
-    await hass.services.async_call(DOMAIN, service, data, blocking=True)
+async def _call(
+    hass: HomeAssistant, service: str, target: dict | None = None, **data
+) -> None:
+    await hass.services.async_call(DOMAIN, service, data, blocking=True, target=target)
 
 
 def _hub(hass: HomeAssistant, entry) -> str:
@@ -42,31 +49,54 @@ def _hub(hass: HomeAssistant, entry) -> str:
     return get_device(hass, entry).id
 
 
+def _in_an_area(hass: HomeAssistant, entry) -> str:
+    """An area holding the entry's hub, as an area picker would yield it."""
+    area = ar.async_get(hass).async_get_or_create("Pier")
+    dr.async_get(hass).async_update_device(_hub(hass, entry), area_id=area.id)
+    return area.id
+
+
 @pytest.mark.parametrize(
-    "target",
+    ("in_target", "target"),
     [
-        lambda hass, entry: {"device_id": _hub(hass, entry)},
-        # `services.yaml` declares a `target:`, so the action must accept every
-        # form the target picker yields, not only a bare device.
-        lambda hass, entry: {
-            "entity_id": er.async_entries_for_config_entry(
-                er.async_get(hass), entry.entry_id
-            )[0].entity_id
-        },
+        # How automations written against the `device_id` field, and the
+        # blueprints, send it.
+        (False, lambda hass, entry: {"device_id": _hub(hass, entry)}),
+        (True, lambda hass, entry: {"device_id": _hub(hass, entry)}),
+        (
+            True,
+            lambda hass, entry: {
+                "entity_id": er.async_entries_for_config_entry(
+                    er.async_get(hass), entry.entry_id
+                )[0].entity_id
+            },
+        ),
+        (True, lambda hass, entry: {"area_id": _in_an_area(hass, entry)}),
     ],
-    ids=["device", "entity"],
+    ids=["device-in-data", "device", "entity", "area"],
 )
 async def test_a_service_reaches_the_rig_its_target_belongs_to(
-    hass: HomeAssistant, two_rigs, target
+    hass: HomeAssistant, two_rigs, in_target: bool, target
 ) -> None:
     """The targeted device, not the first loaded entry, picks the rig, so a
     second rig is reachable.
     """
     first, second = two_rigs.rigs
-    await _call(hass, "mount_park", **target(hass, two_rigs.entries[1]))
+    chosen = target(hass, two_rigs.entries[1])
+    if in_target:
+        await _call(hass, "mount_park", target=chosen)
+    else:
+        await _call(hass, "mount_park", **chosen)
 
     assert second.sent[-1][0] == "/equipment/mount/park"
     assert "/equipment/mount/park" not in [path for path, _ in first.sent]
+
+
+async def test_an_untargeted_call_reaches_the_only_rig(
+    hass: HomeAssistant, loaded_entry, rig
+) -> None:
+    await _call(hass, "mount_park")
+    assert rig.sent[-1][0] == "/equipment/mount/park"
 
 
 async def test_an_untargeted_call_is_refused_when_two_rigs_are_configured(
@@ -185,20 +215,20 @@ def test_every_documented_selector_is_one_home_assistant_accepts(
     """`services.yaml` is validated by hassfest, in CI, after the push. This
     is the same check in the suite, where it costs seconds instead.
     """
-    for spec in SERVICES_YAML[service]["fields"].values():
+    for spec in SERVICES_YAML[service].get("fields", {}).values():
         if "selector" in spec:
             selector(spec["selector"])
 
 
 @pytest.mark.parametrize("service", sorted(SERVICES_YAML), ids=str)
-def test_every_action_offers_a_rig_picker(service: str) -> None:
-    """A `device:` SELECTOR on a field, not a `target:` block: Home Assistant
-    rejects a device filter on `target`, and without the filter the picker
-    offers every device in the house.
+def test_every_action_targets_only_this_integration(service: str) -> None:
+    """Filtered on entities, since hassfest refuses a device filter on
+    `target:`; unfiltered, the picker offers every device in the house.
     """
-    picker = SERVICES_YAML[service]["fields"]["device_id"]["selector"]
+    target = SERVICES_YAML[service]["target"]
 
-    assert picker == {"device": {"integration": DOMAIN}}
+    assert target == {"entity": {"integration": DOMAIN}}
+    selector({"target": target})
 
 
 @pytest.mark.parametrize("service", sorted(SERVICES_YAML), ids=str)
@@ -214,9 +244,8 @@ async def test_the_documented_fields_are_the_fields_the_schema_binds(
     assert await async_setup_component(hass, DOMAIN, {})
     schema = hass.services.async_services()[DOMAIN][service].schema
     assert isinstance(schema, vol.Schema)
-    # `device_id` is documented as a field but bound by the target fields the
-    # schema accepts wholesale, so it is excluded from both sides.
-    documented = set(SERVICES_YAML[service]["fields"]) - {"device_id"}
+    # The target fields are bound wholesale and documented by `target:`.
+    documented = set(SERVICES_YAML[service].get("fields", {}))
     bound = {str(key) for key in schema.schema} - _TARGET_FIELDS
 
     assert bound == documented
@@ -244,8 +273,37 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": 91}),
         ("mount_slew", {"ra_degrees": 0, "dec_degrees": -91}),
         ("focuser_move", {"position": -1}),
+        ("camera_cool", {"temperature": 51}),
+        ("camera_cool", {"temperature": -51}),
+        ("camera_cool", {"temperature": -10, "minutes": -1}),
+        ("camera_warm", {"minutes": -1}),
+        ("camera_capture", {"duration": -1}),
+        # The API applies only a gain above 0.
+        ("camera_capture", {"duration": 30, "gain": 0}),
+        # The rig's camera reports GainMax 700 and ExposureMax 2000.
+        ("camera_capture", {"duration": 30, "gain": 701}),
+        ("camera_capture", {"duration": 2000.5}),
+        # The rig's wheel reports slots 0 to 6.
+        ("filterwheel_change_filter", {"filter_index": 7}),
+        ("filterwheel_change_filter", {"filter_index": -1}),
     ],
-    ids=["ra-above-360", "ra-negative", "dec-above-90", "dec-below-90", "position"],
+    ids=[
+        "ra-above-360",
+        "ra-negative",
+        "dec-above-90",
+        "dec-below-90",
+        "position-negative",
+        "temperature-above-50",
+        "temperature-below-50",
+        "cool-ramp-negative",
+        "warm-ramp-negative",
+        "duration-negative",
+        "gain-zero",
+        "gain-above-the-cameras",
+        "duration-above-the-cameras",
+        "filter-the-wheel-lacks",
+        "filter-negative",
+    ],
 )
 async def test_out_of_range_input_is_refused_rather_than_clamped(
     hass: HomeAssistant, loaded_entry, rig, service: str, data: dict
@@ -257,6 +315,155 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
     with pytest.raises(ServiceValidationError):
         await _call(hass, service, **data)
     assert rig.sent == []
+
+
+@pytest.mark.parametrize(
+    ("service", "data", "path"),
+    [
+        ("focuser_move", {"position": 0}, "/equipment/focuser/move"),
+        # Past any one focuser's travel: no `MaxStep` reaches the wire.
+        ("focuser_move", {"position": 1_000_000}, "/equipment/focuser/move"),
+        ("camera_cool", {"temperature": -50, "minutes": 0}, "/equipment/camera/cool"),
+        ("camera_cool", {"temperature": 50, "minutes": 90.5}, "/equipment/camera/cool"),
+        ("camera_warm", {"minutes": 0}, "/equipment/camera/warm"),
+        # A bias frame, below the camera's ExposureMin.
+        ("camera_capture", {"duration": 0, "gain": 1}, "/equipment/camera/capture"),
+        (
+            "camera_capture",
+            {"duration": 2000, "gain": 700},
+            "/equipment/camera/capture",
+        ),
+        (
+            "filterwheel_change_filter",
+            {"filter_index": 6},
+            "/equipment/filterwheel/change-filter",
+        ),
+    ],
+    ids=[
+        "position-zero",
+        "position-past-any-cap",
+        "cool-coldest-at-once",
+        "cool-warmest-slowly",
+        "warm-at-once",
+        "capture-bias",
+        "capture-at-the-cameras-maximum",
+        "filter-last-slot",
+    ],
+)
+async def test_a_value_at_its_limit_is_sent(
+    hass: HomeAssistant, loaded_entry, rig, service: str, data: dict, path: str
+) -> None:
+    await _call(hass, service, **data)
+    assert rig.sent[-1][0] == path
+
+
+def _serve_with(rig, device: str, block: dict | None) -> None:
+    """Serve the current state with one `/equipment/info` device block
+    replaced, or left out when `block` is None.
+    """
+    envelope = rig.states[rig.state_name]["/equipment/info"]
+    response = dict(envelope["Response"])
+    if block is None:
+        del response[device]
+    else:
+        response[device] = {**response[device], **block}
+    rig.respond("/equipment/info", {**envelope, "Response": response})
+
+
+@pytest.mark.parametrize(
+    ("state", "device", "block", "service", "data"),
+    [
+        pytest.param(
+            "partial_equipment_connection",
+            None,
+            None,
+            "filterwheel_change_filter",
+            {"filter_index": 9},
+            id="wheel-disconnected",
+        ),
+        pytest.param(
+            "equipment_disconnected",
+            None,
+            None,
+            "camera_capture",
+            {"duration": 5000, "gain": 5000},
+            id="camera-disconnected",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "imaging",
+            "Camera",
+            None,
+            "camera_capture",
+            {"duration": 5000, "gain": 5000},
+            id="camera-absent",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "imaging",
+            "Camera",
+            {"GainMin": 0, "GainMax": 0, "ExposureMin": 0, "ExposureMax": 0},
+            "camera_capture",
+            {"duration": 5000, "gain": 5000},
+            id="camera-reports-no-range",
+            marks=pytest.mark.synthetic,
+        ),
+    ],
+)
+async def test_a_device_that_reports_no_limit_leaves_the_value_to_nina(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    state: str,
+    device: str | None,
+    block: dict | None,
+    service: str,
+    data: dict,
+) -> None:
+    """A disconnected device's command is N.I.N.A.'s to refuse, with its own
+    reason, rather than this integration's against a range it cannot see.
+    """
+    rig.goto(state)
+    if device is not None:
+        _serve_with(rig, device, block)
+    await set_up_at(hass, config_entry, rig, state)
+
+    await _call(hass, service, **data)
+
+    assert rig.sent != []
+
+
+@pytest.mark.synthetic
+async def test_a_slot_whose_name_another_slot_shares_is_sent(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """Two slots named alike, as unused slots often are, are two slots."""
+    filters = [
+        {"Name": "L", "Id": 0},
+        {"Name": "Empty", "Id": 1},
+        {"Name": "Empty", "Id": 2},
+        {"Name": "Ha", "Id": 3},
+    ]
+    _serve_with(rig, "FilterWheel", {"AvailableFilters": filters})
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    await _call(hass, "filterwheel_change_filter", filter_index=1)
+
+    assert rig.sent[-1] == ("/equipment/filterwheel/change-filter", {"filterId": 1})
+
+
+async def test_a_gain_is_held_to_the_cameras_own_range(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """The simulator camera reports GainMax 10000, past any one constant that
+    would also fit the rig's camera, whose GainMax is 700.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+
+    await _call(hass, "camera_capture", duration=1, gain=6000)
+
+    assert rig.sent[-1][1]["gain"] == 6000
 
 
 @pytest.mark.parametrize(
@@ -285,7 +492,7 @@ async def test_every_remaining_service_reaches_its_own_endpoint(
     path is answered `Success: true`. `dome_open` is refused on this rig's
     unsafe monitor, so `test_dome.py` sends it.
     """
-    data = {"temperature": -10} if service == "camera_cool" else {}
+    data: dict[str, Any] = {"temperature": -10} if service == "camera_cool" else {}
     await _call(hass, service, **data)
     assert rig.sent[-1][0] == path
 

@@ -1329,3 +1329,28 @@ dictionary they are, like N.I.N.A.'s `KeyValueOf…` runs.
 | `up stable`, installing the channel | 53–69 s |
 | `up stable` on an installed channel | 2 s |
 | `wait`, from the guest's start | 154–158 s |
+
+---
+
+## 2026-11-08 — Pointers by symbol, and the repository changes of §4.7
+
+Line numbers in the text above have drifted, and §4.7's changes to the
+repository are made, so some findings describe the code as it stood before
+them. This section replaces those pointers and findings.
+
+**Pointers.** Read each line reference above as the symbol named here:
+
+| Section | Written as | Read as |
+|---|---|---|
+| §3.3, the 3.0 release notes | `api/v2/client.py:313` | `get_image_bytes` and `get_livestack_image_bytes` in `api/v2/client.py`, which request images with `stream=true` |
+| §3.4, first bullet | `tools/upgrade-harness/harness.py:237` | `up` in `tools/upgrade-harness/harness.py`, which runs the container with `-p {PORT}:8123` |
+| §3.4, third bullet | `scripts/capture_fixtures.py:27` | `FIXTURES` in `scripts/capture_fixtures.py` |
+| §9, SSL | `api/v2/client.py:87` | `NinaClientV2.__init__` in `api/v2/client.py`, which builds an `http://` base URL |
+| §9, authentication | `quality_scale.yaml` line 55 | the `reauthentication-flow` comment in `quality_scale.yaml`, which scopes the exemption to the supported 2.2.x plugin |
+
+**§3.4, second and third bullets.** These replace both findings:
+
+- The upgrade harness has no default address: `up` requires `--host` (`main`
+  in `tools/upgrade-harness/harness.py`). There is no `SIM_HOST`.
+- `scripts/capture_fixtures.py` writes to `--out`, which defaults to
+  `tests/fixtures/` (`FIXTURES`).

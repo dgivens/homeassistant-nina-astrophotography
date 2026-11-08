@@ -270,12 +270,14 @@ def map_camera(wire: dict) -> CameraModel:
         cooler_power=_number(readings, "CoolerPower"),
         dew_heater_on=_flag(readings, "DewHeaterOn"),
         gain=_integer(readings, "Gain"),
+        gain_range=_range(readings, "GainMin", "GainMax"),
         offset=_integer(readings, "Offset"),
         usb_limit=_integer(readings, "USBLimit"),
         usb_limit_range=_range(wire, "USBLimitMin", "USBLimitMax"),
         camera_state=_text(readings, "CameraState"),
         is_exposing=_flag(readings, "IsExposing"),
         pixel_size=_number(readings, "PixelSize"),
+        exposure_range=_range(readings, "ExposureMin", "ExposureMax"),
         has_battery=has_battery,
         battery=battery,
         can_set_temperature=_flag(wire, "CanSetTemperature"),
@@ -335,6 +337,11 @@ def map_filter_wheel(wire: dict) -> FilterWheelModel:
         selected_filter=_text(readings, "SelectedFilter", "Name"),
         available_filters=_names(wire.get("AvailableFilters")),
         filter_slots=_slots(wire.get("AvailableFilters")),
+        filter_ids=frozenset(
+            index
+            for entry in wire.get("AvailableFilters") or ()
+            if isinstance(entry, dict) and (index := _integer(entry, "Id")) is not None
+        ),
         is_moving=_flag(readings, "IsMoving"),
     )
 

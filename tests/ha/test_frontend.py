@@ -1,10 +1,10 @@
-"""The bundled Lovelace cards: served statically and self-registered.
+"""The bundled Lovelace cards: served and self-registered.
 
 The byte-for-byte check below is only to prove `URL_PREFIX` and `WWW_DIR`
-actually point at each other — not a test of Home Assistant's static route
-itself. What's ours beyond that: which files are exposed, that registering
-them is idempotent, that it degrades gracefully without lovelace, and that a
-failure in it can't take the rest of the integration down with it.
+actually point at each other. What's ours beyond that: which files are
+exposed and how they are cached, that registering them is idempotent, that it
+degrades gracefully without lovelace, and that a failure in it can't take the
+rest of the integration down with it.
 """
 
 import re
@@ -54,6 +54,28 @@ def _resource_urls(hass) -> list[str]:
     return [item["url"] for item in hass.data["lovelace"].resources.async_items()]
 
 
+STALE_URL = f"{URL_PREFIX}/nina-retired-card.js"
+
+
+async def _set_up_with_saved_resources(hass, hass_storage, config_entry, urls) -> None:
+    """Set up as Home Assistant restarting with `urls` already saved."""
+    hass_storage["lovelace_resources"] = {
+        "version": 1,
+        "minor_version": 1,
+        "key": "lovelace_resources",
+        "data": {
+            "items": [
+                {"id": f"saved{i}", "type": "module", "url": url}
+                for i, url in enumerate(urls)
+            ]
+        },
+    }
+    assert await async_setup_component(hass, "lovelace", {})
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+
 async def test_a_card_is_served_byte_for_byte_at_its_url(
     hass, loaded_entry, hass_client
 ) -> None:
@@ -83,6 +105,24 @@ async def test_whatever_a_card_imports_is_served_at_that_path(
         resp = await client.get(f"{URL_PREFIX}/{filename}")
         assert resp.status == 200, filename
         assert "javascript" in resp.content_type
+
+
+async def test_every_file_is_revalidated_on_each_load(
+    hass, loaded_entry, hass_client
+) -> None:
+    """A browser that reuses a cached file can run a new card with an old
+    module, and the card then fails to load.
+    """
+    client = await hass_client()
+    for path in WWW_DIR.iterdir():
+        resp = await client.get(f"{URL_PREFIX}/{path.name}")
+        assert resp.headers["Cache-Control"] == "no-cache", path.name
+
+
+async def test_only_files_in_www_are_served(hass, loaded_entry, hass_client) -> None:
+    client = await hass_client()
+    resp = await client.get(f"{URL_PREFIX}/frontend.py")
+    assert resp.status == 404
 
 
 async def test_a_registration_failure_does_not_sink_the_integration(
@@ -158,6 +198,48 @@ async def test_a_restart_does_not_duplicate_persisted_resources(
     await hass.async_block_till_done()
 
     assert sorted(_resource_urls(hass)) == sorted(CARD_URLS)
+
+
+async def test_a_card_no_longer_shipped_loses_its_resource(
+    hass, hass_storage, config_entry, rig
+) -> None:
+    await _set_up_with_saved_resources(hass, hass_storage, config_entry, [STALE_URL])
+
+    assert STALE_URL not in _resource_urls(hass)
+
+
+async def test_resources_that_are_not_stale_cards_are_kept(
+    hass, hass_storage, config_entry, rig
+) -> None:
+    kept = ["/local/someone-elses-card.js", f"{CARD_URLS[0]}?v=2"]
+
+    await _set_up_with_saved_resources(hass, hass_storage, config_entry, kept)
+
+    assert set(kept) <= set(_resource_urls(hass))
+
+
+async def test_yaml_managed_stale_resources_are_named_for_the_operator(
+    hass, config_entry, rig, caplog
+) -> None:
+    assert await async_setup_component(
+        hass,
+        "lovelace",
+        {
+            "lovelace": {
+                "resource_mode": "yaml",
+                "resources": [{"url": STALE_URL, "type": "module"}],
+            }
+        },
+    )
+    config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert any(
+        STALE_URL in record.getMessage()
+        for record in caplog.records
+        if record.levelname == "WARNING" and record.name == FRONTEND_LOGGER
+    )
 
 
 async def test_yaml_managed_resources_are_left_to_the_operator(

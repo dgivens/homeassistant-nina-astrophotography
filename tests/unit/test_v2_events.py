@@ -1,13 +1,20 @@
 """The socket is a data source, not a hint — and it lives inside the seam."""
 
 import asyncio
+from collections.abc import AsyncIterator, Callable
+import contextlib
 from datetime import UTC, datetime, timedelta, timezone
 import json
-from typing import cast
+import logging
+from types import SimpleNamespace
+from typing import Any, cast
 
-from aiohttp import ClientSession
+from aiohttp import ClientConnectorError, ClientSession, ConnectionTimeoutError
 from nina_astrophotography.api.models import NinaEvent
-from nina_astrophotography.api.v2 import client as client_module
+from nina_astrophotography.api.v2 import (
+    client as client_module,
+    events as events_module,
+)
 from nina_astrophotography.api.v2.client import NinaClientV2
 from nina_astrophotography.api.v2.events import NinaEventStream
 from nina_astrophotography.api.v2.mapper import map_event
@@ -160,6 +167,97 @@ async def test_stopping_a_stream_cancels_its_receive_loop() -> None:
     await socket.stop()
     assert task.cancelled()
     assert socket._task is None
+
+
+# ── reconnection ─────────────────────────────────────────────────────────────
+
+CONNECTS = None  # an attempt that connects, and closes at once
+
+
+def refused() -> Exception:
+    return ClientConnectorError(
+        cast(Any, SimpleNamespace(host="nina.local", port=1888, ssl=True)),
+        ConnectionRefusedError(61, "Connection refused"),
+    )
+
+
+def timed_out() -> Exception:
+    return ConnectionTimeoutError("Connection timeout to host nina.local:1888")
+
+
+def boom() -> Exception:
+    return RuntimeError("boom")
+
+
+class _ClosedSocket:
+    def __aiter__(self) -> _ClosedSocket:
+        return self
+
+    async def __anext__(self) -> None:
+        raise StopAsyncIteration
+
+
+class _ScriptedSession:
+    """Plays one outcome per connection attempt, then holds the next open."""
+
+    def __init__(self, outcomes: list[Exception | None]) -> None:
+        self._outcomes = list(outcomes)
+        self.played = asyncio.Event()
+
+    @contextlib.asynccontextmanager
+    async def ws_connect(self, url: str, **kwargs: Any) -> AsyncIterator[_ClosedSocket]:
+        if not self._outcomes:
+            self.played.set()
+            await asyncio.Event().wait()
+        outcome = self._outcomes.pop(0)
+        if outcome is not None:
+            raise outcome
+        yield _ClosedSocket()
+
+
+async def run_through(
+    monkeypatch, caplog, outcomes: list[Exception | None]
+) -> list[logging.LogRecord]:
+    """Run a started stream through `outcomes` without backoff; its records."""
+    monkeypatch.setattr(events_module, "RECONNECT_DELAY", 0)
+    caplog.set_level(logging.DEBUG)
+    session = _ScriptedSession(outcomes)
+    socket = NinaEventStream(
+        host="nina.local", port=1888, session=cast(ClientSession, session)
+    )
+    await socket.start()
+    async with asyncio.timeout(5):
+        await session.played.wait()
+    await socket.stop()
+    return caplog.records
+
+
+@pytest.mark.parametrize("failure", [refused, timed_out], ids=["refused", "timeout"])
+async def test_the_socket_leaves_an_outage_and_its_recovery_to_the_poll(
+    monkeypatch, caplog, failure: Callable[[], Exception]
+) -> None:
+    """The coordinator's poll logs the outage at `info`, after its grace; the
+    socket logging it too would announce one outage twice.
+    """
+    outcomes = [CONNECTS, failure(), failure(), failure(), CONNECTS]
+    records = await run_through(monkeypatch, caplog, outcomes)
+    assert [r.getMessage() for r in records if r.levelno > logging.DEBUG] == []
+
+
+@pytest.mark.parametrize(
+    ("outcomes", "tracebacks"),
+    [
+        ([boom(), boom(), boom()], 1),
+        ([boom(), CONNECTS, boom()], 2),
+    ],
+    ids=["repeats within one outage", "a connection between two"],
+)
+async def test_an_unexpected_error_logs_its_traceback_once_per_outage(
+    monkeypatch, caplog, outcomes: list[Exception | None], tracebacks: int
+) -> None:
+    records = await run_through(monkeypatch, caplog, outcomes)
+    warned = [r for r in records if r.levelno == logging.WARNING and r.exc_info]
+    assert len(warned) == tracebacks
 
 
 def test_a_scheduler_wait_carries_its_end_as_rig_local_time() -> None:
