@@ -115,7 +115,8 @@ delete the entry and add it again.
 | **Port** | `1888` | The Advanced API plugin's port, as set under **Options → Advanced API** in N.I.N.A. |
 | **Instance name** | `N.I.N.A.` | Names the rig. It titles the entry, names the hub device and prefixes every entity id (`N.I.N.A.` gives `sensor.n_i_n_a_…`), so choose it before you build dashboards. Each rig needs its own name. |
 
-The same host and port can't be added twice.
+The same host and port can't be added twice, whatever the host's letter case;
+the same host on another port is a separate rig.
 
 ### Options
 
@@ -396,11 +397,12 @@ and autofocus timeouts. It misses some errors; see
   Scheduler flats and N.I.N.A.'s flat wizard don't show there, so the sensors
   ship disabled; those flats appear as FLAT frames instead.
   [Details](docs/reference.md#flats).
-- **The dome is untested on real hardware.** It was built from the API
-  specification and tested against a simulated dome.
+- **The dome is untested on real hardware.** It is tested against a
+  simulated dome only. [Details](docs/reference.md#dome).
 - **`image.<instance>_livestack` needs the Livestack plugin.** It appears once
   a stack first reports. `switch.<instance>_livestack` exists either way, and
   turning it on without the plugin raises an error.
+  [Details](docs/reference.md#livestack).
 - **Bus events carry only plain fields**, and events missed while the
   connection was down are not fired; see [Events](#events).
 - **The Advanced API's 3.0 pre-releases are untested**, and their
