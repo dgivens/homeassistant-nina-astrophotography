@@ -68,8 +68,9 @@ def _autofocus_reason(data: NinaData) -> str | None:
     A hung run is a start with no finish past the profile's timeout, decided
     by the fold; it writes no report, so the report on hand is an earlier
     run's. A rejected run finishes normally, and only its R² falling under
-    the profile's `RSquaredThreshold` shows it. A report older than the
-    session start is a previous night's and is ignored.
+    the profile's `RSquaredThreshold` shows it; with the check off, no run
+    is rejected. A report older than the session start is a previous
+    night's and is ignored.
     """
     if data.session.autofocus.failed:
         return "hung"

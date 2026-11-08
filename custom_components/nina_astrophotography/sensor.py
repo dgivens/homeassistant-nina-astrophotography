@@ -176,7 +176,8 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
     detector are not). `curve` is the V a card plots, one row per position,
     `value` None where that frame measured nothing. `fits` and `minima` are
     the overlay N.I.N.A.'s chart draws, which a card cannot re-derive: which
-    points each fit used is undocumented.
+    points each fit used is undocumented. `fitted_hfr` is carried here because
+    its sensor ships disabled, and a card cannot derive it from `minima`.
     """
     report = data.autofocus_report
     if report is None:
@@ -187,6 +188,7 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
         "autofocuser": report.autofocuser,
         "star_detector": report.star_detector,
         "measured_points": report.measured_points,
+        "fitted_hfr": report.fitted_hfr,
         "curve": [asdict(point) for point in report.curve],
         "fits": [asdict(fit) for fit in report.fits],
         "minima": [asdict(minimum) for minimum in report.minima],
@@ -609,8 +611,8 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         kind="focuser",
-        # The fit's minimum, which N.I.N.A. moved to: an artifact of the curve
-        # fitting, often far below any frame the camera measured.
+        # The focus point the fitting chose: an artifact of the curve fitting,
+        # far below any frame the camera measured wherever trend lines enter it.
         value=_autofocus("fitted_hfr"),
     ),
     NinaSensorDescription(

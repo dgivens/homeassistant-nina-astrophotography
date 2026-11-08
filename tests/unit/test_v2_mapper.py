@@ -625,6 +625,20 @@ def test_a_site_of_zero_zero_is_no_site(site, mapped) -> None:
     assert (profile.site_latitude, profile.site_longitude) == mapped
 
 
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("wire", "mapped"),
+    [(0.05, 0.05), (0, None), (-0.5, None)],
+    ids=["gated", "zero", "negative"],
+)
+def test_an_r_squared_threshold_of_zero_or_below_is_no_threshold(wire, mapped) -> None:
+    """N.I.N.A. and Hocus Focus check R² only against a threshold above 0. An
+    R² can be negative, so 0 is not a threshold every fit passes.
+    """
+    profile = map_profile({"FocuserSettings": {"RSquaredThreshold": wire}})
+    assert profile.r_squared_threshold == mapped
+
+
 def test_the_dome_interlocks_map_from_a_captured_profile() -> None:
     """The simulator rig's profile."""
     profile = map_profile(load("simulator_dome_parked_profile.json"))
@@ -652,9 +666,9 @@ def test_an_absent_profile_section_is_no_reading() -> None:
         # `CalculatedFocusPoint` is the fitted minimum, not the run's start.
         ("position", 2340),
         ("filter_name", "L"),
-        # `CalculatedFocusPoint.Value` is not an achieved HFR: under a TREND*
-        # fitting it is the mean of the trendline intersection and the quadratic
-        # minimum. The lowest measured point is what compares across fittings.
+        # `CalculatedFocusPoint.Value` is not an achieved HFR: under this
+        # TRENDPARABOLIC fitting it is the mean of the trendline intersection
+        # and the quadratic minimum. The lowest measured point is what compares across fittings.
         ("hfr", pytest.approx(1.55229727412562)),
         ("fitted_hfr", pytest.approx(1.0932570683996303)),
         # `InitialFocusPoint` is where the focuser was before the run: the other
@@ -918,9 +932,10 @@ def test_a_fitting_this_run_did_not_use_is_not_published() -> None:
 
 
 def test_the_fit_minima_are_read_by_the_names_the_rig_uses() -> None:
-    """The second entry is named after whichever curve was fitted — the spec
-    calls it `HyperbolicMinimum`, this TRENDPARABOLIC run calls it
-    `QuadraticMinimum` — so keying on a literal name would find nothing.
+    """Hocus Focus names the entry beside `TrendLineIntersection` after the
+    curve its fitting uses — `QuadraticMinimum` on this TRENDPARABOLIC run,
+    `HyperbolicMinimum` on a hyperbolic one — so keying on a literal name
+    would find nothing.
     """
     minima = _autofocus(load("imaging_guiding_last_af.json")).minima
     assert [(m.name, m.position) for m in minima] == [
