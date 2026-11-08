@@ -265,8 +265,8 @@ class NinaClientV2:
     async def get_last_autofocus(self) -> AutoFocusReport | None:
         """The newest autofocus report; `None` where the rig has never run one.
 
-        Written per attempt, before the verdict, so a rejected run is here too
-        with nothing marking it rejected.
+        Built-in N.I.N.A. writes one per attempt, Hocus Focus one per run, and
+        both write a rejected run with nothing marking it rejected.
         """
         return map_last_autofocus(await self._get("/equipment/focuser/last-af") or {})
 
