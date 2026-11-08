@@ -53,9 +53,10 @@ function pretty(name) {
 }
 
 // The chart's y axis: the measured points and their error bars, padded. The
-// trend lines' crossing sits well below any star the optics can produce, so
-// letting it set the floor would squash the vertex, the part worth reading.
-// The legend reads it too, to say which minima fall below the axis.
+// trend lines' crossing overshoots the vertex, below any star the optics can
+// produce or above a contrast run's peak, so letting it set the range would
+// squash the vertex, the part worth reading. The legend reads it too, to say
+// which minima fall off the axis.
 function axisRange(curve) {
   const measured = curve.filter((point) => Number.isFinite(point.value));
   const low = Math.min(...measured.map((point) => point.value - (point.error || 0)));
@@ -566,12 +567,13 @@ class NinaAutofocusCard extends HTMLElement {
     // Against the axis the chart actually uses, padding included — otherwise a
     // minimum landing inside that padding is called below the axis here and
     // drawn as an ordinary in-range diamond there.
-    const { min: floor } = axisRange(run.curve);
+    const { min: floor, max: ceiling } = axisRange(run.curve);
     for (const minimum of run.minima) {
       const colour = isTrend(minimum.name) ? TREND : FIT;
       // A negative minimum the mapper dropped has no value to plot.
       const plotted = Number.isFinite(minimum.value);
       const under = plotted && minimum.value < floor;
+      const over = plotted && minimum.value > ceiling;
       const used = minimum.used !== false;
       const fill = !plotted ? "var(--muted)"
         : used ? `var(--${colour})`
@@ -581,7 +583,7 @@ class NinaAutofocusCard extends HTMLElement {
         <span${plotted ? "" : ` style="color:var(--muted)"`}>${pretty(minimum.name)}</span>
         <span class="reading">${shown(minimum.position)} · ${
           plotted ? `${reading(minimum.value)} ${run.unit}` : "negative"}${
-          under ? " · below the axis" : ""}${used ? "" : " · not used"}${
+          under ? " · below the axis" : over ? " · above the axis" : ""}${used ? "" : " · not used"}${
           plotted ? "" : " · not plotted"}</span></div>`);
     }
     if (Number.isFinite(run.position)) {
@@ -730,8 +732,10 @@ class NinaAutofocusCard extends HTMLElement {
     }
     ctx.stroke();
 
+    // Smaller stars are sharper, but a contrast score peaks at focus.
+    const better = run.isHfr ? (a, b) => a < b : (a, b) => a > b;
     const best = measured.reduce(
-      (lowest, point) => (lowest === null || point.value < lowest.value ? point : lowest),
+      (top, point) => (top === null || better(point.value, top.value) ? point : top),
       null,
     );
     for (const point of measured) {

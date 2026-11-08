@@ -33,6 +33,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
+- **The autofocus card circles a contrast-detection run's highest reading as
+  its best point** (#225). A contrast score peaks at focus, so the sweep's
+  lowest reading is its worst; an HFR run circles its smallest stars.
+  The legend says `above the axis` of a minimum past the chart's top, as it
+  says `below the axis` of one under its floor.
 - **An autofocus run whose focus position falls outside its sweep fails**
   (#215). N.I.N.A. rejects such a run whatever its R² and returns the
   focuser to where it started, so
