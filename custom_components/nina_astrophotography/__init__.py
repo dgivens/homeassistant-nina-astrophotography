@@ -186,6 +186,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 
     def _fire_connection_event(connected: bool) -> None:
         nonlocal connected_before
+        coordinator.socket_changed(connected)
         hass.bus.async_fire(
             "nina_websocket_connected" if connected else "nina_websocket_disconnected",
             {"instance": instance_name, "entry_id": entry.entry_id},

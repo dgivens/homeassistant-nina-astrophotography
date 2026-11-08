@@ -16,9 +16,11 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import DEFAULT_OUTAGE_GRACE
+from custom_components.nina_astrophotography.coordinator import SOCKET_QUIET
 from helpers import state_of
 
 LIGHT = "light.n_i_n_a_flat_panel_light"
+SOCKET_DOWN = "event socket has been down"
 
 
 async def test_a_disconnected_device_makes_its_entities_unavailable(
@@ -129,6 +131,73 @@ async def test_a_device_transition_is_logged_once_at_info(
     for state in states:
         await advance(state)
     assert _levels(caplog, message) == [logging.INFO]
+
+
+@pytest.mark.parametrize(
+    ("down_for", "levels"),
+    [(SOCKET_QUIET - 1, []), (SOCKET_QUIET, [logging.WARNING])],
+    ids=["inside the threshold", "past it"],
+)
+async def test_a_socket_down_while_polls_succeed_is_warned_once(
+    hass: HomeAssistant,
+    freezer,
+    loaded_entry: MockConfigEntry,
+    socket_state,
+    advance,
+    caplog,
+    down_for: int,
+    levels: list[int],
+) -> None:
+    """The socket's own attempts log at `debug`, so without this a socket that
+    cannot reconnect while the rig answers leaves pushed state stale unexplained.
+    """
+    socket_state(loaded_entry, connected=True)
+    socket_state(loaded_entry, connected=False)
+    caplog.set_level(logging.DEBUG)
+    freezer.tick(down_for)
+    await advance("imaging")
+    await advance("imaging")
+    assert _levels(caplog, SOCKET_DOWN) == levels
+
+
+async def test_a_rig_outage_does_not_count_toward_the_socket_warning(
+    hass: HomeAssistant,
+    freezer,
+    outage,
+    loaded_entry: MockConfigEntry,
+    socket_state,
+    advance,
+    caplog,
+) -> None:
+    """The poll logs the outage itself, and a socket waiting out its backoff
+    after the rig returns is not a socket fault.
+    """
+    socket_state(loaded_entry, connected=True)
+    socket_state(loaded_entry, connected=False)
+    caplog.set_level(logging.DEBUG)
+    await outage()
+    freezer.tick(SOCKET_QUIET)
+    await outage()
+    await advance("imaging")
+    assert _levels(caplog, SOCKET_DOWN) == []
+
+
+async def test_a_socket_reconnecting_after_the_warning_is_logged_at_info(
+    hass: HomeAssistant,
+    freezer,
+    loaded_entry: MockConfigEntry,
+    socket_state,
+    advance,
+    caplog,
+) -> None:
+    socket_state(loaded_entry, connected=True)
+    socket_state(loaded_entry, connected=False)
+    freezer.tick(SOCKET_QUIET)
+    await advance("imaging")
+    caplog.set_level(logging.DEBUG)
+    socket_state(loaded_entry, connected=True)
+    await hass.async_block_till_done()
+    assert _levels(caplog, "event socket at nina.local is back") == [logging.INFO]
 
 
 async def test_first_sight_of_a_device_is_not_a_reconnection(

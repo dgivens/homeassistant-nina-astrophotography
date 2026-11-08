@@ -201,7 +201,7 @@ class _ScriptedSession:
     """Plays one outcome per connection attempt, then holds the next open."""
 
     def __init__(self, outcomes: list[Exception | None]) -> None:
-        self._outcomes = outcomes
+        self._outcomes = list(outcomes)
         self.played = asyncio.Event()
 
     @contextlib.asynccontextmanager

@@ -48,6 +48,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   reconnection. The event socket logs its reconnect attempts at `debug`, so a
   rig PC switched off for the day does not fill the log with retries. An
   unexpected socket error logs its traceback once per outage, at `warning`.
+  A socket that stays down for two minutes while the rig answers polls logs
+  one `warning` naming the host, since entities then update only by polling,
+  and one `info` when it reconnects.
 - **The entity reference matches the integration** (#240): a dome adds up to
   eleven entities, the per-device table lists the meridian flip, dome
   synchronized, reachable and site entities, and the disabled-by-default list
