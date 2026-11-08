@@ -31,6 +31,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Home Assistant shows the integration's icon** on the integrations page,
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
+- **Saving Configure keeps the poll interval chosen when the rig was added**
+  (#232). The poll interval is set in **Configure** alone: the add form asks
+  for the connection and the instance name, and an existing entry's interval
+  carries over into its options when Home Assistant starts. An interval
+  already saved through Configure takes precedence.
 
 ---
 

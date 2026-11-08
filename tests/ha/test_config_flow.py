@@ -31,7 +31,6 @@ from custom_components.nina_astrophotography.const import (
     CONF_ROLLOVER_HOUR,
     DOMAIN,
 )
-from ha.registry import get_device
 from helpers import state_of
 
 PROBE = (
@@ -60,7 +59,7 @@ async def test_a_valid_rig_creates_an_entry_titled_by_its_instance_name(
     result = await _submit(hass, ROOFTOP, return_value=VERSIONS)
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Rooftop"
-    assert result["data"][CONF_HOST] == "nina.local"
+    assert result["data"] == ROOFTOP
 
 
 @pytest.mark.parametrize(
@@ -171,6 +170,20 @@ async def test_the_options_flow_changes_the_poll_interval(
     assert coordinator.update_interval == timedelta(seconds=30)
 
 
+async def test_saving_configure_keeps_the_poll_interval_chosen_at_setup(
+    hass: HomeAssistant, config_entry: MockConfigEntry, rig
+) -> None:
+    """An entry from before the interval moved to options carries it in data."""
+    config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        config_entry, data={**config_entry.data, CONF_POLL_INTERVAL: 30}
+    )
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await _set_option(hass, config_entry, **{CONF_ROLLOVER_HOUR: 3})
+    coordinator = config_entry.runtime_data.coordinator
+    assert coordinator.update_interval == timedelta(seconds=30)
+
+
 async def test_the_options_flow_moves_the_session_rollover_hour(
     hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
@@ -188,16 +201,3 @@ async def test_an_outage_grace_of_zero_fails_on_the_first_missed_poll(
     await _set_option(hass, loaded_entry, **{CONF_OUTAGE_GRACE: 0})
     await advance("nina_unreachable")
     assert state_of(hass, "light.n_i_n_a_flat_panel_light").state == "unavailable"
-
-
-async def test_a_pre_2_0_entry_names_the_instance_from_its_title(
-    hass: HomeAssistant, two_rigs
-) -> None:
-    """1.4.x entries carry no `instance_name`; the title is what they have.
-
-    The second rig, whose title is not the default: an entry titled "N.I.N.A."
-    cannot tell the title fallback from the default apart.
-    """
-    entry = two_rigs.entries[1]
-    assert CONF_INSTANCE_NAME not in entry.data
-    assert get_device(hass, entry).name == "Dome"

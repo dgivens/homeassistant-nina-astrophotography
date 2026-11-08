@@ -48,7 +48,6 @@ from .const import (
     CONF_ROLLOVER_HOUR,
     DEFAULT_OUTAGE_GRACE,
     DEFAULT_POLL_INTERVAL,
-    DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
     SERVICE_CAMERA_ABORT_CAPTURE,
@@ -128,15 +127,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     await async_ensure_frontend_resources(hass)
 
     host = entry.data[CONF_HOST]
-    port = entry.data.get(CONF_PORT, DEFAULT_PORT)
-    poll_interval = entry.options.get(
-        CONF_POLL_INTERVAL,
-        entry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-    )
+    port = entry.data[CONF_PORT]
+    instance_name = entry.data[CONF_INSTANCE_NAME]
+    poll_interval = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
     rollover_hour = entry.options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR)
     outage_grace = entry.options.get(CONF_OUTAGE_GRACE, DEFAULT_OUTAGE_GRACE)
-    # Entries created before 2.0 carry no instance name; the title stands in.
-    instance_name = entry.data.get(CONF_INSTANCE_NAME, entry.title)
 
     session = async_get_clientsession(hass)
     client = NinaClientV2(host, port, session)
@@ -245,8 +240,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     # `async_added_to_hass`, and replay does not re-fire, so an ERROR-* that
     # arrived before it subscribed would be lost.
     await events.start()
+    return True
 
-    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
+async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
+    """Bring an entry from an earlier minor version up to the current one.
+
+    Minor 2 keeps `data` to the connection and the instance name. The poll
+    interval moves to `options`, where an interval already saved through the
+    options flow wins, since that is the one in effect. An entry from before
+    2.0 has no instance name, and its title stands in.
+    """
+    if entry.version == 1 and entry.minor_version < 2:
+        data = dict(entry.data)
+        options = dict(entry.options)
+        if CONF_POLL_INTERVAL in data:
+            options.setdefault(CONF_POLL_INTERVAL, data.pop(CONF_POLL_INTERVAL))
+        data.setdefault(CONF_INSTANCE_NAME, entry.title)
+        hass.config_entries.async_update_entry(
+            entry, data=data, options=options, minor_version=2
+        )
     return True
 
 
@@ -315,11 +328,6 @@ async def async_remove_config_entry_device(
         # An unloaded entry: nothing is polling to recreate the device.
         return True
     return getattr(entry.runtime_data.coordinator.data.snapshot, kind) is None
-
-
-async def _async_update_listener(hass: HomeAssistant, entry: NinaConfigEntry) -> None:
-    """Reload to apply changed options."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 # ─── Service registration ─────────────────────────────────────────────────────

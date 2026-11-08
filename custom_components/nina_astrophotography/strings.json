@@ -7,14 +7,12 @@
         "data": {
           "host": "Host / IP Address",
           "port": "API Port",
-          "instance_name": "Instance Name",
-          "poll_interval": "Poll Interval (seconds)"
+          "instance_name": "Instance Name"
         },
         "data_description": {
           "host": "The hostname or IP address of the PC running N.I.N.A.",
           "port": "The Advanced API plugin's port, 1888 unless you changed it.",
-          "instance_name": "Names this rig. It titles the entry, names the hub device and prefixes every entity id, so give a second rig its own name.",
-          "poll_interval": "How often to poll, in seconds. The event socket carries most changes; this is the backstop."
+          "instance_name": "Names this rig. It titles the entry, names the hub device and prefixes every entity id, so give a second rig its own name."
         }
       }
     },
