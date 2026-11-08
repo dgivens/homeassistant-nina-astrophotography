@@ -176,9 +176,11 @@ def _autofocus_run(data: NinaData) -> Mapping[str, Any]:
     detector are not). `curve` is the V a card plots, one row per position,
     `value` None where that frame measured nothing. `fits` and `minima` are
     the overlay N.I.N.A.'s chart draws, which a card cannot re-derive: which
-    points each fit used is undocumented. A fit's `judged` says whether its
-    R² counts toward the verdict; a minimum's `used`, whether the focus point
-    is built from it. A contrast run's gaussian is used but not judged.
+    points each fit used is undocumented. A fit carries `coefficients`,
+    `hyperbola` or `gaussian` to evaluate it by, or none of them for an
+    equation in a form the mapper does not know. A fit's `judged` says whether
+    its R² counts toward the verdict; a minimum's `used`, whether the focus
+    point is built from it. A contrast run's gaussian is used but not judged.
     `fitted_hfr` is carried here because its sensor ships disabled, and a
     card cannot derive it from `minima`.
     """

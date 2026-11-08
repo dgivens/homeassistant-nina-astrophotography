@@ -30,6 +30,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta, timezone
 import math
 import re
+from string import Formatter
 from types import MappingProxyType
 from typing import Any
 
@@ -47,7 +48,10 @@ from ..models import (
     FocuserModel,
     FocusPoint,
     Frame,
+    Gaussian,
     GuiderModel,
+    Hyperbola,
+    HyperbolaBlend,
     LivestackStatus,
     MountModel,
     NinaEvent,
@@ -780,6 +784,114 @@ def _polynomial(equation: str) -> tuple[float, ...] | None:
     return tuple(powers.get(power, 0.0) for power in range(max(powers), -1, -1))
 
 
+# A double as .NET writes it in the invariant culture: round-trip ("1E-05")
+# from N.I.N.A., "0.###" from Hocus Focus, and a negative after an operator
+# as "+ -1.4" or "x - -5".
+_NUMBER = r"-?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?"
+
+
+def _form(template: str) -> re.Pattern[str]:
+    """`template` with each `{slot}` a number, matched with whitespace
+    stripped. A repeated slot must repeat its text, as one value formatted
+    twice does.
+    """
+    pattern: list[str] = []
+    seen: set[str] = set()
+    for literal, slot, _, _ in Formatter().parse("".join(template.split())):
+        pattern.append(re.escape(literal))
+        if slot is None:
+            continue
+        pattern.append(f"(?P={slot})" if slot in seen else f"(?P<{slot}>{_NUMBER})")
+        seen.add(slot)
+    return re.compile("".join(pattern))
+
+
+def _parameters(form: re.Pattern[str], equation: str) -> dict[str, float] | None:
+    """The numbers in `equation`'s slots, or None unless it is in `form`."""
+    match = form.fullmatch("".join(equation.split()))
+    if match is None:
+        return None
+    values = {slot: float(text) for slot, text in match.groupdict().items()}
+    return values if all(map(math.isfinite, values.values())) else None
+
+
+_BRANCH = "{a}/{b} * √((x - {x0})² + {b}²)"
+_RIGHT = "{a}/{c} * √((x - {x0})² + {c}²)"
+_RAMP = "min(max(0, ({x0} - x) / {w}), 1)"
+_LOGISTIC = "σ(({x0} - x)/{w})"
+_BUILT_IN_HYPERBOLA = _form("y = {a} * cosh(asinh(({x0} - x) / {b}))")
+# Hocus Focus's own models, each with the blend it writes.
+_HOCUS_HYPERBOLAS: tuple[tuple[re.Pattern[str], HyperbolaBlend | None], ...] = (
+    (_form(f"y = {_BRANCH} + {{y0}}"), None),
+    (_form(f"y = {_BRANCH} + {{s}}·(x - {{x0}}) + {{y0}}"), None),
+    (_form(f"y = {_RAMP} * {_BRANCH} + (1 - {_RAMP}) * {_RIGHT} + {{y0}}"), "ramp"),
+    (
+        _form(f"y = {_LOGISTIC} * {_BRANCH} + (1 - {_LOGISTIC}) * {_RIGHT} + {{y0}}"),
+        "logistic",
+    ),
+)
+
+
+def _hyperbola(equation: str) -> Hyperbola | None:
+    """The hyperbola `equation` writes, or None for any other curve, or one
+    dividing by zero.
+
+    Forms from N.I.N.A.'s `HyperbolicFitting.cs` and Hocus Focus's
+    `*Hyperbolic*FittingAlglib.cs` as of 4.0.
+    """
+    if (built_in := _parameters(_BUILT_IN_HYPERBOLA, equation)) is not None:
+        # cosh(asinh(z)) is even in b; the general form is not.
+        b = abs(built_in["b"])
+        hyperbola = Hyperbola(
+            x0=built_in["x0"],
+            y0=0.0,
+            a=built_in["a"],
+            b=b,
+            c=b,
+            slope=0.0,
+            blend=None,
+            blend_width=None,
+        )
+    else:
+        hyperbola = next(
+            (
+                Hyperbola(
+                    x0=v["x0"],
+                    y0=v["y0"],
+                    a=v["a"],
+                    b=v["b"],
+                    c=v.get("c", v["b"]),
+                    slope=v.get("s", 0.0),
+                    blend=blend,
+                    blend_width=v.get("w"),
+                )
+                for form, blend in _HOCUS_HYPERBOLAS
+                if (v := _parameters(form, equation)) is not None
+            ),
+            None,
+        )
+    if hyperbola is None or 0 in (hyperbola.b, hyperbola.c):
+        return None
+    if hyperbola.blend is not None and (hyperbola.blend_width or 0) <= 0:
+        return None
+    return hyperbola
+
+
+# N.I.N.A.'s `GaussianFitting.cs`, which Hocus Focus uses unchanged.
+_GAUSSIAN = _form(
+    "y = {amplitude} * exp(-1 * (x - {mean}) * (x - {mean})"
+    " / (2 * {sigma} * {sigma})) + {offset}"
+)
+
+
+def _gaussian(equation: str) -> Gaussian | None:
+    """The gaussian `equation` writes, or None for any other curve."""
+    values = _parameters(_GAUSSIAN, equation)
+    if values is None or values["sigma"] == 0:
+        return None
+    return Gaussian(**values)
+
+
 # The curves whose R² each `Fitting` judges against a threshold: the ones it
 # places focus with, except a contrast run's gaussian. N.I.N.A. can compute
 # others beside them: a HYPERBOLIC run also reports
@@ -822,6 +934,8 @@ def _curve_fits(wire: dict) -> tuple[CurveFit, ...]:
             name=name,
             equation=equation,
             coefficients=_polynomial(equation),
+            hyperbola=_hyperbola(equation),
+            gaussian=_gaussian(equation),
             r_squared=_numeric(squares.get(name)),
             judged=judged is None or name in judged,
         )

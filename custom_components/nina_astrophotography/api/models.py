@@ -382,19 +382,69 @@ class FitMinimum:
     """
 
 
+HyperbolaBlend = Literal["ramp", "logistic"]
+"""How an asymmetric hyperbola weights its left branch (see `Hyperbola`)."""
+
+
+@dataclass(frozen=True, slots=True)
+class Hyperbola:
+    """A hyperbolic fit, in one form for every autofocuser's model.
+
+    `y = y0 + slope·u + w·(a/b)·√(u² + b²) + (1 − w)·(a/c)·√(u² + c²)`, with
+    `u = x − x0` and `w` the left branch's weight: 1 with no `blend`, where
+    `c` is `b`; `clamp(−u / blend_width, 0, 1)` for `ramp`; and
+    `1 / (1 + e^(u / blend_width))` for `logistic`.
+
+    Built-in N.I.N.A.'s `a·cosh(asinh((x0 − x) / b))` is the symmetric case
+    with `y0` and `slope` 0. Hocus Focus adds the offset `y0`, and its
+    asymmetric models a tilt or a separate right branch. Its minimum is the
+    run's `HyperbolicMinimum`, which a blend can move off `x0`.
+    """
+
+    x0: float
+    y0: float
+    a: float
+    b: float
+    """Never 0, nor is `c`."""
+    c: float
+    slope: float
+    blend: HyperbolaBlend | None
+    blend_width: float | None
+    """Positive wherever `blend` is set."""
+
+
+@dataclass(frozen=True, slots=True)
+class Gaussian:
+    """A contrast run's fit: `y = amplitude·e^(−(x − mean)² / (2·sigma²)) +
+    offset`, peaking at `mean`.
+    """
+
+    amplitude: float
+    mean: float
+    sigma: float
+    """Never 0."""
+    offset: float
+
+
 @dataclass(frozen=True, slots=True)
 class CurveFit:
-    """One curve the run computed through the sweep; others are omitted."""
+    """One curve the run computed through the sweep; others are omitted.
+
+    At most one of `coefficients`, `hyperbola` and `gaussian` is set, and none
+    where the equation is in a form the mapper does not recognise.
+    """
 
     name: str
     """`Quadratic`, `LeftTrend`, `RightTrend`, `Hyperbolic` or `Gaussian`."""
     equation: str
-    """As N.I.N.A. wrote it; the only record for a non-polynomial fit."""
+    """As the autofocuser wrote it; the only record for an unrecognised form."""
     coefficients: tuple[float, ...] | None
     """Highest power first: `(a, b, c)` is `a·x² + b·x + c`. None where the
     equation is not a polynomial. The trend lines exclude the lowest point, so
     re-fitting the curve will not reproduce them.
     """
+    hyperbola: Hyperbola | None
+    gaussian: Gaussian | None
     r_squared: float | None
     """This fit's own R², unlike the worst judged one in `AutoFocusReport`."""
     judged: bool

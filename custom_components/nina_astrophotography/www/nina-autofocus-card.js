@@ -81,12 +81,31 @@ function isJudged(fit, run) {
   return fit.judged !== false && !run.checkOff;
 }
 
-// `coefficients` are highest power first, as the mapper parses them out of
-// N.I.N.A.'s equation string: [a, b, c] is a·x² + b·x + c. A fit whose
-// equation was not a polynomial — a hyperbola, a Gaussian — arrives with
-// `coefficients: null` and simply is not drawn.
-function evaluate(coefficients, x) {
-  return coefficients.reduce((total, coefficient) => total * x + coefficient, 0);
+// A fit's curve as a function of focuser position, from the parameters the
+// mapper parsed out of its equation: `coefficients` highest power first, so
+// [a, b, c] is a·x² + b·x + c, and `hyperbola` and `gaussian` as
+// docs/reference.md writes them out. Null for a form the mapper did not
+// recognise, which the legend lists as not plotted.
+function curveOf(fit) {
+  const { coefficients: poly, hyperbola: h, gaussian: g } = fit;
+  if (Array.isArray(poly) && poly.length) {
+    return (x) => poly.reduce((total, coefficient) => total * x + coefficient, 0);
+  }
+  if (h) {
+    return (x) => {
+      const u = x - h.x0;
+      const w = h.blend === "ramp" ? Math.min(Math.max(-u / h.blend_width, 0), 1)
+        : h.blend === "logistic" ? 1 / (1 + Math.exp(u / h.blend_width))
+        : 1;
+      return h.y0 + h.slope * u
+        + w * (h.a / h.b) * Math.hypot(u, h.b)
+        + (1 - w) * (h.a / h.c) * Math.hypot(u, h.c);
+    };
+  }
+  if (g) {
+    return (x) => g.amplitude * Math.exp(-((x - g.mean) ** 2) / (2 * g.sigma ** 2)) + g.offset;
+  }
+  return null;
 }
 
 function ago(iso) {
@@ -553,8 +572,8 @@ class NinaAutofocusCard extends HTMLElement {
           run.isHfr ? "± spread across stars" : "contrast score"}</span></div>`,
     ];
     for (const fit of run.fits) {
-      // No coefficients to plot; listed with its R² and marked not plotted.
-      const drawn = Array.isArray(fit.coefficients) && fit.coefficients.length > 0;
+      // An unrecognised form is listed with its R² and marked not plotted.
+      const drawn = curveOf(fit) !== null;
       const colour = isTrend(fit.name) ? TREND : FIT;
       const dash = isTrend(fit.name) ? "dashed" : "solid";
       items.push(`<div class="item">
@@ -680,7 +699,8 @@ class NinaAutofocusCard extends HTMLElement {
     // Sampled across the sweep and broken wherever a fit leaves the chart, so
     // a trend line stays a line rather than a spike out of the frame.
     for (const fit of run.fits) {
-      if (!Array.isArray(fit.coefficients) || !fit.coefficients.length) continue;
+      const curve = curveOf(fit);
+      if (!curve) continue;
       ctx.strokeStyle = theme[isTrend(fit.name) ? TREND : FIT];
       ctx.lineWidth = 1.4;
       ctx.setLineDash(isTrend(fit.name) ? [5, 4] : []);
@@ -688,7 +708,7 @@ class NinaAutofocusCard extends HTMLElement {
       let pen = false;
       for (let sample = 0; sample <= 160; sample++) {
         const x = xMin + ((xMax - xMin) * sample) / 160;
-        const y = evaluate(fit.coefficients, x);
+        const y = curve(x);
         if (!Number.isFinite(y) || !inside(y)) { pen = false; continue; }
         if (pen) ctx.lineTo(xOf(x), yOf(y));
         else { ctx.moveTo(xOf(x), yOf(y)); pen = true; }

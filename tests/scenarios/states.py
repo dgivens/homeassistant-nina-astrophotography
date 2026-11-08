@@ -192,8 +192,10 @@ def _hyperbolic_autofocus(name: str) -> dict:
     scoring 0.988 beside a right trend line scoring 0.0.
 
     The corpus holds only TRENDPARABOLIC runs, so the fitting, the hyperbolic
-    equation, both R² values and the focus point are derived. The focus point
-    sits at the hyperbola's minimum, where a HYPERBOLIC run puts it.
+    equation, both R² values and the focus point are derived. The equation is
+    in Hocus Focus's symmetric form, since the capture names it the
+    autofocuser, and the focus point sits at its minimum, where a HYPERBOLIC
+    run puts it.
     `HyperbolicMinimum` replaces the captured `QuadraticMinimum` with that
     invented vertex: Hocus Focus computes only the trend lines and the
     hyperbola on a HYPERBOLIC run, so those are the two minima it reports. The
@@ -219,7 +221,7 @@ def _hyperbolic_autofocus(name: str) -> dict:
             },
             "Fittings": {
                 **response["Fittings"],
-                "Hyperbolic": "y = 1.8 * cosh(asinh((x - 2336) / 40))",
+                "Hyperbolic": "y = 2.8/48 * √((x - 2336)² + 48²) + -1",
             },
             "RSquares": {
                 **response["RSquares"],

@@ -33,6 +33,29 @@ const unused = (dump, name) => ({
   used: false,
 });
 
+// A hyperbolic fit as each autofocuser writes it, and as the integration
+// publishes it parsed. The parameters are invented, the forms are not: Hocus
+// Focus's symmetric model and built-in N.I.N.A.'s, each placing the minimum at
+// 1.80 on 2336, which sits a little above the sweep's lowest two points.
+const HOCUS_HYPERBOLA = {
+  name: "Hyperbolic",
+  equation: "y = 2.8/48 * √((x - 2336)² + 48²) + -1",
+  coefficients: null,
+  hyperbola: {
+    x0: 2336, y0: -1, a: 2.8, b: 48, c: 48, slope: 0, blend: null, blend_width: null,
+  },
+  gaussian: null,
+  r_squared: 0.988,
+  judged: true,
+};
+const BUILT_IN_HYPERBOLA = {
+  ...HOCUS_HYPERBOLA,
+  equation: "y = 1.8 * cosh(asinh((2336 - x) / 34.4))",
+  hyperbola: {
+    x0: 2336, y0: 0, a: 1.8, b: 34.4, c: 34.4, slope: 0, blend: null, blend_width: null,
+  },
+};
+
 // The fitting, R²s, verdict and focus point are invented: no capture holds a
 // hyperbolic run. The focus point is the hyperbola's minimum, where a
 // HYPERBOLIC run puts it, and the hyperbolic minimum sits on it too. The fits
@@ -41,7 +64,7 @@ const unused = (dump, name) => ({
 // hyperbola on such a run, so it reports no quadratic minimum; the captured
 // quadratic fit stays in `fits` all the same. `changes` lands on the run's
 // attributes.
-const hyperbolic = (dump, changes = {}) => {
+const hyperbolic = (dump, hyperbola = HOCUS_HYPERBOLA, changes = {}) => {
   const run = dump[UP].states[RUN].attributes;
   return rig(dump, UP)
     .override(RUN, dump[UP].states[RUN].state, {
@@ -54,8 +77,7 @@ const hyperbolic = (dump, changes = {}) => {
           judged: false,
           r_squared: fit.name === "RightTrend" ? 0 : fit.r_squared,
         })),
-        { name: "Hyperbolic", equation: "y = 1.8 * cosh(asinh((x - 2336) / 40))",
-          coefficients: null, r_squared: 0.988, judged: true },
+        hyperbola,
       ],
       minima: [
         unused(dump, "TrendLineIntersection"),
@@ -67,13 +89,14 @@ const hyperbolic = (dump, changes = {}) => {
     .override(VERDICT, "off", verdict(dump, { r_squared: 0.988, reason: null }));
 };
 
-// The same run as built-in N.I.N.A. reports it, which is all four minima in
-// its own order, and "NINA" as both autofocuser and star detector. Derived:
-// the hyperbolic minimum is the invented hyperbola's own vertex, and the
-// gaussian maximum is a guess — built-in N.I.N.A. fits a gaussian to an HFR
-// sweep too, and no capture shows where it lands; here, up the right arm. Its
-// gaussian fit is left out of `fits` rather than given an invented equation.
-const builtIn = (dump) => hyperbolic(dump, {
+// The same run as built-in N.I.N.A. reports it, which is its own hyperbola,
+// all four minima in its own order, and "NINA" as both autofocuser and star
+// detector. Derived: the hyperbolic minimum is the hyperbola's own vertex, and
+// the gaussian maximum is a guess — built-in N.I.N.A. fits a gaussian to an
+// HFR sweep too, and no capture shows where it lands; here, up the right arm.
+// Its gaussian fit is left out of `fits` rather than given invented
+// parameters.
+const builtIn = (dump) => hyperbolic(dump, BUILT_IN_HYPERBOLA, {
   autofocuser: "NINA",
   star_detector: "NINA",
   minima: [
@@ -88,10 +111,11 @@ const builtIn = (dump) => hyperbolic(dump, {
 // holds one, so it is derived from the captured sweep: each HFR becomes a
 // contrast score of 1/HFR², which peaks where the stars are smallest, its
 // spread carried through the same transform. As Hocus Focus does, it reports
-// the trend-line intersection beside the gaussian maximum; both minima and the
-// focus point are invented, and the trend lines' equations are left out rather
-// than invented too. The HFR readings are unknown, as the integration
-// publishes them for this method.
+// the trend-line intersection beside the gaussian maximum; both minima, the
+// focus point and the gaussian's parameters are invented, the last in the form
+// N.I.N.A. writes and peaking at 0.43 on 2343. The trend lines' equations are
+// left out rather than invented too. The HFR readings are unknown, as the
+// integration publishes them for this method.
 const contrast = (dump) => {
   const run = dump[UP].states[RUN].attributes;
   return rig(dump, UP)
@@ -106,8 +130,15 @@ const contrast = (dump) => {
         error: (2 * point.error) / point.value ** 3,
       })),
       fits: [
-        { name: "Gaussian", equation: "y = 0.43 * exp(-(x - 2343)^2 / (2 * 38^2))",
-          coefficients: null, r_squared: null, judged: false },
+        {
+          name: "Gaussian",
+          equation: "y = 0.405 * exp(-1 * (x - 2343) * (x - 2343) / (2 * 31.6 * 31.6)) + 0.025",
+          coefficients: null,
+          hyperbola: null,
+          gaussian: { amplitude: 0.405, mean: 2343, sigma: 31.6, offset: 0.025 },
+          r_squared: null,
+          judged: false,
+        },
       ],
       minima: [
         { name: "TrendLineIntersection", position: 2344, value: 0.52, used: false },

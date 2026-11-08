@@ -4,7 +4,12 @@ from collections.abc import Callable
 from datetime import timedelta
 from operator import attrgetter
 
-from nina_astrophotography.api.models import AutoFocusReport
+from nina_astrophotography.api.models import (
+    AutoFocusReport,
+    CurveFit,
+    Gaussian,
+    Hyperbola,
+)
 from nina_astrophotography.api.v2.mapper import (
     map_equipment_info,
     map_event,
@@ -1105,14 +1110,13 @@ def test_a_minimum_nobody_named_is_used() -> None:
         ("y = 3 * x^3 + 1", [(3.0, 0.0, 0.0, 1.0)]),  # zero-filled, not skipped
         ("y = 1E+05 * x + 2", [(100000.0, 2.0)]),  # the split must not be on "+"
         ("", []),  # an unused fitting is not published
-        ("y = a / (x - b)", [None]),  # no hyperbolic form observed
+        ("y = a / (x - b)", [None]),  # not a polynomial
     ],
 )
 def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
     """Fabricates `Fittings.Quadratic`: the corpus carries only a quadratic and
-    two trend lines, and a hyperbolic or gaussian run has never been captured,
-    so anything that is not a polynomial yields no coefficients rather than a
-    guess.
+    two trend lines, so anything that is not a polynomial yields no
+    coefficients rather than a guess.
     """
     wire = dict(load("imaging_guiding_last_af.json"), Fittings={"Quadratic": equation})
     fits = _autofocus(wire).fits
@@ -1120,6 +1124,152 @@ def test_the_equation_forms_a_fit_can_arrive_in(equation, expected) -> None:
         None if coefficients is None else pytest.approx(coefficients)
         for coefficients in expected
     ]
+
+
+def _fit(name: str, equation: str) -> CurveFit:
+    """The one fit a report carrying only `equation` publishes."""
+    wire = dict(load("imaging_guiding_last_af.json"), Fittings={name: equation})
+    (fit,) = _autofocus(wire).fits
+    return fit
+
+
+def _symmetric(
+    x0: float, y0: float, a: float, b: float, slope: float = 0.0
+) -> Hyperbola:
+    return Hyperbola(
+        x0=x0, y0=y0, a=a, b=b, c=b, slope=slope, blend=None, blend_width=None
+    )
+
+
+_SWEEP_RAMP = "min(max(0, (2336 - x) / 35), 1)"
+_SWEEP_LOGISTIC = "σ((2336 - x)/8.75)"
+_LEFT = "1.6/29 * √((x - 2336)² + 29²)"
+_RIGHT = "1.6/31.5 * √((x - 2336)² + 31.5²)"
+
+
+# Hocus Focus writes "0.###"; built-in N.I.N.A. a round-trip double.
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("equation", "expected"),
+    [
+        (
+            (
+                "y = 1.8000000000000003 * cosh(asinh((2335.9999999999995 - x)"
+                " / 32.727272727272734))"
+            ),
+            _symmetric(2335.9999999999995, 0.0, 1.8000000000000003, 32.727272727272734),
+        ),
+        # cosh(asinh(z)) is even, so the sign of b does not reach the curve.
+        (
+            "y = 2.5E-05 * cosh(asinh((1E+05 - x) / -40.5))",
+            _symmetric(100000.0, 0.0, 2.5e-05, 40.5),
+        ),
+        (
+            "y = 1.6/29 * √((x - 2336)² + 29²) + 0.2",
+            _symmetric(2336.0, 0.2, 1.6, 29.0),
+        ),
+        (
+            "y = 1.6/29 * √((x - -5)² + 29²) + -0.2",
+            _symmetric(-5.0, -0.2, 1.6, 29.0),
+        ),
+        (
+            "y = 1.6/29 * √((x - 2336)² + 29²) + -0.01103·(x - 2336) + 0.2",
+            _symmetric(2336.0, 0.2, 1.6, 29.0, slope=-0.01103),
+        ),
+        (
+            f"y = {_SWEEP_RAMP} * {_LEFT} + (1 - {_SWEEP_RAMP}) * {_RIGHT} + 0.2",
+            Hyperbola(2336.0, 0.2, 1.6, 29.0, 31.5, 0.0, "ramp", 35.0),
+        ),
+        (
+            (
+                f"y = {_SWEEP_LOGISTIC} * {_LEFT} + (1 - {_SWEEP_LOGISTIC})"
+                f" * {_RIGHT} + 0.2"
+            ),
+            Hyperbola(2336.0, 0.2, 1.6, 29.0, 31.5, 0.0, "logistic", 8.75),
+        ),
+    ],
+    ids=[
+        "built-in",
+        "built-in exponent",
+        "symmetric",
+        "symmetric negatives",
+        "tilted",
+        "uneven blend",
+        "smooth blend",
+    ],
+)
+def test_a_hyperbolic_fit_is_published_as_its_parameters(
+    equation: str, expected: Hyperbola
+) -> None:
+    fit = _fit("Hyperbolic", equation)
+    assert (fit.hyperbola, fit.coefficients, fit.gaussian) == (expected, None, None)
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("equation", "expected"),
+    [
+        (
+            (
+                "y = 0.4152 * exp(-1 * (x - 2343.2) * (x - 2343.2) / (2 * 29.6 * 29.6))"
+                " + 0.0148"
+            ),
+            Gaussian(amplitude=0.4152, mean=2343.2, sigma=29.6, offset=0.0148),
+        ),
+        (
+            (
+                "y = 4.2E-05 * exp(-1 * (x - -5) * (x - -5) / (2 * 29.6 * 29.6))"
+                " + -1.5E-06"
+            ),
+            Gaussian(amplitude=4.2e-05, mean=-5.0, sigma=29.6, offset=-1.5e-06),
+        ),
+    ],
+    ids=["contrast", "exponents and negatives"],
+)
+def test_a_gaussian_fit_is_published_as_its_parameters(
+    equation: str, expected: Gaussian
+) -> None:
+    fit = _fit("Gaussian", equation)
+    assert (fit.gaussian, fit.coefficients, fit.hyperbola) == (expected, None, None)
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    "equation",
+    [
+        "y = 1.8 * cosh(asinh((x - 2336) / 40))",  # x and x0 swapped
+        "y = 0.43 * exp(-(x - 2343)^2 / (2 * 38^2))",
+        # Early Hocus Focus 3 releases wrote the ramp as a clamp triple.
+        (
+            "y = { 0, (2336 - x) / 35, 1 } * 1.6/29 * √((x - 2336)² + 29²)"
+            " + { 0, (x - 2336) / 35, 1 } * 1.6/31 * √((x - 2336)² + 31²) + 0.2"
+        ),
+        "y = 1.6/29 * √((x - 2336)² + 28²) + 0.2",  # one b written two ways
+        "y = NaN * cosh(asinh((NaN - x) / NaN))",
+        "y = 1.6/0 * √((x - 2336)² + 0²) + 0.2",  # a b "0.###" rounds to 0
+        f"y = σ((2336 - x)/0) * {_LEFT} + (1 - σ((2336 - x)/0)) * {_RIGHT} + 0.2",
+        "y = 0.4 * exp(-1 * (x - 2343) * (x - 2343) / (2 * 0 * 0)) + 0",
+    ],
+    ids=[
+        "invented hyperbola",
+        "invented gaussian",
+        "early uneven blend",
+        "inconsistent repeat",
+        "nan",
+        "zero b",
+        "zero blend width",
+        "zero sigma",
+    ],
+)
+def test_a_curve_in_an_unrecognised_form_is_published_unparsed(equation: str) -> None:
+    """Its equation is still the record, but a chart has nothing to evaluate."""
+    fit = _fit("Hyperbolic", equation)
+    assert (fit.equation, fit.coefficients, fit.hyperbola, fit.gaussian) == (
+        equation,
+        None,
+        None,
+        None,
+    )
 
 
 def test_a_rig_that_has_never_run_an_autofocus_has_no_report() -> None:

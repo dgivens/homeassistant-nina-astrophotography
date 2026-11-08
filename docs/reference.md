@@ -408,6 +408,8 @@ fits:
   - name: Quadratic
     equation: "y = 0.0003058854621319121 * x^2 + -1.4293365331583652 * x + 1671.5984427459177"
     coefficients: [0.0003058854621319121, -1.4293365331583652, 1671.5984427459177]
+    hyperbola: null
+    gaussian: null
     r_squared: 0.9710548595560263
     judged: true
   - name: LeftTrend
@@ -430,8 +432,31 @@ fitted_hfr: 1.0932570683996303
 ```
 
 - `coefficients` are highest power first: `[a, b, c]` is `a·x² + b·x + c`.
-  For fits other than polynomials (hyperbolic, gaussian) `coefficients` is
-  `null` and `equation` is the only record. Fits the run didn't compute are
+  A hyperbolic or gaussian fit has `coefficients: null` and its parameters in
+  `hyperbola` or `gaussian` instead:
+
+  ```yaml
+  - name: Hyperbolic
+    equation: "y = 2.8/48 * √((x - 2336)² + 48²) + -1"
+    coefficients: null
+    hyperbola: {x0: 2336, y0: -1, a: 2.8, b: 48, c: 48, slope: 0, blend: null, blend_width: null}
+    gaussian: null
+  ```
+
+- `hyperbola` is one form for every autofocuser's model, with `u = x − x0`:
+  `y = y0 + slope·u + w·(a/b)·√(u² + b²) + (1 − w)·(a/c)·√(u² + c²)`. The
+  weight `w` on the left branch is 1 when `blend` is `null`, and then `c`
+  equals `b`. It is `clamp(−u / blend_width, 0, 1)` for `blend: ramp` and
+  `1 / (1 + e^(u / blend_width))` for `blend: logistic`. Built-in N.I.N.A.
+  writes `a * cosh(asinh((x0 - x) / b))`, which is published with `y0` and
+  `slope` at 0. Hocus Focus's Symmetric model sets `y0`, Tilted Hyperbola
+  `slope`, and Uneven Blend and Smooth Blend a separate right branch `c` with
+  a `ramp` or `logistic` blend.
+- `gaussian` is `y = amplitude·e^(−(x − mean)² / (2·sigma²)) + offset`, which
+  peaks at `mean`.
+- An equation in a form the integration doesn't recognise has all three
+  `null`, and `equation` is the only record. The autofocus card lists such a
+  fit with its R² and marks it `not plotted`. Fits the run didn't compute are
   left out.
 - Each fit's `r_squared` is for that fit alone, which is what a chart legend
   wants. The `autofocus_r2` sensor is the worst fit with `judged: true`, which

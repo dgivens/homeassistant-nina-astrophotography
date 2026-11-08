@@ -305,6 +305,29 @@ async def test_the_last_autofocus_publishes_the_fit_overlay(
     )
 
 
+@pytest.mark.synthetic
+async def test_the_last_autofocus_publishes_a_hyperbola_a_card_can_evaluate(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """A card evaluates the curve rather than parsing the equation string."""
+    await set_up_at(
+        hass, config_entry, rig, "autofocus_hyperbolic_with_a_flat_trend_line"
+    )
+    fits = state_of(hass, "sensor.n_i_n_a_focuser_last_autofocus").attributes["fits"]
+    (hyperbolic,) = (fit for fit in fits if fit["name"] == "Hyperbolic")
+
+    assert json.loads(json.dumps(hyperbolic["hyperbola"])) == {
+        "x0": 2336.0,
+        "y0": -1.0,
+        "a": 2.8,
+        "b": 48.0,
+        "c": 48.0,
+        "slope": 0.0,
+        "blend": None,
+        "blend_width": None,
+    }
+
+
 @pytest.mark.parametrize(
     ("rig_state", "fitted_hfr"),
     [
