@@ -889,7 +889,12 @@ def _gaussian(equation: str) -> Gaussian | None:
     values = _parameters(_GAUSSIAN, equation)
     if values is None or values["sigma"] == 0:
         return None
-    return Gaussian(**values)
+    return Gaussian(
+        amplitude=values["amplitude"],
+        mean=values["mean"],
+        sigma=values["sigma"],
+        offset=values["offset"],
+    )
 
 
 # The curves whose R² each `Fitting` judges against a threshold: the ones it

@@ -19,7 +19,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `sensor.<instance>_focuser_last_autofocus`'s `fits` carries the parsed
   `hyperbola` or `gaussian` beside `coefficients`. Built-in N.I.N.A.'s forms
   and every Hocus Focus 4 hyperbolic model are read; a fit in any other form
-  keeps `equation` alone and is still marked `not plotted`.
+  keeps `equation` alone and the card marks it `not plotted`.
 - **The weather card can leave out the sky brightness cell** (#212), with
   `show_sky_brightness: false` or the switch in its editor. A station that
   measures only whole lux reads `0 lx` all night, since a dark sky is about

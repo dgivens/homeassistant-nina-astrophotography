@@ -398,15 +398,17 @@ class Hyperbola:
     Built-in N.I.N.A.'s `a·cosh(asinh((x0 − x) / b))` is the symmetric case
     with `y0` and `slope` 0. Hocus Focus adds the offset `y0`, and its
     asymmetric models a tilt or a separate right branch. Its minimum is the
-    run's `HyperbolicMinimum`, which a blend can move off `x0`.
+    run's `HyperbolicMinimum`, which a tilt (`slope`) moves off `x0`; a blend
+    does not, since both branches equal `a` only at `x0`.
     """
 
     x0: float
     y0: float
     a: float
     b: float
-    """Never 0, nor is `c`."""
+    """Never 0."""
     c: float
+    """The right branch's semi-axis; equal to `b` without a blend. Never 0."""
     slope: float
     blend: HyperbolaBlend | None
     blend_width: float | None

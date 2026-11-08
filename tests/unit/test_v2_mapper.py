@@ -1178,14 +1178,32 @@ _RIGHT = "1.6/31.5 * √((x - 2336)² + 31.5²)"
         ),
         (
             f"y = {_SWEEP_RAMP} * {_LEFT} + (1 - {_SWEEP_RAMP}) * {_RIGHT} + 0.2",
-            Hyperbola(2336.0, 0.2, 1.6, 29.0, 31.5, 0.0, "ramp", 35.0),
+            Hyperbola(
+                x0=2336.0,
+                y0=0.2,
+                a=1.6,
+                b=29.0,
+                c=31.5,
+                slope=0.0,
+                blend="ramp",
+                blend_width=35.0,
+            ),
         ),
         (
             (
                 f"y = {_SWEEP_LOGISTIC} * {_LEFT} + (1 - {_SWEEP_LOGISTIC})"
                 f" * {_RIGHT} + 0.2"
             ),
-            Hyperbola(2336.0, 0.2, 1.6, 29.0, 31.5, 0.0, "logistic", 8.75),
+            Hyperbola(
+                x0=2336.0,
+                y0=0.2,
+                a=1.6,
+                b=29.0,
+                c=31.5,
+                slope=0.0,
+                blend="logistic",
+                blend_width=8.75,
+            ),
         ),
     ],
     ids=[

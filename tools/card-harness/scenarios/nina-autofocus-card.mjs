@@ -213,6 +213,19 @@ export const scenarios = {
     hass: (dump) => hyperbolic(dump).without("focuser_autofocus_starting_hfr").build(),
   },
 
+  // A hyperbola in a form the integration does not parse, which arrives with
+  // every parameter null: the legend lists it, muted and "not plotted", and
+  // the chart draws no curve for it. The form is the clamp triple early Hocus
+  // Focus 3 releases wrote for Uneven Blend, over the same parameters.
+  hyperbolic_unrecognised: {
+    hass: (dump) => hyperbolic(dump, {
+      ...HOCUS_HYPERBOLA,
+      equation: "y = { 0, (2336 - x) / 35, 1 } * 2.8/48 * √((x - 2336)² + 48²)"
+        + " + { 0, (x - 2336) / 35, 1 } * 2.8/48 * √((x - 2336)² + 48²) + -1",
+      hyperbola: null,
+    }).build(),
+  },
+
   // The four minima built-in N.I.N.A. reports whatever it fitted, only one of
   // which this fitting uses.
   hyperbolic_built_in: { hass: (dump) => builtIn(dump).build() },
