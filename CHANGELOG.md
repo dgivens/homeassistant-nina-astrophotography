@@ -4,6 +4,22 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The entity reference matches the integration**: a dome adds up to eleven
+  entities, the per-device table lists the meridian flip, dome synchronized,
+  reachable and site entities, and the disabled-by-default list is complete.
+  It covers which dome entities a driver's capabilities give, the shutter's
+  states and interlock attributes, `image.<instance>_livestack`, the switch
+  device's channel entity ids, and `last_autofocus`'s `autofocuser` and
+  `star_detector`. `autofocus_failed` ignores a report older than the session
+  start, and its `reason` is `null` when nothing failed. The 2.0 renames list
+  gives the `out_of_range` reason, `refocus_temperature_delta`, each fit's
+  `hyperbola`, `gaussian` and `judged`, and each minimum's `used`, and an
+  untargeted action resolves against configured entries, not loaded ones.
+
 ## [2.5.0] - 2026-11-08
 
 ### Added

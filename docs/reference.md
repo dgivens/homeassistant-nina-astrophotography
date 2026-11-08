@@ -22,7 +22,8 @@ instance name `N.I.N.A.` the prefix is `n_i_n_a`, so
 - [The autofocus curve attributes](#the-autofocus-curve-attributes)
 - [Other attributes](#other-attributes)
 - [Error events](#error-events)
-- [Dome and Livestack](#dome-and-livestack)
+- [Dome](#dome)
+- [Livestack](#livestack)
 
 ## Devices
 
@@ -69,13 +70,14 @@ first.
 
 ## Entities by device
 
-A typical rig has about 100 entities. A dome adds ten. Weather channels appear
-only for the readings your source actually provides.
+A typical rig has about 100 entities. A dome adds up to eleven, depending on
+what its driver supports (see [Dome](#dome)). Weather channels appear only for
+the readings your source actually provides.
 
 | Device | Entities |
 |---|---|
 | Camera | temperature, cooler power, gain, offset, state; target temperature and USB limit (`number`); cooler and dew heater (`switch`); exposing (`binary_sensor`); abort exposure (`button`) |
-| Mount | RA, declination, altitude, azimuth, sidereal time, side of pier, time to meridian flip; at park, at home (`binary_sensor`); tracking rate (`select`); park, unpark, find home (`button`) |
+| Mount | RA, declination, altitude, azimuth, sidereal time, side of pier, time to meridian flip; at park, at home, meridian flip (`binary_sensor`); tracking rate (`select`); park, unpark, find home (`button`) |
 | Focuser | position, temperature, step size; the last autofocus run (see [Autofocus](#autofocus)); position (`number`); moving, autofocus failed (`binary_sensor`); autofocus (`button`) |
 | Filter Wheel | filter (`select`); moving (`binary_sensor`) |
 | Guider | RMS total, RA and declination, status; guider (`switch`); clear calibration (`button`) |
@@ -83,17 +85,37 @@ only for the readings your source actually provides.
 | Flat Panel | cover state; brightness (`number`); light (`light`); cover (`switch`) |
 | Weather | temperature, humidity, dew point, pressure, wind speed/direction/gust, rain rate, sky brightness, sky temperature, cloud cover, sky quality, star FWHM |
 | Safety Monitor | unsafe, connected (`binary_sensor`) |
-| Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing (`binary_sensor`); open, close, park, home (`button`) |
+| Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing, synchronized (`binary_sensor`); open, close, park, home (`button`) |
 | Switch | one entity per channel the driver reports: a read-only channel is a `sensor`, an on/off channel a `switch`, a range a `number` |
-| Hub | weather source; session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); sequencer running, imaging, scheduler waiting (`binary_sensor`); wait ends at, last frame at; sequence start/stop (`button`); livestack (`switch`) |
+| Hub | weather source, site latitude and longitude; session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); reachable, sequencer running, imaging, scheduler waiting (`binary_sensor`); wait ends at, last frame at; sequence start/stop (`button`); livestack (`switch`) |
+
+The switch device's channels are named by its driver, so their entity ids are
+`<domain>.<instance>_switch_<channel name>`: a channel called `OTA` is
+`switch.<instance>_switch_ota`, and a read-only one called `Voltage` is
+`sensor.<instance>_switch_voltage`. A channel with no name is
+`Channel <Id>`, giving `<domain>.<instance>_switch_channel_<Id>`. A writable
+channel that is neither on/off nor has a range gets no entity, and a channel
+the driver stops reporting reads `unavailable`.
 
 These are disabled by default; enable them from the entity's settings page:
 
 - the three `flats_*` sensors (see [Flats](#flats))
 - `sequence_progress` (see [Is the rig working?](#is-the-rig-working))
 - `session_start` (see [Sessions](#sessions))
-- the autofocus R² and fitted HFR sensors
-- a few other diagnostics
+- `focuser_autofocus_r2` and `focuser_autofocus_fitted_hfr` (see
+  [Autofocus](#autofocus))
+- `sensor.<instance>_focuser_position`, which repeats
+  `number.<instance>_focuser_position` with a state class, for charting
+  position against temperature
+- `focuser_step_size`
+- the moving sensors of the focuser, filter wheel and rotator, and
+  `rotator_synced`
+- the configuration controls `number.<instance>_camera_usb_limit`,
+  `number.<instance>_rotator_mechanical_position` and
+  `switch.<instance>_rotator_reverse`
+- the dome's `binary_sensor.<instance>_dome_at_home`,
+  `button.<instance>_dome_home` and `number.<instance>_dome_azimuth`:
+  N.I.N.A. slaves the dome to the mount, and moving it by hand fights that
 
 ## Sessions
 
@@ -203,7 +225,6 @@ It also stays quiet in these situations you should know about:
 - **In daylight,** because `night_only` is on by default. Turn it off for solar
   imaging. It uses the sun at the rig if you wire the site inputs (see below),
   and `sun.sun` otherwise; with neither it doesn't suppress anything.
-
 - **During quiet hours,** if you set them, for a rig you shut down by day.
   `mute_mode` picks the window: between two times, which may cross midnight,
   or while the sun is up — from when the rising sun passes one altitude until
@@ -223,11 +244,11 @@ The alert is a persistent notification plus a message to the notify entity you
 choose. It includes how long it has been quiet, the last frame's target and
 filter, the camera state, temperature and cooler power, the guider, whether the
 mount is parked or at home, autofocus, and the latest error if it came after
-the sequence started. It repeats every
-60 minutes, at most twice (set reminders to 0 to turn this off). When a frame
-arrives or the sequencer stops, it dismisses the notification and says which
-happened. A sequence that finishes looks the same as one stopped by hand, so
-the message doesn't claim the night completed.
+the sequence started. It repeats every 60 minutes, at most twice (set reminders
+to 0 to turn this off). When a frame arrives or the sequencer stops, it
+dismisses the notification and says which happened. A sequence that finishes
+looks the same as one stopped by hand, so the message doesn't claim the night
+completed.
 
 Limitations:
 
@@ -318,7 +339,7 @@ Things to know when reading them:
   say whether N.I.N.A. accepted it. Use
   `binary_sensor.<instance>_focuser_autofocus_failed`, which compares R² with
   your profile's `RSquaredThreshold` and checks the focus position against
-  the sweep.
+  the sweep, for a report from the current session.
 - **A run whose focus position falls outside the positions it measured is
   rejected whatever its R².** A position on the sweep's first or last step is
   inside it. N.I.N.A. checks this under every autofocus method; Hocus Focus
@@ -332,7 +353,9 @@ Things to know when reading them:
   report, so `autofocus_failed` cannot see that rejection.
 - **A run that hangs writes no report**, so the sensors keep showing the
   previous run. The failed sensor catches this too.
-- **The report survives restarts.** It may be days old; check
+- **The report survives restarts**, so the autofocus sensors can show a run
+  days old. `autofocus_failed` ignores a report older than the session start,
+  so a previous night's failure doesn't leave it `on`. For the others, check
   `last_autofocus`.
 - **A report charts one attempt's sweep.** A failed attempt is retried, and
   the curve, R² and focus position in the report are the last attempt's.
@@ -352,13 +375,26 @@ Things to know when reading them:
 
 | Attribute | Meaning |
 |---|---|
-| `reason` | `hung`, `rejected`, `out_of_range`, or absent. A hung run usually means a sequence problem. A rejected one failed the R² check, and means the focus range or star detection needs adjusting. An out-of-range one put focus outside the positions it measured: start the run nearer focus, or widen the sweep with a larger step size or more steps. A run failing both the R² and the range check reads `rejected`, the check N.I.N.A. runs first. Only for `hung` do the other autofocus sensors show a different run from the one that failed. |
+| `reason` | `hung`, `rejected`, `out_of_range`, or `null` when the last run failed none of those ways. A hung run usually means a sequence problem. A rejected one failed the R² check, and means the focus range or star detection needs adjusting. An out-of-range one put focus outside the positions it measured: start the run nearer focus, or widen the sweep with a larger step size or more steps. A run failing both the R² and the range check reads `rejected`, the check N.I.N.A. runs first. Only for `hung` do the other autofocus sensors show a different run from the one that failed. |
 | `r_squared` | the R² used for the decision: the worst among the judged curves |
 | `r_squared_threshold` | your profile's `RSquaredThreshold`, or `null` when it is 0 or below and the check is off, or before the profile has been read |
 | `refocus_temperature_delta` | the °C of focuser drift past which your sequence's "AF After Temperature Change" trigger refocuses, or `null` with no such trigger. With several, the smallest: which one is in scope cannot be told. The autofocus card flags drift against it. |
 
 If you check R² yourself, compare against this `r_squared` attribute, not
 values from the `fits` attribute below; they can differ slightly.
+
+`sensor.<instance>_focuser_last_autofocus` says how the run was measured:
+
+| Attribute | Meaning |
+|---|---|
+| `method` | `STARHFR` or `CONTRASTDETECTION` |
+| `fitting` | the curve fitting the run used, such as `TRENDHYPERBOLIC` |
+| `autofocuser` | the autofocus routine that ran, such as `Hocus Focus` |
+| `star_detector` | the star detection that measured the HFRs |
+
+Compare HFRs between two runs only when their `autofocuser` and
+`star_detector` match. Hocus Focus's star detection and N.I.N.A.'s built-in
+one measure HFR on different scales.
 
 `sensor.<instance>_focuser_temperature` minus
 `sensor.<instance>_focuser_autofocus_temperature` is the temperature change
@@ -533,7 +569,7 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
   at `MOUNT-AFTER-FLIP`. It also turns `off` when the sequence finishes or the
   mount is parked, homed or disconnected. Its `slews_at` attribute estimates
   when the wait ends and the slew starts, from the last countdown read while
-  the mount was tracking. It is `None` when no such reading or profile is
+  the mount was tracking. It is `null` when no such reading or profile is
   available, as after a Home Assistant restart in mid-wait. A cancelled flip
   also sends `MOUNT-AFTER-FLIP`, so the sensor turning `off` does not prove the
   mount flipped.
@@ -569,13 +605,65 @@ and `autofocus_timeout`. Coverage is incomplete:
   `autofocus_timeout` is this integration's own check for a run that never
   finished.
 
-## Dome and Livestack
+## Dome
 
-The dome entities were built from the API specification and have not been
-tested with real dome hardware. If you have a dome, please report what works
-and what doesn't on the
+The dome entities are tested against a simulated dome, not real dome hardware.
+If you have a dome, please report what works and what doesn't on the
 [issue tracker](https://github.com/dgivens/homeassistant-nina-astrophotography/issues).
+
+A dome gets only the entities its driver supports:
+
+| Driver reports | Entities |
+|---|---|
+| always | shutter status |
+| `CanSetShutter` | open, close |
+| `CanPark` | park, at park |
+| `CanFindHome` | home, at home |
+| `CanSetAzimuth` | azimuth, slewing, synchronized, following |
+
+So a roll-off roof with no azimuth, park or home gets the shutter status, open
+and close. Slewing reports the dome turning, not the shutter moving, so a roof
+has none.
+
+`sensor.<instance>_dome_shutter_status` reads `open`, `closed`, `opening`,
+`closing` or `error`. A driver with no shutter reads `unknown`. A roof-close
+automation should wait for `closed` rather than trust the close command: N.I.N.A.
+answers it before the roof moves. `session_shutdown.yaml` and
+`weather_abort.yaml` do this when you give them the shutter status.
+
+The shutter status also carries N.I.N.A.'s own dome interlocks from your
+profile, which N.I.N.A. enforces whatever Home Assistant does. Each is `true`
+or `false`, or `null` until the profile has been read:
+
+| Attribute | N.I.N.A. setting |
+|---|---|
+| `close_on_unsafe` | closes the shutter when the safety monitor reports unsafe |
+| `refuse_unsafe_shutter_move` | refuses to open the shutter while unsafe |
+| `refuse_open_without_safety_monitor` | refuses to open the shutter with no safety monitor connected |
+| `refuse_unpark_while_shut` | refuses to unpark the mount with the shutter shut |
+| `park_mount_before_shutter_move` | parks the mount before moving the shutter |
+| `park_dome_before_shutter_move` | parks the dome before moving the shutter |
+| `find_home_before_park` | homes the dome before parking it |
+
+The integration refuses some dome commands itself:
+
+- Opening the dome is refused while the safety monitor reports unsafe, from
+  the button and the `dome_open` action alike, whatever
+  `refuse_unsafe_shutter_move` says. A monitor that is absent or not
+  reporting refuses nothing.
+- Homing the dome or setting its azimuth is refused while it follows the
+  mount. N.I.N.A. would quietly turn following off, which takes the slit off
+  the scope.
+
+## Livestack
 
 `switch.<instance>_livestack` exists whether or not the Livestack plugin is
 installed. Without the plugin it reads `off`, and turning it on raises an
 error.
+
+`image.<instance>_livestack` is created the first time the plugin reports a
+stack update (`STACK-UPDATED`). It shows the stack that updated last, and its
+`target` and `filter` attributes say which: a mono rig keeps one stack per
+filter, and the image follows whichever updated most recently. Stacks don't
+survive a N.I.N.A. restart, so after one the image reads `unknown`, with both
+attributes `null`, until the next stack update.
