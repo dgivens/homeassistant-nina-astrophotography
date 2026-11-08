@@ -9,7 +9,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Changed
 
 - **The quality-scale register matches Home Assistant's current rules**
-  (#PR). `dependency-transparency` is exempt, since the integration has no
+  (#244). `dependency-transparency` is exempt, since the integration has no
   external dependencies. `log-when-unavailable` is not yet met: an outage is
   logged at `warning` rather than `info`, and the event socket logs every
   failed reconnect. `reauthentication-flow`'s exemption holds for the
