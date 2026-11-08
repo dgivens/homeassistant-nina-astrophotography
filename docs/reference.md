@@ -500,17 +500,20 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
 - `sensor.<instance>_last_image_mean_adu` has `recent_frames`: the newest
   frames of every type, newest first, each with its target, filter, exposure,
   HFR, star count, guide RMS and N.I.N.A.'s min, median, mean and max ADU. The
-  image panel card draws its ADU range from these. They are statistics, not a
-  histogram like the one in N.I.N.A.'s Statistics panel: the Advanced API
-  publishes none. Building one means fetching the whole raw frame a second
+  image panel card draws its ADU range from these, on an axis to the camera's
+  full scale, which it also reads from `recent_lights`. They are statistics,
+  not a histogram like the one in N.I.N.A.'s Statistics panel: the Advanced
+  API publishes none. Building one means fetching the whole raw frame a second
   time, which a remote observatory is already sending elsewhere. Issue #178
   tracks doing it as an option.
 
 - `sensor.<instance>_last_image_hfr` has `recent_lights`: the session's
   newest 60 lights, oldest first, each with its target, filter, exposure, HFR,
   star count, and mean and max ADU. The frame statistics card draws its charts
-  from these, and reads the camera's full scale from the max: a camera that
-  does not scale its data to 16 bits saturates at or below 4095 or 16383.
+  from these.
+
+  Both cards read the camera's full scale from their frames' max: a camera
+  that does not scale its data to 16 bits saturates at or below 4095 or 16383.
   N.I.N.A.'s bit depth is no help, since for ASCOM and DSLR cameras it is a
   profile setting the user types in.
 

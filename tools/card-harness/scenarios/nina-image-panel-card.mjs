@@ -22,7 +22,7 @@
  * is.
  */
 
-import { linkScenarios, rig } from "../hass.mjs";
+import { linkScenarios, rig, unscaled } from "../hass.mjs";
 
 const NIGHT = "dawn_flats";
 
@@ -68,6 +68,18 @@ export const scenarios = {
   // Exposing, with lights in the history but none this session: the readings
   // are the frame's own, and the session totals empty.
   exposing: { hass: (dump) => rig(dump, "site_configured").build() },
+
+  // The night's flats from a 12- or 14-bit camera that does not scale to 16
+  // bits. The ADU bar runs to that camera's full scale, so the whisker, median
+  // and mean sit where `night` draws them, to well under a pixel. Only the
+  // gridlines move, being in that camera's ADU: 10k is past a 12-bit camera's
+  // full scale and left off, and at 14 bits its label sits left of its line.
+  unscaled_12_bit: { hass: (dump) => unscaled(dump, NIGHT, 16).build() },
+  unscaled_14_bit: { hass: (dump) => unscaled(dump, NIGHT, 4).build() },
+
+  // `exposing`'s lights from a 12-bit camera: the background sits where
+  // `exposing` draws it.
+  exposing_12_bit: { hass: (dump) => unscaled(dump, "site_configured", 16).build() },
 
   // The drivers down: no camera entities at all, no frames, and the session
   // totals zero.

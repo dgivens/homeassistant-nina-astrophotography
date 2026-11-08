@@ -14,7 +14,7 @@
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { RigEntities } from "./nina-entity-resolver.js";
-import { quantityIn, safe, shown } from "./nina-units.js";
+import { aduFullScale, quantityIn, safe, shown } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.4.1";
@@ -278,24 +278,8 @@ const TREND_EPSILON = 0.03;
 // at 16 bits, scaled to the camera's full scale.
 const STARS_MIN_SPAN = 0.1;
 const ADU_MIN_SPAN = 10;
-const MIN_BITS = 12;
-const MAX_BITS = 16;
 // Headroom above and below a run, as a fraction of its span.
 const RUN_HEADROOM = 0.1;
-
-// ADU_MIN_SPAN scaled to the camera's full scale. A camera that does not scale
-// its data to 16 bits reports ADU up to 16 times smaller, and N.I.N.A.'s bit
-// depth can't say so: for ASCOM and DSLR cameras it is a profile setting the
-// user types. So the full scale is the night's brightest pixel rounded up to a
-// bit depth; a hot pixel or star core saturates in nearly every light. A night
-// with none underestimates it, and the chart draws its scatter taller.
-function aduFloor(maxima) {
-  const known = maxima.filter((v) => Number.isFinite(v) && v > 0);
-  if (!known.length) return ADU_MIN_SPAN;
-  const depth = Math.ceil(Math.log2(Math.max(...known) + 1));
-  const bits = Math.min(MAX_BITS, Math.max(MIN_BITS, depth));
-  return ADU_MIN_SPAN * 2 ** (bits - MAX_BITS);
-}
 
 function hfrTrend(recent, previous, delta) {
   if (recent === null || previous === null) return "unknown";
@@ -358,7 +342,9 @@ class NinaFrameStatsCard extends HTMLElement {
     this._hfr = lights.map((light) => light.hfr ?? null);
     this._stars = lights.map((light) => light.stars ?? null);
     this._adu = lights.map((light) => light.mean ?? null);
-    this._aduFloor = aduFloor(lights.map((light) => light.max));
+    // An underestimated full scale draws the scatter taller.
+    const fullScale = aduFullScale(lights.map((light) => light.max));
+    this._aduFloor = ADU_MIN_SPAN * (fullScale + 1) / 2 ** 16;
     this._filters = lights.map((light) => light.filter ?? null);
     // A new target or exposure length moves star count and ADU by whole
     // factors — a galaxy field against a Milky Way one — which would
