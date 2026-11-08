@@ -198,7 +198,7 @@ type: custom:nina-observatory-card
 
 | Card | Shows | Options (all optional) |
 |---|---|---|
-| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, guiding, last frame, and controls. Stop, park, and opening or closing the dome ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | — |
+| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, guiding, last frame, and controls. Stop, park, and opening or closing the dome ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | — |
 | `custom:nina-frame-stats-card` | HFR, star count and ADU trends for the session's frames, and a per-filter breakdown | — |
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default: your sequence's "AF After Temperature Change" trigger, else 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, and their statistics | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85) |

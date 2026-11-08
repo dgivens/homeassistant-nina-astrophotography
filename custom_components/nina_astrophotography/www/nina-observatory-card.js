@@ -380,6 +380,9 @@ class NinaObservatoryCard extends HTMLElement {
     const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
     const gdrStatusId  = this._eid("sensor", "guider_status");
     const gdrConnected = available(h, gdrStatusId);
+    // Optional equipment, like the dome: neither chip nor section without one.
+    const rotatorId    = this._eid("number", "rotator_position");
+    const rotConnected = available(h, rotatorId);
     // Probed on the shutter status, which every dome has, roll-off roofs
     // included. `unknown` is still a dome: a shutter not known closed keeps
     // Close.
@@ -434,6 +437,10 @@ class NinaObservatoryCard extends HTMLElement {
 
     const focPos       = shown(state(h, this._eid("number", "focuser_position")));
     const focTemp      = measured(h, this._eid("sensor", "focuser_temperature"));
+
+    const rotSky       = numState(h, rotatorId, 1);
+    // Ships disabled, so most rigs have no mechanical reading to show.
+    const rotMech      = numState(h, this._eid("number", "rotator_mechanical_position"), 1);
 
     // NaN rather than 0 when there is no reading: a missing RMS rendered as
     // 0.00" is indistinguishable from perfect guiding.
@@ -544,6 +551,7 @@ class NinaObservatoryCard extends HTMLElement {
             ${chip("Focuser", focConnected)}
             ${chip("Filter Wheel", fwConnected)}
             ${chip("Guider", gdrConnected)}
+            ${rotConnected ? chip("Rotator", true) : ""}
             ${!domeConnected ? ""
               : shutter === "error" ? chip("Dome · shutter error", true, "fault")
               : chip("Dome", true)}
@@ -589,6 +597,15 @@ class NinaObservatoryCard extends HTMLElement {
               ${metric("Temp", focTemp.value, focTemp.unit)}
             </div>
           </div>
+
+          ${rotConnected ? `
+          <div class="section">
+            <div class="section-title">Rotator</div>
+            <div class="metric-grid">
+              ${metric("Sky angle", rotSky, "°")}
+              ${rotMech === "—" ? "" : metric("Mechanical", rotMech, "°")}
+            </div>
+          </div>` : ""}
 
           ${gdrConnected ? `
             <div class="section">
