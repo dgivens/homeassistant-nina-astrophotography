@@ -60,6 +60,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Home Assistant shows the integration's icon** on the integrations page,
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
+- **The action editor shows each action's whole text** (#247): the ramp
+  time's profile default, the sequence name's lack of an extension, and the
+  rest of what `services.yaml` documents. A unit test holds the translations
+  to `services.yaml`, field for field.
 - **An action value outside its range is refused before it reaches N.I.N.A.**
   (#231), which would clamp it silently and report success.
   `camera_capture`'s `duration` is held to the camera's own maximum, with 0

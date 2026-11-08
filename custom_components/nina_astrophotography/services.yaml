@@ -95,7 +95,7 @@ camera_abort_capture:
 
 mount_slew:
   name: Slew Mount
-  description: Slew the telescope mount to J2000 RA/Dec coordinates.
+  description: Slew the telescope mount to J2000 RA/Dec coordinates, in degrees.
   target:
     entity:
       integration: nina_astrophotography
@@ -148,6 +148,7 @@ mount_set_tracking:
   fields:
     enabled:
       name: Tracking Enabled
+      description: On to track at the sidereal rate, off to stop tracking.
       required: true
       selector:
         boolean:

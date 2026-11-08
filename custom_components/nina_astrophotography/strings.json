@@ -425,34 +425,34 @@
   "services": {
     "camera_cool": {
       "name": "Cool Camera",
-      "description": "Start cooling the camera to a target temperature.",
+      "description": "Start cooling the camera sensor to a target temperature.",
       "fields": {
         "temperature": {
           "name": "Target Temperature (°C)",
           "description": "Target sensor temperature in degrees Celsius, from -50 to 50."
         },
         "minutes": {
-          "name": "Ramp Time (minutes)",
+          "name": "Ramp Time",
           "description": "Minimum minutes over which to ramp to the target temperature, 0 or more. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
         }
       }
     },
     "camera_warm": {
       "name": "Warm Camera",
-      "description": "Gradually warm the camera sensor.",
+      "description": "Gradually warm the camera sensor back to ambient temperature.",
       "fields": {
         "minutes": {
-          "name": "Ramp Time (minutes)",
+          "name": "Ramp Time",
           "description": "Minimum minutes over which to ramp back to ambient, 0 or more. Omit to use the ramp N.I.N.A.'s own profile specifies for this camera."
         }
       }
     },
     "camera_capture": {
       "name": "Capture Image",
-      "description": "Take a single exposure.",
+      "description": "Take a single camera exposure.",
       "fields": {
         "duration": {
-          "name": "Exposure (seconds)",
+          "name": "Exposure",
           "description": "Exposure duration in seconds, up to the camera's own maximum. 0 is sent to the camera driver as it is."
         },
         "gain": {
@@ -461,31 +461,31 @@
         },
         "save": {
           "name": "Save to Disk",
-          "description": "Whether to save the image to disk."
+          "description": "Whether to save the captured image to disk."
         }
       }
     },
     "camera_abort_capture": {
       "name": "Abort Capture",
-      "description": "Abort the current camera exposure."
+      "description": "Abort the current camera exposure immediately."
     },
     "mount_slew": {
       "name": "Slew Mount",
-      "description": "Slew the mount to J2000 RA/Dec coordinates, in degrees.",
+      "description": "Slew the telescope mount to J2000 RA/Dec coordinates, in degrees.",
       "fields": {
         "ra_degrees": {
-          "name": "RA (degrees)",
-          "description": "Right ascension in J2000 decimal degrees (0-360)."
+          "name": "Right Ascension",
+          "description": "Target J2000 RA in decimal degrees (0–360)."
         },
         "dec_degrees": {
-          "name": "Dec (degrees)",
-          "description": "Declination in J2000 decimal degrees (-90 to +90)."
+          "name": "Declination",
+          "description": "Target J2000 Dec in decimal degrees (−90 to +90)."
         }
       }
     },
     "mount_park": {
       "name": "Park Mount",
-      "description": "Park the telescope mount."
+      "description": "Send the telescope mount to its park position."
     },
     "mount_unpark": {
       "name": "Unpark Mount",
@@ -493,31 +493,31 @@
     },
     "mount_set_tracking": {
       "name": "Set Tracking",
-      "description": "Enable or disable mount tracking.",
+      "description": "Enable or disable sidereal tracking.",
       "fields": {
         "enabled": {
           "name": "Tracking Enabled",
-          "description": "True to enable tracking, false to disable."
+          "description": "On to track at the sidereal rate, off to stop tracking."
         }
       }
     },
     "focuser_move": {
       "name": "Move Focuser",
-      "description": "Move the focuser to an absolute position.",
+      "description": "Move the focuser to an absolute step position.",
       "fields": {
         "position": {
-          "name": "Position (steps)",
+          "name": "Position",
           "description": "Absolute focuser position in steps, from 0 up to the focuser's own maximum."
         }
       }
     },
     "focuser_auto_focus": {
       "name": "Auto Focus",
-      "description": "Run an autofocus routine."
+      "description": "Trigger an autofocus routine using the configured method."
     },
     "filterwheel_change_filter": {
       "name": "Change Filter",
-      "description": "Rotate the filter wheel to a given filter.",
+      "description": "Rotate the filter wheel to the specified filter slot.",
       "fields": {
         "filter_index": {
           "name": "Filter Index",
@@ -527,17 +527,17 @@
     },
     "guider_start": {
       "name": "Start Guiding",
-      "description": "Start autoguiding.",
+      "description": "Start the autoguider.",
       "fields": {
         "force_calibration": {
           "name": "Force Calibration",
-          "description": "Force a new calibration before guiding."
+          "description": "Force a new calibration run before guiding begins."
         }
       }
     },
     "guider_stop": {
       "name": "Stop Guiding",
-      "description": "Stop autoguiding."
+      "description": "Stop the autoguider."
     },
     "dome_open": {
       "name": "Open Dome",
@@ -553,19 +553,19 @@
     },
     "sequence_start": {
       "name": "Start Sequence",
-      "description": "Start the loaded imaging sequence."
+      "description": "Start the currently loaded imaging sequence."
     },
     "sequence_stop": {
       "name": "Stop Sequence",
-      "description": "Stop the running sequence."
+      "description": "Stop the currently running sequence."
     },
     "sequence_load": {
       "name": "Load Sequence",
-      "description": "Load a sequence by name.",
+      "description": "Load a sequence by name (does not start it).",
       "fields": {
         "sequence_name": {
-          "name": "Sequence name",
-          "description": "The sequence's name as N.I.N.A. lists it. Not a path."
+          "name": "Sequence Name",
+          "description": "The sequence's name as N.I.N.A. lists it, without the .ninasequence extension. Not a path."
         }
       }
     }
