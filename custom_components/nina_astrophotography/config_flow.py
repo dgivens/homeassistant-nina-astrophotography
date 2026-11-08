@@ -20,20 +20,16 @@ from .const import (
     CONF_HOST,
     CONF_INSTANCE_NAME,
     CONF_OUTAGE_GRACE,
-    CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
     DEFAULT_INSTANCE_NAME,
     DEFAULT_OUTAGE_GRACE,
-    DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-_POLL_INTERVAL = vol.All(int, vol.Range(min=5, max=60))
 
 STEP_USER_SCHEMA = vol.Schema(
     {
@@ -43,7 +39,6 @@ STEP_USER_SCHEMA = vol.Schema(
         vol.Required(CONF_INSTANCE_NAME, default=DEFAULT_INSTANCE_NAME): vol.All(
             str, vol.Strip, vol.Length(min=1)
         ),
-        vol.Optional(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): _POLL_INTERVAL,
     }
 )
 
@@ -52,6 +47,9 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for N.I.N.A. Astrophotography."""
 
     VERSION = 1
+    # 2: no poll interval, and an instance name on every entry; see
+    # `async_migrate_entry`.
+    MINOR_VERSION = 2
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -100,8 +98,10 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     def _name_in_use(self, name: str) -> bool:
-        """Whether another entry already has this instance name, or, from
-        before 2.0, this title.
+        """Whether another entry already has this instance name.
+
+        The title stands in for an entry from before 2.0 that has not been
+        migrated yet, as a disabled one never is.
         """
         return any(
             entry.data.get(CONF_INSTANCE_NAME, entry.title) == name
@@ -116,10 +116,10 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return NinaOptionsFlow()
 
 
-class NinaOptionsFlow(config_entries.OptionsFlow):
+class NinaOptionsFlow(config_entries.OptionsFlowWithReload):
     """Handle options for the N.I.N.A. integration.
 
-    Not `OptionsFlowWithReload`: the entry's update listener already reloads.
+    Each option is read once at setup, so a change reloads the entry.
     """
 
     async def async_step_init(
@@ -133,10 +133,6 @@ class NinaOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        CONF_POLL_INTERVAL,
-                        default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-                    ): _POLL_INTERVAL,
                     vol.Optional(
                         CONF_ROLLOVER_HOUR,
                         default=options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR),

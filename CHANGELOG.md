@@ -16,6 +16,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   supported 2.2.x Advanced API plugin. The design doc's §10 lists the same
   rules as `quality_scale.yaml`, and `CLAUDE.md` and the contributor docs
   match the code they describe.
+- **N.I.N.A. is polled every 10 seconds, and the poll interval is not a
+  setting** (#232), so saving **Configure** cannot reset one. An interval an
+  entry was set up or configured with is dropped when Home Assistant starts.
+  For another cadence, turn off **Enable polling for changes** in the
+  integration entry's system options and call `homeassistant.update_entity`
+  from an automation. An entry added before 2.0 takes its title as its
+  instance name at the same time, so renaming the entry afterwards leaves its
+  devices' names alone, as for an entry added since.
 
 ### Fixed
 

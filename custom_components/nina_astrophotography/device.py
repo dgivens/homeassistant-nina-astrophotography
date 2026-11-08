@@ -20,7 +20,7 @@ from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 from .api.models import DeviceMeta, SwitchChannelModel, VersionInfo
-from .const import CONF_HOST, CONF_PORT, DEFAULT_PORT, DOMAIN
+from .const import CONF_HOST, CONF_PORT, DOMAIN
 
 if TYPE_CHECKING:
     from .coordinator import NinaConfigEntry, NinaData
@@ -215,8 +215,7 @@ def async_sync_devices(
             instance_name,
             data.version,
             configuration_url=(
-                f"http://{entry.data[CONF_HOST]}:"
-                f"{entry.data.get(CONF_PORT, DEFAULT_PORT)}"
+                f"http://{entry.data[CONF_HOST]}:{entry.data[CONF_PORT]}"
             ),
         ),
     )
