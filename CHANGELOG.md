@@ -110,10 +110,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
-- **The observatory card shows the rotator's angle** with a Rotator chip and
-  section, once a rotator reports. The sky angle is always there; the
-  mechanical angle is added when `number.<instance>_rotator_mechanical_position`,
-  which ships disabled, is enabled. A rig without a rotator looks as it did.
+- **The observatory card shows the rotator's sky angle**, and its mechanical
+  angle once `number.<instance>_rotator_mechanical_position` is enabled.
 - **A weather source without a dew point gets one from temperature and
   humidity** (#218). `sensor.<instance>_weather_dew_point` is computed with
   the Magnus formula when the source reports both but its own dew point is

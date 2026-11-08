@@ -64,8 +64,7 @@ class Dump(NamedTuple):
 # a card that assumed the integration's units would mislabel.
 #
 # `rotator_mechanical` is `site_configured` with the rotator's mechanical
-# position enabled, which ships disabled, so a dashboard that enables it is
-# drawn from its captured reading.
+# position enabled.
 #
 # `nina_not_answering` is `site_configured` one missed poll later: every reading
 # still its last, and `reachable` off.

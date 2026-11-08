@@ -380,7 +380,6 @@ class NinaObservatoryCard extends HTMLElement {
     const fwConnected  = available(h, this._eid("select", "filter", "filter_wheel_filter"));
     const gdrStatusId  = this._eid("sensor", "guider_status");
     const gdrConnected = available(h, gdrStatusId);
-    // Optional equipment, like the dome: neither chip nor section without one.
     const rotatorId    = this._eid("number", "rotator_position");
     const rotConnected = available(h, rotatorId);
     // Probed on the shutter status, which every dome has, roll-off roofs
@@ -439,7 +438,7 @@ class NinaObservatoryCard extends HTMLElement {
     const focTemp      = measured(h, this._eid("sensor", "focuser_temperature"));
 
     const rotSky       = numState(h, rotatorId, 1);
-    // Ships disabled, so most rigs have no mechanical reading to show.
+    // Ships disabled.
     const rotMech      = numState(h, this._eid("number", "rotator_mechanical_position"), 1);
 
     // NaN rather than 0 when there is no reading: a missing RMS rendered as

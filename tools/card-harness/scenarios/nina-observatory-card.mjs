@@ -51,11 +51,10 @@ export const scenarios = {
   // say which, where the countdown alone would show nothing.
   ...flipScenarios(),
 
-  // The Rotator section with both angles, once the mechanical one is enabled.
-  // `station` shows the sky angle alone.
+  // Both rotator angles; `station` has the sky angle alone.
   rotator_mechanical: { hass: (dump) => rig(dump, "rotator_mechanical").build() },
 
-  // A rotator that was seen and dropped: no chip and no section.
+  // A rotator seen, then dropped: no chip or section.
   rotator_down: { hass: (dump) => rig(dump, UP).override(ROTATOR, "unavailable").build() },
 
   // Every driver down, N.I.N.A. answering. Must not read as a lost link.
