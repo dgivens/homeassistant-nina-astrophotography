@@ -14,32 +14,33 @@ from ha.registry import get_device
 
 
 @pytest.mark.parametrize(
-    ("options", "chosen", "polled"),
-    [({}, 30, 30), ({CONF_POLL_INTERVAL: 20}, 30, 20), ({}, 120, 120)],
-    ids=["chosen-at-setup", "saved-in-configure", "above-the-form-range"],
+    ("data", "options"),
+    [({CONF_POLL_INTERVAL: 30}, {}), ({}, {CONF_POLL_INTERVAL: 30})],
+    ids=["in-data", "in-options"],
 )
-async def test_an_upgraded_entry_polls_at_the_interval_in_effect(
+async def test_an_upgraded_entry_drops_its_poll_interval_and_polls_every_10_s(
     hass: HomeAssistant,
     config_entry: MockConfigEntry,
     rig,
+    data: dict,
     options: dict,
-    chosen: int,
-    polled: int,
 ) -> None:
-    """1.4.x allowed up to 300 s; an interval above the options form's 60 is
-    carried over rather than clamped.
+    """1.4.x and 2.x up to 2.5 stored an interval in `data`, and Configure in
+    `options`.
     """
     config_entry.add_to_hass(hass)
     hass.config_entries.async_update_entry(
         config_entry,
-        data={**config_entry.data, CONF_POLL_INTERVAL: chosen},
+        data={**config_entry.data, **data},
         options=options,
     )
     assert await hass.config_entries.async_setup(config_entry.entry_id)
+    assert CONF_POLL_INTERVAL not in config_entry.data
+    assert CONF_POLL_INTERVAL not in config_entry.options
     # No entity exposes the poll cadence, so the coordinator is the only
     # surface that shows it.
     coordinator = config_entry.runtime_data.coordinator
-    assert coordinator.update_interval == timedelta(seconds=polled)
+    assert coordinator.update_interval == timedelta(seconds=10)
 
 
 async def test_a_pre_2_0_entry_names_the_instance_from_its_title(

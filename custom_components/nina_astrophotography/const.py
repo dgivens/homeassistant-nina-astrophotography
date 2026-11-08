@@ -1,5 +1,6 @@
 """Constants for the N.I.N.A. Astrophotography integration."""
 
+from datetime import timedelta
 from enum import IntEnum
 
 
@@ -22,13 +23,17 @@ DOMAIN = "nina_astrophotography"
 CONF_HOST = "host"
 CONF_PORT = "port"
 CONF_INSTANCE_NAME = "instance_name"
+# Not a setting: the key earlier minor versions stored, which migration drops.
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_ROLLOVER_HOUR = "rollover_hour"
 CONF_OUTAGE_GRACE = "outage_grace"
 
 DEFAULT_PORT = 1888
 DEFAULT_INSTANCE_NAME = "N.I.N.A."
-DEFAULT_POLL_INTERVAL = 10  # seconds
+# Fixed, per the `appropriate-polling` rule: the event socket carries most
+# changes, and this is the backstop. A user who wants another cadence disables
+# polling and calls `homeassistant.update_entity`.
+POLL_INTERVAL = timedelta(seconds=10)
 # The session boundary, in the rig clock's hours. A rig whose clock runs UTC
 # needs it moved, or it falls inside a western site's dawn flats.
 DEFAULT_ROLLOVER_HOUR = 12

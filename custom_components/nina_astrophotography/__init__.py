@@ -47,9 +47,9 @@ from .const import (
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
     DEFAULT_OUTAGE_GRACE,
-    DEFAULT_POLL_INTERVAL,
     DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
+    POLL_INTERVAL,
     SERVICE_CAMERA_ABORT_CAPTURE,
     SERVICE_CAMERA_CAPTURE,
     SERVICE_CAMERA_COOL,
@@ -129,7 +129,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     host = entry.data[CONF_HOST]
     port = entry.data[CONF_PORT]
     instance_name = entry.data[CONF_INSTANCE_NAME]
-    poll_interval = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
     rollover_hour = entry.options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR)
     outage_grace = entry.options.get(CONF_OUTAGE_GRACE, DEFAULT_OUTAGE_GRACE)
 
@@ -153,7 +152,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         hass,
         client,
         config_entry=entry,
-        update_interval=timedelta(seconds=poll_interval),
+        update_interval=POLL_INTERVAL,
         version=version,
         rollover_hour=rollover_hour,
         outage_grace=timedelta(seconds=outage_grace),
@@ -246,16 +245,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
 async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool:
     """Bring an entry from an earlier minor version up to the current one.
 
-    Minor 2 keeps `data` to the connection and the instance name. The poll
-    interval moves to `options`, where an interval already saved through the
-    options flow wins, since that is the one in effect. An entry from before
-    2.0 has no instance name, and its title stands in.
+    Minor 2 drops the poll interval, which is fixed, from `data` and
+    `options` alike. An entry from before 2.0 has no instance name, and its
+    title stands in.
     """
     if entry.version == 1 and entry.minor_version < 2:
-        data = dict(entry.data)
-        options = dict(entry.options)
-        if CONF_POLL_INTERVAL in data:
-            options.setdefault(CONF_POLL_INTERVAL, data.pop(CONF_POLL_INTERVAL))
+        data = {k: v for k, v in entry.data.items() if k != CONF_POLL_INTERVAL}
+        options = {k: v for k, v in entry.options.items() if k != CONF_POLL_INTERVAL}
         data.setdefault(CONF_INSTANCE_NAME, entry.title)
         hass.config_entries.async_update_entry(
             entry, data=data, options=options, minor_version=2

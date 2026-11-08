@@ -4,7 +4,6 @@
 # which ones a step returns depends on its type — which each test asserts first.
 # pyright: reportTypedDictNotRequiredAccess=false
 
-from datetime import timedelta
 from unittest.mock import patch
 
 from homeassistant.config_entries import ConfigFlowResult
@@ -159,29 +158,17 @@ async def _set_option(
     return result
 
 
-async def test_the_options_flow_changes_the_poll_interval(
+async def test_the_options_form_offers_no_poll_interval(
     hass: HomeAssistant, loaded_entry: MockConfigEntry
 ) -> None:
-    result = await _set_option(hass, loaded_entry, **{CONF_POLL_INTERVAL: 30})
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    # Coordinator-level by necessity: nothing in §5 exposes the poll cadence as
-    # an entity, so there is no public surface to assert this through.
-    coordinator = loaded_entry.runtime_data.coordinator
-    assert coordinator.update_interval == timedelta(seconds=30)
-
-
-async def test_saving_configure_keeps_the_poll_interval_chosen_at_setup(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig
-) -> None:
-    """An entry from before the interval moved to options carries it in data."""
-    config_entry.add_to_hass(hass)
-    hass.config_entries.async_update_entry(
-        config_entry, data={**config_entry.data, CONF_POLL_INTERVAL: 30}
-    )
-    assert await hass.config_entries.async_setup(config_entry.entry_id)
-    await _set_option(hass, config_entry, **{CONF_ROLLOVER_HOUR: 3})
-    coordinator = config_entry.runtime_data.coordinator
-    assert coordinator.update_interval == timedelta(seconds=30)
+    """The interval is fixed (`appropriate-polling`); a user wanting another
+    disables polling and calls `homeassistant.update_entity`.
+    """
+    result = await hass.config_entries.options.async_init(loaded_entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    schema = result["data_schema"]
+    assert schema is not None
+    assert CONF_POLL_INTERVAL not in schema.schema
 
 
 async def test_the_options_flow_moves_the_session_rollover_hour(

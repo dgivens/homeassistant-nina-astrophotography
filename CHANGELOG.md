@@ -6,6 +6,17 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ## [Unreleased]
 
+### Changed
+
+- **N.I.N.A. is polled every 10 seconds, and the poll interval is not a
+  setting** (#232), so saving **Configure** cannot reset one. An interval an
+  entry was set up or configured with is dropped when Home Assistant starts.
+  For another cadence, turn off **Enable polling for changes** in the
+  integration entry's system options and call `homeassistant.update_entity`
+  from an automation. An entry added before 2.0 takes its title as its
+  instance name at the same time, so renaming the entry afterwards leaves its
+  devices' names alone, as for an entry added since.
+
 ### Fixed
 
 - **The entity reference matches the integration** (#240): a dome adds up to
@@ -31,13 +42,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Home Assistant shows the integration's icon** on the integrations page,
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
-- **Saving Configure keeps the poll interval chosen when the rig was added**
-  (#232). The poll interval is set in **Configure** alone: the add form asks
-  for the connection and the instance name, and an existing entry's interval
-  carries over into its options when Home Assistant starts. An interval
-  already saved through Configure takes precedence. An entry added before 2.0
-  takes its title as its instance name at the same time, so renaming the entry
-  afterwards leaves its devices' names alone, as for an entry added since.
 
 ---
 

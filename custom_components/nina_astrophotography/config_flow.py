@@ -20,20 +20,16 @@ from .const import (
     CONF_HOST,
     CONF_INSTANCE_NAME,
     CONF_OUTAGE_GRACE,
-    CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
     DEFAULT_INSTANCE_NAME,
     DEFAULT_OUTAGE_GRACE,
-    DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
     DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-_POLL_INTERVAL = vol.All(int, vol.Range(min=5, max=60))
 
 STEP_USER_SCHEMA = vol.Schema(
     {
@@ -51,7 +47,8 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for N.I.N.A. Astrophotography."""
 
     VERSION = 1
-    # 2: the poll interval lives in options alone; `async_migrate_entry` moves it.
+    # 2: no poll interval, and an instance name on every entry; see
+    # `async_migrate_entry`.
     MINOR_VERSION = 2
 
     async def async_step_user(
@@ -136,10 +133,6 @@ class NinaOptionsFlow(config_entries.OptionsFlowWithReload):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(
-                        CONF_POLL_INTERVAL,
-                        default=options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
-                    ): _POLL_INTERVAL,
                     vol.Optional(
                         CONF_ROLLOVER_HOUR,
                         default=options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR),
