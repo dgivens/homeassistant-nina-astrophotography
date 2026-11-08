@@ -4,6 +4,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **`sensor.<instance>_focuser_autofocus_duration` is documented as the
+  whole run's duration** (#234). N.I.N.A. and Hocus Focus both time a run
+  from its start, so a retried run's duration includes its failed attempts,
+  while the curve and focus position in the report are the last attempt's.
+
 ## [2.5.0] - 2026-11-08
 
 ### Added

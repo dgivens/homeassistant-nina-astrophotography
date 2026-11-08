@@ -340,7 +340,8 @@ Things to know when reading them:
   `autofocus_failed` can turn `on` for a failed attempt and back `off` when
   the retry succeeds. Hocus Focus writes one for the whole run, and Hocus
   Focus 4 retries once more, centred on the computed position, after an
-  attempt whose focus falls outside its sweep. `autofocus_duration` counts
+  attempt whose focus falls outside its sweep or whose final HFR fails its
+  HFR improvement threshold. `autofocus_duration` counts
   from the start of the run, earlier attempts included, and
   `autofocus_starting_position` is where the focuser stood before the first.
 - On a `CONTRASTDETECTION` run the HFR sensors read `unknown`, because that

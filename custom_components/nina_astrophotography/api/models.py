@@ -518,7 +518,7 @@ class AutoFocusReport:
     initial_hfr: float | None
     """The HFR measured at `initial_position`."""
     duration_seconds: float | None
-    """The attempt's duration; retries cost more."""
+    """Time since the run started, earlier attempts included."""
     r_squared: float | None
     """The worst R² among the judged curves, which is what a threshold
     judges. `None` if none of them reports one.
