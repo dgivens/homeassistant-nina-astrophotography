@@ -242,6 +242,17 @@ async def test_the_last_autofocus_run_is_published_reading_by_reading(
     assert float(state_of(hass, entity_id).state) == pytest.approx(expected)
 
 
+@pytest.mark.synthetic
+async def test_a_focus_point_between_steps_is_published_where_the_focuser_went(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """2341.5 rounds half to even, as the autofocuser rounds it to move."""
+    await set_up_at(hass, config_entry, rig, "autofocus_focus_point_between_steps")
+    assert (
+        float(state_of(hass, "sensor.n_i_n_a_focuser_autofocus_position").state) == 2342
+    )
+
+
 async def test_the_last_autofocus_time_is_published_in_utc(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:

@@ -245,12 +245,12 @@ def _degraded_autofocus(name: str, *, r_squared: float) -> dict:
     }
 
 
-def _focused_at(envelope: dict, position: int) -> dict:
+def _focused_at(envelope: dict, position: float) -> dict:
     """An autofocus report with only its fitted focus point moved.
 
-    No capture holds a run whose fit landed outside its sweep, so the
-    position is derived; the fits and minima still place focus where the
-    capture did.
+    No capture holds a run whose fit landed outside its sweep, or between two
+    steps, so the position is derived; the fits and minima still place focus
+    where the capture did.
     """
     response = envelope["Response"]
     return {
@@ -261,6 +261,20 @@ def _focused_at(envelope: dict, position: int) -> dict:
                 **response["CalculatedFocusPoint"],
                 "Position": position,
             },
+        },
+    }
+
+
+def _unscored(envelope: dict) -> dict:
+    """An autofocus report whose every curve reads `"NaN"` for its R², the
+    way the wire sends a fit that reported none. Synthetic in `RSquares`.
+    """
+    response = envelope["Response"]
+    return {
+        **envelope,
+        "Response": {
+            **response,
+            "RSquares": dict.fromkeys(response["RSquares"], "NaN"),
         },
     }
 
@@ -623,19 +637,27 @@ STATES: dict[str, State] = {
         "FocuserSettings",
         RSquaredThreshold=0,
     ),
-    # Runs whose fit put focus one step past the sweep's last position, 2492,
-    # or on it. Synthetic in the focus point, and in the R² or the threshold
-    # where the name says so.
+    # Runs whose fit put focus one step past the sweep's last position, 2492.
+    # Synthetic in the focus point, and in the R² or the threshold where the
+    # name says so.
     "autofocus_focus_outside_the_sweep": {
         **_IMAGING_GUIDING,
         "/equipment/focuser/last-af": _focused_at(
             load_envelope("imaging_guiding_last_af.json"), 2527
         ),
     },
-    "autofocus_focus_on_the_sweeps_last_position": {
+    "autofocus_outside_the_sweep_with_no_r_squared": {
         **_IMAGING_GUIDING,
         "/equipment/focuser/last-af": _focused_at(
-            load_envelope("imaging_guiding_last_af.json"), 2492
+            _unscored(load_envelope("imaging_guiding_last_af.json")), 2527
+        ),
+    },
+    # A fit that put focus between two steps, unrounded, as Hocus Focus writes
+    # a hyperbola's minimum. Synthetic in the focus point.
+    "autofocus_focus_point_between_steps": {
+        **_IMAGING_GUIDING,
+        "/equipment/focuser/last-af": _focused_at(
+            load_envelope("imaging_guiding_last_af.json"), 2341.5
         ),
     },
     "autofocus_rejected_on_r_squared_outside_the_sweep": {

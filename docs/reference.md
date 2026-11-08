@@ -334,9 +334,15 @@ Things to know when reading them:
   previous run. The failed sensor catches this too.
 - **The report survives restarts.** It may be days old; check
   `last_autofocus`.
-- **Each report covers one attempt.** N.I.N.A. retries a rejected run and only
-  the last attempt is reported, so `autofocus_duration` understates the time a
-  bad run cost.
+- **A report charts one attempt's sweep.** A failed attempt is retried, and
+  the curve, R² and focus position in the report are the last attempt's.
+  N.I.N.A. writes a report for every attempt, so with its own autofocus
+  `autofocus_failed` can turn `on` for a failed attempt and back `off` when
+  the retry succeeds. Hocus Focus writes one for the whole run, and Hocus
+  Focus 4 retries once more, centred on the computed position, after an
+  attempt whose focus falls outside its sweep. `autofocus_duration` counts
+  from the start of the run, earlier attempts included, and
+  `autofocus_starting_position` is where the focuser stood before the first.
 - On a `CONTRASTDETECTION` run the HFR sensors read `unknown`, because that
   method measures contrast rather than star size. So does `autofocus_r2`: N.I.N.A.
   applies no R² threshold to a contrast run, so `autofocus_failed` never rejects

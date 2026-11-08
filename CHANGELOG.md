@@ -40,8 +40,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `reason: out_of_range`. The sweep's first and last positions are inside
   it, and Hocus Focus checks only `STARHFR` runs. A run failing the R² check
   too reads `rejected`. The autofocus card says to start the run nearer
-  focus or widen the sweep. `sensor.<instance>_focuser_autofocus_position`
-  rounds a fractional focus point as the autofocuser does, half to even.
+  focus or widen the sweep.
+- **`sensor.<instance>_focuser_autofocus_position` reads the step the
+  focuser moved to** (#215). Hocus Focus writes a hyperbolic fit's focus
+  point unrounded, and the sensor rounds it half to even, as Hocus Focus
+  does before moving there: 2341.5 reads 2342, not 2341. A fit's minima in
+  the `minima` attribute of `sensor.<instance>_focuser_last_autofocus` are
+  rounded the same way.
 - **The frame statistics card's mean ADU chart shows a background climb on a
   camera that does not scale to 16 bits** (#174). The chart's 10 ADU minimum
   span is scaled to the camera's full scale, read from the frames' max ADU,

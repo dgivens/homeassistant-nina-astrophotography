@@ -837,7 +837,7 @@ def _fit_minima(wire: dict) -> tuple[FitMinimum, ...]:
         return ()
     found = []
     for name, point in intersections.items():
-        position = _integer(point, "Position")
+        position = _rounded(point, "Position")
         if position is not None:
             found.append(
                 FitMinimum(
@@ -857,9 +857,10 @@ def map_last_autofocus(wire: dict) -> AutoFocusReport | None:
     CONTRASTDETECTION run's focus points are a contrast score, not pixels, so
     the HFR fields are dropped; positions stay.
 
-    `CalculatedFocusPoint.Position` is rounded: Hocus Focus reports a
-    hyperbola's minimum unrounded, then moves to and judges `Math.Round` of it.
-    N.I.N.A.'s own fittings round it before writing.
+    Fitted positions, `CalculatedFocusPoint`'s and the `Intersections`', are
+    rounded: Hocus Focus reports a hyperbola's minimum unrounded, then moves
+    to and judges `Math.Round` of it. N.I.N.A.'s own fittings round them
+    before writing.
     """
     if not wire:
         return None

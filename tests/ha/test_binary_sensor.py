@@ -345,6 +345,13 @@ async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judge
         # older than the session. Believing it would raise a problem every
         # time Home Assistant started.
         (None, "autofocus_rejected_on_r_squared", "off", {}),
+        pytest.param(
+            None,
+            "autofocus_focus_outside_the_sweep",
+            "off",
+            {},
+            marks=pytest.mark.synthetic,
+        ),
         # The trend line's 0.0 is not what a hyperbolic run is judged on.
         pytest.param(
             "inside_the_guiding_session",
@@ -363,7 +370,7 @@ async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judge
             marks=pytest.mark.synthetic,
         ),
         # Focus outside the positions the sweep measured is rejected whatever
-        # the fit scored, and with the R² check off too.
+        # the fit scored, with the R² check off, and with no R² at all.
         pytest.param(
             "inside_the_guiding_session",
             "autofocus_focus_outside_the_sweep",
@@ -380,9 +387,9 @@ async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judge
         ),
         pytest.param(
             "inside_the_guiding_session",
-            "autofocus_focus_on_the_sweeps_last_position",
-            "off",
-            {"reason": None},
+            "autofocus_outside_the_sweep_with_no_r_squared",
+            "on",
+            {"reason": "out_of_range"},
             marks=pytest.mark.synthetic,
         ),
         # The R² check runs first, so it names a run failing both.
@@ -398,11 +405,12 @@ async def test_a_rejected_run_raises_the_problem_and_publishes_what_it_was_judge
         "fitted well",
         "unanswered start",
         "report older than the session",
+        "out-of-range report older than the session",
         "unused curve fitted badly",
         "R² check off",
         "focus outside the sweep",
         "outside the sweep with the R² check off",
-        "focus on the sweep's last position",
+        "outside the sweep with no R²",
         "fitted badly and outside the sweep",
     ],
 )
