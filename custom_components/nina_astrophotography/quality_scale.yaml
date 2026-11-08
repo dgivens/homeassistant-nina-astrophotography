@@ -14,10 +14,7 @@ rules:
   appropriate-polling:
     status: done
     comment: >-
-      The poll interval is a user option, 5 to 60 s, by choice. The event
-      socket carries most state and the poll is a backstop, whose cost depends
-      on the imaging PC and the link to it, which only the user knows. 1.x
-      offered a user-set interval too.
+      The interval is fixed at 10 s, a backstop to the push socket.
   brands:
     status: done
     comment: >-
