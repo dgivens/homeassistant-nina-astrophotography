@@ -222,20 +222,34 @@ async def two_rigs(hass, monkeypatch) -> TwoRigs:
 @pytest.fixture
 def push(config_entry):
     """Deliver one socket payload — the `Response` of a captured push — to the
-    loaded entry, as the live receive loop would.
+    loaded entry, or to `entry` when given, as the live receive loop would.
 
-    `_dispatch` is the one private call test code makes: the socket itself is
-    silenced, and driving the stream from outside is the only way to exercise
-    the push path. Everything above it is public.
+    This and `socket_state` hold the only private calls the Home Assistant
+    suite makes — `_dispatch` and `_set_connected` — so no test file makes one.
+    `_serve` silences the real socket, which leaves these as the only seams for
+    driving the stream; everything above them is public.
 
     The runtime is read per call, not captured, so a test may set the entry up
     itself rather than through `loaded_entry`.
     """
 
-    def _push(payload: dict) -> None:
-        config_entry.runtime_data.events._dispatch(payload)  # noqa: SLF001
+    def _push(payload: dict, entry: MockConfigEntry | None = None) -> None:
+        target = entry or config_entry
+        target.runtime_data.events._dispatch(payload)  # noqa: SLF001
 
     return _push
+
+
+@pytest.fixture
+def socket_state():
+    """Bring a loaded entry's event socket up or down, as the live receive
+    loop would on connecting or dropping. See `push` for why this is private.
+    """
+
+    def _set(entry: MockConfigEntry, connected: bool) -> None:
+        entry.runtime_data.events._set_connected(connected)  # noqa: SLF001
+
+    return _set
 
 
 @pytest.fixture
