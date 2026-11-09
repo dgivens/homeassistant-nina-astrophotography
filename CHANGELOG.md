@@ -4,7 +4,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
-## [Unreleased]
+## [2.5.1] - 2026-11-08
 
 ### Added
 
@@ -79,14 +79,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **Home Assistant shows the integration's icon** on the integrations page,
   the add-integration dialog and the device pages (#230). The icon and logo
   ship in the integration's own `brand/` directory, which HACS validates.
-- **The cards load after an upgrade.** Their files are served with
+- **The cards load after an upgrade** (#253). Their files are served with
   `Cache-Control: no-cache`, so the browser checks each one for changes
   rather than running a new card with an old cached module, which shows as
   "Custom element doesn't exist".
-- **A card removed in an upgrade takes its dashboard resource with it.** The
-  integration deletes the resource at startup, so dashboards don't request a
-  file that is gone. With YAML-managed resources, a warning names the ones to
-  remove.
+- **A card removed in an upgrade takes its dashboard resource with it** (#253).
+  The integration deletes the resource at startup, so dashboards don't request
+  a file that is gone. With YAML-managed resources, a warning names the ones
+  to remove.
 - **The action editor shows each action's whole text** (#247): the ramp
   time's profile default, the sequence name's lack of an extension, and the
   rest of what `services.yaml` documents. A unit test holds the translations
