@@ -79,7 +79,7 @@
       'unique_id': '01JTESTENTRY0000000000000_rotator_is_moving',
     }),
     dict({
-      'enabled_default': False,
+      'enabled_default': True,
       'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
       'entity_id': 'binary_sensor.n_i_n_a_rotator_synced',
       'original_name': 'Synced',

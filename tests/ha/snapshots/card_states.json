@@ -155,6 +155,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -704,6 +710,12 @@
     "attributes": {
      "device_class": "connectivity",
      "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
     },
     "state": "on"
    },
@@ -2792,6 +2804,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -3358,6 +3376,12 @@
      "friendly_name": "N.I.N.A. Reachable"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
+    },
+    "state": "on"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -4554,6 +4578,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -5115,6 +5145,12 @@
      "friendly_name": "N.I.N.A. Reachable"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
+    },
+    "state": "unavailable"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -5893,6 +5929,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -6463,6 +6505,12 @@
     "attributes": {
      "device_class": "connectivity",
      "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
     },
     "state": "on"
    },
@@ -7712,6 +7760,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -8413,6 +8467,12 @@
      "friendly_name": "N.I.N.A. Reachable"
     },
     "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
+    },
+    "state": "off"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -9398,6 +9458,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -10099,6 +10165,12 @@
      "friendly_name": "N.I.N.A. Reachable"
     },
     "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
+    },
+    "state": "off"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -11084,6 +11156,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -11780,6 +11858,12 @@
      "friendly_name": "N.I.N.A. Reachable"
     },
     "state": "off"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
+    },
+    "state": "unavailable"
    },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "attributes": {
@@ -12708,6 +12792,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -13272,6 +13362,12 @@
     "attributes": {
      "device_class": "connectivity",
      "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
     },
     "state": "on"
    },
@@ -14470,6 +14566,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "reachable"
    },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
    "binary_sensor.n_i_n_a_safety_monitor_connected": {
     "device_id": "safety_monitor",
     "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
@@ -15034,6 +15136,12 @@
     "attributes": {
      "device_class": "connectivity",
      "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
     },
     "state": "on"
    },
