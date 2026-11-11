@@ -248,7 +248,6 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         key="rotator_synced",
         translation_key="rotator_synced",
         entity_category=EntityCategory.DIAGNOSTIC,
-        entity_registry_enabled_default=False,
         kind="rotator",
         # The sky position angle means nothing until the rotator is synced.
         value=read_field("rotator", "synced"),

@@ -108,12 +108,11 @@ These are disabled by default; enable them from the entity's settings page:
   `number.<instance>_focuser_position` with a state class, for charting
   position against temperature
 - `focuser_step_size`
-- the moving sensors of the focuser, filter wheel and rotator, and
-  `rotator_synced`
+- the moving sensors of the focuser, filter wheel and rotator
 - the configuration controls `number.<instance>_camera_usb_limit`,
   `number.<instance>_rotator_mechanical_position` and
-  `switch.<instance>_rotator_reverse`; the mechanical position also adds the
-  mechanical angle to the observatory card
+  `switch.<instance>_rotator_reverse`; the mechanical position adds a line to
+  the observatory card
 - the dome's `binary_sensor.<instance>_dome_at_home`,
   `button.<instance>_dome_home` and `number.<instance>_dome_azimuth`:
   N.I.N.A. slaves the dome to the mount, and moving it by hand fights that

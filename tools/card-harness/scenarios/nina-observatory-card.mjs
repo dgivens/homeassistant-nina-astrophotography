@@ -22,6 +22,7 @@ const PARK = "binary_sensor.n_i_n_a_mount_at_park";
 const SHUTTER = "sensor.n_i_n_a_dome_shutter_status";
 const UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 const ROTATOR = "number.n_i_n_a_rotator_position";
+const SYNCED = "binary_sensor.n_i_n_a_rotator_synced";
 
 // No `draw` hook: the card has no canvas.
 
@@ -53,6 +54,9 @@ export const scenarios = {
 
   // Both rotator angles; `station` has the sky angle alone.
   rotator_mechanical: { hass: (dump) => rig(dump, "rotator_mechanical").build() },
+
+  // Unsynced: the sky angle reads —.
+  rotator_unsynced: { hass: (dump) => rig(dump, UP).override(SYNCED, "off").build() },
 
   // A rotator seen, then dropped: no chip or section.
   rotator_down: { hass: (dump) => rig(dump, UP).override(ROTATOR, "unavailable").build() },

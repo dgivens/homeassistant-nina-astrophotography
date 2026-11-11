@@ -215,8 +215,10 @@ With a dome, the observatory card adds a Dome chip and Open or Close Dome:
 
 <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/observatory-dome.png" alt="Observatory card with a dome: a Dome chip, and Close Dome among the controls" width="260">
 
-With a rotator, it adds a Rotator chip and the sky angle. Enable
-`number.<instance>_rotator_mechanical_position` to add the mechanical angle.
+With a rotator, it adds a Rotator chip and the sky angle, shown once a plate
+solve syncs the rotator. Enable `number.<instance>_rotator_mechanical_position`
+to add the mechanical angle. On an upgraded install, also enable
+`binary_sensor.<instance>_rotator_synced`.
 
 Every card also accepts:
 

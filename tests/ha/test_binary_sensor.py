@@ -237,16 +237,17 @@ async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
 
 
 @pytest.mark.parametrize(
-    "suffix",
+    ("suffix", "disabled"),
     [
-        "focuser_is_moving",
-        "filterwheel_is_moving",
-        "rotator_is_moving",
-        "rotator_synced",
+        ("focuser_is_moving", True),
+        ("filterwheel_is_moving", True),
+        ("rotator_is_moving", True),
+        # The observatory card reads it.
+        ("rotator_synced", False),
     ],
 )
-async def test_the_long_tail_ships_diagnostic_and_disabled(
-    loaded_entry: MockConfigEntry, entity_registry, suffix: str
+async def test_the_long_tail_ships_diagnostic(
+    loaded_entry: MockConfigEntry, entity_registry, suffix: str, disabled: bool
 ) -> None:
     """Gold entity-category / entity-disabled-by-default. The dome's are in
     `test_dome.py`: the reference rig has none.
@@ -256,7 +257,7 @@ async def test_the_long_tail_ships_diagnostic_and_disabled(
     )
     assert (row.entity_category, row.disabled_by is not None) == (
         EntityCategory.DIAGNOSTIC,
-        True,
+        disabled,
     )
 
 

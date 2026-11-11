@@ -437,7 +437,9 @@ class NinaObservatoryCard extends HTMLElement {
     const focPos       = shown(state(h, this._eid("number", "focuser_position")));
     const focTemp      = measured(h, this._eid("sensor", "focuser_temperature"));
 
-    const rotSky       = numState(h, rotatorId, 1);
+    // Unsynced, N.I.N.A. reports the mechanical angle as the sky angle.
+    const rotSky       = isOn(h, this._eid("binary_sensor", "rotator_synced"))
+      ? numState(h, rotatorId, 1) : "—";
     // Ships disabled.
     const rotMech      = numState(h, this._eid("number", "rotator_mechanical_position"), 1);
 

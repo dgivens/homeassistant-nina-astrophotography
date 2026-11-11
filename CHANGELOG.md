@@ -4,6 +4,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **The observatory card shows the rotator's sky angle** (#239) once a plate
+  solve syncs the rotator, and its mechanical angle once
+  `number.<instance>_rotator_mechanical_position` is enabled.
+
+### Changed
+
+- **`binary_sensor.<instance>_rotator_synced` ships enabled** (#239). On an
+  upgraded install, enable it.
+
 ## [2.5.1] - 2026-11-08
 
 ### Added
@@ -45,11 +58,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   this integration: one of its devices or entities, or an area, floor or
   label holding one. A `device_id` sent under `data` binds the same as one
   under `target`, and an untargeted call reaches the only configured rig.
-
-### Added
-
-- **The observatory card shows the rotator's sky angle**, and its mechanical
-  angle once `number.<instance>_rotator_mechanical_position` is enabled.
 
 ### Fixed
 
