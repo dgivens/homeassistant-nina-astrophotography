@@ -360,6 +360,13 @@
     }),
     dict({
       'enabled_default': True,
+      'entity_category': None,
+      'entity_id': 'sensor.n_i_n_a_camera_exposure_end',
+      'original_name': 'Exposure end',
+      'unique_id': '01JTESTENTRY0000000000000_camera_exposure_end',
+    }),
+    dict({
+      'enabled_default': True,
       'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
       'entity_id': 'sensor.n_i_n_a_camera_gain',
       'original_name': 'Gain',

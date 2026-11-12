@@ -34,6 +34,7 @@ number.n_i_n_a_rotator_position
 select.n_i_n_a_filter_wheel_filter
 select.n_i_n_a_mount_tracking_rate
 sensor.n_i_n_a_camera_cooler_power
+sensor.n_i_n_a_camera_exposure_end
 sensor.n_i_n_a_camera_gain
 sensor.n_i_n_a_camera_offset
 sensor.n_i_n_a_camera_state
