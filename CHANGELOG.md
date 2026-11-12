@@ -9,25 +9,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Added
 
 - **`custom:nina-site-camera-card`** shows a pier, all-sky or observatory
-  camera in the same frame as the other cards (#264). It takes any camera or image
-  entities in Home Assistant, whatever integration provides them:
-
-  ```yaml
-  type: custom:nina-site-camera-card
-  title: Starfront
-  cameras:
-    - entity: camera.pier
-      name: Pier
-      url: https://example.com/pier
-    - entity: camera.building
-  ```
-
-  With two or more cameras, chips under the picture choose between them. A
-  camera's picture refreshes every `refresh_interval` seconds (default 10); an
-  image entity's when it changes. Tap the picture for the entity's more-info
-  dialog, where a camera's live stream plays; a camera's `url` shows as an
-  **Open** link over its picture. The card collapses from its header like the
-  others, and asks for no picture while collapsed.
+  camera in the same frame as the other cards (#264), from any camera or image
+  entities. Two or more get chips to choose between them, a tap opens the
+  entity's more-info dialog, and a camera's `url` shows as an **Open** link.
 
 ### Changed
 
