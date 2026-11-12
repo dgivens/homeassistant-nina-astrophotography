@@ -723,7 +723,12 @@
    },
    "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Sequence waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
@@ -2442,7 +2447,12 @@
    },
    "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Sequence waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
@@ -3375,7 +3385,12 @@
    },
    "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Sequence waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
@@ -6651,7 +6666,12 @@
    },
    "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Sequence waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
@@ -8337,7 +8357,12 @@
    },
    "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Sequence waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
@@ -11512,7 +11537,12 @@
    },
    "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Sequence waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
@@ -13274,7 +13304,12 @@
    },
    "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Sequence waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
