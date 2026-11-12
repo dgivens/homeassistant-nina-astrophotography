@@ -87,7 +87,7 @@ the readings your source actually provides.
 | Safety Monitor | unsafe, connected (`binary_sensor`) |
 | Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing, synchronized (`binary_sensor`); open, close, park, home (`button`) |
 | Switch | one entity per channel the driver reports: a read-only channel is a `sensor`, an on/off channel a `switch`, a range a `number` |
-| Hub | weather source, site latitude and longitude; session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); reachable, sequencer running, imaging, scheduler waiting (`binary_sensor`); wait ends at, last frame at; sequence start/stop (`button`); livestack (`switch`) |
+| Hub | weather source, site latitude and longitude; session image count, integration time, average/best/worst HFR, average stars, session start; last image HFR, star count, mean ADU, exposure, RMS, target, filter; sequence target and progress; flats state and iterations; last frame and livestack (`image`); errors (`event`); reachable, sequencer running, imaging, sequence waiting (`binary_sensor`); wait ends at, last frame at; sequence start/stop (`button`); livestack (`switch`) |
 
 The switch device's channels are named by its driver, so their entity ids are
 `<domain>.<instance>_switch_<channel name>`: a channel called `OTA` is
@@ -156,14 +156,35 @@ Use *sequencer running* to tell a working night from a stopped one, and
 
 Two more entities explain why frames might not be arriving:
 
-- `binary_sensor.<instance>_scheduler_waiting` is `on` while Target Scheduler
-  is waiting, and `sensor.<instance>_wait_ends_at` says until when. The wait
-  doesn't say why: darkness, moon separation, target altitude and a meridian
-  window all look the same.
+- `binary_sensor.<instance>_sequence_waiting` is `on` while Target Scheduler
+  waits for a target's start window, or while the sequence runs one of its own
+  wait instructions: Wait for Time, Wait for Time Span, or a wait for the
+  target, sun or moon to reach an altitude. `sensor.<instance>_wait_ends_at`
+  says until when, for a scheduler wait or a Wait for Time; the others name no
+  end. The wait doesn't say why: darkness, moon separation, target altitude and
+  a meridian window all look the same. An install from 2.5.1 or earlier keeps
+  the id `binary_sensor.<instance>_scheduler_waiting`.
 
-  A wait for safe conditions is *not* a scheduler wait. It is a loop inside the
-  N.I.N.A. sequence, so `scheduler_waiting` stays `off`. Watch
-  `safety_monitor_unsafe` for that.
+  It reads whether a wait was running when the sequence was last read, which
+  is every 30 seconds while imaging and every 5 minutes otherwise. A wait of a
+  few seconds shows on some reads and not others, so its history is a sample,
+  not a record of every wait. Its attributes describe the wait:
+
+  | Attribute | Meaning |
+  |---|---|
+  | `kind` | `scheduler`, `time`, `time_span` or `altitude` |
+  | `started_at` | when a read first showed it, up to one read after it began |
+  | `ends_at` | its end, for a scheduler wait or a Wait for Time |
+  | `span_seconds` | a Wait for Time Span's length |
+  | `recent_waits` | the last ten that ended, newest first, each with `kind`, `started_at`, `ended_at` and `span_seconds`; not recorded, and empty after a restart |
+
+  A wait still showing as running after it must have ended is over: a Wait for
+  Time at its end, an altitude wait after twelve hours. A span still showing
+  past its length plus five minutes is taken as the next pass of a loop.
+
+  A wait for safe conditions is a loop that repeats until the monitor reads
+  safe. If the loop holds a Wait for Time Span, this blinks `on` while the span
+  runs. Watch `safety_monitor_unsafe` for that.
 - `sensor.<instance>_last_frame_at` is when the newest frame of any type was
   saved, flats included. It is `unknown` after every N.I.N.A. restart until the
   first frame, because N.I.N.A.'s image history is cleared on restart. It is
@@ -209,8 +230,10 @@ Pick the rig's *Reachable* sensor for *rig reachable*, in this blueprint and in
 blueprints keep loading, but without it a lost rig is reported one outage grace
 period later.
 
-The quiet case doesn't fire while the sequencer is stopped, while the scheduler
-is waiting, for 15 minutes after a wait ends, or in daylight. Its timers start
+The quiet case doesn't fire while the sequencer is stopped, while the sequence
+is waiting, for 15 minutes after a wait ends, or in daylight. A Wait for Time
+Span shorter than the quiet period counts as neither: it paces a retry loop,
+which is how a stall often looks. Its timers start
 at the latest of the sequencer starting, conditions turning safe, the sun
 setting and the quiet hours ending. So neither the last frame of the previous
 night nor an hour spent waiting for dark triggers an alert the moment the rig
@@ -254,7 +277,8 @@ Limitations:
 
 - If Home Assistant restarts while an alert is open, the notification and the
   follow-up "cleared" message are both lost.
-- The quiet case is also muted for `settle_minutes` after a restart.
+- After a restart the quiet case waits the full quiet period (20 minutes by
+  default) before it can fire, because its timers restart with Home Assistant.
 - A rig taking bad frames is not stalled; this blueprint won't notice it.
   Guiding problems are covered by `guiding_alert.yaml`. A lost guide star that
   stops frames will show up here as a stall, with the guider state in the

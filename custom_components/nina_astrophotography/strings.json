@@ -95,7 +95,7 @@
         "name": "Unsafe"
       },
       "scheduler_waiting": {
-        "name": "Scheduler waiting"
+        "name": "Sequence waiting"
       },
       "sequencer_running": {
         "name": "Sequencer running"

@@ -198,15 +198,35 @@ def test_the_blueprint_reads_the_attribute_by_that_name() -> None:
     assert "flip_fires_at_minutes" in blueprint.read_text(encoding="utf-8")
 
 
+@pytest.mark.parametrize(
+    ("state", "now", "expected"),
+    [
+        (
+            "scheduler_waiting",
+            "2026-09-16T01:45:00+00:00",
+            "2026-09-16T02:05:40+00:00",
+        ),
+        ("wait_for_time", "2026-11-11T23:57:00+00:00", "2026-11-12T00:06:18+00:00"),
+    ],
+    ids=["Target Scheduler's wait, 21:05:40 UTC-5", "Wait for Time, 18:06:18 UTC-6"],
+)
 async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
-    hass: HomeAssistant, config_entry, rig, set_up_at, during_the_scheduler_wait
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    freezer,
+    state: str,
+    now: str,
+    expected: str,
 ) -> None:
-    """21:05:40 on a UTC−5 rig. A TIMESTAMP sensor stores UTC, so the local
-    time the wire sent is only visible here as its instant — which is what a
-    `time` trigger with an offset needs.
+    """A TIMESTAMP sensor stores UTC, so the local time the wire sent is only
+    visible here as its instant — which is what a `time` trigger with an offset
+    needs.
     """
-    await set_up_at(hass, config_entry, rig, "scheduler_waiting")
-    assert state_of(hass, WAIT_ENDS_AT).state == "2026-09-16T02:05:40+00:00"
+    freezer.move_to(now)
+    await set_up_at(hass, config_entry, rig, state)
+    assert state_of(hass, WAIT_ENDS_AT).state == expected
 
 
 async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(

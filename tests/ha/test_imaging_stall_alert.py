@@ -67,6 +67,7 @@ SETTLE_MINUTES = DEFAULTS["settle_minutes"]
 STALLED = timedelta(minutes=QUIET_MINUTES + 5)
 
 SAFETY = "binary_sensor.rig_safety_monitor_unsafe"
+WAITING = "binary_sensor.rig_scheduler_waiting"
 
 INPUTS = {
     "nina_rig": "device-id",
@@ -218,19 +219,78 @@ async def test_a_gate_decides_whether_a_quiet_rig_alerts(
     assert (alert(hass) is not None) is alerts
 
 
+@pytest.mark.parametrize(
+    ("attributes", "alerts"),
+    [
+        ({"kind": "time_span", "span_seconds": 60.0}, True),
+        ({"kind": "time_span", "span_seconds": 3600.0}, False),
+        ({"kind": "time", "span_seconds": None}, False),
+        ({"kind": "altitude", "span_seconds": None}, False),
+    ],
+    ids=["a one-minute span", "an hour's span", "a Wait for Time", "an altitude wait"],
+)
+async def test_only_a_span_shorter_than_the_quiet_period_leaves_the_alert_armed(
+    hass: HomeAssistant, watching, attributes: dict, alerts: bool
+) -> None:
+    """A short span paces a retry loop: `Center` fails, wait a minute, again.
+    That is a stall, and the sensor reads `on` for part of every pass.
+    """
+    clock = await watching()
+    await start_sequence(hass, clock)
+    hass.states.async_set(WAITING, "on", {**attributes, "recent_waits": []})
+
+    clock.move_to(T0 + STALLED)
+    await tick(hass, T0 + STALLED)
+
+    assert (alert(hass) is not None) is alerts
+
+
+def _ended(kind: str, span: float | None, minutes_ago: float) -> dict:
+    return {
+        "kind": kind,
+        "span_seconds": span,
+        "ended_at": T0 + STALLED - timedelta(minutes=minutes_ago),
+    }
+
+
+@pytest.mark.parametrize(
+    ("ended", "alerts"),
+    [
+        ([_ended("time_span", 5.0, 1), _ended("time", None, 2)], False),
+        ([_ended("time_span", 60.0, 1), _ended("time_span", 60.0, 3)], True),
+    ],
+    ids=[
+        "dusk's wait, then the five-second settle after it",
+        "a retry loop's spans",
+    ],
+)
+async def test_the_settle_runs_from_the_latest_wait_that_is_not_a_short_span(
+    hass: HomeAssistant, watching, ended: list[dict], alerts: bool
+) -> None:
+    clock = await watching()
+    await start_sequence(hass, clock)
+    hass.states.async_set(WAITING, "off", {"span_seconds": None, "recent_waits": ended})
+
+    clock.move_to(T0 + STALLED)
+    await tick(hass, T0 + STALLED)
+
+    assert (alert(hass) is not None) is alerts
+
+
 async def test_a_wait_that_just_ended_is_still_settling(
     hass: HomeAssistant, watching
 ) -> None:
-    """Slew, rotation, filter change and settle follow a scheduler wait, and
-    none of them produces a frame.
+    """Slew, rotation, filter change and settle follow a wait, and none of them
+    produces a frame. With no `recent_waits`, as an integration before them
+    publishes, the settle runs from the sensor's last change.
     """
     clock = await watching()
     await start_sequence(hass, clock)
 
     # End a wait a minute ago: the state is what it was, the clock is not.
     clock.move_to(T0 + STALLED - timedelta(minutes=1))
-    hass.states.async_set("binary_sensor.rig_scheduler_waiting", "on")
-    hass.states.async_set("binary_sensor.rig_scheduler_waiting", "off")
+    hass.states.async_set(WAITING, "on")
+    hass.states.async_set(WAITING, "off")
 
     clock.move_to(T0 + STALLED)
     await tick(hass, T0 + STALLED)

@@ -4,14 +4,17 @@ Every assertion goes through `hass.states` or the entity registry — the
 registry for the long tail, which ships disabled and so has no state.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.nina_astrophotography.api.errors import NinaRequestError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
@@ -22,7 +25,7 @@ AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
 SEQUENCER_RUNNING = "binary_sensor.n_i_n_a_sequencer_running"
 IMAGING = "binary_sensor.n_i_n_a_imaging"
-SCHEDULER_WAITING = "binary_sensor.n_i_n_a_scheduler_waiting"
+SEQUENCE_WAITING = "binary_sensor.n_i_n_a_sequence_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 REACHABLE = "binary_sensor.n_i_n_a_reachable"
 MERIDIAN_FLIP = "binary_sensor.n_i_n_a_mount_meridian_flip"
@@ -203,25 +206,56 @@ async def test_imaging_follows_activity_and_not_node_status(
 
 
 @pytest.mark.parametrize(
-    ("state", "expected"),
-    [("scheduler_waiting", "on"), ("sequence_stopped", "off")],
-    ids=["waiting until 21:05", "stopped, with the wait still in the history"],
+    ("state", "now", "expected"),
+    [
+        ("scheduler_waiting", "2026-09-16T01:45:00+00:00", "on"),
+        ("sequence_stopped", "2026-09-16T01:45:00+00:00", "off"),
+        ("wait_for_time", "2026-11-11T23:57:00+00:00", "on"),
+    ],
+    ids=[
+        "Target Scheduler waiting until 21:05",
+        "stopped, with that wait still in the history",
+        "the sequence's own Wait for Time, with no TS-WAITSTART",
+    ],
 )
-async def test_the_waiting_sensor_clears_when_the_sequence_stops(
+async def test_the_waiting_sensor_reads_the_wait_in_progress(
     hass: HomeAssistant,
     config_entry,
     rig,
-    during_the_scheduler_wait,
+    freezer,
     state: str,
+    now: str,
     expected: str,
     set_up_at,
 ) -> None:
     """There is no TS-WAITSTOP: `sequence_stopped` still holds two TS-WAITSTART
     naming 21:05, so a sensor keyed on the newest wait alone would report a
-    stopped rig as waiting.
+    stopped rig as waiting. A sequence's own wait sends no event at all.
     """
+    freezer.move_to(now)
     await set_up_at(hass, config_entry, rig, state)
-    assert state_of(hass, SCHEDULER_WAITING).state == expected
+    assert state_of(hass, SEQUENCE_WAITING).state == expected
+
+
+async def test_a_wait_for_time_is_over_at_its_own_end(
+    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
+) -> None:
+    """A rig that is not imaging has `/sequence/json` read every five minutes,
+    and the read after the end can still show the wait running.
+    """
+    freezer.move_to("2026-11-11T23:57:00+00:00")
+    await set_up_at(hass, config_entry, rig, "wait_for_time")
+    freezer.move_to("2026-11-12T00:07:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    waiting = state_of(hass, SEQUENCE_WAITING)
+    ended = waiting.attributes["recent_waits"][0]
+    assert (waiting.state, ended["kind"], ended["ended_at"]) == (
+        "off",
+        "time",
+        datetime.fromisoformat("2026-11-11T18:06:18.99998-06:00"),
+    )
 
 
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(

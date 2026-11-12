@@ -74,7 +74,9 @@ A capture is whole when `capture_fixtures.py --state <slug>` wrote all fourteen
 endpoints, and `_captured(slug)` builds the state from it with none of the
 assembly a partial corpus needs. `imaging_guiding` is one; so are the three
 taken on 2026-09-15, in this order: `scheduler_waiting` (20:46), then
-`sequence_restarted` (20:49), then `sequence_stopped` (20:50).
+`sequence_restarted` (20:49), then `sequence_stopped` (20:50). `wait_for_time`
+(2026-11-11, 17:56) is the only one holding a sequence's own wait: a `RUNNING`
+Wait for Time until civil dusk, with no `TS-WAITSTART`.
 
 Between them they hold what no earlier capture does — a sequence running with
 no frame taken, one ten seconds after `SEQUENCE-STARTING`, and one stopped by

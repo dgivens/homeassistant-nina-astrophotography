@@ -1,7 +1,7 @@
 """wire → models. Every sentinel, timezone and quirk dies in this module."""
 
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from operator import attrgetter
 
 from nina_astrophotography.api.models import (
@@ -9,6 +9,7 @@ from nina_astrophotography.api.models import (
     CurveFit,
     Gaussian,
     Hyperbola,
+    SequenceNode,
 )
 from nina_astrophotography.api.v2.mapper import (
     map_equipment_info,
@@ -529,6 +530,51 @@ def test_sequence_leaves_carry_their_status() -> None:
     assert root is not None
     start = next(c for c in root.children if c.name == "Start_Container")
     assert start.status == "FINISHED"
+
+
+def _waits(fixture: str) -> list[tuple[str, str | None, datetime | None]]:
+    """Each wait instruction's name, status and end."""
+    pending: list[SequenceNode | None] = [map_sequence(load(fixture))]
+    waits = []
+    while pending:
+        node = pending.pop()
+        if node is None:
+            continue
+        if node.wait is not None:
+            waits.append((node.name, node.status, node.wait.ends))
+        pending.extend(node.children)
+    return waits
+
+
+@pytest.mark.parametrize(
+    ("fixture", "name", "status", "ends"),
+    [
+        (
+            "wait_for_time_sequence_json.json",
+            "Wait for Time",
+            "RUNNING",
+            datetime(
+                2026, 11, 11, 18, 6, 18, 999980, tzinfo=timezone(timedelta(hours=-6))
+            ),
+        ),
+        ("dawn_sequence_complete.json", "Wait for Time Span", "FINISHED", None),
+    ],
+    ids=["Wait for Time ends at its target", "Wait for Time Span names no end"],
+)
+def test_a_wait_instruction_carries_its_end(
+    fixture: str, name: str, status: str, ends: datetime | None
+) -> None:
+    """A span's `Delay` is on the wire and its start is not."""
+    found = {end for n, s, end in _waits(fixture) if (n, s) == (name, status)}
+    assert found == {ends}
+
+
+def test_a_loop_condition_naming_a_time_is_not_a_wait() -> None:
+    """`Loop Until Time` carries a `TargetTime` too, but it bounds a loop that
+    is working, not waiting.
+    """
+    names = {name for name, _, _ in _waits("dawn_sequence_complete.json")}
+    assert "Loop Until Time_Condition" not in names
 
 
 def test_a_sequence_that_did_not_serialize_is_not_a_tree() -> None:

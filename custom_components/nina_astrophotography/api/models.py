@@ -566,6 +566,23 @@ class SessionStats:
     autofocus: AutoFocusState
 
 
+SequenceWaitKind = Literal["time", "time_span", "altitude"]
+
+
+@dataclass(frozen=True, slots=True)
+class SequenceWait:
+    """A wait instruction of the sequence's own: Wait for Time, Wait for Time
+    Span, or one of the altitude waits (target, sun, moon, horizon).
+    """
+
+    kind: SequenceWaitKind
+    ends: datetime | None
+    """Wait for Time's target. The others name no end as a time: an altitude
+    wait's `ExpectedTime` is display text."""
+    span_seconds: float | None = None
+    """A Wait for Time Span's length; `None` on the other waits."""
+
+
 @dataclass(frozen=True, slots=True)
 class SequenceNode:
     """One node of `/sequence/json`."""
@@ -579,6 +596,8 @@ class SequenceNode:
     """°C of focuser drift past which an "AF After Temperature Change"
     trigger refocuses; `None` on every other node."""
     children: tuple[SequenceNode, ...]
+    wait: SequenceWait | None = None
+    """Set on a wait instruction, `None` on every other node."""
 
 
 @dataclass(frozen=True, slots=True)

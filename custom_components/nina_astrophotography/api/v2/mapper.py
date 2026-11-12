@@ -59,6 +59,7 @@ from ..models import (
     RotatorModel,
     SafetyMonitorModel,
     SequenceNode,
+    SequenceWait,
     ShutterState,
     SwitchChannelModel,
     SwitchDeviceModel,
@@ -655,7 +656,26 @@ def map_event(
     )
 
 
-def _sequence_node(wire: dict, fallback: str) -> SequenceNode:
+def _sequence_wait(wire: dict) -> SequenceWait | None:
+    """A wait instruction, recognised by the fields the serializer adds for each
+    type rather than by its Name, which is display text.
+
+    Only call it on an item: an altitude loop condition carries the same
+    `CurrentAltitude` and `ExpectedTime` as an altitude wait.
+    """
+    if "CalculatedWaitDuration" in wire:
+        ends = _timestamp(wire.get("TargetTime"))
+        return SequenceWait(kind="time", ends=ends if ends and ends.tzinfo else None)
+    if "Delay" in wire:
+        return SequenceWait(
+            kind="time_span", ends=None, span_seconds=_number(wire, "Delay")
+        )
+    if "CurrentAltitude" in wire and "ExpectedTime" in wire:
+        return SequenceWait(kind="altitude", ends=None)
+    return None
+
+
+def _sequence_node(wire: dict, fallback: str, *, item: bool = False) -> SequenceNode:
     name = _text(wire, "Name")
     iterations = _dig(wire, "Iterations")
     return SequenceNode(
@@ -669,11 +689,12 @@ def _sequence_node(wire: dict, fallback: str) -> SequenceNode:
         if "DeltaTemperature" in wire
         else None,
         children=tuple(
-            _sequence_node(child, key)
+            _sequence_node(child, key, item=key == "Items")
             for key in _SEQUENCE_CHILDREN
             for child in wire.get(key) or ()
             if isinstance(child, dict)
         ),
+        wait=_sequence_wait(wire) if item else None,
     )
 
 

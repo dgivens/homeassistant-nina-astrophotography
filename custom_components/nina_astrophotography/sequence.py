@@ -1,7 +1,9 @@
 """Pure walks over the `/sequence/json` tree.
 
-**Only the root containers' `Status` is read.** Deeper status persists from
-the loaded file and earlier runs; a stop resets the root that was running.
+**A status is read only along an unbroken `RUNNING` chain from a root
+container.** Deeper status persists from the loaded file and earlier runs; a
+stop resets the root that was running, so a node is live only if every
+container above it is running too.
 
 **A Target Scheduler rig carries no `TargetName` or `Iterations`**, so there
 `target_name` and `progress_percent` return `None`, and the target comes from
@@ -14,7 +16,7 @@ finds one.
 from collections.abc import Iterable, Iterator
 import logging
 
-from .api.models import NinaEvent, SequenceNode
+from .api.models import NinaEvent, SequenceNode, SequenceWait
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -59,6 +61,34 @@ def running(
     return newest.name == _SEQUENCE_STARTED
 
 
+def current_wait(
+    root: SequenceNode | None,
+) -> tuple[tuple[int, ...], SequenceWait] | None:
+    """The wait instruction the sequence is executing, with its path of child
+    indices from the root, or None.
+
+    Every wait the read shows running counts, however short; when one is over
+    though the read still shows it running is `polling.WaitLedger`'s to judge.
+    """
+    if root is None:
+        return None
+    live: list[tuple[tuple[int, ...], SequenceNode]] = [
+        ((index,), child)
+        for index, child in enumerate(root.children)
+        if child.status == "RUNNING"
+    ]
+    while live:
+        path, node = live.pop()
+        if node.wait is not None:
+            return path, node.wait
+        live.extend(
+            ((*path, index), child)
+            for index, child in enumerate(node.children)
+            if child.status == "RUNNING"
+        )
+    return None
+
+
 def target_name(root: SequenceNode | None) -> str | None:
     """The `TargetName` of the LAST node carrying one, in pre-order.
 
@@ -94,9 +124,9 @@ def refocus_temperature(root: SequenceNode | None) -> float | None:
     """The smallest "AF After Temperature Change" threshold anywhere in the
     tree, in °C.
 
-    Every trigger in scope fires on its own, so the smallest one decides. Which
-    are in scope cannot be told: only the root containers' status is live.
-    Taking the smallest across the whole tree errs towards refocusing early.
+    Every trigger in scope fires on its own, so the smallest one decides. Scope
+    is not worked out; taking the smallest across the whole tree errs towards
+    refocusing early.
     """
     thresholds = [
         node.refocus_temperature

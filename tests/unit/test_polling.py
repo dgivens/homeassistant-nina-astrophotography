@@ -5,9 +5,14 @@ tested as functions of their arguments rather than through a config entry.
 """
 
 from dataclasses import fields, replace
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from nina_astrophotography.api.models import EquipmentSnapshot, NinaEvent
+from nina_astrophotography.api.models import (
+    EquipmentSnapshot,
+    NinaEvent,
+    SequenceWait,
+    SequenceWaitKind,
+)
 from nina_astrophotography.api.v2.mapper import map_equipment_info
 from nina_astrophotography.polling import (
     EventLedger,
@@ -15,6 +20,7 @@ from nina_astrophotography.polling import (
     ReseedGuard,
     RestartDetector,
     TierSchedule,
+    WaitLedger,
     imaging,
 )
 import pytest
@@ -314,3 +320,109 @@ def test_a_stop_holds_until_a_later_poll_sees_the_guider_running_past_it(
     for state, pending in polled:
         latch.observe(state, pending)
     assert latch.stopped(stop) is stopped
+
+
+_EVENING = datetime(2026, 11, 11, 18, 0, tzinfo=timezone(timedelta(hours=-6)))
+
+
+def _at(minutes: float) -> datetime:
+    return _EVENING + timedelta(minutes=minutes)
+
+
+Step = tuple[tuple[int, ...], SequenceWait]
+
+
+def _step(
+    kind: SequenceWaitKind = "time_span",
+    *,
+    ends: datetime | None = None,
+    span: float | None = 60.0,
+    path: tuple[int, ...] = (1, 2),
+) -> Step:
+    return path, SequenceWait(kind=kind, ends=ends, span_seconds=span)
+
+
+def _ledger(*reads: tuple[float, Step | None]) -> WaitLedger:
+    """`(minute, step or None)` reads, in order, with no Target Scheduler wait."""
+    ledger = WaitLedger()
+    for minute, step in reads:
+        ledger.observe(None, step, now=_at(minute))
+    return ledger
+
+
+def test_a_wait_dates_from_the_read_that_first_shows_it() -> None:
+    ledger = _ledger((0, _step(span=600)), (5, _step(span=600)))
+    assert ledger.current is not None
+    assert ledger.current.started == _at(0)
+
+
+def test_a_wait_the_read_no_longer_shows_ends_at_that_read() -> None:
+    ledger = _ledger((0, _step()), (1, None))
+    assert ledger.current is None
+    assert ledger.ended[0].ended == _at(1)
+
+
+@pytest.mark.parametrize(
+    ("step", "late", "ended"),
+    [
+        (_step("time", ends=_at(10), span=None), 11, 10),
+        (_step("altitude", span=None), 12 * 60 + 1, 12 * 60 + 1),
+    ],
+    ids=["Wait for Time, at its named end", "an altitude wait, after twelve hours"],
+)
+def test_a_wait_still_shown_running_past_its_possible_end_is_over(
+    step: Step, late: float, ended: float
+) -> None:
+    """A status carried in from a loaded sequence file can show a wait running
+    that never will, and would hold a stall alert mute all night.
+    """
+    ledger = _ledger((0, step), (late, step))
+    assert ledger.current is None
+    assert ledger.ended[0].ended == _at(ended)
+
+
+def test_an_expired_wait_stays_over_while_the_read_still_shows_it() -> None:
+    late = _step("time", ends=_at(10), span=None)
+    ledger = _ledger((0, late), (11, late), (12, late))
+    assert (ledger.current, len(ledger.ended)) == (None, 1)
+
+
+def test_a_span_still_shown_past_its_length_is_the_loops_next_pass() -> None:
+    """Reads five minutes apart catch a loop of half-hour spans on nearly every
+    pass, and a rig waiting on purpose must keep reading as waiting.
+    """
+    span = _step(span=1800.0)
+    ledger = _ledger(*[(minute, span) for minute in range(0, 45, 5)])
+    assert ledger.current is not None
+    assert (ledger.current.started, ledger.ended[0].ended) == (_at(35), _at(35))
+
+
+def test_a_wait_a_loop_runs_again_counts_again() -> None:
+    ledger = _ledger((0, _step()), (2, None), (4, _step()))
+    assert ledger.current is not None
+    assert ledger.current.started == _at(4)
+
+
+def test_a_different_wait_ends_the_one_before() -> None:
+    """Dusk's Wait for Time, then the five-second settle after it: the dusk
+    wait must stay in the history for a settle period to run from.
+    """
+    dusk = _step("time", ends=_at(6), span=None, path=(1, 1))
+    settle = _step(span=5.0, path=(1, 9))
+    ledger = _ledger((0, dusk), (6.5, settle))
+    assert [wait.kind for wait in ledger.ended] == ["time"]
+    assert ledger.ended[0].ended == _at(6)
+
+
+def test_target_schedulers_wait_is_the_one_reported() -> None:
+    """Its own steps are not on the wire, so a step beside it is not its."""
+    ledger = WaitLedger()
+    ledger.observe(_at(30), _step(), now=_at(0))
+    assert ledger.current is not None
+    assert (ledger.current.kind, ledger.current.ends) == ("scheduler", _at(30))
+
+
+def test_the_history_keeps_the_ten_newest_newest_first() -> None:
+    reads = [(minute, _step() if minute % 2 == 0 else None) for minute in range(24)]
+    ended = _ledger(*reads).ended
+    assert (len(ended), ended[0].ended) == (10, _at(23))

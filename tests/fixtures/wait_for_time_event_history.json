@@ -1,0 +1,96 @@
+{
+  "Response": [
+    {
+      "Event": "CAMERA-DISCONNECTED",
+      "Time": "2026-11-11T10:05:27.9409746-06:00"
+    },
+    {
+      "Event": "CAMERA-CONNECTED",
+      "Time": "2026-11-11T10:05:28.63539-06:00"
+    },
+    {
+      "Event": "FILTERWHEEL-DISCONNECTED",
+      "Time": "2026-11-11T10:05:31.2147331-06:00"
+    },
+    {
+      "Event": "FILTERWHEEL-CONNECTED",
+      "Time": "2026-11-11T10:05:31.9944938-06:00"
+    },
+    {
+      "Event": "FOCUSER-DISCONNECTED",
+      "Time": "2026-11-11T10:05:34.0034716-06:00"
+    },
+    {
+      "Event": "FOCUSER-CONNECTED",
+      "Time": "2026-11-11T10:05:34.7296865-06:00"
+    },
+    {
+      "Event": "ROTATOR-DISCONNECTED",
+      "Time": "2026-11-11T10:05:36.7449987-06:00"
+    },
+    {
+      "Event": "ROTATOR-CONNECTED",
+      "Time": "2026-11-11T10:05:38.5691249-06:00"
+    },
+    {
+      "Event": "MOUNT-DISCONNECTED",
+      "Time": "2026-11-11T10:05:40.5773067-06:00"
+    },
+    {
+      "Event": "MOUNT-CONNECTED",
+      "Time": "2026-11-11T10:05:42.6247235-06:00"
+    },
+    {
+      "Event": "GUIDER-CONNECTED",
+      "Time": "2026-11-11T10:05:45.7742522-06:00"
+    },
+    {
+      "Event": "SWITCH-DISCONNECTED",
+      "Time": "2026-11-11T10:05:47.7827754-06:00"
+    },
+    {
+      "Event": "SWITCH-CONNECTED",
+      "Time": "2026-11-11T10:05:53.9930249-06:00"
+    },
+    {
+      "Event": "FLAT-DISCONNECTED",
+      "Time": "2026-11-11T10:05:56.0042743-06:00"
+    },
+    {
+      "Event": "FLAT-CONNECTED",
+      "Time": "2026-11-11T10:05:58.0855734-06:00"
+    },
+    {
+      "Event": "WEATHER-DISCONNECTED",
+      "Time": "2026-11-11T10:06:00.0925967-06:00"
+    },
+    {
+      "Event": "WEATHER-CONNECTED",
+      "Time": "2026-11-11T10:06:02.0527597-06:00"
+    },
+    {
+      "Event": "SAFETY-DISCONNECTED",
+      "Time": "2026-11-11T10:06:04.0612837-06:00"
+    },
+    {
+      "Event": "SAFETY-CONNECTED",
+      "Time": "2026-11-11T10:06:04.1593962-06:00"
+    },
+    {
+      "IsSafe": true,
+      "Time": "2026-11-11T17:30:06.1623228-06:00",
+      "Event": "SAFETY-CHANGED"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-11-11T23:56:22+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.3",
+    "endpoint": "/event-history",
+    "params": {}
+  }
+}
