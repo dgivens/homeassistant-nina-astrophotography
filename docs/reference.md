@@ -76,7 +76,7 @@ the readings your source actually provides.
 
 | Device | Entities |
 |---|---|
-| Camera | temperature, cooler power, gain, offset, state; target temperature and USB limit (`number`); cooler and dew heater (`switch`); exposing (`binary_sensor`); abort exposure (`button`) |
+| Camera | temperature, cooler power, gain, offset, state, exposure end; target temperature and USB limit (`number`); cooler and dew heater (`switch`); exposing (`binary_sensor`); abort exposure (`button`) |
 | Mount | RA, declination, altitude, azimuth, sidereal time, side of pier, time to meridian flip; at park, at home, meridian flip (`binary_sensor`); tracking rate (`select`); park, unpark, find home (`button`) |
 | Focuser | position, temperature, step size; the last autofocus run (see [Autofocus](#autofocus)); position (`number`); moving, autofocus failed (`binary_sensor`); autofocus (`button`) |
 | Filter Wheel | filter (`select`); moving (`binary_sensor`) |

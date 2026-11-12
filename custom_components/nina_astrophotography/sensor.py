@@ -478,6 +478,14 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         # an automation about a stalled camera needs.
         value=read_field("camera", "camera_state"),
     ),
+    NinaSensorDescription(
+        key="camera_exposure_end",
+        translation_key="camera_exposure_end",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        kind="camera",
+        # A timestamp, so the frontend counts down to it between polls.
+        value=read_field("camera", "exposure_end"),
+    ),
     # ── Mount ────────────────────────────────────────────────────────────
     NinaSensorDescription(
         key="mount_right_ascension",

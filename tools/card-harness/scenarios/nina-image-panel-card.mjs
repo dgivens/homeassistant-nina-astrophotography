@@ -81,6 +81,21 @@ export const scenarios = {
   // `exposing` draws it.
   exposing_12_bit: { hass: (dump) => unscaled(dump, "site_configured", 16).build() },
 
+  // Four minutes into a ten-minute sub, the countdown and the bar. The dump is
+  // taken at a later date than its capture, so its end has passed: this moves
+  // the one reading a countdown needs to the harness's clock.
+  counting_down: {
+    hass: (dump) => {
+      const end = "sensor.n_i_n_a_camera_exposure_end";
+      const built = rig(dump, "site_configured")
+        .override(end, new Date(Date.now() + 360_000).toISOString(),
+          dump.site_configured.states[end].attributes)
+        .build();
+      built.states[end].last_changed = new Date(Date.now() - 240_000).toISOString();
+      return built;
+    },
+  },
+
   // The drivers down: no camera entities at all, no frames, and the session
   // totals zero.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },

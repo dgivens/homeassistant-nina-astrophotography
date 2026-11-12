@@ -71,6 +71,19 @@ const FALLBACK_PREVIEW_WIDTH = 1600;
 // flat's at a third to a half of full scale.
 const ADU_GRIDLINES = [[100, "100"], [1000, "1k"], [10000, "10k"]];
 
+const COUNTDOWN_TICK_MS = 1000;
+
+// `4:07`, or `1:04:07` from an hour up.
+function clock(seconds) {
+  const whole = Math.ceil(seconds);
+  const pad = (value) => String(value).padStart(2, "0");
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor(whole / 60) % 60;
+  return hours > 0
+    ? `${hours}:${pad(minutes)}:${pad(whole % 60)}`
+    : `${minutes}:${pad(whole % 60)}`;
+}
+
 // An absent field is undefined; the integration publishes no reading as null.
 function finite(value) {
   return Number.isFinite(value) ? value : null;
@@ -184,6 +197,7 @@ const STYLE = `
     height: 2px;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     transform-origin: left;
+    transition: transform 1s linear;
     animation: expose-pulse 2s ease-in-out infinite;
     display: none;
   }
@@ -315,6 +329,8 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   connectedCallback() {
+    // A reattached card resumes a countdown that detaching stopped.
+    if (this._link) this._updateHeaderBadge();
     // The ADU range is redrawn only with a frame, so a resize would otherwise
     // stretch its gridlines and labels until the next one.
     if (typeof ResizeObserver === "undefined" || this._observer) return;
@@ -325,6 +341,7 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._syncCountdown(false);
     this._observer?.disconnect();
     this._observer = undefined;
   }
@@ -847,6 +864,35 @@ class NinaImagePanelCard extends HTMLElement {
     }
   }
 
+  // The running exposure's seconds left, which the header counts down, and how
+  // far through it is. The rig's clock against the browser's, so a slow browser
+  // clock reads a little long.
+  // `null` once the end has passed: the frame is downloading, or the poll saying
+  // so has not arrived. The sensor changes when an exposure starts, so its
+  // `last_changed` stands in for a start the rig does not report; `fraction` is
+  // `null` where that is not earlier than the end.
+  _exposureLeft() {
+    const row = this._hass?.states?.[this._eid("sensor", "camera_exposure_end")];
+    const end = Date.parse(row?.state);
+    const now = Date.now();
+    if (!(end > now)) return null;
+    const started = Date.parse(row.last_changed);
+    return {
+      seconds: (end - now) / 1000,
+      fraction: started < end ? Math.max(0, (now - started) / (end - started)) : null,
+    };
+  }
+
+  // Polls arrive far apart, so the countdown ticks by itself while exposing.
+  _syncCountdown(run) {
+    if (run && !this._countdown) {
+      this._countdown = setInterval(() => this._updateHeaderBadge(), COUNTDOWN_TICK_MS);
+    } else if (!run && this._countdown) {
+      clearInterval(this._countdown);
+      this._countdown = null;
+    }
+  }
+
   _updateHeaderBadge() {
     const badge  = this.shadowRoot?.getElementById("hdr-badge");
     const sub    = this.shadowRoot?.getElementById("hdr-sub");
@@ -866,6 +912,9 @@ class NinaImagePanelCard extends HTMLElement {
     const connected = cameraState !== null && cameraState !== "unavailable";
     const { target, filter } = this._frame();
     const index = this._index();
+    // Held readings are not current: the exposure may have ended since.
+    const live = exposing && !this._link.stale;
+    const left = live ? this._exposureLeft() : null;
 
     // Before the camera: a lost link makes it unavailable too.
     if (this._link.stale) {
@@ -881,15 +930,16 @@ class NinaImagePanelCard extends HTMLElement {
       badge.textContent = "Disconnected";
       badge.className   = "badge warn";
     } else if (exposing) {
-      badge.textContent = "Exposing…";
+      badge.textContent = left ? `Exposing · ${clock(left.seconds)} left` : "Exposing…";
       badge.className   = "badge";
     } else {
       badge.textContent = `${count} lights`;
       badge.className   = "badge";
     }
 
-    // Held readings are not current: the exposure may have ended since.
-    expBar?.classList.toggle("active", exposing && !this._link.stale);
+    expBar?.classList.toggle("active", live);
+    if (expBar) expBar.style.transform = left?.fraction == null ? "" : `scaleX(${left.fraction})`;
+    this._syncCountdown(live && this.isConnected);
 
     if (title) {
       title.textContent = index === 0 ? "Latest Image"

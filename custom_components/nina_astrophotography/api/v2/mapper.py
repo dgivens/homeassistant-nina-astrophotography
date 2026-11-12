@@ -276,6 +276,9 @@ def map_camera(wire: dict) -> CameraModel:
         usb_limit_range=_range(wire, "USBLimitMin", "USBLimitMax"),
         camera_state=_text(readings, "CameraState"),
         is_exposing=_flag(readings, "IsExposing"),
+        exposure_end=_timestamp(readings.get("ExposureEndTime"))
+        if _flag(readings, "IsExposing")
+        else None,
         pixel_size=_number(readings, "PixelSize"),
         exposure_range=_range(readings, "ExposureMin", "ExposureMax"),
         has_battery=has_battery,

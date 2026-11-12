@@ -228,6 +228,9 @@
       "camera_offset": {
         "name": "Offset"
       },
+      "camera_exposure_end": {
+        "name": "Exposure end"
+      },
       "camera_state": {
         "name": "State"
       },

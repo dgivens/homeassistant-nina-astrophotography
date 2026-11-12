@@ -27,6 +27,7 @@ FOCUSER_POSITION = "sensor.n_i_n_a_focuser_position"
 SEQUENCE_PROGRESS = "sensor.n_i_n_a_sequence_progress"
 WAIT_ENDS_AT = "sensor.n_i_n_a_wait_ends_at"
 LAST_FRAME_AT = "sensor.n_i_n_a_last_frame_at"
+EXPOSURE_END = "sensor.n_i_n_a_camera_exposure_end"
 GUIDER_RMS = (
     "sensor.n_i_n_a_guider_rms_total",
     "sensor.n_i_n_a_guider_rms_ra",
@@ -207,6 +208,21 @@ async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
     """
     await set_up_at(hass, config_entry, rig, "scheduler_waiting")
     assert state_of(hass, WAIT_ENDS_AT).state == "2026-09-16T02:05:40+00:00"
+
+
+@pytest.mark.parametrize(
+    ("rig_state", "expected"),
+    [("imaging_guiding", "2026-09-05T06:52:02+00:00"), ("dawn_flats", "unknown")],
+    ids=["exposing", "idle"],
+)
+async def test_the_exposure_end_is_known_only_while_the_camera_exposes(
+    hass: HomeAssistant, config_entry, rig, set_up_at, rig_state: str, expected: str
+) -> None:
+    """The wire keeps the last exposure's end after it, so an idle camera
+    would otherwise count down to a time already past.
+    """
+    await set_up_at(hass, config_entry, rig, rig_state)
+    assert state_of(hass, EXPOSURE_END).state == expected
 
 
 async def test_the_last_frame_timestamp_is_the_newest_frame_of_any_type(

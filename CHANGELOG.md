@@ -4,6 +4,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`sensor.<instance>_camera_exposure_end`** is when the sub being exposed
+  finishes, and `unknown` while the camera is idle. The image panel's header
+  counts down to it each second (`Exposing · 5:59 left`), and the bar over the
+  image fills as the sub runs.
+
 ## [2.5.1] - 2026-11-08
 
 ### Added
