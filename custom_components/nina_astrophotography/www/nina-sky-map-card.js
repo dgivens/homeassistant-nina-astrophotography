@@ -28,7 +28,7 @@ import {
 } from "./nina-units.js";
 import { THEME, applyTheme } from "./nina-theme.js";
 
-const VERSION = "2.5.1";
+const VERSION = "2.6.0";
 
 const DEFAULT_TRAIL_LENGTH = 60;
 const DEFAULT_MAP_SIZE = 320;

@@ -31,7 +31,7 @@ import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
 
-const VERSION = "2.5.1";
+const VERSION = "2.6.0";
 
 const STYLE = `
   ${THEME}

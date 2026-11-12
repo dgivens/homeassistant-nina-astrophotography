@@ -4,14 +4,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
-## [Unreleased]
+## [2.6.0] - 2026-11-12
 
 ### Added
 
 - **`sensor.<instance>_camera_exposure_end`** is when the sub being exposed
-  finishes, and `unknown` while the camera is idle. The image panel's header
-  counts down to it each second (`Exposing · 5:59 left`), and the bar over the
-  image fills as the sub runs.
+  finishes (#258), and `unknown` while the camera is idle. The image panel's
+  header counts down to it each second (`Exposing · 5:59 left`), and the bar
+  over the image fills as the sub runs.
 - **The observatory card shows the rotator's sky angle** (#239) once a plate
   solve syncs the rotator, and its mechanical angle once
   `number.<instance>_rotator_mechanical_position` is enabled.
@@ -43,6 +43,16 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   time. The stack images are served to dashboards through Home Assistant, at
   `/api/nina_astrophotography/livestack/{entity_id}`.
 
+### Changed
+
+- **The waiting sensor is named *Sequence waiting*** (#255). A fresh install
+  creates `binary_sensor.<instance>_sequence_waiting`, and an existing install
+  keeps `binary_sensor.<instance>_scheduler_waiting`. The imaging stall
+  alert's input is labelled *Sequence waiting* and keeps its key, `scheduler_waiting`,
+  so an automation built from it needs no change.
+- **`binary_sensor.<instance>_rotator_synced` ships enabled** (#239). On an
+  upgraded install, enable it.
+
 ### Fixed
 
 - **A wait instruction of the sequence's own counts as waiting** (#255).
@@ -59,16 +69,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The card harness's `rotator_mechanical` dump names the waiting sensor
   *Sequence waiting***, as every other dump does, so the suite's dump check
   passes on `main` (#260).
-
-### Changed
-
-- **The waiting sensor is named *Sequence waiting*.** A fresh install creates
-  `binary_sensor.<instance>_sequence_waiting`, and an existing install keeps
-  `binary_sensor.<instance>_scheduler_waiting`. The imaging stall alert's
-  input is labelled *Sequence waiting* and keeps its key, `scheduler_waiting`,
-  so an automation built from it needs no change.
-- **`binary_sensor.<instance>_rotator_synced` ships enabled** (#239). On an
-  upgraded install, enable it.
 
 ## [2.5.1] - 2026-11-08
 
