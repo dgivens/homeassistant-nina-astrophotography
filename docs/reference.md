@@ -699,5 +699,5 @@ the frame count — `count` for a mono stack, or `red_count`, `green_count` and
 `blue_count` for a colour one, where a channel with no frame yet is `null`.
 The list starts with the [session](#sessions), so last night's stacks drop
 off it at the rollover hour even though the plugin keeps them until N.I.N.A.
-restarts. The attribute is
-not recorded. `custom:nina-livestack-card` shows them.
+restarts. The attribute is not recorded. `custom:nina-livestack-card` shows
+them.

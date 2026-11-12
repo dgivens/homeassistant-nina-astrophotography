@@ -370,8 +370,9 @@ class NinaLivestackCard extends HTMLElement {
 
   _update() {
     const stacks = this._stacks();
-    // A pin on a stack the session no longer lists is let go, so the newest is
-    // never shown under a pin nobody made; not following, it re-pins below.
+    // A pin on a stack the session no longer lists is let go: held, it would
+    // leave the card following the newest while still claiming a pin. Not
+    // following, the newest is pinned in its place below.
     if (this._pinned && !stacks.some((s) => sameStack(s, this._pinned))) this._pinned = null;
     // Not following: the stack first shown stays until another is picked.
     if (!this._following && !this._pinned && stacks[0]) {
@@ -752,8 +753,9 @@ class NinaLivestackCard extends HTMLElement {
   _applyZoom() {
     const img = this.shadowRoot?.getElementById("modal-img");
     if (!img) return;
-    // Panned no further than keeps the image over its unzoomed footprint, so a
-    // drag cannot lose it off screen. The box is the fitted image, untransformed.
+    // Pans only as far as keeps the zoomed image covering its unzoomed
+    // footprint, so a drag cannot lose it off screen. `offset*` is the fitted
+    // image, untransformed.
     const { scale } = this._zoom;
     const clamp = (v, size) => {
       const reach = ((scale - 1) * size) / 2;
