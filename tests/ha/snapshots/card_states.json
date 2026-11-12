@@ -825,6 +825,68 @@
      "entity_picture": "<per run>",
      "filter": "S",
      "friendly_name": "N.I.N.A. Livestack",
+     "stacks": [
+      {
+       "blue_count": null,
+       "count": 24,
+       "filter": "S",
+       "green_count": null,
+       "monochrome": true,
+       "red_count": null,
+       "target": "NGC 281",
+       "updated": "2026-09-04T04:25:58.503025-05:00"
+      },
+      {
+       "blue_count": null,
+       "count": 4,
+       "filter": "R",
+       "green_count": null,
+       "monochrome": true,
+       "red_count": null,
+       "target": "Dark Shark Nebula",
+       "updated": "2026-09-03T23:58:55.851175-05:00"
+      },
+      {
+       "blue_count": null,
+       "count": 14,
+       "filter": "L",
+       "green_count": null,
+       "monochrome": true,
+       "red_count": null,
+       "target": "Dark Shark Nebula",
+       "updated": "2026-09-03T23:32:47.688120-05:00"
+      },
+      {
+       "blue_count": null,
+       "count": 7,
+       "filter": "B",
+       "green_count": null,
+       "monochrome": true,
+       "red_count": null,
+       "target": "Dark Shark Nebula",
+       "updated": "2026-09-03T23:12:29.639758-05:00"
+      },
+      {
+       "blue_count": null,
+       "count": 5,
+       "filter": "R",
+       "green_count": null,
+       "monochrome": true,
+       "red_count": null,
+       "target": "Wizard Nebula",
+       "updated": "2026-09-03T22:00:05.745897-05:00"
+      },
+      {
+       "blue_count": null,
+       "count": 1,
+       "filter": "O",
+       "green_count": null,
+       "monochrome": true,
+       "red_count": null,
+       "target": "Lobster & Bubble",
+       "updated": "2026-09-03T21:26:58.064193-05:00"
+      }
+     ],
      "target": "NGC 281"
     },
     "state": "2026-09-04T04:25:58.503025-05:00"
@@ -3518,6 +3580,7 @@
      "entity_picture": "<per run>",
      "filter": "H",
      "friendly_name": "N.I.N.A. Livestack",
+     "stacks": [],
      "target": "NGC 281"
     },
     "state": "2026-09-05T01:41:28.547634-05:00"
@@ -6122,6 +6185,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "camera_cooler_power"
    },
+   "sensor.n_i_n_a_camera_exposure_end": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_exposure_end",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_exposure_end"
+   },
    "sensor.n_i_n_a_camera_gain": {
     "device_id": "camera",
     "entity_id": "sensor.n_i_n_a_camera_gain",
@@ -6674,6 +6743,7 @@
      "entity_picture": "<per run>",
      "filter": "H",
      "friendly_name": "N.I.N.A. Livestack",
+     "stacks": [],
      "target": "NGC 281"
     },
     "state": "2026-09-05T01:41:28.547634-05:00"
@@ -6757,6 +6827,13 @@
      "unit_of_measurement": "%"
     },
     "state": "66.0"
+   },
+   "sensor.n_i_n_a_camera_exposure_end": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Camera Exposure end"
+    },
+    "state": "2026-09-05T06:52:02+00:00"
    },
    "sensor.n_i_n_a_camera_gain": {
     "attributes": {
@@ -13591,6 +13668,7 @@
      "entity_picture": "<per run>",
      "filter": "H",
      "friendly_name": "N.I.N.A. Livestack",
+     "stacks": [],
      "target": "NGC 281"
     },
     "state": "2026-09-05T01:41:28.547634-05:00"
@@ -15383,6 +15461,7 @@
      "entity_picture": "<per run>",
      "filter": "H",
      "friendly_name": "N.I.N.A. Livestack",
+     "stacks": [],
      "target": "NGC 281"
     },
     "state": "2026-09-05T01:41:28.547634-05:00"
