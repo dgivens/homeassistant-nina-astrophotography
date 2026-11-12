@@ -772,7 +772,7 @@
     'WeatherData.DriverVersion': 'str',
     'WeatherData.Humidity': 'float|int|nan',
     'WeatherData.Name': 'str',
-    'WeatherData.Pressure': 'float|nan',
+    'WeatherData.Pressure': 'float|int|nan',
     'WeatherData.RainRate': 'int|nan',
     'WeatherData.SkyBrightness': 'float|int|nan',
     'WeatherData.SkyQuality': 'float|nan',
