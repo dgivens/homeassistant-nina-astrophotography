@@ -102,8 +102,8 @@
     dict({
       'enabled_default': True,
       'entity_category': None,
-      'entity_id': 'binary_sensor.n_i_n_a_scheduler_waiting',
-      'original_name': 'Scheduler waiting',
+      'entity_id': 'binary_sensor.n_i_n_a_sequence_waiting',
+      'original_name': 'Sequence waiting',
       'unique_id': '01JTESTENTRY0000000000000_scheduler_waiting',
     }),
     dict({
