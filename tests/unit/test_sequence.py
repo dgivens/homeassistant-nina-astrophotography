@@ -195,47 +195,29 @@ _DUSK = datetime.fromisoformat("2026-11-11T18:06:18.99998-06:00")
 
 
 @pytest.mark.parametrize(
-    ("tree", "now", "expected"),
+    ("tree", "expected"),
     [
-        ("wait_for_time_sequence_json.json", "2026-11-11T17:56:22-06:00", _DUSK),
-        ("wait_for_time_sequence_json.json", "2026-11-11T18:07:00-06:00", None),
-        ("scheduler_waiting_sequence_json.json", "2026-09-15T20:46:55-05:00", None),
-        ("dawn_sequence_complete.json", "2026-09-04T07:00:00-05:00", None),
+        ("wait_for_time_sequence_json.json", _DUSK),
+        ("scheduler_waiting_sequence_json.json", None),
+        ("dawn_sequence_complete.json", None),
     ],
     ids=[
         "waiting for civil dusk",
-        "its end has passed",
         "Target Scheduler's wait is not a step",
         "a finished tree full of waits",
     ],
 )
 def test_the_wait_in_progress_is_the_running_one(
-    tree: str, now: str, expected: datetime | None
+    tree: str, expected: datetime | None
 ) -> None:
-    wait = current_wait(
-        map_sequence(load_fixture(tree)), now=datetime.fromisoformat(now)
-    )
-    assert (wait.ends if wait else None) == expected
-
-
-@pytest.mark.parametrize(
-    ("span", "counted"), [(60.0, False), (300.0, True), (None, True)], ids=repr
-)
-def test_only_a_wait_for_time_span_of_five_minutes_or_more_counts(
-    span: float | None, counted: bool
-) -> None:
-    """A short span paces a retry loop, and counting it would keep a stalled
-    rig's alert muted.
-    """
-    wait = SequenceWait(ends=None, span_seconds=span)
-    tree = _node("Sequence", _node("Loop", _node("Wait", wait=wait)), status="")
-    assert (current_wait(tree, now=_DUSK) is not None) is counted
+    found = current_wait(map_sequence(load_fixture(tree)))
+    assert (found[1].ends if found else None) == expected
 
 
 def test_a_running_wait_under_a_container_that_is_not_running_is_stale() -> None:
     """A status below a root that is not running persists from the loaded file
     and earlier runs.
     """
-    stale = _node("Wait", wait=SequenceWait(ends=None))
+    stale = _node("Wait", wait=SequenceWait(kind="altitude", ends=None))
     tree = _node("Sequence", _node("End", stale, status="CREATED"), status="")
-    assert current_wait(tree, now=_DUSK) is None
+    assert current_wait(tree) is None

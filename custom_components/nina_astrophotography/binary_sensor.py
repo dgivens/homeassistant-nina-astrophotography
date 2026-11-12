@@ -126,6 +126,32 @@ def _flip_slew(data: NinaData) -> Mapping[str, Any]:
     return {"slews_at": None if flip is None else flip.slews_at}
 
 
+def _waits(data: NinaData) -> Mapping[str, Any]:
+    """The wait in progress and the ones that have ended, newest first.
+
+    A read shows only that a wait was running, so a short one is caught on some
+    reads and missed on others, and the history is a sample, not a record.
+    `span_seconds` is a Wait for Time Span's length, which is how a consumer
+    tells a pacing step in a retry loop from a wait that explains hours.
+    """
+    wait = data.wait
+    return {
+        "kind": None if wait is None else wait.kind,
+        "started_at": None if wait is None else wait.started,
+        "ends_at": None if wait is None else wait.ends,
+        "span_seconds": None if wait is None else wait.span_seconds,
+        "recent_waits": [
+            {
+                "kind": ended.kind,
+                "started_at": ended.started,
+                "ended_at": ended.ended,
+                "span_seconds": ended.span_seconds,
+            }
+            for ended in data.recent_waits
+        ],
+    }
+
+
 DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
         key="reachable",
@@ -206,7 +232,8 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         key="scheduler_waiting",
         translation_key="scheduler_waiting",
         kind=None,
-        value=lambda data: data.waiting,
+        value=lambda data: data.wait is not None,
+        attributes=_waits,
     ),
     NinaBinarySensorDescription(
         key="imaging",
@@ -295,6 +322,8 @@ class NinaBinarySensor(NinaDescribedEntity, BinarySensorEntity):
     """One descriptor, read out of the published snapshot."""
 
     entity_description: NinaBinarySensorDescription
+    # Read live by the stall alert; recorded, each wait would write the history.
+    _unrecorded_attributes = frozenset({"recent_waits"})
 
     @property
     def _survives_disconnect(self) -> bool:

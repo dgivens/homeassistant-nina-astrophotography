@@ -9,11 +9,16 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Fixed
 
 - **A wait instruction of the sequence's own counts as waiting** (#255).
-  The waiting sensor turns on for a Wait for Time, a Wait for Time Span of
-  five minutes or more, or a wait for an altitude that the sequence is
-  running, as well as for Target Scheduler's waits, and `sensor.<instance>_wait_ends_at` carries a Wait for
-  Time's end. The imaging stall alert gates on that sensor, so it stays quiet
-  while a sequence waits for dusk under an open roof.
+  The waiting sensor turns on for a Wait for Time, a Wait for Time Span or a
+  wait for an altitude that the sequence is running, as well as for Target
+  Scheduler's waits, and `sensor.<instance>_wait_ends_at` carries a Wait for
+  Time's end. Its attributes name the wait's kind, start, end and span, and
+  keep the last ten that ended. A wait still shown running past the point it
+  can have ended is over.
+- **The imaging stall alert stays quiet while a sequence waits for dusk, and
+  alerts on a retry loop** (#255). A Wait for Time Span shorter than the quiet
+  period neither mutes it nor restarts its settle period, which runs from the
+  end of the latest longer wait.
 
 ### Changed
 

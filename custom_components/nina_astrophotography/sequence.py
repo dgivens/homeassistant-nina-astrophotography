@@ -14,7 +14,6 @@ finds one.
 """
 
 from collections.abc import Iterable, Iterator
-from datetime import datetime
 import logging
 
 from .api.models import NinaEvent, SequenceNode, SequenceWait
@@ -62,32 +61,31 @@ def running(
     return newest.name == _SEQUENCE_STARTED
 
 
-_SHORTEST_COUNTED_SPAN = 300.0
-"""Seconds. A shorter Wait for Time Span settles or paces a retry loop, and
-counting it would blink the waiting sensor on and off through a stall, each
-blink restarting a stall alert's settle period."""
+def current_wait(
+    root: SequenceNode | None,
+) -> tuple[tuple[int, ...], SequenceWait] | None:
+    """The wait instruction the sequence is executing, with its path of child
+    indices from the root, or None.
 
-
-def _counts(wait: SequenceWait, now: datetime) -> bool:
-    if wait.ends is not None:
-        return wait.ends > now
-    return wait.span_seconds is None or wait.span_seconds >= _SHORTEST_COUNTED_SPAN
-
-
-def current_wait(root: SequenceNode | None, *, now: datetime) -> SequenceWait | None:
-    """The wait instruction the sequence is executing, or None.
-
-    A Wait for Time whose end has passed is over before the next read says so;
-    the other waits last until a read shows them finished.
+    Every wait the read shows running counts, however short; when one is over
+    though the read still shows it running is `polling.WaitLedger`'s to judge.
     """
     if root is None:
         return None
-    live = [child for child in root.children if child.status == "RUNNING"]
+    live: list[tuple[tuple[int, ...], SequenceNode]] = [
+        ((index,), child)
+        for index, child in enumerate(root.children)
+        if child.status == "RUNNING"
+    ]
     while live:
-        node = live.pop()
-        if node.wait is not None and _counts(node.wait, now):
-            return node.wait
-        live.extend(child for child in node.children if child.status == "RUNNING")
+        path, node = live.pop()
+        if node.wait is not None:
+            return path, node.wait
+        live.extend(
+            ((*path, index), child)
+            for index, child in enumerate(node.children)
+            if child.status == "RUNNING"
+        )
     return None
 
 

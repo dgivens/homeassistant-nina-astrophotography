@@ -158,18 +158,33 @@ Two more entities explain why frames might not be arriving:
 
 - `binary_sensor.<instance>_sequence_waiting` is `on` while Target Scheduler
   waits for a target's start window, or while the sequence runs one of its own
-  wait instructions: Wait for Time, a Wait for Time Span of five minutes or
-  more, or a wait for the target, sun or moon to reach an altitude. A shorter
-  span settles or paces a retry loop, and counting it would keep a stall alert
-  quiet through a stall. `sensor.<instance>_wait_ends_at`
+  wait instructions: Wait for Time, Wait for Time Span, or a wait for the
+  target, sun or moon to reach an altitude. `sensor.<instance>_wait_ends_at`
   says until when, for a scheduler wait or a Wait for Time; the others name no
   end. The wait doesn't say why: darkness, moon separation, target altitude and
   a meridian window all look the same. An install from 2.5.1 or earlier keeps
   the id `binary_sensor.<instance>_scheduler_waiting`.
 
+  It reads whether a wait was running when the sequence was last read, which
+  is every 30 seconds while imaging and every 5 minutes otherwise. A wait of a
+  few seconds shows on some reads and not others, so its history is a sample,
+  not a record of every wait. Its attributes describe the wait:
+
+  | Attribute | Meaning |
+  |---|---|
+  | `kind` | `scheduler`, `time`, `time_span` or `altitude` |
+  | `started_at` | when a read first showed it, up to one read after it began |
+  | `ends_at` | its end, for a scheduler wait or a Wait for Time |
+  | `span_seconds` | a Wait for Time Span's length |
+  | `recent_waits` | the last ten that ended, newest first, each with `kind`, `started_at`, `ended_at` and `span_seconds`; not recorded, and empty after a restart |
+
+  A wait still showing as running after it must have ended is over: a Wait for
+  Time at its end, a span its length plus five minutes after it was first
+  seen, an altitude wait after twelve hours.
+
   A wait for safe conditions is a loop that repeats until the monitor reads
-  safe, not a wait instruction, so this stays `off` through it. Watch
-  `safety_monitor_unsafe` for that.
+  safe. If the loop holds a Wait for Time Span, this blinks `on` while the span
+  runs. Watch `safety_monitor_unsafe` for that.
 - `sensor.<instance>_last_frame_at` is when the newest frame of any type was
   saved, flats included. It is `unknown` after every N.I.N.A. restart until the
   first frame, because N.I.N.A.'s image history is cleared on restart. It is

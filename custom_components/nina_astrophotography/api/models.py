@@ -572,6 +572,7 @@ class SequenceWait:
     Span, or one of the altitude waits (target, sun, moon, horizon).
     """
 
+    kind: Literal["time", "time_span", "altitude"]
     ends: datetime | None
     """Wait for Time's target. The others name no end as a time: an altitude
     wait's `ExpectedTime` is display text."""

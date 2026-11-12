@@ -4,14 +4,17 @@ Every assertion goes through `hass.states` or the entity registry — the
 registry for the long tail, which ships disabled and so has no state.
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.nina_astrophotography.api.errors import NinaRequestError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
@@ -232,6 +235,27 @@ async def test_the_waiting_sensor_reads_the_wait_in_progress(
     freezer.move_to(now)
     await set_up_at(hass, config_entry, rig, state)
     assert state_of(hass, SEQUENCE_WAITING).state == expected
+
+
+async def test_a_wait_for_time_is_over_at_its_own_end(
+    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
+) -> None:
+    """A rig that is not imaging has `/sequence/json` read every five minutes,
+    and the read after the end can still show the wait running.
+    """
+    freezer.move_to("2026-11-11T23:57:00+00:00")
+    await set_up_at(hass, config_entry, rig, "wait_for_time")
+    freezer.move_to("2026-11-12T00:07:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    waiting = state_of(hass, SEQUENCE_WAITING)
+    ended = waiting.attributes["recent_waits"][0]
+    assert (waiting.state, ended["kind"], ended["ended_at"]) == (
+        "off",
+        "time",
+        datetime.fromisoformat("2026-11-11T18:06:18.99998-06:00"),
+    )
 
 
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(

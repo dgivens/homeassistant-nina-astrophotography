@@ -745,7 +745,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         device_class=SensorDeviceClass.TIMESTAMP,
         kind=None,
         # A timestamp, which a time trigger takes directly.
-        value=lambda data: data.wait_ends_at,
+        value=lambda data: data.wait.ends if data.wait else None,
     ),
     NinaSensorDescription(
         key="last_frame_at",
