@@ -27,7 +27,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   end of the latest longer wait.
 - **The card harness's `rotator_mechanical` dump names the waiting sensor
   *Sequence waiting***, as every other dump does, so the suite's dump check
-  passes on `main`.
+  passes on `main` (#260).
 
 ### Changed
 
