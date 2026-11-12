@@ -1,6 +1,6 @@
 # Lovelace cards: neither suite renders one
 
-`www/` holds 6 Lovelace cards, plus five modules they import, which are not
+`www/` holds 7 Lovelace cards, plus five modules they import, which are not
 cards: `nina-entity-resolver.js`, `nina-card-config.js` (the prefix and the
 visual editor's `getConfigForm()` schema), `nina-collapse.js` (the headings a
 viewer folds, remembered per browser), `nina-units.js` (readings in the

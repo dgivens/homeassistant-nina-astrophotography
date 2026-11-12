@@ -182,7 +182,7 @@ available for your own cards.
 
 ## Dashboard cards
 
-The integration installs six cards and registers them with Home Assistant
+The integration installs seven cards and registers them with Home Assistant
 automatically. To add one:
 
 1. Open a dashboard and click **Edit dashboard** (the pencil icon).
@@ -202,6 +202,7 @@ type: custom:nina-observatory-card
 | `custom:nina-frame-stats-card` | HFR, star count and ADU trends for the session's frames, and a per-filter breakdown | — |
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default: your sequence's "AF After Temperature Change" trigger, else 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, their statistics, and a countdown for the sub being exposed | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85) |
+| `custom:nina-livestack-card` | The Livestack plugin's stacks this session: pick a target and filter from chips showing each stack's frame count, start or stop stacking, and open a stack full screen to zoom and pan. Needs the Livestack plugin | `follow_latest`: show whichever stack updated last, or keep the one shown until you pick another (default `true`); `show_controls`: the start/stop button (default `true`); `quality` (JPEG, default 85) |
 | `custom:nina-sky-map-card` | A star chart with the telescope's pointing, recent positions and the meridian | `trail_length` (default 60); `map_size` in px (default 320); `latitude` to override the site |
 | `custom:nina-weather-card` | Safety status, weather and sky quality | Its warning and danger limits, in °C and m/s whatever unit a reading is shown in: `dew_margin` (default 3); `temperature_high` and `temperature_low` (25, −10); `wind_warn` and `wind_danger` (8, 12); `humidity_warn`/`_danger` (85, 95) and `cloud_warn`/`_danger` (60, 85) in %; `seeing_warn`/`_danger` (3, 5) in arcsec. `show_sky_brightness: false` leaves out the sky brightness cell, for a station that measures only whole lux and reads 0 all night. A reading whose entity is disabled, or that the station never reports, has no cell |
 
@@ -262,7 +263,7 @@ temperature entities.
 
 If your dashboard resources are managed in YAML (`resource_mode: yaml`, or
 `mode: yaml` without `resource_mode`), the integration can't register the
-cards. It logs the six entries to add; each looks like this:
+cards. It logs the seven entries to add; each looks like this:
 
 ```yaml
 lovelace:
@@ -522,8 +523,8 @@ behind, pointing at a route nothing serves.
 
 1. **Delete each entry** under **Settings → Devices & Services → N.I.N.A.
    Astrophotography → ⋮ → Delete**. This removes its devices and entities.
-   Deleting the last entry also removes the six card resources it registered.
-   If you manage dashboard resources in YAML, remove the six
+   Deleting the last entry also removes the seven card resources it registered.
+   If you manage dashboard resources in YAML, remove the seven
    `/nina_astrophotography_static/` entries yourself.
 2. **Remove the cards** from your dashboards. A card left behind shows
    "Custom element doesn't exist".

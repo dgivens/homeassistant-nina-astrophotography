@@ -167,7 +167,7 @@ ELEMENTS = [
     for card in CARDS
     if "customElements.define(" in card.read_text(encoding="utf-8")
 ]
-assert len(ELEMENTS) == 6, [card.name for card in ELEMENTS]
+assert len(ELEMENTS) == 7, [card.name for card in ELEMENTS]
 
 # `this._config.<key>`, `config.<key>` or its `cfg` alias, but not `hass.config`
 # or the `nina-card-config.js` import.

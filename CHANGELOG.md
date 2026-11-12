@@ -30,6 +30,17 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   - A collapsed autofocus card keeps a failed run's warning.
   - A collapsed section draws nothing. A collapsed image panel asks N.I.N.A.
     for no frames, and on expanding loads only a frame saved meanwhile.
+- **A live stack card, `custom:nina-livestack-card`** (#261). It shows the
+  Livestack plugin's stacks for the session. Chips pick the target and filter
+  and show each stack's frame count, or its red, green and blue counts for a
+  colour stack. The card follows whichever stack updated last unless you pick
+  one, starts and stops stacking, and opens a stack full screen to zoom and
+  pan. It reloads the stack on screen only when that stack updates, and at the
+  width it is drawn.
+- **`image.<instance>_livestack` lists every stack updated this session**
+  (#261), in a `stacks` attribute, with each stack's frame count and update
+  time. The stack images are served to dashboards through Home Assistant, at
+  `/api/nina_astrophotography/livestack/{entity_id}`.
 
 ### Fixed
 

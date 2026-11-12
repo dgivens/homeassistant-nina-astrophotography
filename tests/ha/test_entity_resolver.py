@@ -135,6 +135,7 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
     },
     "nina-frame-stats-card.js": {},
     "nina-image-panel-card.js": {},
+    "nina-livestack-card.js": {},
 }
 
 RESOLVING = resolving_cards()

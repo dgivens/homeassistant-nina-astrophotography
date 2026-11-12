@@ -1,6 +1,6 @@
 # Card harness
 
-The six Lovelace cards run in a browser. Neither test suite renders one, so
+The seven Lovelace cards run in a browser. Neither test suite renders one, so
 everything below `setConfig`/`set hass` — the shadow DOM, the canvases, every
 branch that decides what to draw — is reached by nothing in CI. This is how you
 reach it by hand.
