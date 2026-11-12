@@ -9,7 +9,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Added
 
 - **`custom:nina-site-camera-card`** shows a pier, all-sky or observatory
-  camera in the same frame as the other cards. It takes any camera or image
+  camera in the same frame as the other cards (#264). It takes any camera or image
   entities in Home Assistant, whatever integration provides them:
 
   ```yaml
@@ -31,8 +31,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
-- **The card harness logs each image a card asks for**, and `Rig.add` gives a
-  scenario a row from another integration.
+- **The card harness logs each image a card asks for** (#264), and `Rig.add`
+  gives a scenario a row from another integration.
 
 ---
 
