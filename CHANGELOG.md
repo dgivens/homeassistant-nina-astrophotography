@@ -4,6 +4,25 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A wait instruction of the sequence's own counts as waiting** (#255).
+  The waiting sensor turns on for a Wait for Time, a Wait for Time Span or a
+  wait for an altitude that the sequence is running, as well as for Target
+  Scheduler's waits, and `sensor.<instance>_wait_ends_at` carries a Wait for
+  Time's end. The imaging stall alert gates on that sensor, so it stays quiet
+  while a sequence waits for dusk under an open roof.
+
+### Changed
+
+- **The waiting sensor is named *Sequence waiting*.** A fresh install creates
+  `binary_sensor.<instance>_sequence_waiting`, and an existing install keeps
+  `binary_sensor.<instance>_scheduler_waiting`. The imaging stall alert's
+  input is labelled *Sequence waiting* and keeps its key, `scheduler_waiting`,
+  so an automation built from it needs no change.
+
 ## [2.5.1] - 2026-11-08
 
 ### Added

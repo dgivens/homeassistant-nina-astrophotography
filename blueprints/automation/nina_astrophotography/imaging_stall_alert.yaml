@@ -15,7 +15,7 @@ blueprint:
 
     Waiting is most of what a sequence does — for darkness, for a target's
     start window, for moon separation, for a safety loop — so the quiet arm is
-    gated hard. It is silent while the scheduler is waiting, for a settling
+    gated hard. It is silent while the sequence is waiting, for a settling
     period after a wait ends, while conditions are unsafe (the abort blueprint
     owns that case), and, unless you turn that off, in daylight. Its clock
     starts when the last of those opens, not when the sequence started: a rig
@@ -77,10 +77,12 @@ blueprint:
               domain: binary_sensor
               device_class: running
         scheduler_waiting:
-          name: Scheduler waiting
+          name: Sequence waiting
           description: >-
-            On while the sequence is deliberately waiting. A target-window wait
-            is hours of nothing and must never alert.
+            On while the sequence is deliberately waiting: Target Scheduler's
+            wait for a target window, or a wait instruction of the sequence's
+            own, such as Wait for Time until dusk. Hours of nothing that must
+            never alert.
           selector:
             entity:
               integration: nina_astrophotography
@@ -347,7 +349,7 @@ blueprint:
         settle_minutes:
           name: Settle after a wait ends
           description: >-
-            Slew, rotation, filter change and settle after a scheduler wait
+            Slew, rotation, filter change and settle after a wait
             ends took 11.6 minutes on the rig this was measured against.
             Because Home Assistant re-stamps every entity's last-changed time
             on restart, this gate is also mute for this long after a restart —
@@ -758,7 +760,7 @@ conditions:
             entity_id: !input sequencer_running
             state: "on"
 
-          - alias: "The scheduler is not deliberately waiting"
+          - alias: "The sequence is not deliberately waiting"
             condition: state
             entity_id: !input scheduler_waiting
             state: "off"
@@ -778,7 +780,7 @@ conditions:
               {% set monitor = expand(safety_unsafe) | first | default(none) %}
               {{ monitor is none or monitor.state != 'on' }}
 
-          - alias: "A scheduler wait ended long enough ago to have settled"
+          - alias: "A wait ended long enough ago to have settled"
             condition: template
             value_template: >
               {% set waiting = states[scheduler_waiting] %}

@@ -206,7 +206,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         key="scheduler_waiting",
         translation_key="scheduler_waiting",
         kind=None,
-        value=lambda data: data.wait_ends_at is not None,
+        value=lambda data: data.waiting,
     ),
     NinaBinarySensorDescription(
         key="imaging",

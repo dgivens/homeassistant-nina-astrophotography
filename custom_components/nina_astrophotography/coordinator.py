@@ -52,7 +52,7 @@ from .polling import (
     TierSchedule,
     imaging,
 )
-from .sequence import running, target_name
+from .sequence import current_wait, running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
     fold,
@@ -147,8 +147,11 @@ class NinaData:
     running: bool
     """Whether the sequencer is executing, which it is while Target Scheduler
     waits out a start window and `imaging` is false. See `sequence.running`."""
+    waiting: bool
+    """Whether the sequence is deliberately waiting: Target Scheduler's wait for
+    a target window, or a wait instruction of the sequence's own."""
     wait_ends_at: datetime | None
-    """When Target Scheduler's current wait ends, or None if it is not waiting."""
+    """When the current wait ends, or None if it names no end or there is none."""
     guider_stopped: bool
     """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` or running
     guider seen since. Tells a stale `LostLock` from a guider hunting for its
@@ -643,6 +646,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def _assemble(self, snapshot: EquipmentSnapshot) -> NinaData:
         """Freeze the live sets into one snapshot, synchronously, at one moment."""
         moment = self._now()
+        scheduled_end = scheduler_wait(self.events, self.generation, now=moment)
+        step = current_wait(self._sequence, now=moment)
         return NinaData(
             snapshot=snapshot,
             session=fold(
@@ -670,7 +675,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             version=self._version,
             imaging=self._imaging,
             running=running(self._sequence, self.events, self.generation),
-            wait_ends_at=scheduler_wait(self.events, self.generation, now=moment),
+            waiting=scheduled_end is not None or step is not None,
+            wait_ends_at=scheduled_end or (step.ends if step else None),
             guider_stopped=self._guider_stop.stopped(
                 pending_guider_stop(self.events, self.generation)
             ),

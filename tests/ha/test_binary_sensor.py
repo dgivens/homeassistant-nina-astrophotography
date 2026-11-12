@@ -22,7 +22,7 @@ AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
 SEQUENCER_RUNNING = "binary_sensor.n_i_n_a_sequencer_running"
 IMAGING = "binary_sensor.n_i_n_a_imaging"
-SCHEDULER_WAITING = "binary_sensor.n_i_n_a_scheduler_waiting"
+SEQUENCE_WAITING = "binary_sensor.n_i_n_a_sequence_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 REACHABLE = "binary_sensor.n_i_n_a_reachable"
 MERIDIAN_FLIP = "binary_sensor.n_i_n_a_mount_meridian_flip"
@@ -221,7 +221,18 @@ async def test_the_waiting_sensor_clears_when_the_sequence_stops(
     stopped rig as waiting.
     """
     await set_up_at(hass, config_entry, rig, state)
-    assert state_of(hass, SCHEDULER_WAITING).state == expected
+    assert state_of(hass, SEQUENCE_WAITING).state == expected
+
+
+async def test_a_wait_step_of_the_sequences_own_reads_waiting(
+    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
+) -> None:
+    """A start container waiting for civil dusk sends no `TS-WAITSTART`, and a
+    stall alert gated on this sensor would read it as frames that stopped.
+    """
+    freezer.move_to("2026-11-11T23:57:00+00:00")
+    await set_up_at(hass, config_entry, rig, "wait_for_time")
+    assert state_of(hass, SEQUENCE_WAITING).state == "on"
 
 
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(

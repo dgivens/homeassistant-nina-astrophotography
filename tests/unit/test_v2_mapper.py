@@ -1,7 +1,7 @@
 """wire → models. Every sentinel, timezone and quirk dies in this module."""
 
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from operator import attrgetter
 
 from nina_astrophotography.api.models import (
@@ -9,6 +9,7 @@ from nina_astrophotography.api.models import (
     CurveFit,
     Gaussian,
     Hyperbola,
+    SequenceNode,
 )
 from nina_astrophotography.api.v2.mapper import (
     map_equipment_info,
@@ -529,6 +530,39 @@ def test_sequence_leaves_carry_their_status() -> None:
     assert root is not None
     start = next(c for c in root.children if c.name == "Start_Container")
     assert start.status == "FINISHED"
+
+
+def _waits(fixture: str) -> dict[str, datetime | None]:
+    """Each wait instruction's name → its end."""
+    pending: list[SequenceNode | None] = [map_sequence(load(fixture))]
+    waits = {}
+    while pending:
+        node = pending.pop()
+        if node is None:
+            continue
+        if node.wait is not None:
+            waits[node.name] = node.wait.ends
+        pending.extend(node.children)
+    return waits
+
+
+def test_a_wait_for_time_ends_at_its_target_time() -> None:
+    ends = _waits("wait_for_time_sequence_json.json")["Wait for Time"]
+    assert ends == datetime(
+        2026, 11, 11, 18, 6, 18, 999980, tzinfo=timezone(timedelta(hours=-6))
+    )
+
+
+def test_a_wait_for_time_span_is_a_wait_with_no_end() -> None:
+    """`Delay` is the span, and the step's start is not on the wire."""
+    assert _waits("dawn_sequence_complete.json")["Wait for Time Span"] is None
+
+
+def test_a_loop_condition_naming_a_time_is_not_a_wait() -> None:
+    """`Loop Until Time` carries a `TargetTime` too, but it bounds a loop that
+    is working, not waiting.
+    """
+    assert "Loop Until Time_Condition" not in _waits("dawn_sequence_complete.json")
 
 
 def test_a_sequence_that_did_not_serialize_is_not_a_tree() -> None:
