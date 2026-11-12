@@ -211,6 +211,8 @@ type: custom:nina-observatory-card
 | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/observatory.png" alt="Observatory card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/image-panel.png" alt="Latest image card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/sky-map.png" alt="Sky map card" width="260"> |
 | **Weather** | **Autofocus** | **Frame statistics** |
 | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/weather.png" alt="Weather card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/autofocus.png" alt="Autofocus card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/frame-stats.png" alt="Frame statistics card" width="260"> |
+| **Live stack** | | |
+| <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/livestack.png" alt="Live stack card: Sh2 132's R stack at 7 frames, with chips for Latest, G 13 and R 7" width="260"> | | |
 
 With a dome, the observatory card adds a Dome chip and Open or Close Dome:
 
