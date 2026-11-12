@@ -274,3 +274,44 @@ async def test_a_date_no_frame_was_saved_at_answers_404(
     client = await hass_client()
     resp = await client.get(f"{IMAGE}/0?date={date}")
     assert resp.status == 404
+
+
+LIVESTACK = (
+    "/api/nina_astrophotography/livestack/image.n_i_n_a_livestack"
+    "?target=Lobster+%26+Bubble&filter=O"
+)
+
+
+async def test_a_livestack_stack_proxies_by_the_target_and_filter_in_its_query(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    rig.respond("/livestack/image/Lobster%20%26%20Bubble/O", JPEG)
+    client = await hass_client()
+    resp = await client.get(LIVESTACK)
+    assert await resp.read() == FRAME
+
+
+async def test_a_stack_the_plugin_no_longer_holds_answers_404(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    rig.respond(
+        "/livestack/image/Lobster%20%26%20Bubble/O",
+        failure("No image with specified filter and target found", 404),
+    )
+    client = await hass_client()
+    assert (await client.get(LIVESTACK)).status == 404
+
+
+@pytest.mark.parametrize(
+    "query",
+    ["filter=O", "target=M31", "target=M31&filter=O&width=0"],
+    ids=["no target", "no filter", "zero width"],
+)
+async def test_an_invalid_livestack_query_answers_400(
+    hass, loaded_entry, hass_client, query: str
+) -> None:
+    client = await hass_client()
+    resp = await client.get(
+        f"/api/nina_astrophotography/livestack/image.n_i_n_a_livestack?{query}"
+    )
+    assert resp.status == 400

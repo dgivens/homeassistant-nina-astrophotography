@@ -8,11 +8,12 @@ The timestamp is the state, and Home Assistant refetches only when it moves.
 `image.livestack` from the `STACK-UPDATED` naming its target and filter.
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
 import logging
+from typing import Any
 
 from homeassistant.components.image import ImageEntity, ImageEntityDescription
 from homeassistant.core import HomeAssistant
@@ -27,6 +28,23 @@ from .entity import NinaDescribedEntity, NinaEntityDescription, async_add_observ
 _LOGGER = logging.getLogger(__name__)
 
 PARALLEL_UPDATES = 0
+
+
+def _stacks(data: NinaData) -> tuple[Mapping[str, Any], ...]:
+    """Every stack this session, newest first, for the livestack card."""
+    return tuple(
+        {
+            "target": stack.target,
+            "filter": stack.filter_name,
+            "updated": stack.updated.isoformat(),
+            "monochrome": stack.monochrome,
+            "count": stack.count,
+            "red_count": stack.red_count,
+            "green_count": stack.green_count,
+            "blue_count": stack.blue_count,
+        }
+        for stack in data.stacks
+    )
 
 
 async def _fetch_livestack(client: NinaClientV2, data: NinaData) -> bytes:
@@ -71,6 +89,7 @@ DESCRIPTIONS: tuple[NinaImageDescription, ...] = (
         attributes=lambda data: {
             "target": None if data.stack is None else data.stack.target,
             "filter": None if data.stack is None else data.stack.filter_name,
+            "stacks": _stacks(data),
         },
     ),
 )
@@ -81,6 +100,8 @@ class NinaImage(NinaDescribedEntity, ImageEntity):
 
     entity_description: NinaImageDescription
     _attr_content_type = "image/jpeg"
+    # A card reads it live; recorded, it would be written on every update.
+    _unrecorded_attributes = frozenset({"stacks"})
 
     def __init__(
         self,

@@ -518,6 +518,14 @@ async def test_the_livestack_route_quotes_its_two_path_segments() -> None:
     assert params == {"stream": "true", "quality": 85}
 
 
+async def test_a_livestack_width_asks_for_a_scaled_render() -> None:
+    session = FakeSession({"/livestack/image/": JPEG})
+    await _client(session).get_livestack_image_bytes("NGC 281", "S", width=800)
+    _, params = session.requests[-1]
+    assert params is not None
+    assert (params["resize"], params["size"]) == ("true", "800x800")
+
+
 async def test_an_image_refusal_arrives_as_a_json_envelope() -> None:
     """With stream=true a refusal is still HTTP 200, carrying the envelope."""
     session = FakeSession({"/image/": failure("No image at index", 400)})

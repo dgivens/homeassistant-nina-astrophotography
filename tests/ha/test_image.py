@@ -174,6 +174,30 @@ async def test_the_livestack_image_says_which_stack_it_is_showing(
     assert (attributes["target"], attributes["filter"]) == ("NGC 281", "S")
 
 
+def _stack_pairs(hass: HomeAssistant) -> list[tuple[str, str]]:
+    stacks = state_of(hass, LIVESTACK).attributes["stacks"]
+    return [(stack["target"], stack["filter"]) for stack in stacks]
+
+
+async def test_the_livestack_image_lists_every_stack_this_session(
+    hass: HomeAssistant, inside_the_dawn_session, loaded_entry
+) -> None:
+    """The entity shows one stack; a mono rig shoots one per filter, and a
+    night of Target Scheduler several targets.
+    """
+    pairs = _stack_pairs(hass)
+    assert (len(pairs), pairs[0]) == (6, ("NGC 281", "S"))
+
+
+async def test_last_nights_stacks_are_not_listed_after_the_rollover(
+    hass: HomeAssistant, freezer, config_entry, rig, set_up_at
+) -> None:
+    """The plugin holds every stack until N.I.N.A. restarts."""
+    freezer.move_to("2026-09-05T18:00:00+00:00")  # 13:00 on the rig, the day after
+    await set_up_at(hass, config_entry, rig, "imaging")
+    assert _stack_pairs(hass) == []
+
+
 async def test_a_stack_that_starts_after_home_assistant_did_gets_its_entity(
     hass: HomeAssistant, two_rigs, push
 ) -> None:

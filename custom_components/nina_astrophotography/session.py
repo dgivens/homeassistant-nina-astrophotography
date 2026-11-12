@@ -257,18 +257,34 @@ def latest_stack(
     """The stack `STACK-UPDATED` last reported, or None if none has.
 
     Stacks do not survive a N.I.N.A. restart, hence the generation filter.
-    `Target` and `Filter` are both path segments, so neither may be empty.
     """
-    newest = _newest(events, {_STACK_UPDATED}, generation)
-    if newest is None:
-        return None
-    target = newest.data.get("Target")
-    filter_name = newest.data.get("Filter")
-    if not isinstance(target, str) or not isinstance(filter_name, str):
-        return None
-    if not target or not filter_name:
-        return None
-    return StackState(target=target, filter_name=filter_name, updated=newest.time)
+    newest = _newest(
+        (e for e in events if e.stack is not None), {_STACK_UPDATED}, generation
+    )
+    return None if newest is None else newest.stack
+
+
+def stacks(
+    events: Iterable[NinaEvent], generation: str | None, since: datetime | None
+) -> tuple[StackState, ...]:
+    """Each target and filter's stack as its newest update left it, updated at
+    or after `since`, newest first.
+
+    The plugin keeps every stack until N.I.N.A. restarts, so without `since` a
+    long-running rig offers last week's targets beside tonight's.
+    """
+    newest: dict[tuple[str, str], StackState] = {}
+    for event in events:
+        stack = event.stack
+        if stack is None or event.generation != generation:
+            continue
+        if since is not None and stack.updated < since:
+            continue
+        key = (stack.target, stack.filter_name)
+        held = newest.get(key)
+        if held is None or stack.updated >= held.updated:
+            newest[key] = stack
+    return tuple(sorted(newest.values(), key=attrgetter("updated"), reverse=True))
 
 
 _RECENT_FRAMES_LIMIT = 20

@@ -21,6 +21,7 @@ from nina_astrophotography.session import (
     pending_guider_stop,
     recent_frames,
     scheduler_wait,
+    stacks,
 )
 import pytest
 
@@ -701,3 +702,35 @@ def test_a_flip_that_never_reports_its_end_lapses(
         _flip_events(), "g1", reading=reading, window_minutes=10.0, now=now
     )
     assert (flip is not None) is expected
+
+
+def _pairs(held) -> list[tuple[str, str]]:
+    return [(stack.target, stack.filter_name) for stack in held]
+
+
+def test_each_stack_is_listed_once_newest_first(night_events) -> None:
+    assert _pairs(stacks(night_events, "g1", None)) == [
+        ("NGC 281", "S"),
+        ("Dark Shark Nebula", "R"),
+        ("Dark Shark Nebula", "L"),
+        ("Dark Shark Nebula", "B"),
+        ("Wizard Nebula", "R"),
+        ("Lobster & Bubble", "O"),
+    ]
+
+
+def test_a_stack_is_counted_as_its_newest_update_left_it(night_events) -> None:
+    held = {(s.target, s.filter_name): s for s in stacks(night_events, "g1", None)}
+    assert held["NGC 281", "S"].count == 24
+
+
+def test_a_stack_not_updated_since_the_session_began_is_not_listed(
+    night_events,
+) -> None:
+    since = datetime.fromisoformat("2026-09-03T23:30:00-05:00")
+    assert ("Dark Shark Nebula", "B") not in _pairs(stacks(night_events, "g1", since))
+
+
+def test_the_stacks_of_another_process_are_not_listed(night_events) -> None:
+    """The plugin holds its stacks in memory; a restart drops every one."""
+    assert stacks(night_events, "g2", None) == ()

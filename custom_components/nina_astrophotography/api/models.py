@@ -322,6 +322,8 @@ class NinaEvent:
     """Set on `TS-WAITSTART`: when Target Scheduler expects to resume. Not in
     `data`, which keeps the wire's string for automations.
     """
+    stack: StackState | None = None
+    """Set on a `STACK-UPDATED` naming both its target and its filter."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -617,13 +619,21 @@ class FlatsStatus:
 
 @dataclass(frozen=True, slots=True)
 class StackState:
-    """The stack `STACK-UPDATED` last reported: the target and filter
-    `/livestack/image/{target}/{filter}` fetches.
+    """One stack as a `STACK-UPDATED` reported it: the target and filter
+    `/livestack/image/{target}/{filter}` fetches, and how many frames are in it.
+
+    A mono stack counts its frames in `count`; a colour one counts each channel
+    instead, and leaves `count` `None`.
     """
 
     target: str
     filter_name: str
     updated: datetime
+    monochrome: bool | None
+    count: int | None
+    red_count: int | None
+    green_count: int | None
+    blue_count: int | None
 
 
 @dataclass(frozen=True, slots=True)

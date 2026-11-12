@@ -515,6 +515,37 @@ def test_event_payloads_keep_their_scalars_and_drop_the_empty_coordinates() -> N
     assert "Coordinates" not in data
 
 
+def test_a_mono_stack_update_counts_its_frames() -> None:
+    stack = map_event(_first_event("STACK-UPDATED"), "g1").stack
+    assert stack is not None
+    assert (stack.monochrome, stack.count, stack.red_count) == (True, 1, None)
+
+
+_COLOUR_STACK = {
+    "Event": "STACK-UPDATED",
+    "Time": "2026-09-04T04:25:58-05:00",
+    "Target": "M 31",
+    "Filter": "Colour",
+    "IsMonochrome": False,
+    "RedStackCount": 12,
+    "GreenStackCount": 11,
+    "BlueStackCount": -1,
+}
+
+
+@pytest.mark.synthetic
+def test_a_colour_stack_update_counts_each_channel() -> None:
+    """A channel the plugin has no frame in yet is counted `-1`."""
+    stack = map_event(_COLOUR_STACK, "g1").stack
+    assert stack is not None
+    assert (stack.count, stack.red_count, stack.green_count, stack.blue_count) == (
+        None,
+        12,
+        11,
+        None,
+    )
+
+
 def test_the_sequence_root_is_synthetic_and_holds_the_global_triggers() -> None:
     """/sequence/json answers a LIST of top-level nodes, the first of which is a
     bare {"GlobalTriggers": [...]} with no Name or Status of its own.

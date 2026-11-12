@@ -100,15 +100,70 @@ class NinaImageProxyView(HomeAssistantView):
             return web.Response(status=404)
         except NinaError:
             return web.Response(status=502)
+        return _jpeg(image_bytes)
 
-        return web.Response(
-            body=image_bytes,
-            content_type="image/jpeg",
-            # Fetched through a signed URL, a short-lived bearer credential.
-            headers={"Cache-Control": "no-store"},
-        )
+
+class NinaLivestackProxyView(HomeAssistantView):
+    """`GET /api/nina_astrophotography/livestack/{entity_id}?target=…&filter=…`.
+
+    One target and filter's stack, as `image.livestack`'s `stacks` lists them.
+    Both are in the query, since either may hold a `/`. `width` scales the
+    stack down to that many pixels across.
+    """
+
+    url = "/api/nina_astrophotography/livestack/{entity_id}"
+    name = "api:nina_astrophotography:livestack"
+
+    async def get(self, request: web.Request, entity_id: str) -> web.Response:
+        target = request.query.get("target", "")
+        filter_name = request.query.get("filter", "")
+        try:
+            quality = int(request.query.get("quality", IMAGE_QUALITY))
+            width = int(request.query["width"]) if "width" in request.query else None
+        except ValueError:
+            return _bad_livestack_request()
+        if (
+            not target
+            or not filter_name
+            or not 1 <= quality <= 100
+            or (width is not None and width < 1)
+        ):
+            return _bad_livestack_request()
+
+        hass: HomeAssistant = request.app[KEY_HASS]
+        client = _client_for_entity(hass, entity_id)
+        if client is None:
+            return web.Response(status=404)
+
+        try:
+            image_bytes = await client.get_livestack_image_bytes(
+                target, filter_name, quality=quality, width=width
+            )
+        except NinaNoImageError, NinaCommandError:
+            # No such stack, or one a N.I.N.A. restart dropped.
+            return web.Response(status=404)
+        except NinaError:
+            return web.Response(status=502)
+        return _jpeg(image_bytes)
+
+
+def _bad_livestack_request() -> web.Response:
+    return web.Response(
+        status=400,
+        text="target and filter are required, quality between 1 and 100, width >= 1",
+    )
+
+
+def _jpeg(image_bytes: bytes) -> web.Response:
+    return web.Response(
+        body=image_bytes,
+        content_type="image/jpeg",
+        # Fetched through a signed URL, a short-lived bearer credential.
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def async_register_views(hass: HomeAssistant) -> None:
-    """Register the proxy once, regardless of how many entries load."""
+    """Register the proxies once, regardless of how many entries load."""
     hass.http.register_view(NinaImageProxyView())
+    hass.http.register_view(NinaLivestackProxyView())

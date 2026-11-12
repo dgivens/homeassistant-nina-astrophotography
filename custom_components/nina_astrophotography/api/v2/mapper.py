@@ -61,6 +61,7 @@ from ..models import (
     SequenceNode,
     SequenceWait,
     ShutterState,
+    StackState,
     SwitchChannelModel,
     SwitchDeviceModel,
     WeatherModel,
@@ -84,6 +85,7 @@ _READONLY_INDEX_BASE = 10_000
 EVENT_TIMEZONES: Mapping[str, str] = MappingProxyType({"TS-": "utc", "ERROR-": "local"})
 
 _SCHEDULER_WAIT_STARTED = "TS-WAITSTART"
+_STACK_UPDATED = "STACK-UPDATED"
 
 # WeatherData channel → model key. AveragePeriod is a driver setting, not a
 # reading, and is deliberately absent.
@@ -634,6 +636,34 @@ def _wait_end(name: str, wire: dict, offset: timedelta | None) -> datetime | Non
     return None if offset is None else parsed.replace(tzinfo=timezone(offset))
 
 
+def _stack_count(wire: dict, key: str) -> int | None:
+    """A count the Livestack plugin had none of arrives as `-1` or `null`."""
+    count = _integer(wire, key)
+    return count if count is not None and count >= 0 else None
+
+
+def _stack(name: str, wire: dict, time: datetime) -> StackState | None:
+    """The stack a `STACK-UPDATED` names. `Target` and `Filter` are both path
+    segments of the image route, so an update missing either names none.
+    """
+    if name != _STACK_UPDATED:
+        return None
+    target, filter_name = _text(wire, "Target"), _text(wire, "Filter")
+    if not target or not filter_name:
+        return None
+    monochrome = wire.get("IsMonochrome")
+    return StackState(
+        target=target,
+        filter_name=filter_name,
+        updated=time,
+        monochrome=monochrome if isinstance(monochrome, bool) else None,
+        count=_stack_count(wire, "StackCount"),
+        red_count=_stack_count(wire, "RedStackCount"),
+        green_count=_stack_count(wire, "GreenStackCount"),
+        blue_count=_stack_count(wire, "BlueStackCount"),
+    )
+
+
 def map_event(
     wire: dict, generation: str | None, *, rig_offset: timedelta | None = None
 ) -> NinaEvent:
@@ -644,9 +674,10 @@ def map_event(
     """
     name = str(wire.get("Event", ""))
     frame = map_image_save(wire, generation)
+    time = _event_time(name, wire, frame, rig_offset)
     return NinaEvent(
         name=name,
-        time=_event_time(name, wire, frame, rig_offset),
+        time=time,
         data={
             key: nan_to_none(value)
             for key, value in wire.items()
@@ -656,6 +687,7 @@ def map_event(
         generation=generation,
         frame=frame,
         wait_end=_wait_end(name, wire, rig_offset),
+        stack=_stack(name, wire, time),
     )
 
 

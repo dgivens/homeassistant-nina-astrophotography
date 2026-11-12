@@ -65,6 +65,7 @@ from .session import (
     pending_guider_stop,
     recent_frames,
     scheduler_wait,
+    stacks,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -131,6 +132,8 @@ class NinaData:
     livestack: LivestackStatus
     stack: StackState | None
     """What `image.livestack` fetches; None until a stack has updated."""
+    stacks: tuple[StackState, ...]
+    """Every stack updated this session, newest first."""
     target: str | None
     """What the sequence is shooting: the newest `TS-*TARGETSTART`'s name, else
     the innermost `TargetName` in `/sequence/json`. Unlike
@@ -656,22 +659,24 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             current_wait(self._sequence),
             now=moment,
         )
+        session = fold(
+            self.frames.values(),
+            self.events,
+            self.generation,
+            autofocus_timeout_seconds=(
+                self._profile.autofocus_timeout_seconds or DEFAULT_AUTOFOCUS_TIMEOUT
+            ),
+            now=moment,
+            rollover_hour=self._rollover_hour,
+        )
         return NinaData(
             snapshot=snapshot,
-            session=fold(
-                self.frames.values(),
-                self.events,
-                self.generation,
-                autofocus_timeout_seconds=(
-                    self._profile.autofocus_timeout_seconds or DEFAULT_AUTOFOCUS_TIMEOUT
-                ),
-                now=moment,
-                rollover_hour=self._rollover_hour,
-            ),
+            session=session,
             sequence=self._sequence,
             flats=self._flats,
             livestack=self._livestack,
             stack=latest_stack(self.events, self.generation),
+            stacks=stacks(self.events, self.generation, session.session_start),
             target=(
                 latest_target(self.events, self.generation)
                 or target_name(self._sequence)
