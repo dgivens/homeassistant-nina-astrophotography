@@ -5,7 +5,9 @@
  *
  * A card builds each heading with `heading()`, or `attrs()` and `CHEVRON` where
  * its markup places the chevron. Its header, `attrs("card")` and ending in
- * `CHEVRON`, folds the whole body, and `banner()` follows it to say so. A card
+ * `CHEVRON`, folds the whole body, and `banner()` follows it to say so. A
+ * heading is a button, whose content a screen reader flattens, so a control
+ * goes beside it as a sibling, between the header and the banner. A card
  * that re-renders its markup leaves a folded section's body out, so nothing in
  * it is drawn; one that builds its markup once hides the body itself from
  * `onToggle`, which runs after every toggle.
@@ -53,7 +55,7 @@ export const COLLAPSE_STYLE = `
   }
   .fold-banner.warn { color: var(--warn); }
   .fold-banner.danger { color: var(--danger); }
-  .header[aria-expanded="false"] + .fold-banner { display: block; }
+  .header[aria-expanded="false"] ~ .fold-banner { display: block; }
 `;
 
 export const CHEVRON = `<span class="fold-chevron" aria-hidden="true"></span>`;

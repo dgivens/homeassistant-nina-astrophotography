@@ -106,7 +106,10 @@ Traps when changing a card:
 - **A section a viewer can fold is a heading from `nina-collapse.js`**:
   `heading(section, cls, label, level)`, or `attrs(section)` and `CHEVRON`
   where the markup places the chevron itself. The header is `attrs("card")`
-  ending in `CHEVRON`, with `banner(level)` straight after it. `level` is the
+  ending in `CHEVRON`, with `banner(level)` after it as a sibling. A heading
+  is a button, and a screen reader flattens a button's content, so **no
+  control goes inside one**: the live stack's Start/Stop is the header's
+  sibling, in a grid column the header leaves empty as a subgrid. `level` is the
   warning the section would show, so a folded heading cues it. A card that
   re-renders leaves a folded body out of its markup, so its canvas is never
   drawn into, and wraps the render in `keepFocus`. A card that builds its
