@@ -1,6 +1,6 @@
 # Lovelace cards: neither suite renders one
 
-`www/` holds 7 Lovelace cards, plus five modules they import, which are not
+`www/` holds 8 Lovelace cards, plus five modules they import, which are not
 cards: `nina-entity-resolver.js`, `nina-card-config.js` (the prefix and the
 visual editor's `getConfigForm()` schema), `nina-collapse.js` (the headings a
 viewer folds, remembered per browser), `nina-units.js` (readings in the
@@ -8,7 +8,9 @@ unit HA shows them in, the meridian flip window, the camera's ADU full scale,
 and `safe()` for any rig text bound for `innerHTML`) and `nina-theme.js` (the
 colours, on a dark theme or a light one). Every card resolves its entity ids
 from the registry by `translation_key` and keeps the configured instance
-prefix only as a per-entity fallback. `frontend.py` serves them and
+prefix only as a per-entity fallback — but for `nina-site-camera-card`, which
+shows whatever camera or image entities its config names and reads nothing of
+the rig. `frontend.py` serves them and
 self-registers each as a Lovelace resource — nothing for a user to copy into
 `/config/www/`. Render them with `tools/card-harness/`.
 

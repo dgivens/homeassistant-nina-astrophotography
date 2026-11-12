@@ -229,9 +229,11 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   // palette it falls back to, which keeps a log comparable across versions.
   globalThis.getComputedStyle = () => ({ getPropertyValue: () => "" });
   // There are no image bytes to serve, so every load fails — which is what the
-  // browser page shows too, since nothing there answers the image proxy.
+  // browser page shows too, since nothing there answers the image proxy. The
+  // address asked for is the record.
   globalThis.Image = class {
     set src(value) {
+      log.push(`image ${value}`);
       queueMicrotask(() => this.onerror?.());
     }
   };

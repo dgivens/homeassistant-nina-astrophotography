@@ -1,6 +1,6 @@
 # Card harness
 
-The seven Lovelace cards run in a browser. Neither test suite renders one, so
+The eight Lovelace cards run in a browser. Neither test suite renders one, so
 everything below `setConfig`/`set hass` — the shadow DOM, the canvases, every
 branch that decides what to draw — is reached by nothing in CI. This is how you
 reach it by hand.
@@ -112,6 +112,9 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
 browser's storage; `"card"` is the whole card. `render.html` clears any fold a
 click left in storage when it loads, so one session's clicks do not carry into
 the next screenshot.
+
+`Rig.add` is for a row from another integration, which no rig state can hold:
+the site camera card's camera entity.
 
 `after` is later `hass` objects, handed over in turn after the first render —
 for a card whose output depends on what it showed before, such as the image

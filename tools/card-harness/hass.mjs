@@ -83,6 +83,17 @@ export class Rig {
   }
 
   /**
+   * A row from another integration, which no rig state can hold: the site
+   * camera card shows any camera. The one door for a row the dump lacks, and
+   * the call site says what it stands for.
+   */
+  add(entityId, state, attributes = {}) {
+    if (this._states[entityId]) throw new Error(`${entityId} is in the dump — override it`);
+    this._states[entityId] = { state: String(state), attributes };
+    return this;
+  }
+
+  /**
    * One reading in another unit, as picking a display unit for the entity
    * shows it: the same quantity, at `factor` of `unit` to the unit it had. Not
    * an invented reading, so its scenario must draw what the original does.

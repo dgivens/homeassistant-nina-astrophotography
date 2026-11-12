@@ -24,6 +24,7 @@ CARD_FILENAMES = (
     "nina-image-panel-card.js",
     "nina-livestack-card.js",
     "nina-observatory-card.js",
+    "nina-site-camera-card.js",
     "nina-sky-map-card.js",
     "nina-weather-card.js",
 )

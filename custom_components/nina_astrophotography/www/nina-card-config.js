@@ -43,8 +43,13 @@ const FALLBACK = {
  * `undefined`, so `setConfig` applies every default itself.
  */
 export function configForm(fields = []) {
+  return standaloneForm([RIG, ...fields, FALLBACK]);
+}
+
+/** The form for a card that reads no rig, so offers neither instance nor prefix. */
+export function standaloneForm(fields) {
   return {
-    schema: [RIG, ...fields, FALLBACK],
+    schema: fields,
     computeLabel: (schema) => schema.label ?? schema.name,
     computeHelper: (schema) => schema.helper,
   };
