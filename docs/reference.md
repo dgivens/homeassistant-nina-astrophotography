@@ -179,8 +179,8 @@ Two more entities explain why frames might not be arriving:
   | `recent_waits` | the last ten that ended, newest first, each with `kind`, `started_at`, `ended_at` and `span_seconds`; not recorded, and empty after a restart |
 
   A wait still showing as running after it must have ended is over: a Wait for
-  Time at its end, a span its length plus five minutes after it was first
-  seen, an altitude wait after twelve hours.
+  Time at its end, an altitude wait after twelve hours. A span still showing
+  past its length plus five minutes is taken as the next pass of a loop.
 
   A wait for safe conditions is a loop that repeats until the monitor reads
   safe. If the loop holds a Wait for Time Span, this blinks `on` while the span
@@ -230,8 +230,10 @@ Pick the rig's *Reachable* sensor for *rig reachable*, in this blueprint and in
 blueprints keep loading, but without it a lost rig is reported one outage grace
 period later.
 
-The quiet case doesn't fire while the sequencer is stopped, while the scheduler
-is waiting, for 15 minutes after a wait ends, or in daylight. Its timers start
+The quiet case doesn't fire while the sequencer is stopped, while the sequence
+is waiting, for 15 minutes after a wait ends, or in daylight. A Wait for Time
+Span shorter than the quiet period counts as neither: it paces a retry loop,
+which is how a stall often looks. Its timers start
 at the latest of the sequencer starting, conditions turning safe, the sun
 setting and the quiet hours ending. So neither the last frame of the previous
 night nor an hour spent waiting for dark triggers an alert the moment the rig
@@ -275,7 +277,8 @@ Limitations:
 
 - If Home Assistant restarts while an alert is open, the notification and the
   follow-up "cleared" message are both lost.
-- The quiet case is also muted for `settle_minutes` after a restart.
+- After a restart the quiet case waits the full quiet period (20 minutes by
+  default) before it can fire, because its timers restart with Home Assistant.
 - A rig taking bad frames is not stalled; this blueprint won't notice it.
   Guiding problems are covered by `guiding_alert.yaml`. A lost guide star that
   stops frames will show up here as a stall, with the guider state in the

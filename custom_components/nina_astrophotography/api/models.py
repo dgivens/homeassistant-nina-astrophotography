@@ -566,13 +566,16 @@ class SessionStats:
     autofocus: AutoFocusState
 
 
+SequenceWaitKind = Literal["time", "time_span", "altitude"]
+
+
 @dataclass(frozen=True, slots=True)
 class SequenceWait:
     """A wait instruction of the sequence's own: Wait for Time, Wait for Time
     Span, or one of the altitude waits (target, sun, moon, horizon).
     """
 
-    kind: Literal["time", "time_span", "altitude"]
+    kind: SequenceWaitKind
     ends: datetime | None
     """Wait for Time's target. The others name no end as a time: an altitude
     wait's `ExpectedTime` is display text."""

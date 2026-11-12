@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import time
 from typing import Literal
 
-from .api.models import EquipmentSnapshot, NinaEvent, SequenceWait
+from .api.models import EquipmentSnapshot, NinaEvent, SequenceWait, SequenceWaitKind
 
 
 class EventLedger:
@@ -269,7 +269,7 @@ def imaging(
     return seconds_since_last_image_save < _RECENT_SAVE
 
 
-WaitKind = Literal["scheduler", "time", "time_span", "altitude"]
+WaitKind = Literal["scheduler"] | SequenceWaitKind
 
 
 @dataclass(frozen=True, slots=True)
@@ -316,8 +316,12 @@ class WaitLedger:
     point it can have ended is over: a Wait for Time at its end, a span its
     `Delay` and one slow poll after it was first seen, an altitude wait after
     twelve hours. A status carried in from a loaded sequence file can show a
-    wait running that never will, and this bounds it. A wait that expires
-    stays over until a read shows a different one.
+    wait running that never will, and this bounds it.
+
+    Reads cannot tell one pass of a loop from the next at the same path. A
+    span still shown past its length is taken as the next pass, so a loop of
+    long spans stays waiting; a Wait for Time or an altitude wait that expires
+    stays over until a read shows a different wait.
     """
 
     def __init__(self) -> None:
@@ -364,7 +368,10 @@ class WaitLedger:
         self._current = Wait(kind, started, ends, span)
         if self._expiry(self._current) <= now:
             self._end(now)
-            self._expired = key
+            if span is None:
+                self._expired = key
+            else:
+                self._current = Wait(kind, now, ends, span)
 
     def _expiry(self, wait: Wait) -> datetime:
         if wait.ends is not None:

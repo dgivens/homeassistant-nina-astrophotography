@@ -355,9 +355,11 @@ blueprint:
             Slew, rotation, filter change and settle after a wait
             ends took 11.6 minutes on the rig this was measured against. It
             runs from the end of the latest wait that is not a short span, so
-            the five-second settle a sequence takes after dusk does not cut it
-            short. A Home Assistant restart forgets which waits ended; the
-            quiet clock restarts with it, which covers the settle.
+            a long wait is not hidden behind the five-second settle a sequence
+            takes after it. A Home Assistant restart forgets which waits
+            ended, and the quiet clock restarts with it: the quiet arm then
+            waits "Imaging quiet for" before alerting, which covers the settle
+            as long as it is the longer of the two.
           default: 15
           selector:
             number:
@@ -765,8 +767,7 @@ conditions:
             state: "on"
 
           # A short span paces a retry loop, so it explains none of the
-          # silence. Unavailable mutes, as `off` alone did: the unreachable arm
-          # owns that.
+          # silence. Unavailable mutes: the unreachable arm owns that.
           - alias: "The sequence is not in a wait that explains the silence"
             condition: template
             value_template: >

@@ -7,7 +7,12 @@ tested as functions of their arguments rather than through a config entry.
 from dataclasses import fields, replace
 from datetime import datetime, timedelta, timezone
 
-from nina_astrophotography.api.models import EquipmentSnapshot, NinaEvent, SequenceWait
+from nina_astrophotography.api.models import (
+    EquipmentSnapshot,
+    NinaEvent,
+    SequenceWait,
+    SequenceWaitKind,
+)
 from nina_astrophotography.api.v2.mapper import map_equipment_info
 from nina_astrophotography.polling import (
     EventLedger,
@@ -324,21 +329,24 @@ def _at(minutes: float) -> datetime:
     return _EVENING + timedelta(minutes=minutes)
 
 
+Step = tuple[tuple[int, ...], SequenceWait]
+
+
 def _step(
-    kind: str = "time_span",
+    kind: SequenceWaitKind = "time_span",
     *,
     ends: datetime | None = None,
     span: float | None = 60.0,
     path: tuple[int, ...] = (1, 2),
-) -> tuple[tuple[int, ...], SequenceWait]:
-    return path, SequenceWait(kind=kind, ends=ends, span_seconds=span)  # type: ignore[arg-type]
+) -> Step:
+    return path, SequenceWait(kind=kind, ends=ends, span_seconds=span)
 
 
-def _ledger(*reads: tuple[float, object]) -> WaitLedger:
+def _ledger(*reads: tuple[float, Step | None]) -> WaitLedger:
     """`(minute, step or None)` reads, in order, with no Target Scheduler wait."""
     ledger = WaitLedger()
     for minute, step in reads:
-        ledger.observe(None, step, now=_at(minute))  # type: ignore[arg-type]
+        ledger.observe(None, step, now=_at(minute))
     return ledger
 
 
@@ -358,17 +366,12 @@ def test_a_wait_the_read_no_longer_shows_ends_at_that_read() -> None:
     ("step", "late", "ended"),
     [
         (_step("time", ends=_at(10), span=None), 11, 10),
-        (_step(span=60.0), 7, 7),
         (_step("altitude", span=None), 12 * 60 + 1, 12 * 60 + 1),
     ],
-    ids=[
-        "Wait for Time, at its named end",
-        "a span, its Delay and one slow poll after first seen",
-        "an altitude wait, after twelve hours",
-    ],
+    ids=["Wait for Time, at its named end", "an altitude wait, after twelve hours"],
 )
 def test_a_wait_still_shown_running_past_its_possible_end_is_over(
-    step: tuple[tuple[int, ...], SequenceWait], late: float, ended: float
+    step: Step, late: float, ended: float
 ) -> None:
     """A status carried in from a loaded sequence file can show a wait running
     that never will, and would hold a stall alert mute all night.
@@ -379,8 +382,19 @@ def test_a_wait_still_shown_running_past_its_possible_end_is_over(
 
 
 def test_an_expired_wait_stays_over_while_the_read_still_shows_it() -> None:
-    ledger = _ledger((0, _step()), (7, _step()), (8, _step()))
+    late = _step("time", ends=_at(10), span=None)
+    ledger = _ledger((0, late), (11, late), (12, late))
     assert (ledger.current, len(ledger.ended)) == (None, 1)
+
+
+def test_a_span_still_shown_past_its_length_is_the_loops_next_pass() -> None:
+    """Reads five minutes apart catch a loop of half-hour spans on nearly every
+    pass, and a rig waiting on purpose must keep reading as waiting.
+    """
+    span = _step(span=1800.0)
+    ledger = _ledger(*[(minute, span) for minute in range(0, 45, 5)])
+    assert ledger.current is not None
+    assert (ledger.current.started, ledger.ended[0].ended) == (_at(35), _at(35))
 
 
 def test_a_wait_a_loop_runs_again_counts_again() -> None:
