@@ -666,7 +666,9 @@ def _sequence_wait(wire: dict) -> SequenceWait | None:
     if "CalculatedWaitDuration" in wire:
         ends = _timestamp(wire.get("TargetTime"))
         return SequenceWait(ends=ends if ends and ends.tzinfo else None)
-    if "Delay" in wire or ("CurrentAltitude" in wire and "ExpectedTime" in wire):
+    if "Delay" in wire:
+        return SequenceWait(ends=None, span_seconds=_number(wire, "Delay"))
+    if "CurrentAltitude" in wire and "ExpectedTime" in wire:
         return SequenceWait(ends=None)
     return None
 

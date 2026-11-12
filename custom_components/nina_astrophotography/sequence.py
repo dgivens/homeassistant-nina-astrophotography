@@ -62,6 +62,18 @@ def running(
     return newest.name == _SEQUENCE_STARTED
 
 
+_SHORTEST_COUNTED_SPAN = 300.0
+"""Seconds. A shorter Wait for Time Span settles or paces a retry loop, and
+counting it would blink the waiting sensor on and off through a stall, each
+blink restarting a stall alert's settle period."""
+
+
+def _counts(wait: SequenceWait, now: datetime) -> bool:
+    if wait.ends is not None:
+        return wait.ends > now
+    return wait.span_seconds is None or wait.span_seconds >= _SHORTEST_COUNTED_SPAN
+
+
 def current_wait(root: SequenceNode | None, *, now: datetime) -> SequenceWait | None:
     """The wait instruction the sequence is executing, or None.
 
@@ -73,7 +85,7 @@ def current_wait(root: SequenceNode | None, *, now: datetime) -> SequenceWait | 
     live = [child for child in root.children if child.status == "RUNNING"]
     while live:
         node = live.pop()
-        if node.wait is not None and (node.wait.ends is None or node.wait.ends > now):
+        if node.wait is not None and _counts(node.wait, now):
             return node.wait
         live.extend(child for child in node.children if child.status == "RUNNING")
     return None

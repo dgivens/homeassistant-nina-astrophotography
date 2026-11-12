@@ -290,16 +290,6 @@ def set_up_at():
     return go
 
 
-@pytest.fixture
-def during_the_scheduler_wait(freezer):
-    """20:45 on the rig, inside the 20:33 → 21:05 wait the capture announces.
-
-    A wait is over once its end has passed, so these states report waiting only
-    against a clock that has not reached 21:05.
-    """
-    freezer.move_to("2026-09-16T01:45:00+00:00")
-
-
 async def _async(value):
     return value
 

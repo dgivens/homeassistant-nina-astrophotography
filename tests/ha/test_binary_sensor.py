@@ -203,36 +203,35 @@ async def test_imaging_follows_activity_and_not_node_status(
 
 
 @pytest.mark.parametrize(
-    ("state", "expected"),
-    [("scheduler_waiting", "on"), ("sequence_stopped", "off")],
-    ids=["waiting until 21:05", "stopped, with the wait still in the history"],
+    ("state", "now", "expected"),
+    [
+        ("scheduler_waiting", "2026-09-16T01:45:00+00:00", "on"),
+        ("sequence_stopped", "2026-09-16T01:45:00+00:00", "off"),
+        ("wait_for_time", "2026-11-11T23:57:00+00:00", "on"),
+    ],
+    ids=[
+        "Target Scheduler waiting until 21:05",
+        "stopped, with that wait still in the history",
+        "the sequence's own Wait for Time, with no TS-WAITSTART",
+    ],
 )
-async def test_the_waiting_sensor_clears_when_the_sequence_stops(
+async def test_the_waiting_sensor_reads_the_wait_in_progress(
     hass: HomeAssistant,
     config_entry,
     rig,
-    during_the_scheduler_wait,
+    freezer,
     state: str,
+    now: str,
     expected: str,
     set_up_at,
 ) -> None:
     """There is no TS-WAITSTOP: `sequence_stopped` still holds two TS-WAITSTART
     naming 21:05, so a sensor keyed on the newest wait alone would report a
-    stopped rig as waiting.
+    stopped rig as waiting. A sequence's own wait sends no event at all.
     """
+    freezer.move_to(now)
     await set_up_at(hass, config_entry, rig, state)
     assert state_of(hass, SEQUENCE_WAITING).state == expected
-
-
-async def test_a_wait_step_of_the_sequences_own_reads_waiting(
-    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
-) -> None:
-    """A start container waiting for civil dusk sends no `TS-WAITSTART`, and a
-    stall alert gated on this sensor would read it as frames that stopped.
-    """
-    freezer.move_to("2026-11-11T23:57:00+00:00")
-    await set_up_at(hass, config_entry, rig, "wait_for_time")
-    assert state_of(hass, SEQUENCE_WAITING).state == "on"
 
 
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(

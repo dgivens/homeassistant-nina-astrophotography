@@ -158,16 +158,18 @@ Two more entities explain why frames might not be arriving:
 
 - `binary_sensor.<instance>_sequence_waiting` is `on` while Target Scheduler
   waits for a target's start window, or while the sequence runs one of its own
-  wait instructions: Wait for Time, Wait for Time Span, or a wait for the
-  target, sun or moon to reach an altitude. `sensor.<instance>_wait_ends_at`
+  wait instructions: Wait for Time, a Wait for Time Span of five minutes or
+  more, or a wait for the target, sun or moon to reach an altitude. A shorter
+  span settles or paces a retry loop, and counting it would keep a stall alert
+  quiet through a stall. `sensor.<instance>_wait_ends_at`
   says until when, for a scheduler wait or a Wait for Time; the others name no
   end. The wait doesn't say why: darkness, moon separation, target altitude and
   a meridian window all look the same. An install from 2.5.1 or earlier keeps
   the id `binary_sensor.<instance>_scheduler_waiting`.
 
   A wait for safe conditions is a loop that repeats until the monitor reads
-  safe, not a wait instruction, so this stays `off` through it unless the loop
-  holds a Wait for Time Span. Watch `safety_monitor_unsafe` for that.
+  safe, not a wait instruction, so this stays `off` through it. Watch
+  `safety_monitor_unsafe` for that.
 - `sensor.<instance>_last_frame_at` is when the newest frame of any type was
   saved, flats included. It is `unknown` after every N.I.N.A. restart until the
   first frame, because N.I.N.A.'s image history is cleared on restart. It is

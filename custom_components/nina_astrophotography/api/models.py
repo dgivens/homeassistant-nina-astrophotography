@@ -575,6 +575,8 @@ class SequenceWait:
     ends: datetime | None
     """Wait for Time's target. The others name no end as a time: an altitude
     wait's `ExpectedTime` is display text."""
+    span_seconds: float | None = None
+    """A Wait for Time Span's length; `None` on the other waits."""
 
 
 @dataclass(frozen=True, slots=True)

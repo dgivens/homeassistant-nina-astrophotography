@@ -218,6 +218,20 @@ def test_the_wait_in_progress_is_the_running_one(
     assert (wait.ends if wait else None) == expected
 
 
+@pytest.mark.parametrize(
+    ("span", "counted"), [(60.0, False), (300.0, True), (None, True)], ids=repr
+)
+def test_only_a_wait_for_time_span_of_five_minutes_or_more_counts(
+    span: float | None, counted: bool
+) -> None:
+    """A short span paces a retry loop, and counting it would keep a stalled
+    rig's alert muted.
+    """
+    wait = SequenceWait(ends=None, span_seconds=span)
+    tree = _node("Sequence", _node("Loop", _node("Wait", wait=wait)), status="")
+    assert (current_wait(tree, now=_DUSK) is not None) is counted
+
+
 def test_a_running_wait_under_a_container_that_is_not_running_is_stale() -> None:
     """A status below a root that is not running persists from the loaded file
     and earlier runs.

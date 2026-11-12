@@ -532,37 +532,49 @@ def test_sequence_leaves_carry_their_status() -> None:
     assert start.status == "FINISHED"
 
 
-def _waits(fixture: str) -> dict[str, datetime | None]:
-    """Each wait instruction's name → its end."""
+def _waits(fixture: str) -> list[tuple[str, str | None, datetime | None]]:
+    """Each wait instruction's name, status and end."""
     pending: list[SequenceNode | None] = [map_sequence(load(fixture))]
-    waits = {}
+    waits = []
     while pending:
         node = pending.pop()
         if node is None:
             continue
         if node.wait is not None:
-            waits[node.name] = node.wait.ends
+            waits.append((node.name, node.status, node.wait.ends))
         pending.extend(node.children)
     return waits
 
 
-def test_a_wait_for_time_ends_at_its_target_time() -> None:
-    ends = _waits("wait_for_time_sequence_json.json")["Wait for Time"]
-    assert ends == datetime(
-        2026, 11, 11, 18, 6, 18, 999980, tzinfo=timezone(timedelta(hours=-6))
-    )
-
-
-def test_a_wait_for_time_span_is_a_wait_with_no_end() -> None:
-    """`Delay` is the span, and the step's start is not on the wire."""
-    assert _waits("dawn_sequence_complete.json")["Wait for Time Span"] is None
+@pytest.mark.parametrize(
+    ("fixture", "name", "status", "ends"),
+    [
+        (
+            "wait_for_time_sequence_json.json",
+            "Wait for Time",
+            "RUNNING",
+            datetime(
+                2026, 11, 11, 18, 6, 18, 999980, tzinfo=timezone(timedelta(hours=-6))
+            ),
+        ),
+        ("dawn_sequence_complete.json", "Wait for Time Span", "FINISHED", None),
+    ],
+    ids=["Wait for Time ends at its target", "Wait for Time Span names no end"],
+)
+def test_a_wait_instruction_carries_its_end(
+    fixture: str, name: str, status: str, ends: datetime | None
+) -> None:
+    """A span's `Delay` is on the wire and its start is not."""
+    found = {end for n, s, end in _waits(fixture) if (n, s) == (name, status)}
+    assert found == {ends}
 
 
 def test_a_loop_condition_naming_a_time_is_not_a_wait() -> None:
     """`Loop Until Time` carries a `TargetTime` too, but it bounds a loop that
     is working, not waiting.
     """
-    assert "Loop Until Time_Condition" not in _waits("dawn_sequence_complete.json")
+    names = {name for name, _, _ in _waits("dawn_sequence_complete.json")}
+    assert "Loop Until Time_Condition" not in names
 
 
 def test_a_sequence_that_did_not_serialize_is_not_a_tree() -> None:
