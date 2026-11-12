@@ -44,15 +44,18 @@ from .const import CONF_HOST, DEFAULT_OUTAGE_GRACE, DEFAULT_ROLLOVER_HOUR
 from .derive import flip_offset_minutes
 from .device import KINDS
 from .polling import (
+    EndedWait,
     EventLedger,
     GuiderStopLatch,
     OutageGrace,
     ReseedGuard,
     RestartDetector,
     TierSchedule,
+    Wait,
+    WaitLedger,
     imaging,
 )
-from .sequence import running, target_name
+from .sequence import current_wait, running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
     fold,
@@ -147,8 +150,12 @@ class NinaData:
     running: bool
     """Whether the sequencer is executing, which it is while Target Scheduler
     waits out a start window and `imaging` is false. See `sequence.running`."""
-    wait_ends_at: datetime | None
-    """When Target Scheduler's current wait ends, or None if it is not waiting."""
+    wait: Wait | None
+    """The deliberate wait the rig is in: Target Scheduler's for a target
+    window, or a wait instruction of the sequence's own, however short."""
+    recent_waits: tuple[EndedWait, ...]
+    """The waits that have ended, newest first, bounded. Empty after a Home
+    Assistant restart."""
     guider_stopped: bool
     """Whether a `GUIDER-STOP` is still in force: no `GUIDER-START` or running
     guider seen since. Tells a stale `LostLock` from a guider hunting for its
@@ -219,6 +226,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._reseed_guard = ReseedGuard()
         self._ledger = EventLedger()
         self._guider_stop = GuiderStopLatch()
+        self._waits = WaitLedger()
         self._seeded = False
         self._replayed = False
         self._mismatch_logged = False
@@ -643,6 +651,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
     def _assemble(self, snapshot: EquipmentSnapshot) -> NinaData:
         """Freeze the live sets into one snapshot, synchronously, at one moment."""
         moment = self._now()
+        self._waits.observe(
+            scheduler_wait(self.events, self.generation, now=moment),
+            current_wait(self._sequence),
+            now=moment,
+        )
         return NinaData(
             snapshot=snapshot,
             session=fold(
@@ -670,7 +683,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             version=self._version,
             imaging=self._imaging,
             running=running(self._sequence, self.events, self.generation),
-            wait_ends_at=scheduler_wait(self.events, self.generation, now=moment),
+            wait=self._waits.current,
+            recent_waits=self._waits.ended,
             guider_stopped=self._guider_stop.stopped(
                 pending_guider_stop(self.events, self.generation)
             ),

@@ -5,11 +5,13 @@ Nothing here clears anything: a N.I.N.A. restart is a generation change, which
 the fold filters on.
 """
 
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import time
+from typing import Literal
 
-from .api.models import EquipmentSnapshot, NinaEvent
+from .api.models import EquipmentSnapshot, NinaEvent, SequenceWait, SequenceWaitKind
 
 
 class EventLedger:
@@ -265,3 +267,123 @@ def imaging(
     if camera is not None and camera.is_exposing:
         return True
     return seconds_since_last_image_save < _RECENT_SAVE
+
+
+WaitKind = Literal["scheduler"] | SequenceWaitKind
+
+
+@dataclass(frozen=True, slots=True)
+class Wait:
+    """A wait the rig is in: Target Scheduler's, or an instruction of the
+    sequence's own.
+    """
+
+    kind: WaitKind
+    started: datetime
+    """When a read first showed it, which lags its real start by up to a poll."""
+    ends: datetime | None
+    """Named by Target Scheduler and Wait for Time; the others name none."""
+    span_seconds: float | None
+    """A Wait for Time Span's length; `None` on the other waits."""
+
+
+@dataclass(frozen=True, slots=True)
+class EndedWait:
+    """A wait that is over."""
+
+    kind: WaitKind
+    started: datetime
+    ended: datetime
+    """Its named end where it had one, else the read that found it over."""
+    span_seconds: float | None
+
+
+_RECENT_WAITS = 10
+"""Enough to keep a long wait behind the short settles that follow it."""
+
+_SPAN_GRACE = timedelta(seconds=TierSchedule.SEQUENCE_IDLE)
+"""A span is first seen up to one slow poll after it starts."""
+
+_LONGEST_ALTITUDE_WAIT = timedelta(hours=12)
+"""An altitude wait names no end; none outlasts a night."""
+
+
+class WaitLedger:
+    """The wait in progress, and the ones that have ended, across reads.
+
+    A read only shows that a wait was running, so a short one is caught on
+    some reads and missed on others. A wait still shown running past the
+    point it can have ended is over: a Wait for Time at its end, a span its
+    `Delay` and one slow poll after it was first seen, an altitude wait after
+    twelve hours. A status carried in from a loaded sequence file can show a
+    wait running that never will, and this bounds it.
+
+    Reads cannot tell one pass of a loop from the next at the same path. A
+    span still shown past its length is taken as the next pass, so a loop of
+    long spans stays waiting; a Wait for Time or an altitude wait that expires
+    stays over until a read shows a different wait.
+    """
+
+    def __init__(self) -> None:
+        self._current: Wait | None = None
+        self._key: tuple | None = None
+        self._expired: tuple | None = None
+        self._ended: deque[EndedWait] = deque(maxlen=_RECENT_WAITS)
+
+    @property
+    def current(self) -> Wait | None:
+        return self._current
+
+    @property
+    def ended(self) -> tuple[EndedWait, ...]:
+        """Newest first."""
+        return tuple(reversed(self._ended))
+
+    def observe(
+        self,
+        scheduled_end: datetime | None,
+        step: tuple[tuple[int, ...], SequenceWait] | None,
+        *,
+        now: datetime,
+    ) -> None:
+        """One read: Target Scheduler's wait end, and the running wait
+        instruction with its path in the tree. Target Scheduler's wins: its
+        own steps are not on the wire.
+        """
+        seen: tuple[tuple, WaitKind, datetime | None, float | None] | None = None
+        if scheduled_end is not None:
+            seen = (("scheduler",), "scheduler", scheduled_end, None)
+        elif step is not None:
+            path, wait = step
+            seen = (("step", path), wait.kind, wait.ends, wait.span_seconds)
+        key = None if seen is None else seen[0]
+        if key != self._key:
+            self._end(now)
+            self._key = key
+            self._expired = None
+        if seen is None or key == self._expired:
+            return
+        _, kind, ends, span = seen
+        started = now if self._current is None else self._current.started
+        self._current = Wait(kind, started, ends, span)
+        if self._expiry(self._current) <= now:
+            self._end(now)
+            if span is None:
+                self._expired = key
+            else:
+                self._current = Wait(kind, now, ends, span)
+
+    def _expiry(self, wait: Wait) -> datetime:
+        if wait.ends is not None:
+            return wait.ends
+        if wait.span_seconds is not None:
+            return wait.started + timedelta(seconds=wait.span_seconds) + _SPAN_GRACE
+        return wait.started + _LONGEST_ALTITUDE_WAIT
+
+    def _end(self, now: datetime) -> None:
+        wait = self._current
+        if wait is None:
+            return
+        ended = now if wait.ends is None else min(wait.ends, now)
+        self._ended.append(EndedWait(wait.kind, wait.started, ended, wait.span_seconds))
+        self._current = None

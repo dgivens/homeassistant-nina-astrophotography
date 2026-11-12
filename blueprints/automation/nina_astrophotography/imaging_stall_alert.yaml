@@ -15,9 +15,11 @@ blueprint:
 
     Waiting is most of what a sequence does — for darkness, for a target's
     start window, for moon separation, for a safety loop — so the quiet arm is
-    gated hard. It is silent while the scheduler is waiting, for a settling
+    gated hard. It is silent while the sequence is waiting, for a settling
     period after a wait ends, while conditions are unsafe (the abort blueprint
-    owns that case), and, unless you turn that off, in daylight. Its clock
+    owns that case), and, unless you turn that off, in daylight. A Wait for
+    Time Span shorter than the quiet period does neither: it paces a retry
+    loop, which is how a stall often looks. Its clock
     starts when the last of those opens, not when the sequence started: a rig
     that has only just been let work has not stalled.
 
@@ -77,10 +79,13 @@ blueprint:
               domain: binary_sensor
               device_class: running
         scheduler_waiting:
-          name: Scheduler waiting
+          name: Sequence waiting
           description: >-
-            On while the sequence is deliberately waiting. A target-window wait
-            is hours of nothing and must never alert.
+            On while the sequence is deliberately waiting: Target Scheduler's
+            wait for a target window, or a wait instruction of the sequence's
+            own, such as Wait for Time until dusk. Hours of nothing that must
+            never alert. Its attributes say how long each wait is, which is
+            how a short span in a retry loop is told from a real wait.
           selector:
             entity:
               integration: nina_astrophotography
@@ -347,11 +352,14 @@ blueprint:
         settle_minutes:
           name: Settle after a wait ends
           description: >-
-            Slew, rotation, filter change and settle after a scheduler wait
-            ends took 11.6 minutes on the rig this was measured against.
-            Because Home Assistant re-stamps every entity's last-changed time
-            on restart, this gate is also mute for this long after a restart —
-            which errs toward silence, the right direction.
+            Slew, rotation, filter change and settle after a wait
+            ends took 11.6 minutes on the rig this was measured against. It
+            runs from the end of the latest wait that is not a short span, so
+            a long wait is not hidden behind the five-second settle a sequence
+            takes after it. A Home Assistant restart forgets which waits
+            ended, and the quiet clock restarts with it: the quiet arm then
+            waits "Imaging quiet for" before alerting, which covers the settle
+            as long as it is the longer of the two.
           default: 15
           selector:
             number:
@@ -758,10 +766,17 @@ conditions:
             entity_id: !input sequencer_running
             state: "on"
 
-          - alias: "The scheduler is not deliberately waiting"
-            condition: state
-            entity_id: !input scheduler_waiting
-            state: "off"
+          # A short span paces a retry loop, so it explains none of the
+          # silence. Unavailable mutes: the unreachable arm owns that.
+          - alias: "The sequence is not in a wait that explains the silence"
+            condition: template
+            value_template: >
+              {% set waiting = states[scheduler_waiting] %}
+              {% set span = state_attr(scheduler_waiting, 'span_seconds') %}
+              {{ waiting is not none
+                 and (waiting.state == 'off'
+                      or waiting.state == 'on' and span is number
+                         and span < imaging_quiet_minutes | float(20) * 60) }}
 
           # "Not `on`", never "is `off`", and a template rather than a
           # `condition: state` wrapped in `not`: an empty input makes that
@@ -778,13 +793,34 @@ conditions:
               {% set monitor = expand(safety_unsafe) | first | default(none) %}
               {{ monitor is none or monitor.state != 'on' }}
 
-          - alias: "A scheduler wait ended long enough ago to have settled"
+          # From the waits' own end times, never `last_changed`: a short span
+          # flips the sensor on every pass of a retry loop, and each flip would
+          # restart the settle. An integration without `recent_waits` falls
+          # back to `last_changed`.
+          - alias: "A wait ended long enough ago to have settled"
             condition: template
             value_template: >
               {% set waiting = states[scheduler_waiting] %}
-              {{ waiting is not none
-                 and (now() - waiting.last_changed).total_seconds()
-                     > settle_minutes | float(15) * 60 }}
+              {% set ended = state_attr(scheduler_waiting, 'recent_waits') %}
+              {% set settle = settle_minutes | float(15) * 60 %}
+              {% if waiting is none %}
+                false
+              {% elif ended is none %}
+                {{ (now() - waiting.last_changed).total_seconds() > settle }}
+              {% else %}
+                {% set short = imaging_quiet_minutes | float(20) * 60 %}
+                {% set latest = namespace(at=none) %}
+                {% for wait in ended
+                   if not (wait.span_seconds is number
+                           and wait.span_seconds < short) %}
+                  {% set at = as_datetime(wait.ended_at) %}
+                  {% if latest.at is none or at > latest.at %}
+                    {% set latest.at = at %}
+                  {% endif %}
+                {% endfor %}
+                {{ latest.at is none
+                   or (now() - latest.at).total_seconds() > settle }}
+              {% endif %}
 
           # "Not above", never "is below": with the sun integration removed or
           # the entity renamed, "is below" is false forever and silently mutes

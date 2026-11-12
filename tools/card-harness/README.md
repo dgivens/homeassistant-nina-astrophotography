@@ -37,6 +37,8 @@ observing site), `equipment_disconnected` (the drivers down) and `dawn_flats`
 (a whole night's session, dumped from inside it). Only the last holds a
 session: it is measured against the clock, and the other two are dumped on a
 later day than their night, so the image history is all their frames carry.
+`rotator_mechanical` is `site_configured` with the rotator's mechanical
+position enabled.
 `site_configured_us_customary` is `site_configured` again on a US customary
 instance — Home Assistant's own conversion to °F, mph and inHg, which is what a
 card that assumed the integration's units gets wrong. `nina_not_answering` is

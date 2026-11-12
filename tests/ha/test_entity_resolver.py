@@ -118,6 +118,7 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
         ("button", "dome_close"): "no dome on this rig",
         # Present and disabled, which is the case the test below pins.
         ("sensor", "sequence_progress"): "ships disabled",
+        ("number", "rotator_mechanical_position"): "ships disabled",
     },
     "nina-sky-map-card.js": {},
     "nina-autofocus-card.js": {

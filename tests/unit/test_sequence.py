@@ -1,12 +1,11 @@
-"""The `/sequence/json` walks.
+"""The `/sequence/json` walks."""
 
-Only the ROOT containers' `Status` is read, by `running`; nothing here asserts
-on the status of a node below them (§6.2).
-"""
+from datetime import datetime
 
-from nina_astrophotography.api.models import SequenceNode
+from nina_astrophotography.api.models import SequenceNode, SequenceWait
 from nina_astrophotography.api.v2.mapper import map_event, map_sequence
 from nina_astrophotography.sequence import (
+    current_wait,
     progress_percent,
     refocus_temperature,
     running,
@@ -23,14 +22,17 @@ def _node(
     iterations: str | None = None,
     target: str | None = None,
     refocus: float | None = None,
+    status: str = "RUNNING",
+    wait: SequenceWait | None = None,
 ) -> SequenceNode:
     return SequenceNode(
         name=name,
-        status="RUNNING",
+        status=status,
         iterations=iterations,
         target_name=target,
         refocus_temperature=refocus,
         children=children,
+        wait=wait,
     )
 
 
@@ -187,3 +189,35 @@ def test_of_several_refocus_triggers_the_smallest_decides(
         _node("Target B", _node("Trigger", refocus=second)),
     )
     assert refocus_temperature(tree) == expected
+
+
+_DUSK = datetime.fromisoformat("2026-11-11T18:06:18.99998-06:00")
+
+
+@pytest.mark.parametrize(
+    ("tree", "expected"),
+    [
+        ("wait_for_time_sequence_json.json", _DUSK),
+        ("scheduler_waiting_sequence_json.json", None),
+        ("dawn_sequence_complete.json", None),
+    ],
+    ids=[
+        "waiting for civil dusk",
+        "Target Scheduler's wait is not a step",
+        "a finished tree full of waits",
+    ],
+)
+def test_the_wait_in_progress_is_the_running_one(
+    tree: str, expected: datetime | None
+) -> None:
+    found = current_wait(map_sequence(load_fixture(tree)))
+    assert (found[1].ends if found else None) == expected
+
+
+def test_a_running_wait_under_a_container_that_is_not_running_is_stale() -> None:
+    """A status below a root that is not running persists from the loaded file
+    and earlier runs.
+    """
+    stale = _node("Wait", wait=SequenceWait(kind="altitude", ends=None))
+    tree = _node("Sequence", _node("End", stale, status="CREATED"), status="")
+    assert current_wait(tree) is None

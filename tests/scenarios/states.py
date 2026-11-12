@@ -531,6 +531,10 @@ STATES: dict[str, State] = {
     # has not passed: a waiting entity keyed on the newest alone would read
     # "waiting until 21:05" on a stopped rig.
     "sequence_stopped": _captured("sequence_stopped"),
+    # 17:56 on 2026-11-11: the start container's Wait for Time holding for
+    # civil dusk at 18:06, with the roof open, no frame yet and no TS-WAITSTART.
+    # Only the running chain in /sequence/json says the rig is waiting.
+    "wait_for_time": _captured("wait_for_time"),
     # Captured from the simulator rig (`docs/test-vm.md`): real wire data from
     # an OmniSim dome. Parked with the shutter closed, and open following the
     # mount. The next two swap in the dome block of a later /equipment/info:

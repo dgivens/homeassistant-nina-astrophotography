@@ -1,0 +1,51 @@
+{
+  "Response": {
+    "TelescopeSettings": {
+      "FocalLength": 500
+    },
+    "FocuserSettings": {
+      "AutoFocusTimeoutSeconds": 600,
+      "RSquaredThreshold": 0.7
+    },
+    "MeridianFlipSettings": {
+      "MinutesAfterMeridian": 5,
+      "MaxMinutesAfterMeridian": 15,
+      "PauseTimeBeforeMeridian": 0,
+      "Recenter": true,
+      "SettleTime": 30,
+      "UseSideOfPier": true,
+      "AutoFocusAfterFlip": false,
+      "RotateImageAfterFlip": true
+    },
+    "CameraSettings": {
+      "PixelSize": 3.76
+    },
+    "AstrometrySettings": {
+      "Latitude": 31.54797,
+      "Longitude": -99.383888,
+      "Elevation": 457
+    },
+    "DomeSettings": {
+      "CloseOnUnsafe": false,
+      "RefuseUnsafeShutterMove": false,
+      "RefuseUnsafeShutterOpenSansSafetyDevice": false,
+      "RefuseUnparkWithoutShutterOpen": false,
+      "ParkMountBeforeShutterMove": false,
+      "ParkDomeBeforeShutterMove": false,
+      "FindHomeBeforePark": false
+    }
+  },
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-11-11T23:56:22+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.3",
+    "endpoint": "/profile/show",
+    "params": {
+      "active": "true"
+    }
+  }
+}

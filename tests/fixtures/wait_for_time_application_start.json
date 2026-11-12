@@ -1,0 +1,14 @@
+{
+  "Response": "2026-11-11T10:05:01.8471907-06:00",
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-11-11T23:56:22+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.3",
+    "endpoint": "/application-start",
+    "params": {}
+  }
+}

@@ -44,6 +44,8 @@ class Dump(NamedTuple):
     # for one poll, inside the outage grace, or for good.
     missed: bool = False
     lost: bool = False
+    # Disabled registry rows to enable for this dump, before reloading.
+    enable: tuple[str, ...] = ()
 
 
 # `site_configured` rather than the `imaging_guiding` it derives from: it is the
@@ -61,6 +63,9 @@ class Dump(NamedTuple):
 # instance: Home Assistant's own conversion of the same readings, which is what
 # a card that assumed the integration's units would mislabel.
 #
+# `rotator_mechanical` is `site_configured` with the rotator's mechanical
+# position enabled.
+#
 # `nina_not_answering` is `site_configured` one missed poll later: every reading
 # still its last, and `reachable` off.
 #
@@ -77,6 +82,12 @@ DUMPS: dict[str, Dump] = {
     "equipment_disconnected": Dump("equipment_disconnected", None, METRIC_SYSTEM),
     "dawn_flats": Dump("dawn_flats", "inside_the_dawn_session", METRIC_SYSTEM),
     "site_configured_us_customary": Dump("site_configured", None, US_CUSTOMARY_SYSTEM),
+    "rotator_mechanical": Dump(
+        "site_configured",
+        None,
+        METRIC_SYSTEM,
+        enable=("number.n_i_n_a_rotator_mechanical_position",),
+    ),
     "nina_not_answering": Dump("site_configured", None, METRIC_SYSTEM, missed=True),
     "nina_unreachable": Dump("site_configured", None, METRIC_SYSTEM, lost=True),
     "simulator_dome_parked": Dump("simulator_dome_parked", None, METRIC_SYSTEM),
@@ -203,6 +214,12 @@ async def test_the_card_harness_dump_is_current(
         request.getfixturevalue(setup.clock)
     hass.config.units = setup.units
     await set_up_at(hass, config_entry, rig, setup.rig_state)
+    if setup.enable:
+        registry = er.async_get(hass)
+        for entity_id in setup.enable:
+            registry.async_update_entity(entity_id, disabled_by=None)
+        await hass.config_entries.async_reload(config_entry.entry_id)
+        await hass.async_block_till_done()
     if setup.missed:
         rig.goto("nina_unreachable")
         await config_entry.runtime_data.coordinator.async_refresh()

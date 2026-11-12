@@ -1,9 +1,9 @@
 /**
  * Rig states for `nina-observatory-card`, composed out of the committed dump.
  *
- * `site_configured` has the camera, mount, focuser and guider up, a tracking
- * mount two hours from its flip, and no session — it is dumped on a later day
- * than its night. `site_configured_us_customary` is the same rig on a US
+ * `site_configured` has the camera, mount, focuser, guider and rotator up, a
+ * tracking mount two hours from its flip, and no session — it is dumped on a
+ * later day than its night. `site_configured_us_customary` is the same rig on a US
  * customary instance, where Home Assistant shows every temperature in °F.
  * `equipment_disconnected` has every driver down under a live hub, and
  * `nina_unreachable` is `site_configured` once N.I.N.A. stops answering: every
@@ -21,6 +21,8 @@ const DOME = "simulator_dome_parked";
 const PARK = "binary_sensor.n_i_n_a_mount_at_park";
 const SHUTTER = "sensor.n_i_n_a_dome_shutter_status";
 const UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
+const ROTATOR = "number.n_i_n_a_rotator_position";
+const SYNCED = "binary_sensor.n_i_n_a_rotator_synced";
 
 // No `draw` hook: the card has no canvas.
 
@@ -49,6 +51,15 @@ export const scenarios = {
   // N.I.N.A. waiting to flip, then slewing: the banner and the mount's metric
   // say which, where the countdown alone would show nothing.
   ...flipScenarios(),
+
+  // Both rotator angles; `station` has the sky angle alone.
+  rotator_mechanical: { hass: (dump) => rig(dump, "rotator_mechanical").build() },
+
+  // Unsynced: the sky angle reads —.
+  rotator_unsynced: { hass: (dump) => rig(dump, UP).override(SYNCED, "off").build() },
+
+  // A rotator seen, then dropped: no chip or section.
+  rotator_down: { hass: (dump) => rig(dump, UP).override(ROTATOR, "unavailable").build() },
 
   // Every driver down, N.I.N.A. answering. Must not read as a lost link.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
