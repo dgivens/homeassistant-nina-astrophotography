@@ -11,7 +11,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The observatory card shows the rotator's sky angle** (#239) once a plate
   solve syncs the rotator, and its mechanical angle once
   `number.<instance>_rotator_mechanical_position` is enabled.
-- **The cards collapse from the dashboard**, with no dashboard edit. Tap or
+- **The cards collapse from the dashboard**, with no dashboard edit (#259). Tap or
   click a card's header to collapse the card, or a section's heading, such as
   the image panel's ADU range or the weather card's Wind, to collapse that
   section; Enter and Space do the same from the keyboard. The sky map
