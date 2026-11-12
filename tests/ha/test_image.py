@@ -182,11 +182,36 @@ def _stack_pairs(hass: HomeAssistant) -> list[tuple[str, str]]:
 async def test_the_livestack_image_lists_every_stack_this_session(
     hass: HomeAssistant, inside_the_dawn_session, loaded_entry
 ) -> None:
-    """The entity shows one stack; a mono rig shoots one per filter, and a
-    night of Target Scheduler several targets.
+    """The entity shows one stack; a mono rig keeps one per filter, and a
+    night may cover several targets.
     """
     pairs = _stack_pairs(hass)
     assert (len(pairs), pairs[0]) == (6, ("NGC 281", "S"))
+
+
+@pytest.mark.synthetic
+async def test_a_colour_stack_lists_each_channels_count(
+    hass: HomeAssistant, inside_the_dawn_session, loaded_entry, push
+) -> None:
+    push(
+        {
+            "Event": "STACK-UPDATED",
+            "Time": "2026-09-04T07:00:00-05:00",
+            "Target": "M 31",
+            "Filter": "F1",
+            "IsMonochrome": False,
+            "RedStackCount": 12,
+            "GreenStackCount": 11,
+            "BlueStackCount": 10,
+        }
+    )
+    await hass.async_block_till_done()
+    newest = state_of(hass, LIVESTACK).attributes["stacks"][0]
+    assert (newest["red_count"], newest["green_count"], newest["blue_count"]) == (
+        12,
+        11,
+        10,
+    )
 
 
 async def test_last_nights_stacks_are_not_listed_after_the_rollover(

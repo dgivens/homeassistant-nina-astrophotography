@@ -9,6 +9,7 @@ from nina_astrophotography.api.errors import (
     NinaCommandError,
     NinaConnectionError,
     NinaEndpointError,
+    NinaNoImageError,
     NinaRequestError,
     NinaUnavailableError,
 )
@@ -524,6 +525,18 @@ async def test_a_livestack_width_asks_for_a_scaled_render() -> None:
     _, params = session.requests[-1]
     assert params is not None
     assert (params["resize"], params["size"]) == ("true", "800x800")
+
+
+@pytest.mark.parametrize(
+    ("target", "filter_name"), [("..", "stop"), ("NGC 281", "."), ("", "S")]
+)
+async def test_a_livestack_name_that_is_not_a_path_segment_is_never_sent(
+    target: str, filter_name: str
+) -> None:
+    session = FakeSession({"/livestack/": JPEG})
+    with pytest.raises(NinaNoImageError):
+        await _client(session).get_livestack_image_bytes(target, filter_name)
+    assert session.requests == []
 
 
 async def test_an_image_refusal_arrives_as_a_json_envelope() -> None:

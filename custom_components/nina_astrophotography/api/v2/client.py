@@ -386,7 +386,15 @@ class NinaClientV2:
         quoted. `width` scales the stack down to that many pixels across; the
         route clamps the scale to 0.1–1, so it never enlarges a stack nor
         shrinks one below a tenth of its width.
+
+        `quote` leaves `.` alone, and the URL resolves a `.` or `..` segment
+        into another route, `/livestack/stop` among them: no stack is fetched
+        under such a name.
         """
+        if {target, filter_name} & {"", ".", ".."}:
+            raise NinaNoImageError(
+                f"No stack is addressable as {target!r}/{filter_name!r}"
+            )
         path = (
             f"/livestack/image/{quote(target, safe='')}/{quote(filter_name, safe='')}"
         )

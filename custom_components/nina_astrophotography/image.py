@@ -100,7 +100,7 @@ class NinaImage(NinaDescribedEntity, ImageEntity):
 
     entity_description: NinaImageDescription
     _attr_content_type = "image/jpeg"
-    # A card reads it live; recorded, it would be written on every update.
+    # A card reads it live, and it grows with every target and filter.
     _unrecorded_attributes = frozenset({"stacks"})
 
     def __init__(

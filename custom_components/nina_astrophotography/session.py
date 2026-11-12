@@ -254,7 +254,7 @@ def scheduler_wait(
 def latest_stack(
     events: Iterable[NinaEvent], generation: str | None
 ) -> StackState | None:
-    """The stack `STACK-UPDATED` last reported, or None if none has.
+    """The newest stack a `STACK-UPDATED` named, or None if none has.
 
     Stacks do not survive a N.I.N.A. restart, hence the generation filter.
     """

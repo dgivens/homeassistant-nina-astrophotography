@@ -651,12 +651,11 @@ def _stack(name: str, wire: dict, time: datetime) -> StackState | None:
     target, filter_name = _text(wire, "Target"), _text(wire, "Filter")
     if not target or not filter_name:
         return None
-    monochrome = wire.get("IsMonochrome")
     return StackState(
         target=target,
         filter_name=filter_name,
         updated=time,
-        monochrome=monochrome if isinstance(monochrome, bool) else None,
+        monochrome=_flag(wire, "IsMonochrome"),
         count=_stack_count(wire, "StackCount"),
         red_count=_stack_count(wire, "RedStackCount"),
         green_count=_stack_count(wire, "GreenStackCount"),

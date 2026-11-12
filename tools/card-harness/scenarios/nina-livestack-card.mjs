@@ -29,8 +29,8 @@ const withStacks = (dump, edit) => {
 };
 
 export const scenarios = {
-  // Every id resolved; the newest stack shown, its target's three filters
-  // chipped, and every target above them.
+  // Every id resolved; the newest stack (NGC 281's S) shown, its one filter
+  // chipped beside Latest, and the four targets above them.
   night: { hass: (dump) => rig(dump, NIGHT).build() },
 
   // The same rig with no registry, which is the prefix fallback. Must match
@@ -55,12 +55,12 @@ export const scenarios = {
 
   // No capture holds a colour stack, so this one is invented: the plugin
   // counts a colour stack per channel and sends no `count`. The filter's name
-  // is deliberately not one that says colour.
+  // is one the card cannot read colour from; the counts alone decide.
   colour: {
     hass: (dump) => withStacks(dump, (stacks) => [
       {
         ...stacks[0],
-        filter: "OSC",
+        filter: "F1",
         monochrome: false,
         count: null,
         red_count: 12,

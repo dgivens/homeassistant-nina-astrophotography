@@ -697,6 +697,7 @@ Its `stacks` attribute lists every stack updated this session, newest first,
 one per target and filter: `target`, `filter`, `updated`, `monochrome`, and
 the frame count — `count` for a mono stack, or `red_count`, `green_count` and
 `blue_count` for a colour one, where a channel with no frame yet is `null`.
-The session starts at local noon, so last night's stacks drop off the list
-even though the plugin keeps them until N.I.N.A. restarts. The attribute is
+The list starts with the [session](#sessions), so last night's stacks drop
+off it at the rollover hour even though the plugin keeps them until N.I.N.A.
+restarts. The attribute is
 not recorded. `custom:nina-livestack-card` shows them.

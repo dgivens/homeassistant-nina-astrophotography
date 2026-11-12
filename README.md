@@ -13,10 +13,10 @@ It provides:
   session
 - buttons and actions to cool, slew, park, focus and run sequences
 - Home Assistant events for everything N.I.N.A. reports
-- six dashboard cards
+- seven dashboard cards
 - six automation blueprints
 
-![The six dashboard cards on a live rig: the observatory and autofocus cards, the weather and sky map cards, and the latest image and frame statistics cards](https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/dashboard.png)
+![Six of the dashboard cards on a live rig: the observatory and autofocus cards, the weather and sky map cards, and the latest image and frame statistics cards](https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/dashboard.png)
 
 This is a maintained fork of
 [C3X0Astro/homeassistant-nina-astrophotography](https://github.com/C3X0Astro/homeassistant-nina-astrophotography),

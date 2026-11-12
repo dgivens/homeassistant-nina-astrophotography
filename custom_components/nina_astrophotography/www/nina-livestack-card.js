@@ -287,7 +287,8 @@ class NinaLivestackCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._pinned = null;    // the stack picked from a chip; null follows the newest
+    this._following = true; // showing whichever stack updated last
+    this._pinned = null;    // the stack shown while not following
     this._shown = null;     // the `stacks` entry on screen, once one loads
     this._wanted = null;    // the load key last asked for
     this._loading = false;
@@ -323,6 +324,7 @@ class NinaLivestackCard extends HTMLElement {
     };
     this._rig = new RigEntities(this._config.prefix, this._config.device_id);
     this._view.reset();
+    this._following = this._config.follow_latest;
     this._pinned = null;
     this._wanted = null;
   }
@@ -359,16 +361,20 @@ class NinaLivestackCard extends HTMLElement {
     return Array.isArray(stacks) ? stacks : [];
   }
 
-  // The picked stack while this session still holds it, else the newest.
+  // The pinned stack while this session still holds it, else the newest.
   _current() {
     const stacks = this._stacks();
-    return (this._pinned && stacks.find((s) => sameStack(s, this._pinned))) ?? stacks[0] ?? null;
+    const pinned = !this._following && this._pinned && stacks.find((s) => sameStack(s, this._pinned));
+    return pinned || stacks[0] || null;
   }
 
   _update() {
     const stacks = this._stacks();
+    // A pin on a stack the session no longer lists is let go, so the newest is
+    // never shown under a pin nobody made; not following, it re-pins below.
+    if (this._pinned && !stacks.some((s) => sameStack(s, this._pinned))) this._pinned = null;
     // Not following: the stack first shown stays until another is picked.
-    if (!this._config.follow_latest && !this._pinned && stacks[0]) {
+    if (!this._following && !this._pinned && stacks[0]) {
       this._pinned = { target: stacks[0].target, filter: stacks[0].filter };
     }
 
@@ -523,7 +529,7 @@ class NinaLivestackCard extends HTMLElement {
       });
       img.src = url;
       img.alt = `Live stack of ${stack.target}, ${stack.filter}`;
-      // The frame's own shape, so a stack never sits letterboxed in the card.
+      // The frame's own shape, so the card fits the stack rather than a fixed 4:3.
       if (size[0] > 0 && size[1] > 0) wrap.style.aspectRatio = `${size[0]} / ${size[1]}`;
       this._shown = stack;
       img.style.display = "block";
@@ -539,7 +545,9 @@ class NinaLivestackCard extends HTMLElement {
 
   // ── picking ────────────────────────────────────────────────────────────
 
+  // `null` is the Latest chip: follow whichever stack updates.
   _pick(pinned) {
+    this._following = pinned === null;
     this._pinned = pinned;
     this._update();
   }
@@ -563,8 +571,8 @@ class NinaLivestackCard extends HTMLElement {
     return chip;
   }
 
-  // Rebuilt only when what the chips say changes, so a focused chip keeps its
-  // focus across the updates of other stacks.
+  // Rebuilt only when what the chips say changes: `set hass` arrives for every
+  // state change in Home Assistant, and a rebuild drops a focused chip's focus.
   _renderPicker() {
     const targetsRow = this.shadowRoot?.getElementById("targets");
     const filtersRow = this.shadowRoot?.getElementById("filters");
@@ -578,7 +586,7 @@ class NinaLivestackCard extends HTMLElement {
     const filters = stacks
       .filter((s) => s.target === current?.target)
       .sort((a, b) => a.filter.localeCompare(b.filter));
-    const following = this._pinned === null;
+    const following = this._following;
 
     const key = JSON.stringify([targets, filters.map((s) => [s.filter, chipCount(s)]),
       current?.target, current?.filter, following]);
@@ -599,7 +607,7 @@ class NinaLivestackCard extends HTMLElement {
       [s.filter, countText(s)].filter(Boolean).join(", ")));
     if (stacks.length > 1) {
       chips.unshift(this._chip("latest", "Latest", "", following, () => this._pick(null),
-        "Follow the stack updated last"));
+        "Latest: follow the stack updated last"));
     }
     filtersRow.innerHTML = "";
     for (const chip of chips) filtersRow.appendChild(chip);
@@ -688,7 +696,7 @@ class NinaLivestackCard extends HTMLElement {
       hint.textContent = "The stack will return when it does.";
     } else if (current) {
       text.textContent = "Could not load this stack";
-      hint.textContent = "N.I.N.A. drops its stacks when it restarts.";
+      hint.textContent = "N.I.N.A. may no longer hold it, or did not answer in time.";
     } else {
       text.textContent = "No live stack this session";
       hint.textContent = this._running() === false
@@ -723,7 +731,11 @@ class NinaLivestackCard extends HTMLElement {
     modal.classList.add("open");
     window.addEventListener("keydown", this._onKey);
     // Full size, signed fresh for this viewing.
-    img.src = await this._signedUrl(this._stackPath(stack));
+    try {
+      img.src = await this._signedUrl(this._stackPath(stack));
+    } catch {
+      this._closeModal();
+    }
   }
 
   _closeModal() {
@@ -739,8 +751,18 @@ class NinaLivestackCard extends HTMLElement {
 
   _applyZoom() {
     const img = this.shadowRoot?.getElementById("modal-img");
-    const { scale, x, y } = this._zoom;
-    if (img) img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    if (!img) return;
+    // Panned no further than keeps the image over its unzoomed footprint, so a
+    // drag cannot lose it off screen. The box is the fitted image, untransformed.
+    const { scale } = this._zoom;
+    const clamp = (v, size) => {
+      const reach = ((scale - 1) * size) / 2;
+      return size ? Math.max(-reach, Math.min(reach, v)) : v;
+    };
+    const x = clamp(this._zoom.x, img.offsetWidth);
+    const y = clamp(this._zoom.y, img.offsetHeight);
+    this._zoom = { scale, x, y };
+    img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
   }
 
   // Scale to `scale` keeping the image point under `point` (relative to the
@@ -765,21 +787,24 @@ class NinaLivestackCard extends HTMLElement {
     };
     let gesture = null;   // what the pointers down began: a pan or a pinch
     let moved = false;
+    // Captured, a pointer's click and dblclick arrive at the backdrop whatever
+    // was pressed, so what the press began on decides what they do.
+    let pressed = null;
 
     this.shadowRoot.getElementById("modal-close").addEventListener("click", (e) => {
       e.stopPropagation();
       this._closeModal();
     });
     // A tap on the backdrop closes; the end of a drag does not.
-    modal.addEventListener("click", (e) => {
-      if (!moved && e.target === modal) this._closeModal();
+    modal.addEventListener("click", () => {
+      if (!moved && pressed === modal) this._closeModal();
     });
     modal.addEventListener("wheel", (e) => {
       e.preventDefault();
       this._zoomAt(this._zoom.scale * Math.exp(-e.deltaY * 0.002), centred(e));
     }, { passive: false });
-    img.addEventListener("dblclick", (e) => {
-      this._zoomAt(this._zoom.scale > 1 ? 1 : 2.5, centred(e));
+    modal.addEventListener("dblclick", (e) => {
+      if (pressed === img) this._zoomAt(this._zoom.scale > 1 ? 1 : 2.5, centred(e));
     });
 
     const begin = () => {
@@ -801,6 +826,7 @@ class NinaLivestackCard extends HTMLElement {
     modal.addEventListener("pointerdown", (e) => {
       if (e.target.closest?.(".modal-close")) return;
       moved = false;
+      pressed = e.target;
       modal.setPointerCapture?.(e.pointerId);
       this._pointers.set(e.pointerId, centred(e));
       begin();

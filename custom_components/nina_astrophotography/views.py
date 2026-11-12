@@ -1,5 +1,5 @@
-"""Proxy frames from the image history, so a card fetches from Home
-Assistant's own origin.
+"""Proxy frames from the image history and live stacks, so a card fetches
+from Home Assistant's own origin.
 
 N.I.N.A. serves plain HTTP, and a browser refuses an HTTPS dashboard's fetch
 of it as mixed content.
@@ -14,13 +14,16 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.http import KEY_HASS, HomeAssistantView
 
 from .api.errors import NinaCommandError, NinaError, NinaNoImageError
-from .api.v2.client import IMAGE_QUALITY, NinaClientV2
+from .api.v2.client import IMAGE_QUALITY
 from .const import DOMAIN
+from .coordinator import NinaCoordinator
 
 
-def _client_for_entity(hass: HomeAssistant, entity_id: str) -> NinaClientV2 | None:
-    """The rig's client behind one of its entities, or `None` if the entity
-    or its loaded entry cannot be found.
+def _coordinator_for_entity(
+    hass: HomeAssistant, entity_id: str
+) -> NinaCoordinator | None:
+    """The rig's coordinator behind one of its entities, or `None` if the
+    entity or its loaded entry cannot be found.
     """
     entity_entry = er.async_get(hass).async_get(entity_id)
     if entity_entry is None or entity_entry.platform != DOMAIN:
@@ -30,7 +33,7 @@ def _client_for_entity(hass: HomeAssistant, entity_id: str) -> NinaClientV2 | No
     entry = hass.config_entries.async_get_entry(entity_entry.config_entry_id)
     if entry is None or entry.state is not ConfigEntryState.LOADED:
         return None
-    return entry.runtime_data.coordinator.client
+    return entry.runtime_data.coordinator
 
 
 def _bad_image_request() -> web.Response:
@@ -80,14 +83,14 @@ class NinaImageProxyView(HomeAssistantView):
             return _bad_image_request()
 
         hass: HomeAssistant = request.app[KEY_HASS]
-        client = _client_for_entity(hass, entity_id)
-        if client is None:
+        coordinator = _coordinator_for_entity(hass, entity_id)
+        if coordinator is None:
             return web.Response(status=404)
 
         # The card omits the parameter to ask for the linear frame.
         auto_prepare = request.query.get("autoPrepare") == "true"
         try:
-            image_bytes = await client.get_recent_image_bytes(
+            image_bytes = await coordinator.client.get_recent_image_bytes(
                 frame_index,
                 quality=quality,
                 auto_prepare=auto_prepare,
@@ -109,6 +112,10 @@ class NinaLivestackProxyView(HomeAssistantView):
     One target and filter's stack, as `image.livestack`'s `stacks` lists them.
     Both are in the query, since either may hold a `/`. `width` scales the
     stack down to that many pixels across.
+
+    Only a pair the rig itself listed is fetched: the two strings become path
+    segments on the rig, and an arbitrary one can reach a route that is not an
+    image.
     """
 
     url = "/api/nina_astrophotography/livestack/{entity_id}"
@@ -131,12 +138,17 @@ class NinaLivestackProxyView(HomeAssistantView):
             return _bad_livestack_request()
 
         hass: HomeAssistant = request.app[KEY_HASS]
-        client = _client_for_entity(hass, entity_id)
-        if client is None:
+        coordinator = _coordinator_for_entity(hass, entity_id)
+        if coordinator is None or coordinator.data is None:
+            return web.Response(status=404)
+        if not any(
+            stack.target == target and stack.filter_name == filter_name
+            for stack in coordinator.data.stacks
+        ):
             return web.Response(status=404)
 
         try:
-            image_bytes = await client.get_livestack_image_bytes(
+            image_bytes = await coordinator.client.get_livestack_image_bytes(
                 target, filter_name, quality=quality, width=width
             )
         except NinaNoImageError, NinaCommandError:

@@ -283,7 +283,7 @@ LIVESTACK = (
 
 
 async def test_a_livestack_stack_proxies_by_the_target_and_filter_in_its_query(
-    hass, loaded_entry, rig, hass_client
+    hass, inside_the_dawn_session, loaded_entry, rig, hass_client
 ) -> None:
     rig.respond("/livestack/image/Lobster%20%26%20Bubble/O", JPEG)
     client = await hass_client()
@@ -291,8 +291,19 @@ async def test_a_livestack_stack_proxies_by_the_target_and_filter_in_its_query(
     assert await resp.read() == FRAME
 
 
+async def test_a_livestack_width_asks_the_rig_for_a_scaled_render(
+    hass, inside_the_dawn_session, loaded_entry, rig, hass_client
+) -> None:
+    rig.respond("/livestack/image/Lobster%20%26%20Bubble/O", JPEG)
+    client = await hass_client()
+    await client.get(f"{LIVESTACK}&width=800")
+    params = rig.last_params("/livestack/image/Lobster%20%26%20Bubble/O")
+    assert params is not None
+    assert params["size"] == "800x800"
+
+
 async def test_a_stack_the_plugin_no_longer_holds_answers_404(
-    hass, loaded_entry, rig, hass_client
+    hass, inside_the_dawn_session, loaded_entry, rig, hass_client
 ) -> None:
     rig.respond(
         "/livestack/image/Lobster%20%26%20Bubble/O",
@@ -315,3 +326,24 @@ async def test_an_invalid_livestack_query_answers_400(
         f"/api/nina_astrophotography/livestack/image.n_i_n_a_livestack?{query}"
     )
     assert resp.status == 400
+
+
+@pytest.mark.parametrize(
+    ("target", "filter_name"),
+    [("..", "stop"), ("Lobster & Bubble", "Ha")],
+    ids=["a dot segment", "a filter not listed"],
+)
+async def test_a_stack_the_rig_did_not_list_is_never_requested(
+    hass, inside_the_dawn_session, loaded_entry, rig, hass_client, target, filter_name
+) -> None:
+    """The query becomes path segments on the rig, where `../stop` is
+    `/livestack/stop`.
+    """
+    client = await hass_client()
+    sent = len(rig.requests)
+    resp = await client.get(
+        "/api/nina_astrophotography/livestack/image.n_i_n_a_livestack?"
+        f"target={quote(target)}&filter={quote(filter_name)}"
+    )
+    assert resp.status == 404
+    assert rig.requests[sent:] == []
