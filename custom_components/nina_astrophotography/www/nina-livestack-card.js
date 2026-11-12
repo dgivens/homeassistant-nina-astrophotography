@@ -33,6 +33,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
+import { CHEVRON, COLLAPSE_STYLE, Collapse } from "./nina-collapse.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { safe } from "./nina-units.js";
 import { ON_IMAGE, THEME, applyTheme } from "./nina-theme.js";
@@ -103,6 +104,7 @@ function ageText(iso) {
 
 const STYLE = `
   ${THEME}
+  ${COLLAPSE_STYLE}
   :host {
     display: block;
     --bg:      var(--ha-card-background, var(--card-background-color, #12121e));
@@ -299,6 +301,10 @@ class NinaLivestackCard extends HTMLElement {
     this._pointers = new Map();
     this._onVisible = () => { if (!document.hidden && this._config) this._update(); };
     this._onKey = (e) => { if (e.key === "Escape") this._closeModal(); };
+    this._collapse = new Collapse(this, "nina-livestack-card", (section, open) => {
+      this._applyFolds();
+      if (open) this._update();
+    });
   }
 
   connectedCallback() {
@@ -327,6 +333,8 @@ class NinaLivestackCard extends HTMLElement {
     this._following = this._config.follow_latest;
     this._pinned = null;
     this._wanted = null;
+    this._collapse.scope(this._config);
+    if (this._rendered) this._applyFolds();
   }
 
   set hass(hass) {
@@ -384,7 +392,9 @@ class NinaLivestackCard extends HTMLElement {
     const key = current
       ? [this._imageEntity(), current.target, current.filter, current.updated].join("\u0000")
       : null;
-    if (key !== this._wanted && !document.hidden) {
+    // Folded or out of sight, nothing is fetched: each stack is a render on the
+    // imaging PC. Unfolding or showing the page catches up.
+    if (key !== this._wanted && !document.hidden && this._collapse.open("card")) {
       this._wanted = key;
       this._load(current);
     }
@@ -392,6 +402,12 @@ class NinaLivestackCard extends HTMLElement {
     this._renderPicker();
     this._updateOverlay();
     this._updateHeader();
+  }
+
+  // The markup is built once, so a fold is applied to it rather than rendered.
+  _applyFolds() {
+    this._collapse.sync();
+    this._collapse.hide(["img-wrap", "picker"], !this._collapse.open("card"));
   }
 
   // The unsigned path. `width` null asks for the stack at full size.
@@ -433,7 +449,7 @@ class NinaLivestackCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <ha-card>
-        <div class="header">
+        <div class="header"${this._collapse.attrs("card")}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <polygon points="12 3 21 8 12 13 3 8 12 3"/>
             <polyline points="3 12 12 17 21 12"/><polyline points="3 16 12 21 21 16"/>
@@ -444,7 +460,9 @@ class NinaLivestackCard extends HTMLElement {
           </div>
           <span class="badge" id="badge" hidden></span>
           ${controls}
+          ${CHEVRON}
         </div>
+        ${this._collapse.banner()}
 
         <div class="img-wrap" id="img-wrap">
           <img id="main-img" alt="" />
@@ -474,6 +492,7 @@ class NinaLivestackCard extends HTMLElement {
       </ha-card>
     `;
 
+    this._applyFolds();
     hideUntilLoaded(this.shadowRoot.getElementById("main-img"));
     this.shadowRoot.getElementById("img-wrap").addEventListener("click", () => {
       if (this._shown) this._openModal().catch(() => {});
@@ -521,7 +540,15 @@ class NinaLivestackCard extends HTMLElement {
 
     try {
       if (!stack) throw new Error("no stack to load");
-      const url = await this._signedUrl(this._stackPath(stack, await this._previewWidth()));
+      const width = await this._previewWidth();
+      // Folded while measuring: the width is the fallback, not the card's, and
+      // unfolding asks again.
+      if (!this._collapse.open("card")) {
+        this._wanted = null;
+        settle();
+        return;
+      }
+      const url = await this._signedUrl(this._stackPath(stack, width));
       const size = await new Promise((resolve, reject) => {
         const probe = new Image();
         probe.onload = () => resolve([probe.naturalWidth, probe.naturalHeight]);

@@ -36,7 +36,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   colour stack. The card follows whichever stack updated last unless you pick
   one, starts and stops stacking, and opens a stack full screen to zoom and
   pan. It reloads the stack on screen only when that stack updates, and at the
-  width it is drawn.
+  width it is drawn. It collapses from its header as the other cards do,
+  keeping its status and Start/Stop, and asks for no stack while collapsed.
 - **`image.<instance>_livestack` lists every stack updated this session**
   (#261), in a `stacks` attribute, with each stack's frame count and update
   time. The stack images are served to dashboards through Home Assistant, at

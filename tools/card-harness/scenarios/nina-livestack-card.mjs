@@ -71,6 +71,17 @@ export const scenarios = {
     ]).build(),
   },
 
+  // Folded to its header, which keeps the session's count, the badge and
+  // start/stop: no stack is signed, even as `updated` updates the one shown.
+  folded: {
+    hass: (dump) => rig(dump, NIGHT).build(),
+    after: (dump) => [withStacks(dump, (stacks) => [
+      { ...stacks[0], count: stacks[0].count + 1, updated: "2026-09-04T04:40:00-05:00" },
+      ...stacks.slice(1),
+    ]).build()],
+    folded: ["card"],
+  },
+
   // Without start/stop.
   no_controls: { hass: (dump) => rig(dump, NIGHT).build(), config: { show_controls: false } },
 

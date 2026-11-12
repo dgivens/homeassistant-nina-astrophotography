@@ -224,7 +224,8 @@ to add the mechanical angle. On an upgraded install, also enable
 Tap or click a card's header to collapse the card, or a section's heading,
 such as **ADU range** or **Wind**, to collapse that section. A collapsed
 heading points right; tap it again to expand it. A collapsed card says
-**Collapsed** under its header. The sky map collapses only as a whole.
+**Collapsed** under its header. The sky map and the live stack collapse only
+as a whole.
 
 What you collapse is remembered by the browser, not by your Home Assistant
 user. A phone and a wall tablet can differ, everyone using a shared tablet
@@ -238,6 +239,9 @@ A collapsed card still shows what needs attention:
   or stopped guiding. Stop Sequence, Park and Close Dome stay, each while it
   applies, and a collapsed **Controls** section keeps them too.
 - **Autofocus**: a failed run.
+- **Live stack**: whether stacking is running or N.I.N.A. is unreachable, and
+  Start/Stop. It asks N.I.N.A. for no stack while collapsed, and on expanding
+  loads the one it would show.
 
 A collapsed heading shows an orange or red dot while what it hides is in a
 warning or danger state, such as wind over your limit, and the strip under a

@@ -110,9 +110,9 @@ Traps when changing a card:
   warning the section would show, so a folded heading cues it. A card that
   re-renders leaves a folded body out of its markup, so its canvas is never
   drawn into, and wraps the render in `keepFocus`. A card that builds its
-  markup once (the image panel, the sky map) hides it with `hide()` from the
-  `Collapse` callback and catches up on unfolding; the image panel asks
-  N.I.N.A. for nothing while folded.
+  markup once (the image panel, the sky map, the live stack) hides it with
+  `hide()` from the `Collapse` callback and catches up on unfolding; the image
+  panel and the live stack ask N.I.N.A. for nothing while folded.
 - **A folded card still shows what needs acting on**, and the observatory
   keeps Stop, Park and Close Dome wherever each applies: a folded card or
   Controls section must never hide the emergency stop.
