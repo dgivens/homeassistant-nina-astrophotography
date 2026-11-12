@@ -25,6 +25,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   alerts on a retry loop** (#255). A Wait for Time Span shorter than the quiet
   period neither mutes it nor restarts its settle period, which runs from the
   end of the latest longer wait.
+- **The card harness's `rotator_mechanical` dump names the waiting sensor
+  *Sequence waiting***, as every other dump does, so the suite's dump check
+  passes on `main`.
 
 ### Changed
 

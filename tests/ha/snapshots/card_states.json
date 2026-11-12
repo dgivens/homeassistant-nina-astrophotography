@@ -5962,9 +5962,9 @@
     "platform": "nina_astrophotography",
     "translation_key": "safety_unsafe"
    },
-   "binary_sensor.n_i_n_a_scheduler_waiting": {
+   "binary_sensor.n_i_n_a_sequence_waiting": {
     "device_id": "hub",
-    "entity_id": "binary_sensor.n_i_n_a_scheduler_waiting",
+    "entity_id": "binary_sensor.n_i_n_a_sequence_waiting",
     "platform": "nina_astrophotography",
     "translation_key": "scheduler_waiting"
    },
@@ -6543,9 +6543,14 @@
     },
     "state": "off"
    },
-   "binary_sensor.n_i_n_a_scheduler_waiting": {
+   "binary_sensor.n_i_n_a_sequence_waiting": {
     "attributes": {
-     "friendly_name": "N.I.N.A. Scheduler waiting"
+     "ends_at": null,
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": null,
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": null
     },
     "state": "off"
    },
