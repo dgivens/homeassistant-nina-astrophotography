@@ -57,4 +57,8 @@ export const scenarios = {
 
   // The drivers down: no stars, no pointing, and the disconnected chip.
   mount_down: { hass: (dump) => rig(dump, "equipment_disconnected").build(), draw },
+
+  // Folded to its header. No `draw` hook, which would paint whatever the fold
+  // says: the loop that skips a folded map runs only in `render.html`.
+  folded: { hass: (dump) => rig(dump, "site_configured").build(), folded: ["card"] },
 };

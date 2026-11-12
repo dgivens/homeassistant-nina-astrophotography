@@ -291,4 +291,20 @@ export const scenarios = {
   // No focuser ever observed, so nothing resolves and no id has a state —
   // the empty card, which is what a fresh install shows.
   no_run: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
+
+  // Folded to its header, which keeps `rejected`'s warning but not the text
+  // describing the charts it hides.
+  folded: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(VERDICT, "on", verdict(dump, { r_squared: 0.42, reason: "rejected" }))
+        .build(),
+    folded: ["card"],
+  },
+
+  // Folded to its header after a run that passed: no body, and no curve drawn.
+  folded_quiet: { hass: (dump) => rig(dump, UP).build(), folded: ["card"] },
+
+  // The curve folded to its heading; the stat boxes stay.
+  folded_curve: { hass: (dump) => rig(dump, UP).build(), folded: ["curve"] },
 };

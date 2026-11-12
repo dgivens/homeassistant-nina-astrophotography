@@ -102,4 +102,18 @@ export const scenarios = {
     after: (dump) => [rig(dump, NIGHT).build()],
     config: { refresh_on_save: false },
   },
+
+  // Folded to its header, which still counts the session: no frame, thumbnail
+  // or ADU range is asked for, even as `saved` saves another.
+  folded: {
+    hass: (dump) => before(dump).build(),
+    after: (dump) => [rig(dump, NIGHT).build()],
+    folded: ["card"],
+  },
+
+  // The ADU range folded to its heading: nothing drawn, the frame still loaded.
+  folded_adu: { hass: (dump) => rig(dump, NIGHT).build(), folded: ["adu"] },
+
+  // The strip folded to its heading: the frame loads, no thumbnail does.
+  folded_strip: { hass: (dump) => rig(dump, NIGHT).build(), folded: ["strip"] },
 };

@@ -47,6 +47,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
+import { CHEVRON, COLLAPSE_STYLE, Collapse } from "./nina-collapse.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { aduFullScale, quantityIn, shown } from "./nina-units.js";
 import { ON_IMAGE, THEME, applyTheme, palette } from "./nina-theme.js";
@@ -94,6 +95,7 @@ function hideUntilLoaded(img) {
 
 const STYLE = `
   ${THEME}
+  ${COLLAPSE_STYLE}
   :host {
     /* A custom element is inline by default, and a ResizeObserver watching an
        inline box does not report the card getting wider — which is what
@@ -209,6 +211,7 @@ const STYLE = `
     margin-bottom: 3px;
   }
   .adu-label > span:first-child, .adu-label span span { white-space: nowrap; }
+  .adu-label > span:first-child { display: inline-flex; align-items: center; gap: 6px; }
   #adu-range {
     display: flex; flex-wrap: wrap; justify-content: flex-end;
     column-gap: 8px;
@@ -304,6 +307,7 @@ class NinaImagePanelCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._shown = null;   // the `recent_frames` entry on screen, once one loads
+    this._missed = null;  // a load the folded card did not make
     this._newest = undefined;
     this._loading = false;
     this._queued = null;
@@ -312,6 +316,10 @@ class NinaImagePanelCard extends HTMLElement {
     this._stripKey = null;
     this._tiles = new Map();  // strip tiles by frame date
     this._view = new LinkView();
+    this._collapse = new Collapse(this, "nina-image-panel-card", (section, open) => {
+      this._applyFolds();
+      if (open) this._unfolded(section);
+    });
   }
 
   connectedCallback() {
@@ -341,6 +349,8 @@ class NinaImagePanelCard extends HTMLElement {
       device_id: config.device_id,
     };
     this._rig = new RigEntities(this._config.prefix, this._config.device_id);
+    this._collapse.scope(this._config);
+    if (this._rendered) this._applyFolds();
     this._view.reset();
   }
 
@@ -368,6 +378,15 @@ class NinaImagePanelCard extends HTMLElement {
   }
 
   _update() {
+    // Folded, the card asks N.I.N.A. for nothing: each frame is a render on the
+    // imaging PC. Unfolding catches up.
+    if (this._collapse.open("card")) this._updateImages();
+    this._updateOverlay();
+    this._updateStatsRow();
+    this._updateHeaderBadge();
+  }
+
+  _updateImages() {
     // The newest frame is loaded on the first render, whenever a config or
     // registry change points the card at another entity (which may be another
     // rig's), and with `refresh_on_save` whenever the rig saves another. Read
@@ -377,6 +396,8 @@ class NinaImagePanelCard extends HTMLElement {
     const imageEntity = this._entityId();
     if (imageEntity !== this._imageEntity) {
       this._imageEntity = imageEntity;
+      // A load another rig's fold cut off is not this one's to retry.
+      this._missed = null;
       this._newest = newest?.date;
       this._load(newest);
     } else if (newest && newest.date !== this._newest) {
@@ -390,13 +411,35 @@ class NinaImagePanelCard extends HTMLElement {
     const stripKey = JSON.stringify(this._recentFrames());
     if (stripKey !== this._stripKey) {
       this._stripKey = stripKey;
-      if (this._config.show_strip) this._loadStrip();
+      if (this._config.show_strip && this._collapse.open("strip")) this._loadStrip();
       if (this._config.show_histogram) this._drawAduRange();
     }
+  }
 
-    this._updateOverlay();
-    this._updateStatsRow();
-    this._updateHeaderBadge();
+  // The markup is built once, so a fold is applied to it rather than rendered.
+  _applyFolds() {
+    const fold = this._collapse;
+    fold.sync();
+    fold.hide(["img-wrap", "adu-wrap", "stats-row", "strip-wrap"], !fold.open("card"));
+    fold.hide(["adu-range", "adu-bar"], !fold.open("adu"));
+    fold.hide(["strip"], !fold.open("strip"));
+  }
+
+  // What a fold skipped, caught up on. A frame saved meanwhile loads as one
+  // saved now would; otherwise only a load the fold cut off is retried.
+  _unfolded(section) {
+    if (!this._hass) return;
+    if (section === "card") {
+      const missed = this._missed;
+      this._missed = null;
+      this._updateImages();
+      if (missed && !this._loading) this._load(missed.frame, missed.picked);
+      if (this._config.show_histogram) this._drawAduRange();
+    } else if (section === "adu") {
+      this._drawAduRange();
+    } else if (section === "strip") {
+      this._loadStrip();
+    }
   }
 
   _s(id, fallback = null) {
@@ -488,7 +531,7 @@ class NinaImagePanelCard extends HTMLElement {
       <style>${STYLE}</style>
       <ha-card>
 
-        <div class="header">
+        <div class="header"${this._collapse.attrs("card")}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent2)" stroke-width="1.5" stroke-linecap="round">
             <rect x="3" y="3" width="18" height="18" rx="3"/>
             <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
@@ -498,7 +541,9 @@ class NinaImagePanelCard extends HTMLElement {
             <div class="sub" id="hdr-sub">Waiting for data…</div>
           </div>
           <span class="badge" id="hdr-badge">—</span>
+          ${CHEVRON}
         </div>
+        ${this._collapse.banner()}
 
         <div class="img-wrap" id="img-wrap">
           <img id="main-img" alt="N.I.N.A. image" />
@@ -516,12 +561,12 @@ class NinaImagePanelCard extends HTMLElement {
         </div>
 
         ${cfg.show_histogram ? `
-          <div class="adu-wrap">
-            <div class="adu-label">
-              <span>ADU range</span>
+          <div class="adu-wrap" id="adu-wrap">
+            <div class="adu-label"${this._collapse.attrs("adu")}>
+              <span>ADU range${CHEVRON}</span>
               <span id="adu-range">—</span>
             </div>
-            <div class="adu-bar">
+            <div class="adu-bar" id="adu-bar">
               <canvas class="adu-canvas" id="adu-canvas"></canvas>
             </div>
           </div>
@@ -535,8 +580,8 @@ class NinaImagePanelCard extends HTMLElement {
         </div>
 
         ${cfg.show_strip ? `
-          <div class="strip-wrap">
-            <div class="strip-label">Recent frames</div>
+          <div class="strip-wrap" id="strip-wrap">
+            ${this._collapse.heading("strip", "strip-label", "Recent frames")}
             <div class="strip" id="strip"></div>
           </div>
         ` : ""}
@@ -549,6 +594,7 @@ class NinaImagePanelCard extends HTMLElement {
     `;
 
     hideUntilLoaded(this.shadowRoot.getElementById("main-img"));
+    this._applyFolds();
 
     this.shadowRoot.getElementById("img-wrap").addEventListener("click", () => {
       if (this._hasImage) this._openModal().catch(() => {});
@@ -564,6 +610,10 @@ class NinaImagePanelCard extends HTMLElement {
   // `picked` is a strip click, which shows the spinner at once, even while
   // it waits, and failing leaves the frame on screen.
   _load(frame, picked = false) {
+    if (!this._collapse.open("card")) {
+      this._missed = { frame, picked };
+      return;
+    }
     if (picked) {
       this.shadowRoot?.getElementById("main-img")?.classList.add("loading");
       this.shadowRoot?.getElementById("spinner")?.classList.add("active");
@@ -596,6 +646,12 @@ class NinaImagePanelCard extends HTMLElement {
     try {
       if (!frame) throw new Error("no frame to load");
       const width = await this._previewWidth();
+      // Folded while measuring: the width is the fallback, not the panel's.
+      if (!this._collapse.open("card")) {
+        this._missed = { frame, picked };
+        settle();
+        return;
+      }
       const url = await this._signedUrl(this._imagePath(frame, { width }));
       await new Promise((resolve, reject) => {
         const probe = new Image();
@@ -715,7 +771,8 @@ class NinaImagePanelCard extends HTMLElement {
 
   _drawAduRange() {
     const canvas = this.shadowRoot?.getElementById("adu-canvas");
-    if (!canvas) return;
+    // A hidden canvas measures nothing to draw into; unfolding redraws it.
+    if (!canvas || !this._collapse.open("card") || !this._collapse.open("adu")) return;
 
     // All of it from the frame on screen, out of `recent_frames`. The mean-ADU
     // sensor is no fallback: it holds the newest light's, and the frame on

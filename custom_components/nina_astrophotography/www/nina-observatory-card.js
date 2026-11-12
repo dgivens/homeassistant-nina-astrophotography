@@ -11,6 +11,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
+import { CHEVRON, COLLAPSE_STYLE, Collapse, worst } from "./nina-collapse.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { THEME, applyTheme } from "./nina-theme.js";
 import {
@@ -108,6 +109,7 @@ function statusDot(on) {
 
 const STYLE = `
   ${THEME}
+  ${COLLAPSE_STYLE}
   :host {
     --card-bg: var(--ha-card-background, var(--card-background-color, #1c1c2e));
     --card-border: var(--divider-color, rgba(255,255,255,0.1));
@@ -318,6 +320,13 @@ const STYLE = `
     border-radius: 8px; padding: 7px 12px;
     font-size: 0.78rem; color: var(--warn);
   }
+  .fault-alert {
+    display: flex; align-items: center; gap: 8px;
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+    border-radius: 8px; padding: 7px 12px;
+    font-size: 0.78rem; font-weight: 600; color: var(--danger);
+  }
 `;
 
 // ─── Card class ──────────────────────────────────────────────────────────────
@@ -327,12 +336,14 @@ class NinaObservatoryCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._view = new LinkView();
+    this._collapse = new Collapse(this, "nina-observatory-card", () => this._render());
   }
 
   setConfig(config) {
     this._config = config || {};
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
+    this._collapse.scope(this._config);
     this._view.reset();
   }
 
@@ -515,18 +526,82 @@ class NinaObservatoryCard extends HTMLElement {
     const showFlipWarning =
       flipping === null && tracking && flipSoon(flip);
 
+    const fold = this._collapse;
+    const section = (key, title, content, level = null) => `
+          <div class="section">
+            ${fold.heading(key, "section-title", title, level)}
+            ${fold.open(key) ? content : ""}
+          </div>`;
+
+    // What a folded heading cues: what needs attention in the section it hides
+    // — an RMS bar past its limit, the cooler off or guiding stopped mid-session,
+    // a device lost mid-session, or a mount not known parked with the link down.
+    // Lost is a row reading `unavailable`, not a missing one: a user may disable
+    // an entity, and a disabled entity has no row at all.
+    const lost = (id) => seqRunning && !quiet && h.states[id]?.state === "unavailable";
+    const camLost = lost(this._eid("sensor", "camera_state"));
+    const mntLost = lost(parkedId);
+    const worstRms = worst([rmsClass(rmsRa), rmsClass(rmsDec)]);
+    const guidingLevel = guided && worstRms ? worstRms
+      : seqRunning && !quiet && guiding === false && !flipping ? "warn" : null;
+    const cameraLevel = camLost ? "danger"
+      : seqRunning && !quiet && cooling === false ? "warn" : null;
+    const mountLevel = quiet && !parked ? "warn" : mntLost ? "danger" : null;
+
+    // What a folded card still says is wrong. Only during a sequence, since a
+    // rig idle by day has every reason to be disconnected.
+    const faults = [
+      !unreachable && shutter === "error" ? "Dome shutter error" : "",
+      camLost ? "Camera disconnected" : "",
+      mntLost ? "Mount disconnected" : "",
+      seqRunning && !quiet && gdrConnected && guiding === false && !flipping ? "Guiding stopped" : "",
+    ].filter(Boolean);
+    const faultAlert = faults.length
+      ? `<div class="fault-alert">⚠️ ${faults.join(" · ")}</div>` : "";
+
+    // The commands that end activity, each only where it applies, for a card or
+    // Controls section folded away: the emergency stop must stay in reach.
+    const safety = quiet ? controls[0].filter(Boolean) : [
+      seqRunning ? btn("btn-stop", "⏹ Stop Sequence", "danger") : "",
+      // As in the full controls: no park state reads as unparked.
+      !parked ? btn("btn-park", "⏸ Park") : "",
+      domeConnected && !domeShut && canClose ? btn("btn-dome-close", "🔒 Close Dome") : "",
+    ].filter(Boolean);
+    // `controls`, so a stale card does not dim the stop as it dims its readings.
+    const safetyRow = safety.length ? `<div class="btn-row controls">${safety.join("")}</div>` : "";
+    const flipAlert = flipping ? `
+            <div class="flip-alert">
+              🔄 <strong style="margin:0 4px;">${flipStatus(flipping)}</strong>
+            </div>
+          ` : showFlipWarning ? `
+            <div class="flip-alert">
+              ⚠️ Meridian flip in <strong style="margin:0 4px;">${flipRange(flip)} min</strong>
+            </div>
+          ` : "";
+    // Folded, the card keeps its header, what it warns of, and the stop.
+    const folded = [
+      link.stale || unreachable ? linkBanner(link, canClose) : "",
+      faultAlert,
+      flipAlert,
+      safetyRow,
+    ].filter((part) => part.trim());
+
     const html = `
       <style>${STYLE}</style>
       <ha-card>
-        <div class="header">
+        <div class="header"${fold.attrs("card")}>
           <span class="nina-icon">🔭</span>
           <div>
             <div class="title">N.I.N.A. Observatory</div>
             <div class="subtitle">Advanced API v2 · ${status}</div>
           </div>
           <span class="dot ${dot}"></span>
+          ${CHEVRON}
         </div>
+        ${fold.banner(worst([cameraLevel, mountLevel, guidingLevel]))}
 
+        ${!fold.open("card") ? (folded.length ? `
+        <div class="body${link.stale ? " stale" : ""}">${folded.join("")}</div>` : "") : `
         <div class="body${link.stale ? " stale" : ""}">
 
           ${link.stale ? linkBanner(link, canClose) : ""}
@@ -558,29 +633,18 @@ class NinaObservatoryCard extends HTMLElement {
               : chip("Dome", true)}
           </div>`}
 
-          ${flipping ? `
-            <div class="flip-alert">
-              🔄 <strong style="margin:0 4px;">${flipStatus(flipping)}</strong>
-            </div>
-          ` : showFlipWarning ? `
-            <div class="flip-alert">
-              ⚠️ Meridian flip in <strong style="margin:0 4px;">${flipRange(flip)} min</strong>
-            </div>
-          ` : ""}
+          ${flipAlert}
 
-          <div class="section">
-            <div class="section-title">Camera ${cooling ? "· ❄️ Cooling" : ""}</div>
+          ${section("camera", `Camera ${cooling ? "· ❄️ Cooling" : ""}`, `
             <div class="metric-grid">
               ${metric("Temp", camTemp.value, camTemp.unit)}
               ${metric("Setpoint", camTargTemp.value, camTargTemp.unit)}
               ${metric("Cooler", coolerPwr, "%")}
               ${metric("Gain", camGain, "")}
               ${metric("Filter", camFilter, "")}
-            </div>
-          </div>
+            </div>`, cameraLevel)}
 
-          <div class="section">
-            <div class="section-title">Mount${mountStatus}</div>
+          ${section("mount", `Mount${mountStatus}`, `
             <div class="metric-grid">
               ${metric("RA", mntRa, "h")}
               ${metric("Dec", mntDec, "°")}
@@ -588,29 +652,22 @@ class NinaObservatoryCard extends HTMLElement {
               ${metric("Az", mntAz, "°")}
               ${flipping ? metric("Flip", flipping.waiting ? "Waiting" : "Flipping", "")
                 : flip !== null && flip.latest < 999 ? metric("Flip in", flipRange(flip), "min") : ""}
-            </div>
-          </div>
+            </div>`, mountLevel)}
 
-          <div class="section">
-            <div class="section-title">Focuser</div>
+          ${section("focuser", "Focuser", `
             <div class="metric-grid">
               ${metric("Position", focPos, "steps")}
               ${metric("Temp", focTemp.value, focTemp.unit)}
-            </div>
-          </div>
+            </div>`)}
 
-          ${rotConnected ? `
-          <div class="section">
-            <div class="section-title">Rotator</div>
+          ${rotConnected ? section("rotator", "Rotator", `
             <div class="metric-grid">
               ${metric("Sky angle", rotSky, "°")}
               ${rotMech === "—" ? "" : metric("Mechanical", rotMech, "°")}
-            </div>
-          </div>` : ""}
+            </div>`) : ""}
 
-          ${gdrConnected ? `
-            <div class="section">
-              <div class="section-title">Guiding · ${guiding === null ? "" : guiding ? "Active · " : "Stopped · "}bars full scale 4"</div>
+          ${gdrConnected ? section("guiding",
+            `Guiding · ${guiding === null ? "" : guiding ? "Active · " : "Stopped · "}bars full scale 4"`, `
               <div class="guider-meter">
                 <div style="font-size:0.72rem;color:var(--muted);">
                   Total RMS: <strong style="color:var(--text)">${guided ? `${rmsTotal.toFixed(2)}"` : "—"}</strong>
@@ -629,29 +686,27 @@ class NinaObservatoryCard extends HTMLElement {
                     </div>
                   </div>
                 ` : ""}
-              </div>
-            </div>
-          ` : ""}
+              </div>`, guidingLevel) : ""}
 
-          <div class="section">
-            <div class="section-title">Last Image</div>
+          ${section("last_image", "Last Image", `
             <div class="img-stats-row">
               ${imgStat("HFR", hfr, "px")}
               ${imgStat("Stars", stars)}
               ${imgStat("Mean ADU", meanAdu)}
-            </div>
-          </div>
+            </div>`)}
 
           <div class="section controls">
-            <div class="section-title">Controls</div>
-            ${controls.map((row) => `<div class="btn-row">${row.join("")}</div>`).join("")}
+            ${fold.heading("controls", "section-title", "Controls")}
+            ${fold.open("controls")
+              ? controls.map((row) => `<div class="btn-row">${row.join("")}</div>`).join("")
+              : safetyRow}
           </div>
 
-        </div>
+        </div>`}
       </ha-card>
     `;
 
-    this.shadowRoot.innerHTML = html;
+    this._collapse.keepFocus(() => { this.shadowRoot.innerHTML = html; });
     this._attachListeners();
   }
 

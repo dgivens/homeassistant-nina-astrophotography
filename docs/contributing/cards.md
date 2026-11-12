@@ -1,8 +1,9 @@
 # Lovelace cards: neither suite renders one
 
-`www/` holds 6 Lovelace cards, plus four modules they import, which are not
+`www/` holds 6 Lovelace cards, plus five modules they import, which are not
 cards: `nina-entity-resolver.js`, `nina-card-config.js` (the prefix and the
-visual editor's `getConfigForm()` schema), `nina-units.js` (readings in the
+visual editor's `getConfigForm()` schema), `nina-collapse.js` (the headings a
+viewer folds, remembered per browser), `nina-units.js` (readings in the
 unit HA shows them in, the meridian flip window, the camera's ADU full scale,
 and `safe()` for any rig text bound for `innerHTML`) and `nina-theme.js` (the
 colours, on a dark theme or a light one). Every card resolves its entity ids
@@ -27,7 +28,7 @@ suite; say which of the two things below you actually ran.
   card refactor — it is what proves an entity-resolution conversion changed no
   drawing. It pins `Math.random` and `Date.now`, which the sky map uses to
   twinkle stars and pulse the meridian. A card pulled out of git imports the
-  four shared modules relatively, so copy every non-card `www/` file beside
+  five shared modules relatively, so copy every non-card `www/` file beside
   the copy or the run dies with `ERR_MODULE_NOT_FOUND`; `ops.mjs`
   finds the dump relative to its own path, so run the shipped one.
 - **`render.html`** — the cards side by side in a real browser, over
@@ -102,6 +103,22 @@ Traps when changing a card:
   expression around it instead. A converted card also needs a `CANNOT_RESOLVE`
   entry in `tests/ha/test_entity_resolver.py` — an empty one if all of it
   resolves.
+- **A section a viewer can fold is a heading from `nina-collapse.js`**:
+  `heading(section, cls, label, level)`, or `attrs(section)` and `CHEVRON`
+  where the markup places the chevron itself. The header is `attrs("card")`
+  ending in `CHEVRON`, with `banner(level)` straight after it. `level` is the
+  warning the section would show, so a folded heading cues it. A card that
+  re-renders leaves a folded body out of its markup, so its canvas is never
+  drawn into, and wraps the render in `keepFocus`. A card that builds its
+  markup once (the image panel, the sky map) hides it with `hide()` from the
+  `Collapse` callback and catches up on unfolding; the image panel asks
+  N.I.N.A. for nothing while folded.
+- **A folded card still shows what needs acting on**, and the observatory
+  keeps Stop, Park and Close Dome wherever each applies: a folded card or
+  Controls section must never hide the emergency stop.
+- A scenario's `folded: [...]` folds sections for that run alone. The stub's
+  `getElementById` answers `null` for an id the markup lacks, as a browser
+  does, so a draw guarded on its canvas is skipped there too.
 - **A new config option needs a field in the card's `getConfigForm()`**, which
   `test_the_visual_editor_offers_exactly_the_options_the_card_reads` enforces.
   The form's `default` is only displayed, so `setConfig` applies it — per key,

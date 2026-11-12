@@ -223,4 +223,29 @@ export const scenarios = {
     hass: (dump) =>
       rig(dump, UP).restored(LINK).restored(SAFETY).build(),
   },
+
+  // Folded to its header: the safety banner stays, and so does the dew alert,
+  // which is `dew`'s. No wind rose is drawn.
+  folded: {
+    hass: (dump) =>
+      rig(dump, UP).override(TEMPERATURE, 22.0).override(HUMIDITY, 91.0).build(),
+    folded: ["card"],
+  },
+
+  // Two sections folded to their headings, and the wind rose not drawn.
+  folded_sections: {
+    hass: (dump) => rig(dump, UP).build(),
+    folded: ["atmosphere", "wind"],
+  },
+
+  // `limits` with every section folded: Atmosphere and Wind cue the danger
+  // they hide; Sky conditions, which `TIGHT` leaves benign, cues nothing.
+  folded_cues: {
+    hass: (dump) => rig(dump, UP).build(),
+    config: TIGHT,
+    folded: ["atmosphere", "wind", "sky"],
+  },
+
+  // `limits` folded to its header, which cues the worst of the readings.
+  folded_card_cue: { hass: (dump) => rig(dump, UP).build(), config: TIGHT, folded: ["card"] },
 };

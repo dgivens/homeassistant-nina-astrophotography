@@ -23,6 +23,9 @@ const SHUTTER = "sensor.n_i_n_a_dome_shutter_status";
 const UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 const ROTATOR = "number.n_i_n_a_rotator_position";
 const SYNCED = "binary_sensor.n_i_n_a_rotator_synced";
+const GUIDER = "switch.n_i_n_a_guider";
+const CAMERA = "sensor.n_i_n_a_camera_state";
+const COOLER = "switch.n_i_n_a_camera_cooler";
 
 // No `draw` hook: the card has no canvas.
 
@@ -134,5 +137,50 @@ export const scenarios = {
       .override(PARK, "on", { ...dump[DOME].states[PARK].attributes })
       .build(),
     after: (dump) => [rig(dump, "simulator_dome_unreachable").build()],
+  },
+
+  // Folded to its header, which keeps `flip_soon`'s warning and, the session
+  // running and the mount unparked, Stop and Park.
+  folded: { hass: (dump) => rig(dump, UP).override(FLIP, 20).build(), folded: ["card"] },
+
+  // Folded with nothing to warn of: the header, Stop and Park.
+  folded_calm: { hass: (dump) => rig(dump, UP).build(), folded: ["card"] },
+
+  // Folded while N.I.N.A. is not answering: the banner, and the fixed set of
+  // commands that end activity.
+  folded_not_answering: { ...linkScenarios().not_answering, folded: ["card"] },
+
+  // Folded over `dome_shutter_error`: the fault line, and Close Dome.
+  folded_shutter_error: {
+    hass: (dump) => rig(dump, DOME).override(SHUTTER, "error").build(),
+    folded: ["card"],
+  },
+
+  // Folded with the camera lost and the guider switched off mid-session, both
+  // invented: no capture loses either during a run.
+  folded_faults: {
+    hass: (dump) =>
+      rig(dump, UP).override(CAMERA, "unavailable").override(GUIDER, "off").build(),
+    folded: ["card"],
+  },
+
+  // The same with the camera's row disabled rather than lost: no fault, since a
+  // disabled entity says nothing about the camera.
+  folded_camera_disabled: {
+    hass: (dump) => rig(dump, UP).without("camera_state").build(),
+    folded: ["card"],
+  },
+
+  // Sections folded to their headings: Controls keeps Stop and Park.
+  folded_sections: {
+    hass: (dump) => rig(dump, UP).build(),
+    folded: ["mount", "guiding", "controls"],
+  },
+
+  // Folded headings cueing what they hide: the cooler and guider switched off
+  // mid-session, both invented, so Camera and Guiding warn.
+  folded_cues: {
+    hass: (dump) => rig(dump, UP).override(COOLER, "off").override(GUIDER, "off").build(),
+    folded: ["camera", "guiding"],
   },
 };

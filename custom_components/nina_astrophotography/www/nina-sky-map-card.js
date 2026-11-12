@@ -21,6 +21,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
+import { CHEVRON, COLLAPSE_STYLE, Collapse } from "./nina-collapse.js";
 import { RigEntities } from "./nina-entity-resolver.js";
 import {
   flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
@@ -115,6 +116,7 @@ function project(alt_deg, az_deg) {
 
 const STYLE = `
   ${THEME}
+  ${COLLAPSE_STYLE}
   :host {
     --bg: var(--ha-card-background, var(--card-background-color, #12121e));
     --border: var(--divider-color, rgba(255,255,255,0.1));
@@ -198,6 +200,7 @@ class NinaSkyMapCard extends HTMLElement {
     this._lastAz  = null;
     this._animFrame = null;
     this._dpr = window.devicePixelRatio || 1;
+    this._collapse = new Collapse(this, "nina-sky-map-card", () => this._applyFolds());
   }
 
   setConfig(config) {
@@ -209,6 +212,8 @@ class NinaSkyMapCard extends HTMLElement {
     };
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
+    this._collapse.scope(this._config);
+    if (this._rendered) this._applyFolds();
   }
 
   connectedCallback() {
@@ -297,13 +302,15 @@ class NinaSkyMapCard extends HTMLElement {
     const html = `
       <style>${STYLE}</style>
       <ha-card>
-        <div class="header">
+        <div class="header"${this._collapse.attrs("card")}>
           <span style="font-size:1.3rem">🌌</span>
           <div>
             <div class="title" id="hdr-title">Sky Map</div>
             <div class="sub" id="hdr-sub">Telescope pointing</div>
           </div>
+          ${CHEVRON}
         </div>
+        ${this._collapse.banner()}
         <div class="map-wrap" id="map-wrap">
           <canvas id="sky" width="${size * this._dpr}" height="${size * this._dpr}"
             style="width:${size}px;height:${size}px;"></canvas>
@@ -312,7 +319,7 @@ class NinaSkyMapCard extends HTMLElement {
           <span class="compass-label" id="cl-e"  style="top:50%;   left:6px">E</span>
           <span class="compass-label" id="cl-w"  style="top:50%;   right:6px">W</span>
         </div>
-        <div class="info-row">
+        <div class="info-row" id="info-row">
           <div class="info-cell"><div class="lbl">Altitude</div><div class="val" id="inf-alt">—</div></div>
           <div class="info-cell"><div class="lbl">Azimuth</div><div class="val" id="inf-az">—</div></div>
           <div class="info-cell"><div class="lbl">RA</div><div class="val" id="inf-ra">—</div></div>
@@ -326,6 +333,13 @@ class NinaSkyMapCard extends HTMLElement {
     this._ctx    = this._canvas.getContext("2d");
     this._canvas.addEventListener("click", e => this._onCanvasClick(e));
     this._canvas.addEventListener("mousemove", e => this._onCanvasHover(e));
+    this._applyFolds();
+  }
+
+  // The markup is built once, so a fold is applied to it rather than rendered.
+  _applyFolds() {
+    this._collapse.sync();
+    this._collapse.hide(["map-wrap", "info-row", "status-bar"], !this._collapse.open("card"));
   }
 
   _updateInfoRow() {
@@ -410,7 +424,8 @@ class NinaSkyMapCard extends HTMLElement {
 
   _startAnimation() {
     const loop = () => {
-      if (this._canvas && this._ctx && this._hass) {
+      // Folded, the loop keeps running but paints nothing.
+      if (this._canvas && this._ctx && this._hass && this._collapse.open("card")) {
         this._drawFrame();
       }
       this._animFrame = requestAnimationFrame(loop);

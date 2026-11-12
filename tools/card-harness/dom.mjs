@@ -79,6 +79,11 @@ function element(tag) {
     removeAttribute(name) {
       delete this.attributes[name];
     },
+    toggleAttribute(name, force = !(name in this.attributes)) {
+      if (force) this.attributes[name] = "";
+      else delete this.attributes[name];
+      return force;
+    },
     get innerHTML() {
       return markup;
     },
@@ -183,15 +188,18 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
       return html;
     },
     // An id the card's own markup puts on a `<canvas>` is the canvas; any
-    // other id is a recorded node.
+    // other id it holds is a recorded node, and one it lacks is `null`, as a
+    // section folded out of the markup leaves it.
     getElementById(id) {
       const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       if (new RegExp(`<canvas[^>]*\\sid="${escaped}"`).test(html)) return canvas;
+      if (!new RegExp(`\\sid="${escaped}"`).test(html)) return null;
       if (!nodes.has(id)) nodes.set(id, element("div"));
       return nodes.get(id);
     },
     querySelector: () => null,
     querySelectorAll: () => [],
+    addEventListener() {},
   };
 
   globalThis.HTMLElement = class {

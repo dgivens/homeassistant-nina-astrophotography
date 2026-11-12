@@ -26,6 +26,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
+import { CHEVRON, COLLAPSE_STYLE, Collapse, worst } from "./nina-collapse.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
@@ -34,6 +35,7 @@ const VERSION = "2.5.1";
 
 const STYLE = `
   ${THEME}
+  ${COLLAPSE_STYLE}
   :host {
     --bg:      var(--ha-card-background, var(--card-background-color, #1c1c2e));
     --border:  var(--divider-color, rgba(255,255,255,0.1));
@@ -205,6 +207,7 @@ class NinaWeatherCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._view = new LinkView();
+    this._collapse = new Collapse(this, "nina-weather-card", () => this._render());
   }
 
   setConfig(config) {
@@ -227,6 +230,7 @@ class NinaWeatherCard extends HTMLElement {
     this._showSkyBrightness = cfg.show_sky_brightness !== false;
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
+    this._collapse.scope(this._config);
     this._view.reset();
   }
 
@@ -383,14 +387,16 @@ class NinaWeatherCard extends HTMLElement {
         : skyQ >= 18.5 ? "var(--warn)" : "var(--danger)";
     }
 
+    // The cell's markup, and the level it is flagged at for a folded heading.
     const cell = (icon, label, val, unit, warnIf = false, dangerIf = false, naIf = false) => {
-      const cls = naIf ? "w-cell na" : dangerIf ? "w-cell danger" : warnIf ? "w-cell warn" : "w-cell";
+      const level = naIf ? null : dangerIf ? "danger" : warnIf ? "warn" : null;
+      const cls = level ? `w-cell ${level}` : naIf ? "w-cell na" : "w-cell";
       const valStr = val !== null ? String(val) : "—";
-      return `<div class="${cls}">
+      return { level, html: `<div class="${cls}">
         <div class="icon">${icon}</div>
         <div class="lbl">${label}</div>
         <div class="val">${valStr}<span class="unit">${unit}</span></div>
-      </div>`;
+      </div>` };
     };
     const qcell = (icon, label, q, decimals, ...flags) =>
       cell(icon, label, displayed(q, decimals), q?.unit ?? "", ...flags);
@@ -398,13 +404,20 @@ class NinaWeatherCard extends HTMLElement {
     // No state row at all: the entity is disabled, or the station never
     // reported the channel and so it was never created.
     const has = (id) => this._shown.states?.[id] !== undefined;
-    const grid = (title, cells) => {
+    const fold = this._collapse;
+    // The grids' levels, for the folded card's own cue.
+    const levels = [];
+    const head = (section, title, level) => {
+      levels.push(level);
+      return fold.heading(section, "section-title", title, level);
+    };
+    const grid = (section, title, cells) => {
       const shown = cells.filter(Boolean);
       return shown.length ? `
-          <div class="section-title">${title}</div>
-          <div class="weather-grid">
-            ${shown.join("\n            ")}
-          </div>` : "";
+          ${head(section, title, worst(shown.map((c) => c.level)))}
+          ${fold.open(section) ? `<div class="weather-grid">
+            ${shown.map((c) => c.html).join("\n            ")}
+          </div>` : ""}` : "";
     };
     const windRow = (label, value, style = "") => `
               <div class="wind-row">
@@ -418,13 +431,13 @@ class NinaWeatherCard extends HTMLElement {
       has(channels.windDir) && windRow("Direction",
         windDir !== null ? windDir.toFixed(0) + "° " + degToCompass(windDir) : "—"),
     ].filter(Boolean);
-    const atmosphere = grid("Atmosphere", [
+    const atmosphere = grid("atmosphere", "Atmosphere", [
       has(channels.temp) && qcell("🌡", "Temperature", temp, 1, tempC !== null && tempC > L.tempHigh, tempC !== null && tempC < L.tempLow),
       has(channels.humid) && cell("💧", "Humidity", humid?.toFixed(0) ?? null, "%", humid !== null && humid > L.humidWarn, humid !== null && humid > L.humidDanger),
       has(channels.dewPt) && qcell("🌫", "Dew Point", dewPt, 1, dewThreat, false),
       has(channels.press) && qcell("📊", "Pressure", press, 1, false, false, press === null),
     ]);
-    const skyConditions = grid("Sky conditions", [
+    const skyConditions = grid("sky", "Sky conditions", [
       has(channels.cloud) && cell("☁", "Cloud cover", cloud?.toFixed(0) ?? null, "%", cloud !== null && cloud > L.cloudWarn, cloud !== null && cloud > L.cloudDanger, cloud === null),
       has(channels.rain) && qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null),
       has(channels.skyT) && qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null),
@@ -450,10 +463,15 @@ class NinaWeatherCard extends HTMLElement {
       ? `air at its dew point (${dewShown}); dew is forming`
       : `temperature (${tempShown}) within ${shownMargin} ${temp?.unit} of dew point (${dewShown})`;
 
+    const dewAlert = `
+            <div class="dew-alert">
+              ⚠ Dew alert — ${dewWhere}
+            </div>`;
+
     const html = `
       <style>${STYLE}</style>
       <ha-card>
-        <div class="header">
+        <div class="header"${fold.attrs("card")}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent2)" stroke-width="1.5" stroke-linecap="round">
             <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
           </svg>
@@ -461,7 +479,9 @@ class NinaWeatherCard extends HTMLElement {
             <div class="title">${wxName}</div>
             <div class="sub">${wxStatus}</div>
           </div>
+          ${CHEVRON}
         </div>
+        ${fold.banner(worst([...levels, windRows.length ? windLevel : null]))}
 
         <!-- Safety banner -->
         <div class="safety-banner ${safetyLabelCls}">
@@ -472,7 +492,9 @@ class NinaWeatherCard extends HTMLElement {
           </div>
         </div>
 
-        ${!wxConnected ? `
+        ${!fold.open("card") ? (wxConnected && dewThreat ? `
+          <div class="body${link.stale ? " stale" : ""}">${dewAlert}</div>
+        ` : "") : !wxConnected ? `
           <div class="not-connected">
             <div>${noReadings}</div>
             <div class="hint">${noReadingsHint}</div>
@@ -487,31 +509,27 @@ class NinaWeatherCard extends HTMLElement {
             </div>
           ` : ""}
 
-          ${dewThreat ? `
-            <div class="dew-alert">
-              ⚠ Dew alert — ${dewWhere}
-            </div>
-          ` : ""}
+          ${dewThreat ? dewAlert : ""}
 
           ${atmosphere}
 
           ${windRows.length ? `
-          <div class="section-title">Wind</div>
-          <div class="wind-rose-wrap">
+          ${head("wind", "Wind", windLevel)}
+          ${fold.open("wind") ? `<div class="wind-rose-wrap">
             <div class="wind-rose">
               <canvas id="wind-rose-canvas" width="64" height="64"></canvas>
             </div>
             <div class="wind-info">${windRows.join("")}
             </div>
-          </div>
+          </div>` : ""}
           ` : ""}
 
           ${skyConditions}
 
           <!-- Sky quality -->
           ${skyQ !== null ? `
-            <div class="section-title">Sky quality (SQM)</div>
-            <div class="sq-wrap">
+            ${head("sqm", "Sky quality (SQM)", null)}
+            ${fold.open("sqm") ? `<div class="sq-wrap">
               <div style="display:flex;justify-content:space-between;align-items:baseline">
                 <span style="font-size:0.85rem;font-weight:700">${skyQ.toFixed(2)} mag/arcsec²</span>
                 <span style="font-size:0.72rem;color:${sqColor};font-weight:600">${sqLabel}</span>
@@ -524,7 +542,7 @@ class NinaWeatherCard extends HTMLElement {
                 <span>19 (suburban)</span>
                 <span>22+ (dark)</span>
               </div>
-            </div>
+            </div>` : ""}
           ` : ""}
 
         </div>
@@ -532,9 +550,9 @@ class NinaWeatherCard extends HTMLElement {
       </ha-card>
     `;
 
-    this.shadowRoot.innerHTML = html;
+    this._collapse.keepFocus(() => { this.shadowRoot.innerHTML = html; });
 
-    if (wxConnected && windDir !== null) {
+    if (wxConnected && windDir !== null && fold.open("card") && fold.open("wind")) {
       requestAnimationFrame(() => this._drawWindRose(windDir, windMs));
     }
   }

@@ -220,6 +220,33 @@ solve syncs the rotator. Enable `number.<instance>_rotator_mechanical_position`
 to add the mechanical angle. On an upgraded install, also enable
 `binary_sensor.<instance>_rotator_synced`.
 
+Tap or click a card's header to collapse the card, or a section's heading,
+such as **ADU range** or **Wind**, to collapse that section. A collapsed
+heading points right; tap it again to expand it. A collapsed card says
+**Collapsed** under its header. The sky map collapses only as a whole.
+
+What you collapse is remembered by the browser, not by your Home Assistant
+user. A phone and a wall tablet can differ, everyone using a shared tablet
+sees the same thing, and a private window forgets on reload.
+
+A collapsed card still shows what needs attention:
+
+- **Weather**: the safety status and the dew alert.
+- **Observatory**: a lost or unresponsive link, a meridian flip, a dome
+  shutter error, and, while a sequence runs, a disconnected camera or mount
+  or stopped guiding. Stop Sequence, Park and Close Dome stay, each while it
+  applies, and a collapsed **Controls** section keeps them too.
+- **Autofocus**: a failed run.
+
+A collapsed heading shows an orange or red dot while what it hides is in a
+warning or danger state, such as wind over your limit, and the strip under a
+collapsed card's header says so too.
+
+To remove something for everyone instead, the image panel's
+`show_histogram` and `show_strip` options drop the ADU range and the recent
+frames, and the weather card's `show_sky_brightness` drops the sky
+brightness reading from **Sky conditions**.
+
 Every card also accepts:
 
 - `device_id`: which rig to show, when you have more than one. Use the

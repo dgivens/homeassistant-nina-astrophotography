@@ -13,6 +13,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
+import { CHEVRON, COLLAPSE_STYLE, Collapse } from "./nina-collapse.js";
 import { RigEntities } from "./nina-entity-resolver.js";
 import { aduFullScale, quantityIn, safe, shown } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
@@ -202,6 +203,7 @@ function filterColours(slots, names) {
 
 const STYLE = `
   ${THEME}
+  ${COLLAPSE_STYLE}
   :host {
     --card-bg: var(--ha-card-background, var(--card-background-color, #1c1c2e));
     --card-border: var(--divider-color, rgba(255,255,255,0.1));
@@ -291,6 +293,7 @@ class NinaFrameStatsCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+    this._collapse = new Collapse(this, "nina-frame-stats-card", () => this._render());
     this._hfr = [];
     this._stars = [];
     this._adu = [];
@@ -305,6 +308,7 @@ class NinaFrameStatsCard extends HTMLElement {
     this._config = config || {};
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
+    this._collapse.scope(this._config);
   }
 
   set hass(hass) {
@@ -440,17 +444,26 @@ class NinaFrameStatsCard extends HTMLElement {
       </div>`;
     }).join("");
 
+    const fold = this._collapse;
+    const chart = (section, label, content) => `
+            <div class="chart-section">
+              ${fold.heading(section, "chart-label", label)}
+              ${fold.open(section) ? content : ""}
+            </div>`;
+
     const html = `
       <style>${STYLE}</style>
       <ha-card>
-        <div class="header">
+        <div class="header"${fold.attrs("card")}>
           <span style="font-size:1.3rem">📊</span>
           <div>
             <div class="title">Frame Statistics</div>
             <div class="subtitle">${lightCount} lights · ${integration} h · ${lastFilter}</div>
           </div>
+          ${CHEVRON}
         </div>
-        <div class="body">
+        ${fold.banner()}
+        ${fold.open("card") ? `<div class="body">
           ${!hasData ? `
             <div class="no-data">
               <div class="icon">🔭</div>
@@ -490,35 +503,24 @@ class NinaFrameStatsCard extends HTMLElement {
               </div>
             </div>
 
-            <div class="chart-section">
-              <div class="chart-label">HFR per frame</div>
-              <canvas id="hfr-chart" height="64"></canvas>
-            </div>
+            ${chart("hfr", "HFR per frame", `<canvas id="hfr-chart" height="64"></canvas>`)}
 
-            <div class="chart-section">
-              <div class="chart-label">Star count per frame</div>
-              <canvas id="stars-chart" height="48"></canvas>
-            </div>
+            ${chart("stars", "Star count per frame", `<canvas id="stars-chart" height="48"></canvas>`)}
 
-            <div class="chart-section">
-              <div class="chart-label">Mean ADU per frame</div>
-              <canvas id="adu-chart" height="48"></canvas>
-            </div>
+            ${chart("adu", "Mean ADU per frame", `<canvas id="adu-chart" height="48"></canvas>`)}
 
-            ${!chipless ? `
-              <div class="chart-section">
-                <div class="chart-label">Frames per filter</div>
-                <div class="filter-bar">${filterChipsHtml}</div>
-              </div>
-            ` : ""}
+            ${!chipless
+              ? chart("filters", "Frames per filter", `<div class="filter-bar">${filterChipsHtml}</div>`)
+              : ""}
           `}
-        </div>
+        </div>` : ""}
       </ha-card>
     `;
 
-    this.shadowRoot.innerHTML = html;
+    fold.keepFocus(() => { this.shadowRoot.innerHTML = html; });
 
-    if (hasData) {
+    // A folded chart has no canvas, which each draw skips.
+    if (hasData && fold.open("card")) {
       requestAnimationFrame(() => {
         this._drawSparkline("hfr-chart", this._hfr, theme.accent, true, lightColours);
         this._drawSparkline("stars-chart", this._stars, theme.accent2, false, lightColours,

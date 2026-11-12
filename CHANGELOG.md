@@ -11,6 +11,21 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The observatory card shows the rotator's sky angle** (#239) once a plate
   solve syncs the rotator, and its mechanical angle once
   `number.<instance>_rotator_mechanical_position` is enabled.
+- **The cards collapse from the dashboard**, with no dashboard edit. Tap or
+  click a card's header to collapse the card, or a section's heading, such as
+  the image panel's ADU range or the weather card's Wind, to collapse that
+  section; Enter and Space do the same from the keyboard. The sky map
+  collapses only as a whole. Each browser remembers what it collapsed.
+  - A collapsed card says so under its header, and a collapsed heading shows
+    a coloured dot while what it hides is in a warning or danger state.
+  - A collapsed weather card keeps its safety status and dew alert.
+  - A collapsed observatory card keeps a lost or unresponsive link, a
+    meridian flip, a dome shutter error, and, during a sequence, a camera or
+    mount disconnected or guiding stopped. It keeps Stop Sequence, Park and
+    Close Dome wherever each applies, as does a collapsed Controls section.
+  - A collapsed autofocus card keeps a failed run's warning.
+  - A collapsed section draws nothing. A collapsed image panel asks N.I.N.A.
+    for no frames, and on expanding loads only a frame saved meanwhile.
 
 ### Fixed
 

@@ -14,6 +14,7 @@
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
+import { CHEVRON, COLLAPSE_STYLE, Collapse } from "./nina-collapse.js";
 import { RigEntities } from "./nina-entity-resolver.js";
 import { interval, inUnit, quantity, quantityIn, safe, shown } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
@@ -128,6 +129,7 @@ function duration(seconds) {
 
 const STYLE = `
   ${THEME}
+  ${COLLAPSE_STYLE}
   :host {
     /* A custom element is inline by default, and a ResizeObserver watching an
        inline box does not report the card getting wider — which is what
@@ -217,6 +219,10 @@ class NinaAutofocusCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this._signature = null;
+    this._collapse = new Collapse(this, "nina-autofocus-card", () => {
+      this._signature = null;
+      this._render();
+    });
   }
 
   setConfig(config) {
@@ -228,6 +234,7 @@ class NinaAutofocusCard extends HTMLElement {
     this._signature = null;
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
+    this._collapse.scope(this._config);
   }
 
   connectedCallback() {
@@ -386,24 +393,27 @@ class NinaAutofocusCard extends HTMLElement {
     if (signature === this._signature) return;
     this._run = run;
 
-    this.shadowRoot.innerHTML = `
+    const html = `
       <style>${STYLE}</style>
       <ha-card>
-        <div class="header">
+        <div class="header"${this._collapse.attrs("card")}>
           <span style="font-size:1.3rem">🎯</span>
           <div>
             <div class="title">Autofocus</div>
             <div class="subtitle">${this._subtitle(run)}</div>
           </div>
+          ${CHEVRON}
         </div>
-        <div class="body">${this._body(run)}</div>
+        ${this._collapse.banner()}
+        ${this._content(run)}
       </ha-card>
     `;
+    this._collapse.keepFocus(() => { this.shadowRoot.innerHTML = html; });
     // After the markup, so a throw in `_body` doesn't leave a blank card that
     // never tries again.
     this._signature = signature;
 
-    if (this._plottable(run)) requestAnimationFrame(() => this._draw());
+    if (this._showsCurve(run)) requestAnimationFrame(() => this._draw());
   }
 
   _plottable(run) {
@@ -419,8 +429,56 @@ class NinaAutofocusCard extends HTMLElement {
     ].filter(Boolean).join(" · ") || "No run reported";
   }
 
+  // Folded, the card keeps a failed run's warning and nothing else.
+  _content(run) {
+    if (this._collapse.open("card")) return `<div class="body">${this._body(run)}</div>`;
+    if (this._reported(run) && run.failed) return `<div class="body">${this._banner(run, true)}</div>`;
+    return "";
+  }
+
+  _reported(run) {
+    return Boolean(run.timestamp) && shown(run.timestamp) !== "—";
+  }
+
+  _showsCurve(run) {
+    return this._plottable(run) && this._reported(run)
+      && this._collapse.open("card") && this._collapse.open("curve");
+  }
+
+  // Folded, the card keeps the warning but not the text describing the charts.
+  _banner(run, brief = false) {
+    // A hung run wrote no report, so everything below the banner describes
+    // whichever run last finished, not the failure.
+    const hung = run.reason === "hung";
+    const outside = run.reason === "out_of_range";
+    const swept = run.curve.map((point) => point.position);
+    const sweep = swept.length
+      ? `the ${Math.min(...swept)}–${Math.max(...swept)} it measured`
+      : "the positions it measured";
+    return `
+        <div class="banner">
+          <span style="font-size:1.1rem">⚠️</span>
+          <div>
+            <div class="what">${hung ? "An autofocus run hung"
+              : outside ? "The last autofocus put focus outside its sweep"
+              : "The last autofocus was rejected"}</div>
+            ${brief ? "" : `<div class="why">${hung
+              ? `It never finished, so it wrote no report — the run charted below is the last one
+                 that did, from ${ago(run.timestamp) || "earlier"}, and not the one that failed.`
+              : outside
+              ? `Its fit chose ${shown(run.position)}, outside ${sweep}, so N.I.N.A. discarded it
+                 and the focuser stayed where it was. Start the run nearer focus, or widen the
+                 sweep with a larger step size or more steps.`
+              : `${run.threshold === null ? "Its fit was not good enough"
+                  : `Its fit scored ${fixed(run.verdictSquare, 3)} against the ${fixed(run.threshold, 2)}
+                     your profile requires`}. The focuser stayed where it was, so frames since are
+                 as soft as they were before it.`}</div>`}
+          </div>
+        </div>`;
+  }
+
   _body(run) {
-    if (!run.timestamp || shown(run.timestamp) === "—") {
+    if (!this._reported(run)) {
       return `
         <div class="no-data">
           <div class="icon">🔭</div>
@@ -451,39 +509,15 @@ class NinaAutofocusCard extends HTMLElement {
     const atEdge = Number.isFinite(run.position) && run.curve.length > 1
       && (run.position <= Math.min(...swept) + reach
         || run.position >= Math.max(...swept) - reach);
-    // A hung run wrote no report, so everything below describes whichever run
-    // last finished, not the failure.
-    const hung = run.reason === "hung";
     const rejected = run.reason === "rejected";
     const outside = run.reason === "out_of_range";
     // Either way the run finished, and the focuser never took its position.
     const discarded = rejected || outside;
-    const sweep = swept.length
-      ? `the ${Math.min(...swept)}–${Math.max(...swept)} it measured`
-      : "the positions it measured";
     const quality = run.verdictSquare ?? run.worstSquare;
+    const fold = this._collapse;
 
     return `
-      ${run.failed ? `
-        <div class="banner">
-          <span style="font-size:1.1rem">⚠️</span>
-          <div>
-            <div class="what">${hung ? "An autofocus run hung"
-              : outside ? "The last autofocus put focus outside its sweep"
-              : "The last autofocus was rejected"}</div>
-            <div class="why">${hung
-              ? `It never finished, so it wrote no report — the run charted below is the last one
-                 that did, from ${ago(run.timestamp) || "earlier"}, and not the one that failed.`
-              : outside
-              ? `Its fit chose ${shown(run.position)}, outside ${sweep}, so N.I.N.A. discarded it
-                 and the focuser stayed where it was. Start the run nearer focus, or widen the
-                 sweep with a larger step size or more steps.`
-              : `${run.threshold === null ? "Its fit was not good enough"
-                  : `Its fit scored ${fixed(run.verdictSquare, 3)} against the ${fixed(run.threshold, 2)}
-                     your profile requires`}. The focuser stayed where it was, so frames since are
-                 as soft as they were before it.`}</div>
-          </div>
-        </div>` : ""}
+      ${run.failed ? this._banner(run) : ""}
 
       <div class="stat-row">
         <div class="stat-box">
@@ -539,9 +573,9 @@ class NinaAutofocusCard extends HTMLElement {
 
       ${this._plottable(run) ? `
         <div class="chart-section">
-          <div class="chart-label">${run.isHfr ? "HFR" : "Contrast"} against focuser position</div>
-          <canvas id="curve"></canvas>
-          ${this._legend(run)}
+          ${fold.heading("curve", "chart-label", `${run.isHfr ? "HFR" : "Contrast"} against focuser position`)}
+          ${fold.open("curve") ? `<canvas id="curve"></canvas>
+          ${this._legend(run)}` : ""}
         </div>` : `
         <div class="no-data" style="padding:18px 16px">
           ${run.curve.length

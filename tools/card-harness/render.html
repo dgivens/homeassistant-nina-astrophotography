@@ -61,6 +61,11 @@
       window.__errors = [];
       addEventListener("error", (event) => window.__errors.push(String(event.message)));
 
+      // Folds a click left behind would carry into the next load.
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith("nina-collapse:")) localStorage.removeItem(key);
+      }
+
       const only = params.get("scenario");
       for (const [name, scenario] of Object.entries(scenarios)) {
         if (only && only !== name) continue;
@@ -71,6 +76,7 @@
         try {
           const element = document.createElement(card);
           element.setConfig(scenario.config ?? {});
+          element._collapse?.preset(...(scenario.folded ?? []));
           slot.appendChild(element);
           const hass = scenario.hass(dump);
           // `auth/sign_path`, answered with the path unsigned: the image panel

@@ -218,4 +218,10 @@ export const scenarios = {
   // No lights in the session, so no charts: the waiting panel under the
   // header's session totals.
   waiting: { hass: (dump) => rig(dump, "site_configured").build() },
+
+  // Folded to its header, whose session totals stay: no chart is drawn.
+  folded: { hass: (dump) => rig(dump, NIGHT).build(), folded: ["card"] },
+
+  // Two charts folded to their headings; only the HFR chart is drawn.
+  folded_charts: { hass: (dump) => rig(dump, NIGHT).build(), folded: ["stars", "adu"] },
 };

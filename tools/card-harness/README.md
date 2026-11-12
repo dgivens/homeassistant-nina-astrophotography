@@ -104,8 +104,14 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
   draw: (card) => card._drawFrame(),  // optional, see below
   events: (dump) => [{ type: "nina_image_save", data: { … } }],  // optional
   after: (dump) => [rig(dump, "nina_unreachable").build()],  // optional
+  folded: ["card"],  // optional, sections folded as a viewer would
 }
 ```
+
+`folded` names the sections to fold on this card alone, without touching the
+browser's storage; `"card"` is the whole card. `render.html` clears any fold a
+click left in storage when it loads, so one session's clicks do not carry into
+the next screenshot.
 
 `after` is later `hass` objects, handed over in turn after the first render —
 for a card whose output depends on what it showed before, such as the image
