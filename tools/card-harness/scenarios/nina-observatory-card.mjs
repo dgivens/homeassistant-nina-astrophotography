@@ -174,7 +174,7 @@ export const scenarios = {
   // Sections folded to their headings: Controls keeps Stop and Park.
   folded_sections: {
     hass: (dump) => rig(dump, UP).build(),
-    folded: ["mount", "guiding", "controls"],
+    folded: ["mount", "rotator", "guiding", "controls"],
   },
 
   // Folded headings cueing what they hide: the cooler and guider switched off
