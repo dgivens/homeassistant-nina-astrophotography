@@ -72,7 +72,7 @@ export const scenarios = {
   },
 
   // Folded to its header, which keeps the session's count, the badge and
-  // start/stop: no stack is signed, even as `updated` updates the one shown.
+  // start/stop: no stack is signed, even when the stack shown updates.
   folded: {
     hass: (dump) => rig(dump, NIGHT).build(),
     after: (dump) => [withStacks(dump, (stacks) => [
