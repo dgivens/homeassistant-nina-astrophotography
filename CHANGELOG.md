@@ -19,6 +19,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   gives a scenario a row from another integration.
 
 ---
+### Fixed
+
+- **A screen reader reaches the live stack card's Start/Stop as a control of
+  its own** (#262). The button sits beside the header that collapses the
+  card, not inside it, and stays in place on a collapsed card.
 
 ## [2.6.0] - 2026-11-12
 

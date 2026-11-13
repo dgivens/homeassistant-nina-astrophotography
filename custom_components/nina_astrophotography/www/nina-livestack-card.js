@@ -120,12 +120,20 @@ const STYLE = `
     padding: 0;
   }
 
+  /* Start/stop is the header's sibling, in a column the header leaves empty:
+     the header is a subgrid of the same columns, so it reserves exactly the
+     button's width, whatever the badge reads. */
+  .head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; }
   .header {
-    display: flex; align-items: center; gap: 10px;
+    grid-area: 1 / 1 / 2 / -1;
+    display: grid; grid-template-columns: subgrid; align-items: center;
     padding: 12px 16px 10px;
     border-bottom: 1px solid var(--border);
     background: color-mix(in srgb, var(--accent) 7%, transparent);
   }
+  .header .lead { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .header > .fold-chevron { grid-column: 3; margin-left: 10px; }
+  .head > .fold-banner { grid-column: 1 / -1; }
   .header .titles { flex: 1; min-width: 0; }
   .header .title { font-size: 1rem; font-weight: 600; }
   .header .sub {
@@ -148,6 +156,7 @@ const STYLE = `
   }
   .badge[hidden], .toggle[hidden], .row[hidden] { display: none; }
   .toggle {
+    grid-area: 1 / 2; align-self: center; margin: 1px 0 0 10px;
     font: inherit; font-size: 0.7rem; font-weight: 600;
     padding: 4px 12px; border-radius: 20px; cursor: pointer;
     color: var(--text); background: color-mix(in srgb, var(--ink) 8%, transparent);
@@ -449,20 +458,24 @@ class NinaLivestackCard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <ha-card>
-        <div class="header"${this._collapse.attrs("card")}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="12 3 21 8 12 13 3 8 12 3"/>
-            <polyline points="3 12 12 17 21 12"/><polyline points="3 16 12 21 21 16"/>
-          </svg>
-          <div class="titles">
-            <div class="title">Live Stack</div>
-            <div class="sub" id="sub">Waiting for data…</div>
+        <div class="head">
+          <div class="header"${this._collapse.attrs("card")}>
+            <div class="lead">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--accent2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 3 21 8 12 13 3 8 12 3"/>
+                <polyline points="3 12 12 17 21 12"/><polyline points="3 16 12 21 21 16"/>
+              </svg>
+              <div class="titles">
+                <div class="title">Live Stack</div>
+                <div class="sub" id="sub">Waiting for data…</div>
+              </div>
+              <span class="badge" id="badge" hidden></span>
+            </div>
+            ${CHEVRON}
           </div>
-          <span class="badge" id="badge" hidden></span>
           ${controls}
-          ${CHEVRON}
+          ${this._collapse.banner()}
         </div>
-        ${this._collapse.banner()}
 
         <div class="img-wrap" id="img-wrap">
           <img id="main-img" alt="" />
