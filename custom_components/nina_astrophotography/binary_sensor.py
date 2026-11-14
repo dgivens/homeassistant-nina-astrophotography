@@ -18,8 +18,9 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Any
 
+# The package root is the one path that holds across 2026.9 and 2026.10.
 from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
+    BinarySensorDeviceClass,  # pyright: ignore[reportPrivateImportUsage]
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )

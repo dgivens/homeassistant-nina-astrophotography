@@ -80,6 +80,7 @@ const UNITS = {
   "kPa": scaled("pressure", 10),
   "cbar": scaled("pressure", 10),
   "bar": scaled("pressure", 1000),
+  "atm": scaled("pressure", 1013.25),
   "mmHg": scaled("pressure", 1.33322387415),
   "inHg": scaled("pressure", 33.86388640341),
   "inH₂O": scaled("pressure", 2.490889083333348),

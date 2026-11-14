@@ -20,6 +20,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **CI runs the current major of each action** (#275) — checkout v7, setup-uv
   v10.3.3, upload-artifact v7, download-artifact v8 — and the Lovelace
   module tests under Node 26, the active LTS.
+- **The development tooling and test libraries are current** (#272): ruff 0.17.5,
+  datamodel-code-generator 0.84.0 — the newest that resolves beside the
+  pydantic Home Assistant pins — pre-commit 4.7.0, and the test suite's
+  Home Assistant 2026.9.4 with the rest of the lock at the newest its pins
+  allow.
+- **The Home Assistant suite and pyright run against Home Assistant
+  2026.10.4** (#273), whose core validates with probatio in voluptuous's place.
+  `nina-units.js` converts `atm`, the pressure unit that release offers.
 
 ---
 ### Fixed
