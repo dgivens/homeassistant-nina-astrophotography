@@ -542,6 +542,26 @@
       "name": "Stop Guiding",
       "description": "Stop the autoguider."
     },
+    "rotator_move": {
+      "name": "Move Rotator",
+      "description": "Rotate to a sky position angle. Refused until a plate solve has synced the rotator. On a half or quarter range, N.I.N.A. turns to the equivalent angle within it.",
+      "fields": {
+        "position": {
+          "name": "Position",
+          "description": "Target sky position angle in degrees, from 0 to 360."
+        }
+      }
+    },
+    "rotator_move_mechanical": {
+      "name": "Move Rotator (Mechanical)",
+      "description": "Rotate to a mechanical angle, the rotator's own, whatever the sky angle. Refused outside the rotator's range in N.I.N.A.'s profile.",
+      "fields": {
+        "position": {
+          "name": "Mechanical Position",
+          "description": "Target mechanical angle in degrees, from 0 to 360 and within the rotator's range."
+        }
+      }
+    },
     "dome_open": {
       "name": "Open Dome",
       "description": "Open the dome shutter. Refused while the safety monitor reports unsafe."
@@ -606,6 +626,12 @@
     },
     "out_of_range": {
       "message": "{field} must be {limits}: N.I.N.A. clamps {value} silently and reports success, so the action was not sent."
+    },
+    "rotator_not_synced": {
+      "message": "The rotator is not synced, so it has no sky angle to move to. Plate solve with sync first; N.I.N.A. would accept the move and leave the rotator where it is."
+    },
+    "outside_rotator_range": {
+      "message": "Mechanical position {value}° is outside the rotator's range in N.I.N.A.'s profile, {start}° to {end}°, so it was not sent. N.I.N.A. would turn the rotator to {folded}° instead."
     },
     "outside_device_range": {
       "message": "{field} must be {limits} on this {device}, so {value} was not sent."

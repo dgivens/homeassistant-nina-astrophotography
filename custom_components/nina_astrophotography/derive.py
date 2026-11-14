@@ -86,3 +86,13 @@ def dew_point(temperature_c: float | None, humidity_pct: float | None) -> float 
         _MAGNUS_B * temperature_c / (_MAGNUS_C + temperature_c)
     )
     return _MAGNUS_C * gamma / (_MAGNUS_B - gamma)
+
+
+def rotator_fold(angle: float, start: float, span: float) -> float:
+    """Where N.I.N.A. turns a rotator asked for mechanical `angle`, in [0, 360).
+
+    An angle outside the arc of `span` degrees from `start` is moved back by
+    whole spans: by 180 on a half range, so the same framing flipped.
+    """
+    offset = (angle - start) % 360
+    return (angle - span * math.floor(offset / span)) % 360

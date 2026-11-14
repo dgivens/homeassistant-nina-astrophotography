@@ -119,6 +119,7 @@ _NO_PROFILE = ProfileSettings(
     dome_park_mount_before_shutter_move=None,
     dome_park_before_shutter_move=None,
     dome_find_home_before_park=None,
+    rotator_range=None,
 )
 
 

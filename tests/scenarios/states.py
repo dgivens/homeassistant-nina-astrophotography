@@ -165,11 +165,12 @@ def _with_site(state: State, **settings: float) -> State:
     return _with_profile(state, "AstrometrySettings", **settings)
 
 
-def _with_profile(state: State, section: str, **settings: float) -> State:
+def _with_profile(state: State, section: str, **settings: float | str) -> State:
     """A copy of `state` whose profile has `settings` set in `section`.
 
-    For moving a captured setting; the key set stays the wire's. `_with_site`
-    is the exception, its section being absent from every capture.
+    For moving a captured setting; the key set stays the wire's. The site and
+    the rotator range are the exceptions, their sections being absent from
+    every capture.
     """
     envelope = state["/profile/show?active=true"]
     response = envelope["Response"]
@@ -704,6 +705,15 @@ STATES: dict[str, State] = {
     # is projected from. Synthetic in `AstrometrySettings` alone.
     "site_configured": _with_site(
         _IMAGING_GUIDING, Latitude=31.5478, Longitude=-110.2977, Elevation=1509
+    ),
+    # A rotator kept to the half range 300° to 120°, wrapping past 0; the
+    # captured mechanical angle, 64.12°, is inside it. Synthetic in
+    # `RotatorSettings` alone.
+    "rotator_half_range": _with_profile(
+        _IMAGING_GUIDING,
+        "RotatorSettings",
+        RangeType="HALF",
+        RangeStartMechanicalPosition=300,
     ),
     # `imaging_guiding` with the guider's lock lost, and with the guider
     # stopped. Synthetic in `State` alone; a guider that is down carries no

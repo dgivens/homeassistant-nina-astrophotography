@@ -177,6 +177,20 @@ async def test_an_untargeted_call_is_refused_while_a_second_rig_is_merely_down(
             "/equipment/camera/capture",
             {"duration": 30.0, "save": "false"},
         ),
+        # Two angles on two endpoints, both taking `position`: crossed, the
+        # rotator turns to the wrong angle and still answers `Success: true`.
+        (
+            "rotator_move",
+            {"position": 90},
+            "/equipment/rotator/move",
+            {"position": 90.0},
+        ),
+        (
+            "rotator_move_mechanical",
+            {"position": 90},
+            "/equipment/rotator/move-mechanical",
+            {"position": 90.0},
+        ),
     ],
     ids=[
         "slew-j2000-degrees",
@@ -184,6 +198,8 @@ async def test_an_untargeted_call_is_refused_while_a_second_rig_is_merely_down(
         "tracking-off",
         "sequence-name",
         "capture-duration",
+        "rotator-sky-angle",
+        "rotator-mechanical-angle",
     ],
 )
 async def test_a_service_sends_what_the_api_reads(
@@ -286,6 +302,10 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         # The rig's wheel reports slots 0 to 6.
         ("filterwheel_change_filter", {"filter_index": 7}),
         ("filterwheel_change_filter", {"filter_index": -1}),
+        ("rotator_move", {"position": 360.5}),
+        ("rotator_move", {"position": -1}),
+        ("rotator_move_mechanical", {"position": 360.5}),
+        ("rotator_move_mechanical", {"position": -1}),
     ],
     ids=[
         "ra-above-360",
@@ -303,6 +323,10 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         "duration-above-the-cameras",
         "filter-the-wheel-lacks",
         "filter-negative",
+        "rotator-above-360",
+        "rotator-negative",
+        "mechanical-above-360",
+        "mechanical-negative",
     ],
 )
 async def test_out_of_range_input_is_refused_rather_than_clamped(
@@ -338,6 +362,12 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
             {"filter_index": 6},
             "/equipment/filterwheel/change-filter",
         ),
+        ("rotator_move", {"position": 0}, "/equipment/rotator/move"),
+        (
+            "rotator_move_mechanical",
+            {"position": 360},
+            "/equipment/rotator/move-mechanical",
+        ),
     ],
     ids=[
         "position-zero",
@@ -348,6 +378,8 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
         "capture-bias",
         "capture-at-the-cameras-maximum",
         "filter-last-slot",
+        "rotator-zero",
+        "mechanical-360",
     ],
 )
 async def test_a_value_at_its_limit_is_sent(
@@ -506,3 +538,59 @@ async def test_the_actions_exist_before_any_entry_is_loaded(
     """
     assert await async_setup_component(hass, DOMAIN, {})
     assert hass.services.has_service(DOMAIN, "mount_park")
+
+
+async def test_a_sky_angle_move_is_refused_until_the_rotator_is_synced(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """N.I.N.A. answers the move `Success: true`, then fails it unsynced, and
+    the rotator stays where it is.
+    """
+    await set_up_at(hass, config_entry, rig, "scheduler_waiting")
+
+    with pytest.raises(ServiceValidationError):
+        await _call(hass, "rotator_move", position=90)
+    assert rig.sent == []
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize("position", [200, 299, 120], ids=str)
+async def test_a_mechanical_angle_outside_the_profiles_range_is_refused(
+    hass: HomeAssistant, config_entry, rig, set_up_at, position: float
+) -> None:
+    """N.I.N.A. folds it into the range rather than refusing it, so 200° on a
+    half range from 300° turns the rotator to 20°.
+    """
+    await set_up_at(hass, config_entry, rig, "rotator_half_range")
+
+    with pytest.raises(ServiceValidationError):
+        await _call(hass, "rotator_move_mechanical", position=position)
+    assert rig.sent == []
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("service", "position", "path"),
+    [
+        ("rotator_move_mechanical", 300, "/equipment/rotator/move-mechanical"),
+        ("rotator_move_mechanical", 30, "/equipment/rotator/move-mechanical"),
+        # A sky angle is folded to the same framing, flipped, so it is not
+        # held to the mechanical range.
+        ("rotator_move", 200, "/equipment/rotator/move"),
+    ],
+    ids=["range-start", "past-zero", "sky-angle"],
+)
+async def test_an_angle_the_profiles_range_allows_is_sent(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    service: str,
+    position: float,
+    path: str,
+) -> None:
+    await set_up_at(hass, config_entry, rig, "rotator_half_range")
+
+    await _call(hass, service, position=position)
+
+    assert rig.sent[-1] == (path, {"position": float(position)})
