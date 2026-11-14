@@ -313,6 +313,9 @@ command, not when the equipment finishes.
 | `focuser_move` | Move the focuser to an absolute position |
 | `focuser_auto_focus` | Run an autofocus with N.I.N.A.'s configured method, outside the sequence |
 | `filterwheel_change_filter` | Change filter |
+| `flat_panel_set_cover` | Open or close the flat panel's cover. It does not check whether a sequence is running, and closing it mid-exposure ruins the frame |
+| `flat_panel_set_light` | Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest, and never at full output; a panel reporting no brightness range is refused |
+| `flat_panel_set_brightness` | Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and goes dark at 0; a native Alnitak or Pegasus driver leaves the light as it is |
 | `guider_start` / `guider_stop` | Start / stop guiding |
 | `rotator_move` | Rotate to a sky position angle; refused until a plate solve syncs the rotator |
 | `rotator_move_mechanical` | Rotate to a mechanical angle within the rotator's range |
@@ -338,6 +341,10 @@ Actions not listed here take no fields.
 | `mount_set_tracking` | `enabled` | yes | — | — | `true` tracks at the sidereal rate; `false` stops tracking. |
 | `focuser_move` | `position` | yes | — | 0 or more steps | Absolute focuser position. The API reports no maximum, so travel beyond the focuser's is left to N.I.N.A. and its driver. |
 | `filterwheel_change_filter` | `filter_index` | yes | — | one of the wheel's slots | **Zero-based** slot: the first filter is `0`. |
+| `flat_panel_set_cover` | `open` | yes | — | — | `true` opens the cover; `false` closes it. |
+| `flat_panel_set_light` | `light_on` | yes | — | — | `true` lights the panel; `false` switches it off. |
+| `flat_panel_set_light` | `brightness` | no | the lit level, else the dimmest | within the panel's range | The level to light the panel at, in the panel's own units. Only with `light_on: true`. |
+| `flat_panel_set_brightness` | `level` | yes | — | the panel's own minimum to maximum | In the panel's own units, not Home Assistant's 0–255: an Alnitak reports 0–255, a Pegasus FlatMaster 20–220, a DeepSkyDad FP 0–4096. Use `flat_panel_set_light` to switch off: what `0` does depends on the driver. |
 | `guider_start` | `force_calibration` | no | `false` | — | Calibrate before guiding starts. |
 | `rotator_move` | `position` | yes | — | 0–360° | Sky position angle. On a rotator kept to a half or quarter range, N.I.N.A. turns to the equivalent angle within it: a half range can land 180° away, the same framing upside down. |
 | `rotator_move_mechanical` | `position` | yes | — | 0–360°, within the rotator's range | The rotator's own angle, whatever the sky angle. |
@@ -346,9 +353,10 @@ Actions not listed here take no fields.
 Out-of-range values are rejected with an error rather than sent to N.I.N.A.,
 which would silently clamp them. That holds for the fixed limits above and for
 the ranges the connected equipment reports: the camera's maximum exposure and
-its gain range, and the filter wheel's slots. Equipment that reports no range,
-or is disconnected, leaves the value to N.I.N.A., as does the focuser's upper
-limit.
+its gain range, the filter wheel's slots, and the flat panel's brightness
+range. A panel reporting no cover or no light has that action refused.
+Equipment that reports no range, or is disconnected, leaves the value to
+N.I.N.A., as does the focuser's upper limit.
 
 The rotator's range is N.I.N.A.'s, from its profile: a full, half or quarter
 turn from a start angle, set in the rotator's settings in N.I.N.A., and it can

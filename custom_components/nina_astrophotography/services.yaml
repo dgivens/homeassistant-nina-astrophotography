@@ -199,6 +199,68 @@ filterwheel_change_filter:
           min: 0
           mode: box
 
+flat_panel_set_cover:
+  name: Set Flat Panel Cover
+  description: Open or close the flat panel's cover.
+  target:
+    entity:
+      integration: nina_astrophotography
+  fields:
+    open:
+      name: Open
+      description: On to open the cover, off to close it.
+      required: true
+      selector:
+        boolean:
+
+flat_panel_set_light:
+  name: Set Flat Panel Light
+  description: >-
+    Switch the flat panel's light on or off. It comes on at the brightness
+    given, else at the level it is already lit at, else at its dimmest; never
+    at full output. Refused while the panel reports no brightness range.
+  target:
+    entity:
+      integration: nina_astrophotography
+  fields:
+    light_on:
+      name: Light On
+      description: On to light the panel, off to switch it off.
+      required: true
+      selector:
+        boolean:
+    brightness:
+      name: Brightness
+      description: >-
+        The level to light the panel at, in the panel's own units and within
+        its own range, such as 0 to 255 or 0 to 4096. Only when switching on.
+      example: 1024
+      selector:
+        number:
+          min: 0
+          mode: box
+
+flat_panel_set_brightness:
+  name: Set Flat Panel Brightness
+  description: >-
+    Set the flat panel's brightness. An ASCOM panel lights at any level above
+    0 and switches off at 0; other drivers leave the light as it is.
+  target:
+    entity:
+      integration: nina_astrophotography
+  fields:
+    level:
+      name: Level
+      description: >-
+        Brightness in the panel's own units, within its own range, such as 0
+        to 255 or 0 to 4096.
+      required: true
+      example: 1024
+      selector:
+        number:
+          min: 0
+          mode: box
+
 guider_start:
   name: Start Guiding
   description: Start the autoguider.

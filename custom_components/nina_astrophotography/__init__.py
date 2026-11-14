@@ -29,7 +29,7 @@ from homeassistant.helpers.service import async_extract_config_entry_ids
 from homeassistant.helpers.typing import ConfigType
 import voluptuous as vol
 
-from . import binary_sensor, button, number, sensor, switch
+from . import binary_sensor, button, light, number, sensor, switch
 from .api.errors import (
     NinaCommandError,
     NinaConnectionError,
@@ -59,6 +59,9 @@ from .const import (
     SERVICE_DOME_OPEN,
     SERVICE_DOME_PARK,
     SERVICE_FILTERWHEEL_CHANGE,
+    SERVICE_FLAT_PANEL_SET_BRIGHTNESS,
+    SERVICE_FLAT_PANEL_SET_COVER,
+    SERVICE_FLAT_PANEL_SET_LIGHT,
     SERVICE_FOCUSER_AUTO_FOCUS,
     SERVICE_FOCUSER_MOVE,
     SERVICE_GUIDER_START,
@@ -510,6 +513,77 @@ def _service(handler: Callable[[ServiceCall], Awaitable[None]]):
     return wrapped
 
 
+def _refuse_unsupported(supported: bool | None, feature: str) -> None:
+    """Refuse a command for a feature the connected panel reports it lacks.
+
+    A disconnected panel reports every capability false, so only an
+    explicit false from a connected one is believed.
+    """
+    if supported is False:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="flat_panel_unsupported",
+            translation_placeholders={"feature": feature},
+        )
+
+
+async def _handle_flat_panel_set_cover(call: ServiceCall) -> None:
+    coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
+    panel = coordinator.data.snapshot.flat_device
+    if panel is not None and panel.connected:
+        _refuse_unsupported(panel.supports_open_close, "cover")
+    if call.data["open"]:
+        await coordinator.client.open_flat_cover()
+    else:
+        await coordinator.client.close_flat_cover()
+
+
+async def _handle_flat_panel_set_light(call: ServiceCall) -> None:
+    """Switch the light, sending a brightness before every switch on.
+
+    A bare `set-light?on=true` lights the panel at the level N.I.N.A. last set
+    in this process, or at `MaxBrightness` when it has set none; so switching on
+    a panel reporting no range is refused rather than sent. An ASCOM panel off
+    reports brightness 0, so the level kept is only a lit panel's own.
+    """
+    coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
+    client, panel = coordinator.client, coordinator.data.snapshot.flat_device
+    requested = call.data.get("brightness")
+    if panel is not None and panel.connected:
+        _refuse_unsupported(panel.supports_on_off, "light")
+    if not call.data["light_on"]:
+        if requested is not None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="flat_panel_brightness_while_off",
+            )
+        await client.set_flat_light(False)
+        return
+    if panel is None or panel.brightness_range is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="flat_panel_no_range"
+        )
+    low, high = panel.brightness_range
+    if requested is not None:
+        _within_device_range("Brightness", requested, "flat panel", low, high)
+        level = requested
+    elif panel.light_on and panel.brightness is not None and panel.brightness > low:
+        level = round(panel.brightness)
+    else:
+        level = light.dimmest_level((low, high))
+    await client.set_flat_brightness(level)
+    await client.set_flat_light(True)
+
+
+async def _handle_flat_panel_set_brightness(call: ServiceCall) -> None:
+    coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
+    level = call.data["level"]
+    panel = coordinator.data.snapshot.flat_device
+    if panel is not None and panel.brightness_range is not None:
+        _within_device_range("Level", level, "flat panel", *panel.brightness_range)
+    await coordinator.client.set_flat_brightness(level)
+
+
 def _register_services(hass: HomeAssistant) -> None:
     """Register every action, whether or not an entry is loaded.
 
@@ -708,6 +782,36 @@ def _register_services(hass: HomeAssistant) -> None:
         handle_filterwheel_change_filter,
         {
             vol.Required("filter_index"): _bounded("Filter index", int, 0),
+        },
+    )
+
+    # ── Flat panel ───────────────────────────────────────────────────────────
+
+    register(
+        SERVICE_FLAT_PANEL_SET_COVER,
+        _handle_flat_panel_set_cover,
+        {
+            vol.Required("open"): cv.boolean,
+        },
+    )
+
+    register(
+        SERVICE_FLAT_PANEL_SET_LIGHT,
+        _handle_flat_panel_set_light,
+        {
+            vol.Required("light_on"): cv.boolean,
+            vol.Optional("brightness"): _bounded("Brightness", int, 0),
+        },
+    )
+
+    # Driver units, within the panel's own `MinBrightness`–`MaxBrightness`. An
+    # ASCOM panel lights at any level above 0; a native driver keeps the light
+    # as it is.
+    register(
+        SERVICE_FLAT_PANEL_SET_BRIGHTNESS,
+        _handle_flat_panel_set_brightness,
+        {
+            vol.Required("level"): _bounded("Level", int, 0),
         },
     )
 

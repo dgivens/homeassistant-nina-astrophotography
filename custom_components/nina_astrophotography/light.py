@@ -32,6 +32,12 @@ PARALLEL_UPDATES = 1
 _HA_MAX = 255
 
 
+def dimmest_level(driver_range: tuple[float, float]) -> int:
+    """Home Assistant's level 1 in driver units: the least the light sends."""
+    low, high = driver_range
+    return round(low + (high - low) / _HA_MAX)
+
+
 class NinaFlatLight(NinaEntity, LightEntity):
     """The panel's light."""
 
