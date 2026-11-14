@@ -58,6 +58,7 @@ from .polling import (
 from .sequence import current_wait, running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
+    RecentFrame,
     fold,
     latest_stack,
     latest_target,
@@ -142,8 +143,9 @@ class NinaData:
     autofocus_report: AutoFocusReport | None
     """The newest `/equipment/focuser/last-af`, or `None` if none was ever run.
     It survives a restart, so it is dated against the session before use."""
-    recent_frames: tuple[Frame, ...]
-    """The newest frames of any type, newest first, bounded."""
+    recent_frames: tuple[RecentFrame, ...]
+    """The newest frames of any type, then the newest lights, newest first,
+    bounded. See `session.recent_frames`."""
     profile: ProfileSettings
     generation: str | None
     version: VersionInfo
@@ -176,7 +178,7 @@ class NinaData:
         is the newest light inside the session window, so after a flat run or
         the rollover the two differ.
         """
-        return self.recent_frames[0] if self.recent_frames else None
+        return self.recent_frames[0].frame if self.recent_frames else None
 
 
 class NinaCoordinator(DataUpdateCoordinator[NinaData]):

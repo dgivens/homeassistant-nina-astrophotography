@@ -363,7 +363,7 @@ def test_the_recent_frames_ignore_the_session_window(night) -> None:
     `image.last_frame` renders long after the rollover is still last night's
     frame.
     """
-    assert recent_frames(night, "g1")[0].date == max(f.date for f in night)
+    assert recent_frames(night, "g1")[0].frame.date == max(f.date for f in night)
 
 
 def test_the_recent_frames_of_another_process_are_not_offered(night) -> None:

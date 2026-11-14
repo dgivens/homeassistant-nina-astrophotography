@@ -8,6 +8,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
+- **The image panel has a Lights only button** beside the recent frames (#270). It
+  limits the main image and the strip to lights, so the last sub stays on
+  screen through a flat run of any length. The card's `lights_only` option
+  sets it, and a browser that presses the button away from that setting
+  remembers its own choice per rig. A card with `show_strip` off has no
+  button, and follows the option alone. `sensor.<instance>_last_image_mean_adu`'s
+  `recent_frames` also holds the 20 newest lights however many frames
+  followed them, and gives every entry its `age`.
 - **`custom:nina-site-camera-card`** shows a pier, all-sky or observatory
   camera in the same frame as the other cards (#264), from any camera or image
   entities. Two or more get chips to choose between them, a tap opens the

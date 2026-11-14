@@ -17,9 +17,10 @@ from urllib.parse import quote
 import pytest
 
 from custom_components.nina_astrophotography.api.v2.mapper import map_frame
-from helpers import FakeResponse, failure, load_envelope, ok
+from helpers import FakeResponse, failure, load_envelope, ok, state_of
 
 ENTITY = "image.n_i_n_a_last_frame"
+LAST_IMAGE_MEAN_ADU = "sensor.n_i_n_a_last_image_mean_adu"
 IMAGE = f"/api/nina_astrophotography/image/{ENTITY}"
 FRAME = b"\xff\xd8\xff\xe0 not a frame"
 JPEG = FakeResponse(FRAME, content_type="image/jpeg")
@@ -260,6 +261,23 @@ async def test_a_date_is_looked_for_past_ten_frames_saved_since(
     client = await hass_client()
     resp = await client.get(f"{IMAGE}/0?date={date}")
     assert resp.status == status
+
+
+async def test_a_light_behind_a_flat_run_is_fetched_by_its_age(
+    hass, loaded_entry, rig, hass_client
+) -> None:
+    """The dawn history ends on 67 flats, so the newest light's age is far
+    from 0, and N.I.N.A. counts its index from the oldest frame.
+    """
+    recent = state_of(hass, LAST_IMAGE_MEAN_ADU).attributes["recent_frames"]
+    light = next(f for f in recent if f["image_type"] == "LIGHT")
+    history = load_envelope("dawn_image_history_with_flats.json")["Response"]
+    index = len(history) - 1 - light["age"]
+    rig.respond(f"/image-history?index={index}", ok([history[index]]))
+    rig.respond(f"/image/{index}", JPEG)
+    client = await hass_client()
+    resp = await client.get(f"{IMAGE}/{light['age']}?date={quote(light['date'])}")
+    assert await resp.read() == FRAME
 
 
 async def test_a_date_no_frame_was_saved_at_answers_404(

@@ -105,6 +105,9 @@ Write `scenarios/<card name>.mjs` exporting `scenarios`, keyed by name:
   events: (dump) => [{ type: "nina_image_save", data: { … } }],  // optional
   after: (dump) => [rig(dump, "nina_unreachable").build()],  // optional
   folded: ["card"],  // optional, sections folded as a viewer would
+  images: "hold",  // optional: images load only when `act` says
+  act: ({ load, log }) => ({ "pressed": (card) => … }),  // optional
+  storage: { "<key>": "1" },  // optional: what the browser holds, or "refused"
 }
 ```
 
@@ -129,6 +132,21 @@ the integration keeps the last data through it, so a card never sees it.
 `events` are bus events `ops.mjs` fires at whatever the card subscribed to,
 once the first render has settled; each is logged, so the lines after it are
 what it set off. `render.html` fires none.
+
+`act` is what a viewer does once the states are in: named steps, each a
+function of the card, run in order and logged as `act <name>`. An element's
+`click()` runs the card's own click handlers. Every image fails at once unless
+`images` is `"hold"`; then each stays in flight until a step calls `load()`, so
+a scenario can act while one is loading. `log` lets a step record what is on
+screen at that point, which the final markup cannot show, and `hand(hass)`
+gives the card a later state built from `dump`, as `after` does, between two
+steps. `render.html` runs no steps.
+
+Node has no `localStorage`, so a card's stored choices are neither read nor
+written unless the scenario has `storage`: the keys the browser holds before
+the card loads. Each write is then logged as `stored <key>=<value>` or
+`unstored <key>`. `"refused"` is a browser that blocks site data, where every
+call throws.
 
 A card paints its canvas on an animation frame, which node never fires, so
 `ops.mjs` runs the ones the render queued. `draw` replaces that for a card the

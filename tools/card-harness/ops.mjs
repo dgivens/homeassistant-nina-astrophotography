@@ -53,7 +53,10 @@ if (!scenario) {
   process.exit(2);
 }
 
-const { log, element, html, nodes, frame } = install(scenario.viewport);
+const { log, element, html, nodes, frame, load } = install({
+  ...scenario.viewport,
+  images: scenario.images,
+});
 
 // The card registers its element as a side effect of being imported, and logs
 // its version banner doing it. Stdout is the record, so the banner goes aside.
@@ -65,6 +68,28 @@ const Card = element();
 if (!Card) {
   console.error(`${card} defined no custom element`);
   process.exit(1);
+}
+
+// Node has no `localStorage`. A scenario's `storage` is what the browser holds
+// before the card loads, and every write after that is logged; `"refused"` is
+// a browser that blocks site data.
+if (scenario.storage) {
+  const refused = scenario.storage === "refused";
+  const held = new Map(refused ? [] : Object.entries(scenario.storage));
+  const guard = (run) => (...args) => {
+    if (refused) throw new Error("storage refused");
+    return run(...args);
+  };
+  globalThis.localStorage = {
+    getItem: guard((key) => held.get(key) ?? null),
+    setItem: guard((key, value) => {
+      log.push(`stored ${key}=${value}`);
+      held.set(key, value);
+    }),
+    removeItem: guard((key) => {
+      if (held.delete(key)) log.push(`unstored ${key}`);
+    }),
+  };
 }
 
 const instance = new Card();
@@ -108,10 +133,22 @@ for (const { type, data } of scenario.events?.(dump) ?? []) {
 }
 
 // Later states, handed over in turn; the output is what the last one left.
-for (const next of scenario.after?.(dump) ?? []) {
+const hand = (next) => {
   log.push("hass");
   instance.hass = { ...next, callWS: hass.callWS, connection: hass.connection };
+};
+for (const next of scenario.after?.(dump) ?? []) {
+  hand(next);
   await new Promise((resolve) => setTimeout(resolve));
+}
+
+// What a viewer does once the states are in: each step is a function of the
+// card, logged by its name, so the lines after it are what it set off. A step
+// can start a load that queues another, so each gets a few ticks to settle.
+for (const [step, act] of Object.entries(scenario.act?.({ load, log, dump, hand }) ?? {})) {
+  log.push(`act ${step}`);
+  act(instance);
+  for (let tick = 0; tick < 5; tick++) await new Promise((resolve) => setTimeout(resolve));
 }
 
 if (flags.includes("--html")) {

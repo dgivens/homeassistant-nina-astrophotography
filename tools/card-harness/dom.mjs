@@ -65,6 +65,7 @@ function recorder(log) {
  */
 function element(tag) {
   const classes = new Set();
+  const listeners = [];
   let markup = "";
   return {
     tag,
@@ -126,7 +127,13 @@ function element(tag) {
       walk(this);
       return found;
     },
-    addEventListener() {},
+    addEventListener(type, listener) {
+      listeners.push({ type, listener });
+    },
+    // What a scenario's `act` presses: the card's own handlers, without an event.
+    click() {
+      for (const { type, listener } of listeners) if (type === "click") listener({});
+    },
   };
 }
 
@@ -159,10 +166,12 @@ function describe(node, id, depth = 0) {
  * @param {object} [options]
  * @param {number} [options.width]   the canvas size a card reads off the layout
  * @param {number} [options.dpr]     `window.devicePixelRatio`
+ * @param {string} [options.images]  `"hold"` keeps every image loading until
+ *                                   `load()`; otherwise each fails at once
  * @returns {{log: string[], element: () => Function, html: () => string,
- *            nodes: () => string, frame: () => void}}
+ *            nodes: () => string, frame: () => void, load: () => void}}
  */
-export function install({ width = 320, height = 320, dpr = 2 } = {}) {
+export function install({ width = 320, height = 320, dpr = 2, images } = {}) {
   const log = [];
   let defined = null;
   let html = "";
@@ -230,11 +239,20 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
   globalThis.getComputedStyle = () => ({ getPropertyValue: () => "" });
   // There are no image bytes to serve, so every load fails — which is what the
   // browser page shows too, since nothing there answers the image proxy. The
-  // address asked for is the record.
+  // address asked for is the record. Held instead, a load is still in flight
+  // when a scenario acts, and succeeds when it calls `load()`.
+  const held = [];
   globalThis.Image = class {
     set src(value) {
       log.push(`image ${value}`);
-      queueMicrotask(() => this.onerror?.());
+      if (images === "hold") held.push(this);
+      else queueMicrotask(() => this.onerror?.());
+    }
+  };
+  const load = () => {
+    for (const image of held.splice(0)) {
+      log.push("loaded");
+      image.onload?.();
     }
   };
   // Held rather than run: node fires no frames, so the runner decides when the
@@ -269,5 +287,6 @@ export function install({ width = 320, height = 320, dpr = 2 } = {}) {
     html: () => html,
     nodes: () => [...nodes].map(([id, node]) => describe(node, id)).join("\n"),
     frame,
+    load,
   };
 }

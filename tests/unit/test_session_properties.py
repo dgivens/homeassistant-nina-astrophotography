@@ -4,9 +4,9 @@ Every generated input is real wire data — hypothesis samples the corpus rather
 than inventing frames, so a passing property says something about N.I.N.A.
 """
 
-from hypothesis import HealthCheck, given, settings, strategies as st
+from hypothesis import HealthCheck, example, given, settings, strategies as st
 from nina_astrophotography.api.v2.mapper import map_frame
-from nina_astrophotography.session import fold
+from nina_astrophotography.session import fold, recent_frames
 
 from helpers import load_fixture
 
@@ -37,3 +37,40 @@ def test_fold_is_idempotent(sample) -> None:
 @given(st.permutations(STRADDLE))
 def test_fold_is_order_independent(shuffled) -> None:
     assert fold(shuffled, [], "g1") == fold(STRADDLE, [], "g1")
+
+
+def _some(frames: list) -> st.SearchStrategy:
+    """Any number of `frames`: hypothesis's own lists stay too short to hold
+    more than 20 lights.
+    """
+    return st.tuples(st.permutations(frames), st.integers(0, len(frames))).map(
+        lambda drawn: drawn[0][: drawn[1]]
+    )
+
+
+# Drawn apart: every light predates every flat, so only a sample with fewer
+# than 20 flats puts lights among the newest 20, and only one with more than
+# 20 lights leaves some out.
+LIGHTS = [f for f in FRAMES if f.image_type == "LIGHT"]
+FLATS = [f for f in FRAMES if f.image_type != "LIGHT"]
+
+
+@given(_some(LIGHTS), _some(FLATS))
+# The edges of the newest 20, which a draw reaches only by chance.
+@example(LIGHTS[-25:], FLATS[:19])  # lights at ages 19 and 20
+@example(LIGHTS, FLATS[:20])  # every light behind exactly 20 flats
+@example(LIGHTS[:20], [])  # exactly 20 frames
+@example([], [])
+def test_recent_frames_are_the_newest_twenty_and_the_newest_twenty_lights(
+    lights, flats
+) -> None:
+    """Checked against the corpus's own saved order. The image proxy fetches a
+    frame by its age, so a kept light carries its place among every frame, not
+    among the ones kept.
+    """
+    sample = lights + flats
+    held = {f.identity for f in sample}
+    newest = [f for f in reversed(FRAMES) if f.identity in held]
+    lights = [f for f in newest if f.image_type == "LIGHT"][:20]
+    expected = [(age, f) for age, f in enumerate(newest) if age < 20 or f in lights]
+    assert [(r.age, r.frame) for r in recent_frames(sample, "g1")] == expected
