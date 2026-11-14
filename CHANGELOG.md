@@ -17,6 +17,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **The card harness logs each image a card asks for** (#264), and `Rig.add`
   gives a scenario a row from another integration.
+- **CI runs the current major of each action** (#275) — checkout v7, setup-uv
+  v10.3.3, upload-artifact v7, download-artifact v8 — and the Lovelace
+  module tests under Node 26, the active LTS.
 - **The development tooling and test libraries are current** (#272): ruff 0.17.5,
   datamodel-code-generator 0.84.0 — the newest that resolves beside the
   pydantic Home Assistant pins — pre-commit 4.7.0, and the test suite's
