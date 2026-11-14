@@ -23,6 +23,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
+- **The observatory card shows both rotator angles out of the box** (#266).
+  `number.<instance>_rotator_mechanical_position` ships enabled, as a control
+  beside the sky position, and `binary_sensor.<instance>_rotator_synced` is a
+  sensor rather than a diagnostic. An upgraded install has both rows enabled
+  for it, unless you disabled them yourself.
 - **The README's dashboard and card samples are current**, taken from a live
   rig, and the gallery gains the site camera card.
 - **The card harness logs each image a card asks for** (#264), and `Rig.add`

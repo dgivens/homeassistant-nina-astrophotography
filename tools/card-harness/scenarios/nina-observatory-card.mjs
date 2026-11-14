@@ -59,8 +59,10 @@ export const scenarios = {
   // say which, where the countdown alone would show nothing.
   ...flipScenarios(),
 
-  // Both rotator angles; `station` has the sky angle alone.
-  rotator_mechanical: { hass: (dump) => rig(dump, "rotator_mechanical").build() },
+  // The mechanical position disabled: the sky angle alone.
+  rotator_sky_only: {
+    hass: (dump) => rig(dump, UP).without("rotator_mechanical_position").build(),
+  },
 
   // Unsynced: the sky angle reads —.
   rotator_unsynced: { hass: (dump) => rig(dump, UP).override(SYNCED, "off").build() },

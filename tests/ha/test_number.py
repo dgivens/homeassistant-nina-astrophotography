@@ -25,6 +25,7 @@ from helpers import state_of
 BRIGHTNESS = "number.n_i_n_a_flat_panel_brightness"
 FOCUSER_POSITION = "number.n_i_n_a_focuser_position"
 USB_LIMIT = "number.n_i_n_a_camera_usb_limit"
+MECHANICAL_POSITION = "number.n_i_n_a_rotator_mechanical_position"
 
 
 async def _set(hass: HomeAssistant, entity_id: str, value: float) -> None:
@@ -74,6 +75,7 @@ async def test_the_usb_limit_range_is_this_cameras_own(
     [
         (BRIGHTNESS, 99999),
         ("number.n_i_n_a_rotator_position", 400),
+        (MECHANICAL_POSITION, 400),
         ("number.n_i_n_a_camera_target_temperature", -80),
     ],
 )
@@ -159,20 +161,39 @@ async def test_the_cut_numbers_are_not_registered(
     assert registered(NUMBER_DOMAIN, entity_registry, loaded_entry, key) is None
 
 
-@pytest.mark.parametrize("key", ["camera_usb_limit", "rotator_mechanical_position"])
-async def test_the_long_tail_ships_config_and_disabled(
-    loaded_entry: MockConfigEntry, entity_registry, key: str
+async def test_the_usb_limit_ships_config_and_disabled(
+    loaded_entry: MockConfigEntry, entity_registry
 ) -> None:
     """The dome's is in `test_dome.py`: the reference rig has none, so §5.2.2
     gates `dome_azimuth` out here.
     """
     entry = entity_registry.async_get(
-        registered(NUMBER_DOMAIN, entity_registry, loaded_entry, key)
+        registered(NUMBER_DOMAIN, entity_registry, loaded_entry, "camera_usb_limit")
     )
     assert (entry.entity_category, entry.disabled_by is not None) == (
         EntityCategory.CONFIG,
         True,
     )
+
+
+async def test_the_mechanical_position_ships_as_an_enabled_control(
+    loaded_entry: MockConfigEntry, entity_registry
+) -> None:
+    """The observatory card reads it."""
+    entry = entity_registry.async_get(
+        registered(
+            NUMBER_DOMAIN, entity_registry, loaded_entry, "rotator_mechanical_position"
+        )
+    )
+    assert (entry.entity_category, entry.disabled_by) == (None, None)
+
+
+async def test_a_mechanical_position_moves_the_rotator_mechanically(
+    hass: HomeAssistant, loaded_entry, rig
+) -> None:
+    """`/equipment/rotator/move` takes the sky angle instead."""
+    await _set(hass, MECHANICAL_POSITION, 90)
+    assert rig.sent == [("/equipment/rotator/move-mechanical", {"position": 90})]
 
 
 async def test_a_value_outside_this_cameras_usb_range_is_refused(

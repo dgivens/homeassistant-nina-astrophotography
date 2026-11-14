@@ -114,6 +114,12 @@ _DOME_ENABLED: tuple[tuple[Platform, NinaEntityDescription], ...] = tuple(
     if description.kind == "dome" and description.entity_registry_enabled_default
 )
 
+# The rotator rows minor version 4 enables, by unique id suffix.
+_ROTATOR_ENABLED = (
+    (Platform.BINARY_SENSOR, "rotator_synced"),
+    (Platform.NUMBER, "rotator_mechanical_position"),
+)
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register the actions, the image proxy and the Lovelace cards."""
@@ -257,6 +263,12 @@ async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bo
     Minor 3 drops the unique id, which was the address. The duplicate guard
     compares host and port in `data` instead, so the host is normalised the
     way the config flow stores it.
+
+    Minor 4 enables the rotator rows the observatory card reads, which earlier
+    versions registered disabled. Only rows the integration disabled, and not
+    on an entry whose system options disable new entities, which Home
+    Assistant records the same way: a row a user disabled is left alone.
+    Home Assistant reloads the entry 30 s after a row is enabled.
     """
     if entry.version == 1 and entry.minor_version < 2:
         data = {k: v for k, v in entry.data.items() if k != CONF_POLL_INTERVAL}
@@ -272,6 +284,17 @@ async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bo
             unique_id=None,
             minor_version=3,
         )
+    if entry.version == 1 and entry.minor_version < 4:
+        if not entry.pref_disable_new_entities:
+            registry = er.async_get(hass)
+            for platform, key in _ROTATOR_ENABLED:
+                entity_id = registry.async_get_entity_id(
+                    platform, DOMAIN, f"{entry.entry_id}_{key}"
+                )
+                row = registry.async_get(entity_id) if entity_id else None
+                if row and row.disabled_by is er.RegistryEntryDisabler.INTEGRATION:
+                    registry.async_update_entity(row.entity_id, disabled_by=None)
+        hass.config_entries.async_update_entry(entry, minor_version=4)
     return True
 
 
