@@ -23,6 +23,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   dimmest, and switching on a panel reporting no range is refused, since
   N.I.N.A. could light it at full output. A panel reporting no cover or no
   light has that action refused.
+- **The observatory card shows the flat panel** (#269): a Flat Panel chip and
+  section with the cover, the light and the brightness in the panel's own
+  units, and Open or Close Flat Cover under Controls, each asking for
+  confirmation. A cover part-way, in error or not read offers both, and an
+  error turns the chip red and stays on a collapsed card.
 - **The image panel has a Lights only button** beside the recent frames (#270). It
   limits the main image and the strip to lights, so the last sub stays on
   screen through a flat run of any length. The card's `lights_only` option
