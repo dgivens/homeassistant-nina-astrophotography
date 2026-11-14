@@ -418,10 +418,12 @@ _REFUSED = aiohttp.ClientError("refused")
 def _down(block: dict) -> dict:
     """A connected block as its disconnected self.
 
-    The corpus has no capture of the camera, flat panel, safety monitor or
-    switch hub down, so those four are derived — by the rule the corpus does
-    show, comparing the connected and disconnected blocks it holds: the
-    identity keys go, `Connected` is false.
+    The corpus has no capture of the camera, safety monitor or switch hub down,
+    so those three are derived — by the rule the corpus does show, comparing the
+    connected and disconnected blocks it holds: the identity keys go,
+    `Connected` is false. The readings are carried over, where a real
+    disconnect may reset them: the captured flat panel reports no on/off or
+    cover support and a `MaxBrightness` of 0.
     """
     return {k: v for k, v in block.items() if k not in _IDENTITY_KEYS} | {
         "Connected": False
@@ -432,9 +434,14 @@ def disconnect(state: State, *devices: str) -> State:
     """Derive a state with `devices` disconnected, leaving `state` untouched.
 
     Prefers a captured disconnected block over a derived one wherever the
-    corpus holds the device down.
+    corpus holds the device down: the restart capture for seven devices, and
+    `imaging_guiding` for the flat panel, which is up at the restart.
     """
-    reference = load_envelope("restart_equipment_partial_connect.json")["Response"]
+    reference = load_envelope("restart_equipment_partial_connect.json")["Response"] | {
+        "FlatDevice": load_envelope("imaging_guiding_equipment_info.json")["Response"][
+            "FlatDevice"
+        ]
+    }
     for device in devices:
         captured = reference[device]
         block = (
@@ -812,8 +819,8 @@ STATES: dict[str, State] = {
         ],
     ),
     "safety_monitor_disconnected": disconnect(_IMAGING, "SafetyMonitor"),
-    # All eleven down: the seven the restart capture holds down, plus the four
-    # that are connected in every capture.
+    # All eleven down: the seven the restart capture holds down, the flat panel
+    # `imaging_guiding` holds down, and the three connected in every capture.
     "equipment_disconnected": disconnect(
         _RESTARTED, "Camera", "FlatDevice", "SafetyMonitor", "Switch"
     ),

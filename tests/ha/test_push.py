@@ -47,8 +47,8 @@ async def test_a_disconnect_event_refetches_the_snapshot_before_the_next_tick(
 ) -> None:
     """§6.4: a device dropping out must not sit until the next 10 s poll.
 
-    No capture holds the flat panel down, so its disconnected block is derived
-    by the rule the corpus does show.
+    The flat panel's down block is captured, but `equipment_disconnected` also
+    carries the derived camera, safety monitor and switch hub blocks.
     """
     rig.requests.clear()
     rig.goto("equipment_disconnected")

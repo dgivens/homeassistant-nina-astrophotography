@@ -45,6 +45,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The Home Assistant suite and pyright run against Home Assistant
   2026.10.4** (#273), whose core validates with probatio in voluptuous's place.
   `nina-units.js` converts `atm`, the pressure unit that release offers.
+- **The fake rig's disconnected flat panel is the captured one** (#282), from
+  `imaging_guiding`, which reports no on/off or cover support and a
+  `MaxBrightness` of 0. The camera, safety monitor and switch hub are the
+  three derived down-blocks, as `tests/scenarios/README.md` says.
 
 ---
 ### Fixed

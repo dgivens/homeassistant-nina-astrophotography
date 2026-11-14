@@ -33,14 +33,19 @@ an ordered `SEQUENCES` entry step by step.
 
 ## Derived, not captured
 
-Four devices — **Camera, FlatDevice, SafetyMonitor and Switch** — are connected
-in every capture, so `disconnect()` derives their down-blocks by the rule the
-corpus does show: drop `DeviceId`, `Name`, `DisplayName`, `Description`,
+Three devices — **Camera, SafetyMonitor and Switch** — are connected in every
+capture, so `disconnect()` derives their down-blocks by the rule the corpus
+does show: drop `DeviceId`, `Name`, `DisplayName`, `Description`,
 `DriverInfo`, `DriverVersion` and `SupportedActions`, and set `Connected` false
 (the focuser goes 15 keys to 8, the rotator 15 to 8, the weather station 22 to
-15, each losing exactly that set). The other seven are copied from the capture
-that holds them down. Tests exercising a derived block carry
-`@pytest.mark.synthetic`.
+15, the flat panel 17 to 10, each losing exactly that set). The other eight are
+copied from a capture that holds them down: seven from the restart capture, and
+the flat panel from `imaging_guiding`, since it is up at the restart.
+
+A derived block keeps the connected block's readings, which a real disconnect
+may reset: the captured flat panel down reports `SupportsOnOff` and
+`SupportsOpenClose` false, `MaxBrightness` 0 and `CoverState` `Unknown`. Tests
+exercising a derived block carry `@pytest.mark.synthetic`.
 
 Bare `/image-history` for the dawn family is likewise assembled, because the
 dawn capture predates the bare path: the newest frame of the captured

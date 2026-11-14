@@ -124,8 +124,8 @@ async def test_a_device_transition_is_logged_once_at_info(
 ) -> None:
     """Per device, under the label the device registry shows.
 
-    No capture holds the flat panel down, so its disconnected block is derived
-    by the rule the corpus does show.
+    The flat panel's down block is captured, but `equipment_disconnected` also
+    carries the derived camera, safety monitor and switch hub blocks.
     """
     caplog.set_level(logging.DEBUG)
     for state in states:
