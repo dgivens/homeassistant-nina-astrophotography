@@ -15,6 +15,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   plate solve syncs the rotator, as N.I.N.A. would leave the rotator where it
   is. `number.<instance>_rotator_position` and
   `_rotator_mechanical_position` refuse the same moves.
+- **Actions for the flat panel** (#268): `flat_panel_set_cover` opens or
+  closes the cover, `flat_panel_set_light` switches the light, at an optional
+  `brightness`, and `flat_panel_set_brightness` sets a `level`. Levels are in
+  the panel's own units and held to the range it reports. The light comes on
+  at the brightness given, else at the level it is already lit at, else at its
+  dimmest, and switching on a panel reporting no range is refused, since
+  N.I.N.A. could light it at full output. A panel reporting no cover or no
+  light has that action refused.
 - **The image panel has a Lights only button** beside the recent frames (#270). It
   limits the main image and the strip to lights, so the last sub stays on
   screen through a flat run of any length. The card's `lights_only` option

@@ -10,6 +10,7 @@ native drivers keep brightness and light apart, so `set-light` switches the
 panel on.
 """
 
+import math
 from typing import Any
 
 # The package root is the one path that holds across 2026.9 and 2026.10.
@@ -30,6 +31,17 @@ from .entity import NinaEntity, async_add_observed, refusals_raised
 PARALLEL_UPDATES = 1
 
 _HA_MAX = 255
+
+
+def dimmest_level(driver_range: tuple[float, float]) -> int:
+    """Home Assistant's level 1 in driver units, and always above the minimum.
+
+    An ASCOM panel set to its minimum, 0, is dark, and N.I.N.A.'s next
+    `set-light` then lights it at `MaxBrightness`; a range under 128 would
+    round level 1 down to it.
+    """
+    low, high = driver_range
+    return max(round(low + (high - low) / _HA_MAX), math.floor(low) + 1)
 
 
 class NinaFlatLight(NinaEntity, LightEntity):

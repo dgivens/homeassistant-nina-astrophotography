@@ -528,6 +528,40 @@
         }
       }
     },
+    "flat_panel_set_cover": {
+      "name": "Set Flat Panel Cover",
+      "description": "Open or close the flat panel's cover.",
+      "fields": {
+        "open": {
+          "name": "Open",
+          "description": "On to open the cover, off to close it."
+        }
+      }
+    },
+    "flat_panel_set_light": {
+      "name": "Set Flat Panel Light",
+      "description": "Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest; never at full output. Refused while the panel reports no brightness range.",
+      "fields": {
+        "light_on": {
+          "name": "Light On",
+          "description": "On to light the panel, off to switch it off."
+        },
+        "brightness": {
+          "name": "Brightness",
+          "description": "The level to light the panel at, in the panel's own units: above its minimum, which an ASCOM panel reads as off, and up to its maximum, such as 255 or 4096. Only when switching on."
+        }
+      }
+    },
+    "flat_panel_set_brightness": {
+      "name": "Set Flat Panel Brightness",
+      "description": "Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and switches off at 0; other drivers leave the light as it is.",
+      "fields": {
+        "level": {
+          "name": "Level",
+          "description": "Brightness in the panel's own units, within its own range, such as 0 to 255 or 0 to 4096."
+        }
+      }
+    },
     "guider_start": {
       "name": "Start Guiding",
       "description": "Start the autoguider.",
@@ -611,6 +645,15 @@
     },
     "entry_not_loaded": {
       "message": "N.I.N.A. instance {instance} is not loaded, so the action was not sent."
+    },
+    "flat_panel_brightness_while_off": {
+      "message": "A brightness lights the panel, so it is refused when switching the light off. The action was not sent."
+    },
+    "flat_panel_no_range": {
+      "message": "The flat panel reports no brightness range, so its light was not switched on: N.I.N.A. could light it at full output."
+    },
+    "flat_panel_unsupported": {
+      "message": "The flat panel reports no {feature}, so the action was not sent."
     },
     "gain_not_settable": {
       "message": "The API cannot set a gain of {value}: it applies only a gain of 1 or more, and leaves the camera at its default gain otherwise. The capture was not sent."

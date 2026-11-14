@@ -191,6 +191,32 @@ async def test_an_untargeted_call_is_refused_while_a_second_rig_is_merely_down(
             "/equipment/rotator/move-mechanical",
             {"position": 90.0},
         ),
+        # set-cover's parameter is `closed`, so opening sends false.
+        (
+            "flat_panel_set_cover",
+            {"open": True},
+            "/equipment/flatdevice/set-cover",
+            {"closed": "false"},
+        ),
+        (
+            "flat_panel_set_cover",
+            {"open": False},
+            "/equipment/flatdevice/set-cover",
+            {"closed": "true"},
+        ),
+        (
+            "flat_panel_set_light",
+            {"light_on": False},
+            "/equipment/flatdevice/set-light",
+            {"on": "false"},
+        ),
+        # `brightness`, in the panel's own units.
+        (
+            "flat_panel_set_brightness",
+            {"level": 1024},
+            "/equipment/flatdevice/set-brightness",
+            {"brightness": 1024},
+        ),
     ],
     ids=[
         "slew-j2000-degrees",
@@ -200,6 +226,10 @@ async def test_an_untargeted_call_is_refused_while_a_second_rig_is_merely_down(
         "capture-duration",
         "rotator-sky-angle",
         "rotator-mechanical-angle",
+        "cover-open",
+        "cover-close",
+        "light-off",
+        "brightness-level",
     ],
 )
 async def test_a_service_sends_what_the_api_reads(
@@ -306,6 +336,13 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         ("rotator_move", {"position": -1}),
         ("rotator_move_mechanical", {"position": 360.5}),
         ("rotator_move_mechanical", {"position": -1}),
+        # The rig's panel reports MaxBrightness 4096.
+        ("flat_panel_set_brightness", {"level": 4097}),
+        ("flat_panel_set_brightness", {"level": -1}),
+        ("flat_panel_set_light", {"light_on": True, "brightness": 4097}),
+        # The panel's minimum: an ASCOM panel at 0 is dark, and N.I.N.A. then
+        # lights it at MaxBrightness.
+        ("flat_panel_set_light", {"light_on": True, "brightness": 0}),
     ],
     ids=[
         "ra-above-360",
@@ -327,6 +364,10 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         "rotator-negative",
         "mechanical-above-360",
         "mechanical-negative",
+        "level-above-the-panels",
+        "level-negative",
+        "light-brightness-above-the-panels",
+        "light-brightness-at-the-panels-minimum",
     ],
 )
 async def test_out_of_range_input_is_refused_rather_than_clamped(
@@ -368,6 +409,11 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
             {"position": 360},
             "/equipment/rotator/move-mechanical",
         ),
+        (
+            "flat_panel_set_brightness",
+            {"level": 4096},
+            "/equipment/flatdevice/set-brightness",
+        ),
     ],
     ids=[
         "position-zero",
@@ -380,6 +426,7 @@ async def test_out_of_range_input_is_refused_rather_than_clamped(
         "filter-last-slot",
         "rotator-zero",
         "mechanical-360",
+        "level-at-the-panels-maximum",
     ],
 )
 async def test_a_value_at_its_limit_is_sent(
@@ -440,6 +487,23 @@ def _serve_with(rig, device: str, block: dict | None) -> None:
             id="camera-reports-no-range",
             marks=pytest.mark.synthetic,
         ),
+        pytest.param(
+            "imaging_guiding",
+            None,
+            None,
+            "flat_panel_set_brightness",
+            {"level": 99999},
+            id="panel-disconnected",
+        ),
+        pytest.param(
+            "imaging",
+            "FlatDevice",
+            {"MinBrightness": 0, "MaxBrightness": 0},
+            "flat_panel_set_brightness",
+            {"level": 99999},
+            id="panel-reports-no-range",
+            marks=pytest.mark.synthetic,
+        ),
     ],
 )
 async def test_a_device_that_reports_no_limit_leaves_the_value_to_nina(
@@ -483,6 +547,180 @@ async def test_a_slot_whose_name_another_slot_shares_is_sent(
     await _call(hass, "filterwheel_change_filter", filter_index=1)
 
     assert rig.sent[-1] == ("/equipment/filterwheel/change-filter", {"filterId": 1})
+
+
+_SET_BRIGHTNESS = "/equipment/flatdevice/set-brightness"
+_SET_LIGHT = ("/equipment/flatdevice/set-light", {"on": "true"})
+
+
+@pytest.mark.parametrize(
+    ("block", "data", "sent"),
+    [
+        pytest.param(
+            {}, {}, [(_SET_BRIGHTNESS, {"brightness": 16}), _SET_LIGHT], id="idle"
+        ),
+        pytest.param(
+            {"Brightness": 2048, "LightOn": True},
+            {},
+            [(_SET_BRIGHTNESS, {"brightness": 2048}), _SET_LIGHT],
+            id="already-lit",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            {"Brightness": 4096},
+            {},
+            [(_SET_BRIGHTNESS, {"brightness": 16}), _SET_LIGHT],
+            id="off-holding-the-maximum",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            {},
+            {"brightness": 1024},
+            [(_SET_BRIGHTNESS, {"brightness": 1024}), _SET_LIGHT],
+            id="brightness-given",
+        ),
+    ],
+)
+async def test_switching_the_panel_on_does_not_go_to_full_output(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    block: dict,
+    data: dict,
+    sent: list,
+) -> None:
+    """A bare `set-light?on=true` lights the panel at the last level N.I.N.A.
+    set, or at `MaxBrightness`, so a brightness always goes first: the one
+    given, a lit panel's own, or the dimmest — 16 of this panel's 4096.
+    """
+    _serve_with(rig, "FlatDevice", block)
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    await _call(hass, "flat_panel_set_light", light_on=True, **data)
+
+    assert rig.sent == sent
+
+
+async def test_the_dimmest_level_lights_a_panel_with_a_narrow_range(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """The simulator panel's range is 0-100, where level 1 of 255 rounds to 0:
+    dark on an ASCOM panel, and the set-light after it lights the panel at
+    MaxBrightness.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+
+    await _call(hass, "flat_panel_set_light", light_on=True)
+
+    assert rig.sent[0] == (_SET_BRIGHTNESS, {"brightness": 1})
+
+
+@pytest.mark.synthetic
+async def test_switching_a_lit_panel_off_sends_no_brightness(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    _serve_with(rig, "FlatDevice", {"Brightness": 2048, "LightOn": True})
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    await _call(hass, "flat_panel_set_light", light_on=False)
+
+    assert rig.sent == [("/equipment/flatdevice/set-light", {"on": "false"})]
+
+
+@pytest.mark.parametrize(
+    ("state", "block", "data"),
+    [
+        pytest.param(
+            "imaging",
+            {"SupportsOpenClose": False},
+            ("flat_panel_set_cover", {"open": True}),
+            id="no-cover",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "imaging",
+            {"SupportsOnOff": False},
+            ("flat_panel_set_light", {"light_on": True}),
+            id="no-light",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            "imaging",
+            {"MinBrightness": 0, "MaxBrightness": 0},
+            ("flat_panel_set_light", {"light_on": True}),
+            id="no-range",
+            marks=pytest.mark.synthetic,
+        ),
+        # Down: N.I.N.A. may connect it before the next poll, and would light
+        # it at full output.
+        pytest.param(
+            "imaging_guiding",
+            None,
+            ("flat_panel_set_light", {"light_on": True}),
+            id="disconnected",
+        ),
+        pytest.param(
+            "imaging",
+            None,
+            ("flat_panel_set_light", {"light_on": False, "brightness": 1024}),
+            id="brightness-while-off",
+        ),
+    ],
+)
+async def test_a_flat_panel_command_it_cannot_carry_out_safely_is_refused(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    state: str,
+    block: dict | None,
+    data: tuple[str, dict],
+) -> None:
+    if block is not None:
+        rig.goto(state)
+        _serve_with(rig, "FlatDevice", block)
+    await set_up_at(hass, config_entry, rig, state)
+
+    service, fields = data
+    with pytest.raises(ServiceValidationError):
+        await _call(hass, service, **fields)
+    assert rig.sent == []
+
+
+@pytest.mark.parametrize(
+    ("service", "data", "sent"),
+    [
+        (
+            "flat_panel_set_cover",
+            {"open": True},
+            ("/equipment/flatdevice/set-cover", {"closed": "false"}),
+        ),
+        (
+            "flat_panel_set_light",
+            {"light_on": False},
+            ("/equipment/flatdevice/set-light", {"on": "false"}),
+        ),
+    ],
+    ids=["cover", "light-off"],
+)
+async def test_a_disconnected_panel_is_left_to_nina_to_refuse(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    service: str,
+    data: dict,
+    sent: tuple,
+) -> None:
+    """A down panel reports every capability false, which is not a panel
+    lacking them.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+
+    await _call(hass, service, **data)
+
+    assert rig.sent == [sent]
 
 
 async def test_a_gain_is_held_to_the_cameras_own_range(
