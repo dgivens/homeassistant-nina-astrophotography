@@ -1,5 +1,5 @@
 """Every shipped blueprint builds a real automation, on its defaults and fully
-configured.
+configured, and keeps the inputs a release has shipped.
 
 The unit suite checks the parts of a blueprint Home Assistant cannot: an input
 bound to nothing, a hardcoded entity id. This checks the part only Home
@@ -13,16 +13,19 @@ blueprint that means a roof that never closes.
 from pathlib import Path
 
 from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
+from homeassistant.components.blueprint.models import Blueprint
 from homeassistant.core import HomeAssistant
+from homeassistant.util.yaml import load_yaml_dict
 import pytest
 
+from custom_components.nina_astrophotography.blueprint_sync import SHIPPED_DIR
 from helpers import state_of
 
-BLUEPRINTS = sorted(
-    (Path(__file__).resolve().parents[2] / "blueprints").rglob("*.yaml")
-)
+BLUEPRINTS = sorted(SHIPPED_DIR.glob("*.yaml"))
 
-# The inputs with no default, which a user must supply. The entity ids need not
+# The inputs with no default, which a user must supply. Never add one: the
+# integration updates the blueprint under every automation already built from
+# it, and an automation missing a required input stops loading. The entity ids need not
 # exist: what is under test is the schema, not the rig.
 REQUIRED: dict[str, dict[str, object]] = {
     "guiding_alert.yaml": {
@@ -145,3 +148,139 @@ async def test_a_blueprint_builds_an_automation(
         for entity in hass.states.async_entity_ids(AUTOMATION_DOMAIN)
     ]
     assert states == ["on"]
+
+
+# Every input a release has shipped. An automation keeps the values it was
+# given under these names, and Home Assistant ignores a value for an input the
+# blueprint no longer declares, so a removed or renamed input silently drops
+# the user's setting. Add a new input here; never take one out.
+RELEASED: dict[str, frozenset[str]] = {
+    "guiding_alert.yaml": frozenset(
+        {
+            "cooldown_minutes",
+            "guider_status",
+            "nina_rig",
+            "notify_target",
+            "rms_sensor",
+            "rms_threshold",
+            "run_autofocus",
+            "sustained_minutes",
+        }
+    ),
+    "imaging_stall_alert.yaml": frozenset(
+        {
+            "autofocus_failed",
+            "camera_cooler_power",
+            "camera_state",
+            "camera_temperature",
+            "error_event",
+            "escalate_minutes",
+            "escalations",
+            "flip_sensor",
+            "grace_minutes",
+            "guider_rms",
+            "guider_status",
+            "imaging",
+            "imaging_quiet_minutes",
+            "last_frame_at",
+            "last_image_filter",
+            "last_image_target",
+            "longest_exposure_seconds",
+            "mount_at_home",
+            "mount_at_park",
+            "mute_evening_altitude",
+            "mute_from",
+            "mute_mode",
+            "mute_morning_altitude",
+            "mute_until",
+            "night_only",
+            "nina_rig",
+            "notify_target",
+            "rig_reachable",
+            "safety_connected",
+            "safety_unsafe",
+            "scheduler_waiting",
+            "sequence_target",
+            "sequencer_running",
+            "settle_minutes",
+            "site_latitude",
+            "site_longitude",
+        }
+    ),
+    "meridian_flip_warning.yaml": frozenset(
+        {"flip_sensor", "notify_target", "warning_minutes"}
+    ),
+    "session_shutdown.yaml": frozenset(
+        {
+            "close_dome",
+            "close_timeout_minutes",
+            "dome_shutter",
+            "mount_parked",
+            "nina_rig",
+            "notify_target",
+            "only_if_sequence_stopped",
+            "sequence_running",
+            "trigger_time",
+            "warming_ramp_minutes",
+        }
+    ),
+    "session_startup.yaml": frozenset(
+        {
+            "camera_target_temp",
+            "cooling_ramp_minutes",
+            "cooling_wait_minutes",
+            "nina_rig",
+            "notify_target",
+            "open_dome",
+            "safety_unsafe",
+            "sequence_name",
+            "trigger_time",
+        }
+    ),
+    "weather_abort.yaml": frozenset(
+        {
+            "auto_resume",
+            "close_dome",
+            "close_timeout_minutes",
+            "dome_shutter",
+            "mount_parked",
+            "nina_rig",
+            "notify_target",
+            "park_mount",
+            "resume_conditions",
+            "resume_delay_minutes",
+            "rig_reachable",
+            "safety_connected",
+            "safety_unsafe",
+            "stop_sequence",
+            "warm_camera",
+            "warming_minutes",
+        }
+    ),
+}
+
+
+def _inputs(path: Path) -> dict[str, dict | None]:
+    """The blueprint's inputs, flattened through sections."""
+    return Blueprint(
+        load_yaml_dict(path), expected_domain=AUTOMATION_DOMAIN, schema=lambda x: x
+    ).inputs
+
+
+@pytest.mark.parametrize("path", BLUEPRINTS, ids=lambda p: p.name)
+def test_every_released_input_is_still_declared(path: Path) -> None:
+    declared = set(_inputs(path))
+
+    assert not RELEASED[path.name] - declared, "a released input was removed"
+    assert not declared - RELEASED[path.name], "record the new input in RELEASED"
+
+
+@pytest.mark.parametrize("path", BLUEPRINTS, ids=lambda p: p.name)
+def test_only_a_released_required_input_lacks_a_default(path: Path) -> None:
+    required = {
+        name
+        for name, spec in _inputs(path).items()
+        if not spec or "default" not in spec
+    }
+
+    assert required <= REQUIRED[path.name].keys()

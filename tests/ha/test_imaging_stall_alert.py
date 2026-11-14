@@ -28,10 +28,10 @@ from pytest_homeassistant_custom_component.common import (
 )
 import yaml
 
-from tests.ha.conftest import BLUEPRINTS
+from custom_components.nina_astrophotography.blueprint_sync import SHIPPED_DIR
 
 BLUEPRINT = "imaging_stall_alert.yaml"
-FILE = BLUEPRINTS / "automation/nina_astrophotography" / BLUEPRINT
+FILE = SHIPPED_DIR / BLUEPRINT
 T0 = datetime.fromisoformat("2026-09-17T01:00:00+00:00")
 
 

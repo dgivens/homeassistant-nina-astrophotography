@@ -12,13 +12,13 @@ rather than `unknown` by a rule of their own (§5.2.2).
 """
 
 import json
-from pathlib import Path
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.nina_astrophotography.blueprint_sync import SHIPPED_DIR
 from ha.registry import registered
 from helpers import state_of
 
@@ -188,13 +188,7 @@ async def test_the_flip_sensor_publishes_the_offset_a_warning_needs(
 
 def test_the_blueprint_reads_the_attribute_by_that_name() -> None:
     """The other half of the seam: nothing else connects the two."""
-    blueprint = (
-        Path(__file__).resolve().parents[2]
-        / "blueprints"
-        / "automation"
-        / "nina_astrophotography"
-        / "meridian_flip_warning.yaml"
-    )
+    blueprint = SHIPPED_DIR / "meridian_flip_warning.yaml"
 
     assert "flip_fires_at_minutes" in blueprint.read_text(encoding="utf-8")
 

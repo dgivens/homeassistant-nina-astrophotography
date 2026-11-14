@@ -10,7 +10,6 @@ blueprint:
     Guiding is also a condition, keyed on the guider's own status.
   domain: automation
   author: dgivens
-  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/guiding_alert.yaml
   homeassistant:
     min_version: "2024.10.0"
   input:

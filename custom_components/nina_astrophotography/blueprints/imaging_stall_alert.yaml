@@ -28,7 +28,6 @@ blueprint:
     thresholds.
   domain: automation
   author: dgivens
-  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/imaging_stall_alert.yaml
   homeassistant:
     min_version: "2024.10.0"
   input:
