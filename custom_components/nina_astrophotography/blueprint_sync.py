@@ -19,7 +19,6 @@ from homeassistant.components.automation import (
 )
 from homeassistant.components.automation.const import DOMAIN as AUTOMATION_DOMAIN
 from homeassistant.components.automation.helpers import async_get_blueprints
-from homeassistant.components.blueprint.errors import BlueprintException
 from homeassistant.const import SERVICE_RELOAD
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -120,7 +119,7 @@ async def _async_raise_imported_copy_issues(hass: HomeAssistant) -> None:
     for path, entity_ids in users.items():
         try:
             blueprint = await blueprints.async_get_blueprint(path)
-        except BlueprintException:
+        except HomeAssistantError:  # a copy that no longer loads
             continue
         if _IMPORTED_FROM in (blueprint.metadata.get("source_url") or ""):
             imported[path] = entity_ids
