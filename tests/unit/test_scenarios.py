@@ -166,6 +166,7 @@ async def test_a_command_is_recorded_and_answered_success() -> None:
     [
         pytest.param("Camera", marks=pytest.mark.synthetic),
         pytest.param("SafetyMonitor", marks=pytest.mark.synthetic),
+        "FlatDevice",
         "Mount",
     ],
 )
@@ -177,7 +178,8 @@ def test_a_disconnected_device_drops_its_identity_rather_than_nulling_it(
     the first-sight latch keys on DeviceId.
 
     The camera and the safety monitor are connected in every capture, so their
-    down-blocks are derived by that rule; the mount's is captured.
+    down-blocks are derived by that rule; the flat panel's and the mount's are
+    captured.
     """
     block = disconnect(STATES["imaging"], device)["/equipment/info"]["Response"][device]
     assert not {"DeviceId", "Name", "DisplayName", "SupportedActions"} & set(block)
@@ -192,8 +194,8 @@ def test_disconnecting_leaves_the_state_it_was_derived_from_alone() -> None:
 
 @pytest.mark.synthetic
 async def test_every_device_is_down_in_the_fully_disconnected_state() -> None:
-    """Four of the eleven down-blocks are derived: no capture has the camera,
-    flat panel, safety monitor or switch hub disconnected.
+    """Three of the eleven down-blocks are derived: no capture has the camera,
+    safety monitor or switch hub disconnected.
     """
     rig = FakeRig(STATES, start="equipment_disconnected")
     snapshot = await _client(rig).get_equipment()
