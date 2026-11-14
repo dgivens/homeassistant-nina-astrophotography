@@ -36,6 +36,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ---
 ### Fixed
 
+- **The observatory card shows the last frame's mean ADU as a whole number**,
+  as the latest image card does, rather than every decimal the sensor holds.
+
 - **A screen reader reaches the live stack card's Start/Stop as a control of
   its own** (#262). The button sits beside the header that collapses the
   card, not inside it, and stays in place on a collapsed card.

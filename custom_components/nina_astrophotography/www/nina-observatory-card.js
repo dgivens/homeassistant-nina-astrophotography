@@ -464,7 +464,7 @@ class NinaObservatoryCard extends HTMLElement {
 
     const hfr          = numState(h, this._eid("sensor", "last_image_hfr"), 2);
     const stars        = shown(state(h, this._eid("sensor", "last_image_star_count")));
-    const meanAdu      = shown(state(h, this._eid("sensor", "last_image_mean_adu")));
+    const meanAdu      = numState(h, this._eid("sensor", "last_image_mean_adu"), 0);
 
     // RMS bar widths (max = 4 arcsec = 100%)
     const rmsMax = 4;
