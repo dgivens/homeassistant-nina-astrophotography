@@ -17,7 +17,10 @@ import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.api.v2 import NinaEventStream
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
-from custom_components.nina_astrophotography.blueprint_sync import SHIPPED_DIR
+from custom_components.nina_astrophotography.blueprint_sync import (
+    MANAGED_FOLDER,
+    SHIPPED_DIR,
+)
 from custom_components.nina_astrophotography.const import (
     CONF_HOST,
     CONF_PORT,
@@ -63,7 +66,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 
 # The managed blueprint folder, relative to the config directory.
-MANAGED = "blueprints/automation/nina_astrophotography"
+MANAGED = f"blueprints/automation/{MANAGED_FOLDER}"
 
 
 @pytest.fixture
@@ -89,7 +92,7 @@ async def installed(hass: HomeAssistant):
             {
                 AUTOMATION_DOMAIN: {
                     "use_blueprint": {
-                        "path": f"nina_astrophotography/{name}",
+                        "path": f"{MANAGED_FOLDER}/{name}",
                         "input": inputs,
                     }
                 }

@@ -23,9 +23,7 @@ from helpers import state_of
 
 BLUEPRINTS = sorted(SHIPPED_DIR.glob("*.yaml"))
 
-# The inputs with no default, which a user must supply. Never add one: the
-# integration updates the blueprint under every automation already built from
-# it, and an automation missing a required input stops loading. The entity ids need not
+# The inputs with no default, which a user must supply. The entity ids need not
 # exist: what is under test is the schema, not the rig.
 REQUIRED: dict[str, dict[str, object]] = {
     "guiding_alert.yaml": {
@@ -269,10 +267,46 @@ def _inputs(path: Path) -> dict[str, dict | None]:
 
 @pytest.mark.parametrize("path", BLUEPRINTS, ids=lambda p: p.name)
 def test_every_released_input_is_still_declared(path: Path) -> None:
-    declared = set(_inputs(path))
+    assert not RELEASED[path.name] - set(_inputs(path))
 
-    assert not RELEASED[path.name] - declared, "a released input was removed"
-    assert not declared - RELEASED[path.name], "record the new input in RELEASED"
+
+@pytest.mark.parametrize("path", BLUEPRINTS, ids=lambda p: p.name)
+def test_every_declared_input_is_recorded_as_released(path: Path) -> None:
+    """Otherwise a new input is unprotected from the next release."""
+    assert not set(_inputs(path)) - RELEASED[path.name]
+
+
+# The inputs released without a default. Never add one: the integration updates
+# the blueprint under every automation already built from it, and an
+# automation missing a required input stops loading.
+RELEASED_REQUIRED: dict[str, frozenset[str]] = {
+    "guiding_alert.yaml": frozenset(
+        {"guider_status", "nina_rig", "notify_target", "rms_sensor"}
+    ),
+    "imaging_stall_alert.yaml": frozenset(
+        {
+            "camera_cooler_power",
+            "camera_state",
+            "camera_temperature",
+            "imaging",
+            "last_frame_at",
+            "last_image_target",
+            "mount_at_park",
+            "nina_rig",
+            "scheduler_waiting",
+            "sequence_target",
+            "sequencer_running",
+        }
+    ),
+    "meridian_flip_warning.yaml": frozenset({"flip_sensor", "notify_target"}),
+    "session_shutdown.yaml": frozenset(
+        {"mount_parked", "nina_rig", "sequence_running"}
+    ),
+    "session_startup.yaml": frozenset({"nina_rig", "safety_unsafe"}),
+    "weather_abort.yaml": frozenset(
+        {"mount_parked", "nina_rig", "safety_connected", "safety_unsafe"}
+    ),
+}
 
 
 @pytest.mark.parametrize("path", BLUEPRINTS, ids=lambda p: p.name)
@@ -283,4 +317,4 @@ def test_only_a_released_required_input_lacks_a_default(path: Path) -> None:
         if not spec or "default" not in spec
     }
 
-    assert required <= REQUIRED[path.name].keys()
+    assert required <= RELEASED_REQUIRED[path.name]

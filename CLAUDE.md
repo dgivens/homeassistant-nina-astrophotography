@@ -86,7 +86,7 @@ custom_components/nina_astrophotography/
                       `<config>/blueprints/automation/nina_astrophotography/`
                       on every start, so every automation runs the shipped
                       version: never remove or rename a released input, and
-                      give a new one a default (`RELEASED` and `REQUIRED` in
+                      give a new one a default (`RELEASED` and `RELEASED_REQUIRED` in
                       that test enforce it)
 tests/unit/                                    HA-free; tests/ha/ under PHACC
 tests/scenarios/                               FakeRig — see its README

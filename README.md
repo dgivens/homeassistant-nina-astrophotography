@@ -305,7 +305,8 @@ and which no update touches.
 
 A copy imported from GitHub, under `config/blueprints/automation/dgivens/`, is
 never updated. An automation still using one raises a repair saying how to
-move it onto the installed copy.
+move it onto the installed copy. Restart Home Assistant after moving them:
+until then the repair may stay open and the old copy may refuse to delete.
 
 ## Actions
 

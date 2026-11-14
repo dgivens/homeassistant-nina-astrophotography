@@ -46,7 +46,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   version. That folder belongs to the integration: an edit there is
   overwritten, and **Take control** on an automation is how to customise one.
   A copy imported from GitHub is never updated, so an automation still using
-  one raises a repair that says how to move it onto the installed copy. A
+  one raises a repair that says how to move it onto the installed copy, then
+  restart before deleting the old one. A
   released input is never removed or renamed, and a new one comes with a
   default. The blueprints no longer carry a `source_url`, so Home Assistant
   offers no **Re-import**, and `just deploy-blueprints` is gone.
