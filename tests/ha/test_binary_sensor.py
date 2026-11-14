@@ -271,17 +271,21 @@ async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
 
 
 @pytest.mark.parametrize(
-    ("suffix", "disabled"),
+    ("suffix", "category", "disabled"),
     [
-        ("focuser_is_moving", True),
-        ("filterwheel_is_moving", True),
-        ("rotator_is_moving", True),
+        ("focuser_is_moving", EntityCategory.DIAGNOSTIC, True),
+        ("filterwheel_is_moving", EntityCategory.DIAGNOSTIC, True),
+        ("rotator_is_moving", EntityCategory.DIAGNOSTIC, True),
         # The observatory card reads it.
-        ("rotator_synced", False),
+        ("rotator_synced", None, False),
     ],
 )
-async def test_the_long_tail_ships_diagnostic(
-    loaded_entry: MockConfigEntry, entity_registry, suffix: str, disabled: bool
+async def test_the_long_tail_ships_diagnostic_and_disabled(
+    loaded_entry: MockConfigEntry,
+    entity_registry,
+    suffix: str,
+    category: EntityCategory | None,
+    disabled: bool,
 ) -> None:
     """Gold entity-category / entity-disabled-by-default. The dome's are in
     `test_dome.py`: the reference rig has none.
@@ -289,10 +293,7 @@ async def test_the_long_tail_ships_diagnostic(
     row = entity_registry.async_get(
         registered(BINARY_SENSOR_DOMAIN, entity_registry, loaded_entry, suffix)
     )
-    assert (row.entity_category, row.disabled_by is not None) == (
-        EntityCategory.DIAGNOSTIC,
-        disabled,
-    )
+    assert (row.entity_category, row.disabled_by is not None) == (category, disabled)
 
 
 async def test_a_device_observed_after_setup_gets_its_entities(

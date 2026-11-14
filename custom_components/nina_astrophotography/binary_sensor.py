@@ -275,7 +275,6 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
     NinaBinarySensorDescription(
         key="rotator_synced",
         translation_key="rotator_synced",
-        entity_category=EntityCategory.DIAGNOSTIC,
         kind="rotator",
         # The sky position angle means nothing until the rotator is synced.
         value=read_field("rotator", "synced"),
