@@ -343,7 +343,7 @@ Actions not listed here take no fields.
 | `filterwheel_change_filter` | `filter_index` | yes | — | one of the wheel's slots | **Zero-based** slot: the first filter is `0`. |
 | `flat_panel_set_cover` | `open` | yes | — | — | `true` opens the cover; `false` closes it. |
 | `flat_panel_set_light` | `light_on` | yes | — | — | `true` lights the panel; `false` switches it off. |
-| `flat_panel_set_light` | `brightness` | no | the lit level, else the dimmest | within the panel's range | The level to light the panel at, in the panel's own units. Only with `light_on: true`. |
+| `flat_panel_set_light` | `brightness` | no | the lit level, else the dimmest | above the panel's minimum, up to its maximum | The level to light the panel at, in the panel's own units. Only with `light_on: true`. |
 | `flat_panel_set_brightness` | `level` | yes | — | the panel's own minimum to maximum | In the panel's own units, not Home Assistant's 0–255: an Alnitak reports 0–255, a Pegasus FlatMaster 20–220, a DeepSkyDad FP 0–4096. Use `flat_panel_set_light` to switch off: what `0` does depends on the driver. |
 | `guider_start` | `force_calibration` | no | `false` | — | Calibrate before guiding starts. |
 | `rotator_move` | `position` | yes | — | 0–360° | Sky position angle. On a rotator kept to a half or quarter range, N.I.N.A. turns to the equivalent angle within it: a half range can land 180° away, the same framing upside down. |

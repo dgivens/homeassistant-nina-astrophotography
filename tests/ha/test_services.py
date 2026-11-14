@@ -340,6 +340,9 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         ("flat_panel_set_brightness", {"level": 4097}),
         ("flat_panel_set_brightness", {"level": -1}),
         ("flat_panel_set_light", {"light_on": True, "brightness": 4097}),
+        # The panel's minimum: an ASCOM panel at 0 is dark, and N.I.N.A. then
+        # lights it at MaxBrightness.
+        ("flat_panel_set_light", {"light_on": True, "brightness": 0}),
     ],
     ids=[
         "ra-above-360",
@@ -364,6 +367,7 @@ async def test_a_refused_command_reads_as_a_refusal_not_an_integration_bug(
         "level-above-the-panels",
         "level-negative",
         "light-brightness-above-the-panels",
+        "light-brightness-at-the-panels-minimum",
     ],
 )
 async def test_out_of_range_input_is_refused_rather_than_clamped(
@@ -596,6 +600,20 @@ async def test_switching_the_panel_on_does_not_go_to_full_output(
     await _call(hass, "flat_panel_set_light", light_on=True, **data)
 
     assert rig.sent == sent
+
+
+async def test_the_dimmest_level_lights_a_panel_with_a_narrow_range(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """The simulator panel's range is 0-100, where level 1 of 255 rounds to 0:
+    dark on an ASCOM panel, and the set-light after it lights the panel at
+    MaxBrightness.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+
+    await _call(hass, "flat_panel_set_light", light_on=True)
+
+    assert rig.sent[0] == (_SET_BRIGHTNESS, {"brightness": 1})
 
 
 @pytest.mark.synthetic

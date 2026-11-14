@@ -5,6 +5,7 @@ from dataclasses import asdict
 from datetime import timedelta
 import functools
 import logging
+import math
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntryState
@@ -565,7 +566,11 @@ async def _handle_flat_panel_set_light(call: ServiceCall) -> None:
         )
     low, high = panel.brightness_range
     if requested is not None:
-        _within_device_range("Brightness", requested, "flat panel", low, high)
+        # Above the minimum: an ASCOM panel at 0 is dark, and the set-light
+        # after it lights the panel at MaxBrightness.
+        _within_device_range(
+            "Brightness", requested, "flat panel", math.floor(low) + 1, high
+        )
         level = requested
     elif panel.light_on and panel.brightness is not None and panel.brightness > low:
         level = round(panel.brightness)
