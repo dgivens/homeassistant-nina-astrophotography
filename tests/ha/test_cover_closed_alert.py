@@ -10,9 +10,8 @@ BEHIND_COVER = "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cove
 
 
 @pytest.mark.synthetic
-@pytest.mark.parametrize(("image_type", "notified"), [("LIGHT", 1), ("DARK", 0)])
 async def test_a_light_behind_the_closed_cover_notifies(
-    hass: HomeAssistant, loaded_entry, installed, push, image_type: str, notified: int
+    hass: HomeAssistant, loaded_entry, installed, push
 ) -> None:
     sent = async_mock_service(hass, "notify", "send_message")
     await installed(
@@ -20,9 +19,9 @@ async def test_a_light_behind_the_closed_cover_notifies(
         {"behind_cover": BEHIND_COVER, "notify_target": ["notify.phone"]},
     )
     payload = load_fixture("live_image_save_push.json")
-    payload["ImageStatistics"]["ImageType"] = image_type
+    payload["ImageStatistics"]["ImageType"] = "LIGHT"
 
     push(payload)
     await hass.async_block_till_done()
 
-    assert len(sent) == notified
+    assert len(sent) == 1

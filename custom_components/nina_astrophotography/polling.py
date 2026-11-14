@@ -95,10 +95,16 @@ class CoverClosedLatch:
     "A sequence running with the cover closed" is no test: flats and darks run
     that way. What gives a light away is arriving after the cover was seen
     closed, so the latch keeps the newest frame at that moment and flags a
-    newer one. That is a comparison of frames, not of times, so the rig's
-    clock and Home Assistant's need not agree. Any other reading clears it,
-    `Unknown` from a panel that dropped out included: the cover may have
-    opened unseen, and the next close starts afresh.
+    newer one. Any other reading clears it, `Unknown` from a panel that
+    dropped out included: the cover may have opened unseen, and the next
+    close starts afresh.
+
+    Arriving later is not enough on its own. N.I.N.A. saves in the
+    background, so the next instruction — closing the cover for flats — can
+    run before the last light's `IMAGE-SAVE`. A light whose exposure began
+    before N.I.N.A. reported the close is therefore not flagged. Both times
+    are the rig's; without a reported close, as for a cover moved outside
+    N.I.N.A., arrival order decides.
     """
 
     def __init__(self) -> None:
@@ -112,13 +118,22 @@ class CoverClosedLatch:
             self._closed = True
             self._before = None if newest is None else newest.identity
 
-    def light_behind_cover(self, newest: Frame | None) -> bool:
-        return (
-            self._closed
-            and newest is not None
-            and newest.image_type == "LIGHT"
-            and newest.identity != self._before
-        )
+    def light_behind_cover(
+        self, newest: Frame | None, closed_at: datetime | None
+    ) -> bool:
+        """`closed_at`: when N.I.N.A. last reported the cover closed, unless it
+        has reported it open since.
+        """
+        if (
+            not self._closed
+            or newest is None
+            or newest.image_type != "LIGHT"
+            or newest.identity == self._before
+        ):
+            return False
+        # `date` is the save time, so this start is late by the download.
+        started = newest.date - timedelta(seconds=newest.exposure_time or 0)
+        return closed_at is None or started >= closed_at
 
 
 @dataclass

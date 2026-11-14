@@ -331,6 +331,9 @@ _LIGHT, _LAST_LIGHT = _LIGHTS[-2:]
 _FLAT = next(f for f in _DAWN if f.image_type == "FLAT" and f.date > _LAST_LIGHT.date)
 
 
+_LAST_START = _LAST_LIGHT.date - timedelta(seconds=_LAST_LIGHT.exposure_time or 0)
+
+
 @pytest.mark.parametrize(
     ("polled", "flagged"),
     [
@@ -363,7 +366,24 @@ def test_a_light_counts_only_once_the_cover_was_seen_closed(
     latch = CoverClosedLatch()
     for cover_state, newest in polled:
         latch.observe(cover_state, newest)
-    assert latch.light_behind_cover(polled[-1][1]) is flagged
+    assert latch.light_behind_cover(polled[-1][1], None) is flagged
+
+
+@pytest.mark.parametrize(
+    ("closed_at", "flagged"),
+    [
+        # Saved after the poll saw the cover closed, but exposed before.
+        (_LAST_START + timedelta(seconds=1), False),
+        (_LAST_START - timedelta(seconds=1), True),
+    ],
+    ids=["exposed before the reported close", "exposed after it"],
+)
+def test_a_light_exposed_before_the_reported_close_is_not_flagged(
+    closed_at: datetime, flagged: bool
+) -> None:
+    latch = CoverClosedLatch()
+    latch.observe("Closed", _LIGHT)
+    assert latch.light_behind_cover(_LAST_LIGHT, closed_at) is flagged
 
 
 _EVENING = datetime(2026, 11, 11, 18, 0, tzinfo=timezone(timedelta(hours=-6)))

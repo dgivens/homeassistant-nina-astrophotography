@@ -8,8 +8,10 @@ blueprint:
     night.
 
     Flats and darks run with the cover closed, so they never alert, and
-    neither does a cover closed after the night's last light. Only a light
-    saved after the cover was seen closing does.
+    neither does a cover closed after the night's last light, even when that
+    light is saved after the cover closes. Only a light exposed after the
+    cover was seen closed does. It relies on the driver reporting the cover
+    `Closed`: a cover reading unknown or in error cannot alert.
 
     A panel switched off or disconnected while imaging, so it cannot light,
     reports no cover, and this stays quiet. When it reconnects for the flats,
@@ -50,11 +52,11 @@ mode: single
 max_exceeded: silent
 
 triggers:
-  # From `off` only: the sensor going unavailable and back while the cover is
-  # still closed is the same problem, already reported.
+  # From `unavailable` too: a light saved while N.I.N.A. was unreachable is
+  # first published as that. The cost is a repeat after an outage while the
+  # problem persists.
   - trigger: state
     entity_id: !input behind_cover
-    from: "off"
     to: "on"
 
 actions:

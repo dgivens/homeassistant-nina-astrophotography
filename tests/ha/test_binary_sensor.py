@@ -547,10 +547,10 @@ async def test_a_flip_that_lapsed_without_its_end_does_not_hold_the_next(
     assert state_of(hass, MERIDIAN_FLIP).attributes["slews_at"] is not None
 
 
-def _saved(image_type: str) -> dict:
+def _saved(image_type: str, **readings: object) -> dict:
     """The captured IMAGE-SAVE push, as a frame of `image_type`."""
     payload = load_fixture("live_image_save_push.json")
-    payload["ImageStatistics"]["ImageType"] = image_type
+    payload["ImageStatistics"] |= {"ImageType": image_type, **readings}
     return payload
 
 
@@ -562,6 +562,19 @@ async def test_only_a_light_saved_behind_the_closed_cover_is_flagged(
     push(_saved(image_type))
     await hass.async_block_till_done()
     assert state_of(hass, BEHIND_COVER).state == state
+
+
+@pytest.mark.synthetic
+async def test_a_light_exposed_before_the_reported_close_is_not_flagged(
+    hass: HomeAssistant, loaded_entry, push
+) -> None:
+    """N.I.N.A. saves in the background, so a target's last light can arrive
+    after the cover closing for its flats. Saved after the dawn flats, but
+    exposed from before the rig's 06:21:45 FLAT-COVER-CLOSED.
+    """
+    push(_saved("LIGHT", Date="2026-09-04T06:27:00-05:00", ExposureTime=600.0))
+    await hass.async_block_till_done()
+    assert state_of(hass, BEHIND_COVER).state == "off"
 
 
 @pytest.mark.synthetic

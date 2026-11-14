@@ -60,6 +60,7 @@ from .sequence import current_wait, running, target_name
 from .session import (
     DEFAULT_AUTOFOCUS_TIMEOUT,
     RecentFrame,
+    cover_closed_at,
     fold,
     latest_stack,
     latest_target,
@@ -706,7 +707,9 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 pending_guider_stop(self.events, self.generation)
             ),
             meridian_flip=self._meridian_flip(moment),
-            light_behind_cover=self._cover.light_behind_cover(newest),
+            light_behind_cover=self._cover.light_behind_cover(
+                newest, cover_closed_at(self.events, self.generation)
+            ),
             reachable=self._reachable,
         )
 

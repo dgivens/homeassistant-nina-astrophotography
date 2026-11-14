@@ -329,9 +329,12 @@ How a flat run shows up elsewhere:
   don't let a scene or automation change its light or brightness; it will
   spoil the flats.
 - `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` is
-  `on` while the newest frame is a light saved after the cover was seen
-  closed; flats and darks never turn it on. It goes `off` when the cover
-  opens or a frame of another type follows. A panel switched off or
+  `on` while the newest frame is a light exposed after the cover was seen
+  closed; flats and darks never turn it on, and nor does a light exposed
+  before N.I.N.A. reported the cover closed but saved after. It goes `off`
+  when the cover opens or a frame of another type follows, and after a Home
+  Assistant restart until the next light. It relies on the driver reporting
+  the cover `Closed`: a cover reading `Unknown` or `Error` cannot turn it on. A panel switched off or
   disconnected while imaging reports no cover, so the sensor is `unavailable`
   and cannot warn; when the panel reconnects reading closed, the lights taken
   before then do not turn it on, and only a light after that does.

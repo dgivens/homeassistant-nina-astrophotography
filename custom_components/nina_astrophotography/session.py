@@ -65,6 +65,8 @@ _FRESH_FLIP_READING = timedelta(minutes=5)
 _GUIDER_STARTED = "GUIDER-START"
 _GUIDER_STOPPED = "GUIDER-STOP"
 _GUIDER_STARTED_OR_STOPPED = frozenset({_GUIDER_STARTED, _GUIDER_STOPPED})
+_COVER_CLOSED = "FLAT-COVER-CLOSED"
+_COVER_MOVED = frozenset({_COVER_CLOSED, "FLAT-COVER-OPENED"})
 
 # Used only until the profile's `AutoFocusTimeoutSeconds` is read.
 DEFAULT_AUTOFOCUS_TIMEOUT = 300.0
@@ -345,6 +347,16 @@ def pending_guider_stop(
     return (
         newest.time if newest is not None and newest.name == _GUIDER_STOPPED else None
     )
+
+
+def cover_closed_at(
+    events: Iterable[NinaEvent], generation: str | None
+) -> datetime | None:
+    """When the newest `FLAT-COVER-CLOSED` was, if no `FLAT-COVER-OPENED` has
+    followed it. On the rig's clock, as frame dates are.
+    """
+    newest = _newest(events, _COVER_MOVED, generation)
+    return newest.time if newest is not None and newest.name == _COVER_CLOSED else None
 
 
 def _flip_started(

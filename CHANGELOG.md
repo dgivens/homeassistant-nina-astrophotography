@@ -30,7 +30,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   error turns the chip red and stays on a collapsed card.
 - **A warning for light frames taken behind the closed flat cover** (#288):
   `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` turns
-  `on` when the newest frame is a light saved after the cover was seen
+  `on` when the newest frame is a light exposed after the cover was seen
   closed. Flats and darks behind the cover, and a cover closed after the
   night's last light, leave it `off`. The observatory card turns the Flat
   Panel chip red and keeps the warning on a collapsed card, and the new
