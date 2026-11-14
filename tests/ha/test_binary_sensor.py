@@ -6,7 +6,7 @@ registry for the long tail, which ships disabled and so has no state.
 
 from datetime import datetime, timedelta
 
-from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN
+from homeassistant.components.binary_sensor import DOMAIN as BINARY_SENSOR_DOMAIN  # pyright: ignore[reportPrivateImportUsage]
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util

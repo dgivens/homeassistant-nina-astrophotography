@@ -26,7 +26,7 @@ test = [
     "aiohttp>=3.9",
     "PyYAML>=6.0",
     "coverage>=7.6",
-    "syrupy==6.0.0",
+    "syrupy==6.1.1",
     # The session fold's properties (idempotence, order-independence) live in
     # tests/unit, so hypothesis belongs to the group that suite installs. It is
     # pure Python and pulls in no Home Assistant.
@@ -38,7 +38,7 @@ test = [
 # pytest-asyncio and syrupy, so an unpinned range breaks CI on an unrelated day.
 # Installing it deliberately overrides the `test` group's pytest range.
 test-ha = [
-    "pytest-homeassistant-custom-component==0.13.367",
+    "pytest-homeassistant-custom-component==0.13.375",
 ]
 
 # Tooling that generates or checks committed artifacts rather than running tests.
