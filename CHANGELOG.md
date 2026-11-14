@@ -9,9 +9,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ### Added
 
 - **`rotator_move` and `rotator_move_mechanical` actions** (#267) turn the
-  rotator to a sky position angle or to a mechanical angle, from 0 to 360°.
-  The sky angle means something only once a plate solve has synced the
-  rotator.
+  rotator to a sky position angle or to a mechanical angle. A mechanical angle
+  outside the half or quarter range set in N.I.N.A.'s profile is refused, as N.I.N.A.
+  would turn to another angle instead, and a sky angle is refused until a
+  plate solve syncs the rotator, as N.I.N.A. would leave the rotator where it
+  is. `number.<instance>_rotator_position` and
+  `_rotator_mechanical_position` refuse the same moves.
 - **The image panel has a Lights only button** beside the recent frames (#270). It
   limits the main image and the strip to lights, so the last sub stays on
   screen through a flat run of any length. The card's `lights_only` option

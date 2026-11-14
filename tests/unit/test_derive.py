@@ -8,6 +8,7 @@ from nina_astrophotography.derive import (
     hfr_arcsec,
     hours_to_meridian,
     image_scale_arcsec_per_px,
+    rotator_fold,
     session_start,
     time_to_meridian_flip,
 )
@@ -146,3 +147,28 @@ def test_the_flip_fires_before_the_reading_reaches_zero() -> None:
 )
 def test_the_dew_point_is_the_magnus_formula(temperature, humidity, expected) -> None:
     assert dew_point(temperature, humidity) == expected
+
+
+@pytest.mark.parametrize(
+    ("angle", "start", "span", "expected"),
+    [
+        (90, 0, 360, 90),
+        (360, 0, 360, 0),
+        (179.9, 0, 180, 179.9),
+        (180, 0, 180, 0),
+        (270, 0, 180, 90),
+        # A range wrapping past 0: 300° to 120°.
+        (310, 300, 180, 310),
+        (30, 300, 180, 30),
+        (200, 300, 180, 20),
+        (299, 300, 180, 119),
+        # A quarter range turns by 90s, which changes a non-square framing.
+        (100, 0, 90, 10),
+        (200, 0, 90, 20),
+        (300, 0, 90, 30),
+    ],
+)
+def test_rotator_fold_lands_where_nina_turns_the_rotator(
+    angle: float, start: float, span: float, expected: float
+) -> None:
+    assert rotator_fold(angle, start, span) == pytest.approx(expected)

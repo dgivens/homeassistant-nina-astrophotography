@@ -57,6 +57,7 @@ from ..models import (
     NinaEvent,
     ProfileSettings,
     RotatorModel,
+    RotatorRange,
     SafetyMonitorModel,
     SequenceNode,
     SequenceWait,
@@ -1119,6 +1120,17 @@ def map_livestack_status(wire: dict | str) -> LivestackStatus:
     return LivestackStatus(running=raw.lower() == "running", raw_state=raw)
 
 
+_ROTATOR_SPANS = {"FULL": 360.0, "HALF": 180.0, "QUARTER": 90.0}
+
+
+def _rotator_range(wire: dict) -> RotatorRange | None:
+    span = _ROTATOR_SPANS.get(_text(wire, "RotatorSettings", "RangeType") or "")
+    if span is None:
+        return None
+    start = _number(wire, "RotatorSettings", "RangeStartMechanicalPosition") or 0.0
+    return RotatorRange(start=start, span=span)
+
+
 def map_profile(wire: dict) -> ProfileSettings:
     """The allowlisted slice of `/profile/show`."""
     latitude = _number(wire, "AstrometrySettings", "Latitude")
@@ -1166,4 +1178,5 @@ def map_profile(wire: dict) -> ProfileSettings:
             wire, "DomeSettings", "ParkDomeBeforeShutterMove"
         ),
         dome_find_home_before_park=_flag(wire, "DomeSettings", "FindHomeBeforePark"),
+        rotator_range=_rotator_range(wire),
     )

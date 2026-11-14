@@ -196,6 +196,43 @@ async def test_a_mechanical_position_moves_the_rotator_mechanically(
     assert rig.sent == [("/equipment/rotator/move-mechanical", {"position": 90})]
 
 
+@pytest.mark.parametrize(
+    ("state", "entity_id", "value"),
+    [
+        pytest.param(
+            "scheduler_waiting",
+            "number.n_i_n_a_rotator_position",
+            90,
+            id="sky-angle-unsynced",
+        ),
+        pytest.param(
+            "rotator_half_range",
+            MECHANICAL_POSITION,
+            200,
+            id="mechanical-outside-the-range",
+            marks=pytest.mark.synthetic,
+        ),
+    ],
+)
+async def test_a_rotator_move_nina_would_not_make_as_asked_is_refused(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    state: str,
+    entity_id: str,
+    value: float,
+) -> None:
+    """Unsynced, N.I.N.A. answers a sky-angle move and leaves the rotator put;
+    outside the profile's range, it turns it to another mechanical angle.
+    """
+    await set_up_at(hass, config_entry, rig, state)
+
+    with pytest.raises(ServiceValidationError):
+        await _set(hass, entity_id, value)
+    assert rig.sent == []
+
+
 async def test_a_value_outside_this_cameras_usb_range_is_refused(
     hass: HomeAssistant, usb_limit_enabled, rig
 ) -> None:

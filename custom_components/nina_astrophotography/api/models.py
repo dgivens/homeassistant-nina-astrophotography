@@ -669,6 +669,18 @@ class VersionInfo:
 
 
 @dataclass(frozen=True, slots=True)
+class RotatorRange:
+    """The mechanical arc N.I.N.A. keeps a rotator within, in degrees.
+
+    `span` is 360, 180 or 90, from `start` and wrapping past 0. N.I.N.A. folds
+    a target outside it by whole spans rather than refusing it.
+    """
+
+    start: float
+    span: float
+
+
+@dataclass(frozen=True, slots=True)
 class ProfileSettings:
     """The allowlisted slice of `/profile/show`."""
 
@@ -702,3 +714,4 @@ class ProfileSettings:
     dome_park_mount_before_shutter_move: bool | None
     dome_park_before_shutter_move: bool | None
     dome_find_home_before_park: bool | None
+    rotator_range: RotatorRange | None

@@ -130,6 +130,10 @@ PROFILE_ALLOWLIST: tuple[str, ...] = (
     "DomeSettings.ParkMountBeforeShutterMove",
     "DomeSettings.ParkDomeBeforeShutterMove",
     "DomeSettings.FindHomeBeforePark",
+    # The arc N.I.N.A. keeps the rotator within. Field by field: the section
+    # also names the rotator driver (`Id`).
+    "RotatorSettings.RangeType",
+    "RotatorSettings.RangeStartMechanicalPosition",
 )
 
 

@@ -223,8 +223,9 @@ guider_stop:
 rotator_move:
   name: Move Rotator
   description: >-
-    Rotate to a sky position angle. Meaningful once a plate solve has synced
-    the rotator.
+    Rotate to a sky position angle. Refused until a plate solve has synced the
+    rotator. On a half or quarter range, N.I.N.A. turns to the equivalent angle
+    within it.
   target:
     entity:
       integration: nina_astrophotography
@@ -244,14 +245,18 @@ rotator_move:
 
 rotator_move_mechanical:
   name: Move Rotator (Mechanical)
-  description: Rotate to a mechanical angle, the rotator's own, whatever the sky angle.
+  description: >-
+    Rotate to a mechanical angle, the rotator's own, whatever the sky angle.
+    Refused outside the rotator's range in N.I.N.A.'s profile.
   target:
     entity:
       integration: nina_astrophotography
   fields:
     position:
       name: Mechanical Position
-      description: Target mechanical angle in degrees, from 0 to 360.
+      description: >-
+        Target mechanical angle in degrees, from 0 to 360 and within the
+        rotator's range.
       required: true
       example: 90
       selector:

@@ -76,7 +76,13 @@ from .const import (
     normalize_host,
 )
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData, NinaRuntimeData
-from .device import async_sync_devices, kind_of, refused_while_unsafe
+from .device import (
+    async_sync_devices,
+    kind_of,
+    raise_outside_rotator_range,
+    refused_while_unsafe,
+    refused_while_unsynced,
+)
 from .entity import NinaEntityDescription, refusals_raised, usable
 from .frontend import (
     async_ensure_frontend_resources,
@@ -721,23 +727,29 @@ def _register_services(hass: HomeAssistant) -> None:
 
     # ── Rotator ──────────────────────────────────────────────────────────────
 
-    def register_rotator_move(
-        service: str, move: Callable[[NinaClientV2, float], Awaitable[None]]
-    ) -> None:
-        async def handle(call: ServiceCall) -> None:
-            await move(await _client_for_target(hass, call), call.data["position"])
+    async def handle_rotator_move(call: ServiceCall) -> None:
+        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        if (key := refused_while_unsynced(coordinator.data)) is not None:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key=key)
+        await coordinator.client.move_rotator(call.data["position"])
 
-        register(
-            service,
-            handle,
-            {vol.Required("position"): _bounded("Position", float, 0, 360)},
-        )
+    # Not held to the profile's range: N.I.N.A. folds a sky angle into it, which
+    # on a half range is the same framing flipped.
+    register(
+        SERVICE_ROTATOR_MOVE,
+        handle_rotator_move,
+        {vol.Required("position"): _bounded("Position", float, 0, 360)},
+    )
 
-    # The sky angle is meaningful only once a plate solve syncs the rotator;
-    # the mechanical angle always is.
-    register_rotator_move(SERVICE_ROTATOR_MOVE, NinaClientV2.move_rotator)
-    register_rotator_move(
-        SERVICE_ROTATOR_MOVE_MECHANICAL, NinaClientV2.move_rotator_mechanical
+    async def handle_rotator_move_mechanical(call: ServiceCall) -> None:
+        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        raise_outside_rotator_range(coordinator.data, call.data["position"])
+        await coordinator.client.move_rotator_mechanical(call.data["position"])
+
+    register(
+        SERVICE_ROTATOR_MOVE_MECHANICAL,
+        handle_rotator_move_mechanical,
+        {vol.Required("position"): _bounded("Position", float, 0, 360)},
     )
 
     # ── Sequence ─────────────────────────────────────────────────────────────

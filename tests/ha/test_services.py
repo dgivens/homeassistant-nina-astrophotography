@@ -538,3 +538,59 @@ async def test_the_actions_exist_before_any_entry_is_loaded(
     """
     assert await async_setup_component(hass, DOMAIN, {})
     assert hass.services.has_service(DOMAIN, "mount_park")
+
+
+async def test_a_sky_angle_move_is_refused_until_the_rotator_is_synced(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """N.I.N.A. answers the move `Success: true`, then fails it unsynced, and
+    the rotator stays where it is.
+    """
+    await set_up_at(hass, config_entry, rig, "scheduler_waiting")
+
+    with pytest.raises(ServiceValidationError):
+        await _call(hass, "rotator_move", position=90)
+    assert rig.sent == []
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize("position", [200, 299, 120], ids=str)
+async def test_a_mechanical_angle_outside_the_profiles_range_is_refused(
+    hass: HomeAssistant, config_entry, rig, set_up_at, position: float
+) -> None:
+    """N.I.N.A. folds it into the range rather than refusing it, so 200° on a
+    half range from 300° turns the rotator to 20°.
+    """
+    await set_up_at(hass, config_entry, rig, "rotator_half_range")
+
+    with pytest.raises(ServiceValidationError):
+        await _call(hass, "rotator_move_mechanical", position=position)
+    assert rig.sent == []
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("service", "position", "path"),
+    [
+        ("rotator_move_mechanical", 300, "/equipment/rotator/move-mechanical"),
+        ("rotator_move_mechanical", 30, "/equipment/rotator/move-mechanical"),
+        # A sky angle is folded to the same framing, flipped, so it is not
+        # held to the mechanical range.
+        ("rotator_move", 200, "/equipment/rotator/move"),
+    ],
+    ids=["range-start", "past-zero", "sky-angle"],
+)
+async def test_an_angle_the_profiles_range_allows_is_sent(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    service: str,
+    position: float,
+    path: str,
+) -> None:
+    await set_up_at(hass, config_entry, rig, "rotator_half_range")
+
+    await _call(hass, service, position=position)
+
+    assert rig.sent[-1] == (path, {"position": float(position)})

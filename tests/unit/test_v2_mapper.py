@@ -9,6 +9,7 @@ from nina_astrophotography.api.models import (
     CurveFit,
     Gaussian,
     Hyperbola,
+    RotatorRange,
     SequenceNode,
 )
 from nina_astrophotography.api.v2.mapper import (
@@ -672,6 +673,10 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
                 "Longitude": -110.2977,
                 "Elevation": 1509,
             },
+            "RotatorSettings": {
+                "RangeType": "HALF",
+                "RangeStartMechanicalPosition": 300,
+            },
         }
     )
     assert profile == type(profile)(
@@ -692,6 +697,7 @@ def test_the_profile_allowlist_maps_from_its_nested_sections() -> None:
         dome_park_mount_before_shutter_move=None,
         dome_park_before_shutter_move=None,
         dome_find_home_before_park=None,
+        rotator_range=RotatorRange(start=300.0, span=180.0),
     )
 
 

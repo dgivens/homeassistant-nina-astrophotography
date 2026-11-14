@@ -5,7 +5,8 @@ are the validation: `number.set_value` refuses a value outside them, and
 N.I.N.A. silently clamps one and answers `Success: true`. A driver reporting
 no usable range (`Min 0 / Max 0`) is refused here. Where no driver reports a
 range (the focuser, the cooling setpoint, and the geometric rotator and dome),
-the descriptor carries a constant.
+the descriptor carries a constant; the rotator's mechanical range is N.I.N.A.'s
+profile's, which can wrap past 0, so `check` holds it.
 
 **A switch device channel is a number when writable and wider than one step**,
 such as a dew heater at 0–100. Its range is the channel's own, and it reads
@@ -38,8 +39,10 @@ from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .device import (
     channel_key,
     channels_for,
+    raise_outside_rotator_range,
     read_field,
     refused_while_following,
+    refused_while_unsynced,
     supports,
 )
 from .entity import (
@@ -70,6 +73,9 @@ class NinaNumberDescription(NinaEntityDescription, NumberEntityDescription):
     kind: str
     command: Callable[[NinaClientV2, float], Awaitable[None]]
     bounds: Callable[[NinaData], tuple[float, float] | None] | None = None
+    check: Callable[[NinaData, float], None] | None = None
+    """Raises `ServiceValidationError` for a value the device would not take
+    as given, where `bounds` cannot say so."""
 
 
 DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
@@ -134,6 +140,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         mode=NumberMode.BOX,
         kind="rotator",
         # Sky position angle, meaningful only while `rotator_synced` is on.
+        refusal=refused_while_unsynced,
         value=read_field("rotator", "position"),
         command=lambda client, value: client.move_rotator(value),
     ),
@@ -147,6 +154,8 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         mode=NumberMode.BOX,
         kind="rotator",
         value=read_field("rotator", "mechanical_position"),
+        # 0-360 is the angle's domain; a profile range can wrap past 0.
+        check=raise_outside_rotator_range,
         command=lambda client, value: client.move_rotator_mechanical(value),
     ),
     NinaNumberDescription(
@@ -204,6 +213,8 @@ class NinaNumber(NinaDescribedEntity, NumberEntity):
                 translation_placeholders={"entity_id": self.entity_id},
             )
         self._raise_if_refused()
+        if (check := self.entity_description.check) is not None:
+            check(self.coordinator.data, value)
         await self._async_send(
             self.entity_description.command(self.coordinator.client, value)
         )
