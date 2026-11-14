@@ -49,6 +49,15 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ---
 ### Fixed
 
+- **The reference says what `number.<instance>_flat_panel_brightness` does to
+  the panel's light** (#283). The number sends only the brightness, but
+  N.I.N.A.'s ASCOM driver sets one by switching the calibrator on at it, so an
+  ASCOM or Alpaca panel lights at any level above 0 and goes dark at 0. A panel
+  on one of N.I.N.A.'s native drivers, such as Alnitak's or Pegasus's, keeps
+  its light as it is. The reference also says when an ASCOM or Alpaca panel's
+  next bare light-on, N.I.N.A.'s own toggle included, comes on at full
+  brightness. `light.<instance>_flat_panel_light` turns any panel on or off.
+
 - **The observatory card shows the last frame's mean ADU as a whole number**,
   as the latest image card does, rather than every decimal the sensor holds.
 

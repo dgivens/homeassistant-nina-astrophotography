@@ -4,9 +4,10 @@ Brightness is scaled between the driver's own `MinBrightness` and
 `MaxBrightness` (4096 on some panels, 255 on others) and Home Assistant's 0–255.
 
 `turn_on` always sends a brightness, before the light: a bare
-`set-light?on=true` jumps to `MaxBrightness`, a hazard in a shared
-observatory. Whether every driver honours a brightness set while the light is
-off is unverified.
+`set-light?on=true` can jump to `MaxBrightness`, a hazard in a shared
+observatory. On an ASCOM panel the brightness alone lights it; N.I.N.A.'s
+native drivers keep brightness and light apart, so `set-light` switches the
+panel on.
 """
 
 from typing import Any
@@ -117,7 +118,7 @@ class NinaFlatLight(NinaEntity, LightEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        # Brightness 0 is not off.
+        # Brightness 0 darkens only an ASCOM panel; set-light turns off any.
         await self._async_send(self.coordinator.client.set_flat_light(False))
 
 

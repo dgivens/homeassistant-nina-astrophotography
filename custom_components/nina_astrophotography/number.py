@@ -12,8 +12,13 @@ such as a dew heater at 0–100. Its range is the channel's own, and it reads
 `Value`, never `TargetValue`.
 
 **The state is the next poll's reading**, never the command's response.
-`flat_panel_brightness` is in driver units, not the light's 0–255, and 0 is
-not off.
+
+**`flat_panel_brightness` sends only `set-brightness`**, in driver units rather
+than the light's 0–255. What the panel does with it is the driver's: N.I.N.A.'s
+ASCOM CoverCalibrator driver, which also serves Alpaca panels, sets a
+brightness by calling `CalibratorOn`, so any level above 0 lights the panel and
+0 darkens it, while N.I.N.A.'s native drivers, such as Alnitak's and
+Pegasus's, leave the light as it is.
 """
 
 from collections.abc import Awaitable, Callable, Iterator

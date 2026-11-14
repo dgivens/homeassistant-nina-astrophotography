@@ -110,7 +110,9 @@ async def test_a_disconnected_panel_reporting_a_zero_range_is_unavailable(
 async def test_turn_off_uses_set_light_not_brightness_zero(
     hass: HomeAssistant, flat_panel_entry, sent
 ) -> None:
-    """Brightness 0 is not off."""
+    """Brightness 0 darkens an ASCOM panel, but leaves the light switched on
+    under N.I.N.A.'s native drivers.
+    """
     await _turn_off(hass)
     assert sent.last_call == ("set_flat_light", False)
 
