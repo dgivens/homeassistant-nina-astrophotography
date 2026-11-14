@@ -463,9 +463,8 @@ class NinaObservatoryCard extends HTMLElement {
     const flatLit      = onOff(h, flatLightId);
     const flatLevel    = numState(h, flatLevelId, 0);
     const flatMax      = h.states[flatLevelId]?.attributes?.max;
-    // The number keeps Home Assistant's default 0–100 on a panel reporting no
-    // range, where the light is unavailable; a maximum of 1 is a light that
-    // only switches, which Light already says.
+    // The number is unavailable on a panel reporting no range; a maximum of 1
+    // is a light that only switches, which Light already says.
     const dimmable     = flatLit !== null && flatLevel !== "—" && !(flatMax <= 1);
     const coverFault   = flatConnected && coverState === "Error";
 

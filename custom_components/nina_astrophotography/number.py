@@ -3,8 +3,9 @@
 **Ranges are the driver's own**, such as `MinBrightness`–`MaxBrightness`. They
 are the validation: `number.set_value` refuses a value outside them, and
 N.I.N.A. silently clamps one and answers `Success: true`. A driver reporting
-no usable range (`Min 0 / Max 0`) is refused here. Where no driver reports a
-range (the focuser, the cooling setpoint, and the geometric rotator and dome),
+no usable range (`Min 0 / Max 0`) leaves the entity unavailable rather than
+offering Home Assistant's default 0–100. Where no driver reports a range (the
+focuser, the cooling setpoint, and the geometric rotator and dome),
 the descriptor carries a constant; the rotator's mechanical range is N.I.N.A.'s
 profile's, which can wrap past 0, so `check` holds it.
 
@@ -34,12 +35,11 @@ from homeassistant.components.number import (
 )
 from homeassistant.const import DEGREE, EntityCategory, Platform, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
-from .const import CAMERA_SETPOINT_RANGE, DOMAIN
+from .const import CAMERA_SETPOINT_RANGE
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .device import (
     channel_key,
@@ -197,6 +197,10 @@ class NinaNumber(NinaDescribedEntity, NumberEntity):
         return description.bounds(self.coordinator.data)
 
     @property
+    def available(self) -> bool:
+        return super().available and self._range is not None
+
+    @property
     def native_min_value(self) -> float:
         bounds = self._range
         return super().native_min_value if bounds is None else bounds[0]
@@ -211,12 +215,6 @@ class NinaNumber(NinaDescribedEntity, NumberEntity):
         return self.entity_description.value(self.coordinator.data)
 
     async def async_set_native_value(self, value: float) -> None:
-        if self._range is None:
-            raise ServiceValidationError(
-                translation_domain=DOMAIN,
-                translation_key="no_driver_range",
-                translation_placeholders={"entity_id": self.entity_id},
-            )
         self._raise_if_refused()
         if (check := self.entity_description.check) is not None:
             check(self.coordinator.data, value)
