@@ -1,0 +1,67 @@
+blueprint:
+  name: "N.I.N.A. – Flat Cover Closed on Lights"
+  description: >
+    Notifies when a light frame is saved with the flat panel's cover closed.
+    A light behind a closed cover is blank, and so is every one after it until
+    the cover opens: a sequence that closes the cover for flats and never
+    reopens it, or a cover closed by hand mid-run, can cost the rest of the
+    night.
+
+    Flats and darks run with the cover closed, so they never alert, and
+    neither does a cover closed after the night's last light. Only a light
+    saved after the cover was seen closing does.
+
+    The flat panel has to stay connected in N.I.N.A. while imaging: a panel
+    connected only for the flat run reports no cover during the night, and
+    nothing can be warned of.
+  domain: automation
+  author: dgivens
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        behind_cover:
+          name: Light frames behind closed cover
+          description: >
+            The flat panel's "Light frames behind closed cover" sensor. It
+            exists only on a panel with a cover.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: problem
+
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        notify_target:
+          name: Notify
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+
+mode: single
+max_exceeded: silent
+
+triggers:
+  # From `off` only: the sensor going unavailable and back while the cover is
+  # still closed is the same problem, already reported.
+  - trigger: state
+    entity_id: !input behind_cover
+    from: "off"
+    to: "on"
+
+actions:
+  - action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "⚠️ Flat cover closed on lights"
+      message: >
+        N.I.N.A. saved a light frame with the flat panel's cover closed. Every
+        light is blank until the cover opens.

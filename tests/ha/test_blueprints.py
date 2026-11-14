@@ -26,6 +26,12 @@ BLUEPRINTS = sorted(SHIPPED_DIR.glob("*.yaml"))
 # The inputs with no default, which a user must supply. The entity ids need not
 # exist: what is under test is the schema, not the rig.
 REQUIRED: dict[str, dict[str, object]] = {
+    "cover_closed_alert.yaml": {
+        "behind_cover": (
+            "binary_sensor.rig_flat_panel_light_frames_behind_closed_cover"
+        ),
+        "notify_target": ["notify.phone"],
+    },
     "guiding_alert.yaml": {
         "nina_rig": "device-id",
         "rms_sensor": "sensor.rig_guider_rms_total",
@@ -69,6 +75,7 @@ REQUIRED: dict[str, dict[str, object]] = {
 # Every optional input, set away from its default so the branches it gates are
 # built rather than skipped.
 OPTIONAL: dict[str, dict[str, object]] = {
+    "cover_closed_alert.yaml": {},
     "guiding_alert.yaml": {"run_autofocus": True},
     "imaging_stall_alert.yaml": {
         "rig_reachable": ["binary_sensor.rig_reachable"],
@@ -153,6 +160,7 @@ async def test_a_blueprint_builds_an_automation(
 # blueprint no longer declares, so a removed or renamed input silently drops
 # the user's setting. Add a new input here; never take one out.
 RELEASED: dict[str, frozenset[str]] = {
+    "cover_closed_alert.yaml": frozenset({"behind_cover", "notify_target"}),
     "guiding_alert.yaml": frozenset(
         {
             "cooldown_minutes",
@@ -280,6 +288,7 @@ def test_every_declared_input_is_recorded_as_released(path: Path) -> None:
 # the blueprint under every automation already built from it, and an
 # automation missing a required input stops loading.
 RELEASED_REQUIRED: dict[str, frozenset[str]] = {
+    "cover_closed_alert.yaml": frozenset({"behind_cover", "notify_target"}),
     "guiding_alert.yaml": frozenset(
         {"guider_status", "nina_rig", "notify_target", "rms_sensor"}
     ),

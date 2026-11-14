@@ -17,9 +17,11 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.nina_astrophotography.api.errors import NinaRequestError
+from custom_components.nina_astrophotography.api.models import EquipmentSnapshot
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
+from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 from ha.registry import registered
-from helpers import state_of
+from helpers import load_fixture, state_of
 
 AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
@@ -29,6 +31,7 @@ SEQUENCE_WAITING = "binary_sensor.n_i_n_a_sequence_waiting"
 UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe"
 REACHABLE = "binary_sensor.n_i_n_a_reachable"
 MERIDIAN_FLIP = "binary_sensor.n_i_n_a_mount_meridian_flip"
+BEHIND_COVER = "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover"
 
 
 @pytest.mark.parametrize(
@@ -542,3 +545,47 @@ async def test_a_flip_that_lapsed_without_its_end_does_not_hold_the_next(
     push({"Event": "MOUNT-BEFORE-FLIP"})
     await hass.async_block_till_done()
     assert state_of(hass, MERIDIAN_FLIP).attributes["slews_at"] is not None
+
+
+def _saved(image_type: str) -> dict:
+    """The captured IMAGE-SAVE push, as a frame of `image_type`."""
+    payload = load_fixture("live_image_save_push.json")
+    payload["ImageStatistics"]["ImageType"] = image_type
+    return payload
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(("image_type", "state"), [("LIGHT", "on"), ("DARK", "off")])
+async def test_only_a_light_saved_behind_the_closed_cover_is_flagged(
+    hass: HomeAssistant, loaded_entry, push, image_type: str, state: str
+) -> None:
+    push(_saved(image_type))
+    await hass.async_block_till_done()
+    assert state_of(hass, BEHIND_COVER).state == state
+
+
+@pytest.mark.synthetic
+async def test_a_light_saved_before_the_cover_closed_is_not_flagged(
+    hass: HomeAssistant, set_up_with_flat_device, push, monkeypatch
+) -> None:
+    """The cover closes at the end of every night, after its last light."""
+    entry = await set_up_with_flat_device(cover_state="Open")
+    push(_saved("LIGHT"))
+    await hass.async_block_till_done()
+
+    closed = map_equipment_info(load_fixture("dawn_equipment_info.json"))
+
+    async def get_equipment(self: NinaClientV2) -> EquipmentSnapshot:
+        return closed
+
+    monkeypatch.setattr(NinaClientV2, "get_equipment", get_equipment)
+    await entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert state_of(hass, BEHIND_COVER).state == "off"
+
+
+async def test_a_panel_without_a_cover_has_no_closed_cover_sensor(
+    hass: HomeAssistant, set_up_with_flat_device
+) -> None:
+    await set_up_with_flat_device(supports_open_close=False)
+    assert hass.states.get(BEHIND_COVER) is None

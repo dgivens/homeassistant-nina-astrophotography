@@ -467,6 +467,11 @@ class NinaObservatoryCard extends HTMLElement {
     // is a light that only switches, which Light already says.
     const dimmable     = flatLit !== null && flatLevel !== "—" && !(flatMax <= 1);
     const coverFault   = flatConnected && coverState === "Error";
+    // Flats and darks run behind a closed cover; a light saved since it closed
+    // is blank, and so is every one after it until the cover opens.
+    const behindCover  = flatConnected
+      && isOn(h, this._eid("binary_sensor", "light_frames_behind_cover"));
+    const flatWarning  = coverFault || behindCover ? "danger" : null;
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
@@ -601,6 +606,7 @@ class NinaObservatoryCard extends HTMLElement {
     const faults = [
       !unreachable && shutter === "error" ? "Dome shutter error" : "",
       coverFault ? "Flat panel cover error" : "",
+      behindCover ? "Light frames behind the closed flat cover" : "",
       camLost ? "Camera disconnected" : "",
       mntLost ? "Mount disconnected" : "",
       seqRunning && !quiet && gdrConnected && guiding === false && !flipping ? "Guiding stopped" : "",
@@ -647,7 +653,7 @@ class NinaObservatoryCard extends HTMLElement {
           <span class="dot ${dot}"></span>
           ${CHEVRON}
         </div>
-        ${fold.banner(worst([cameraLevel, mountLevel, guidingLevel, coverFault ? "danger" : null]))}
+        ${fold.banner(worst([cameraLevel, mountLevel, guidingLevel, flatWarning]))}
 
         ${!fold.open("card") ? (folded.length ? `
         <div class="body${link.stale ? " stale" : ""}">${folded.join("")}</div>` : "") : `
@@ -679,6 +685,7 @@ class NinaObservatoryCard extends HTMLElement {
             ${rotConnected ? chip("Rotator", true) : ""}
             ${!flatConnected ? ""
               : coverFault ? chip("Flat Panel · cover error", true, "fault")
+              : behindCover ? chip("Flat Panel · lights behind cover", true, "fault")
               : chip("Flat Panel", true)}
             ${!domeConnected ? ""
               : shutter === "error" ? chip("Dome · shutter error", true, "fault")
@@ -723,7 +730,7 @@ class NinaObservatoryCard extends HTMLElement {
               ${coverState === "NotPresent" ? "" : metric("Cover", cover, "")}
               ${flatLit === null ? "" : metric("Light", flatLit ? "On" : "Off", "")}
               ${!dimmable ? "" : metric("Brightness", flatLevel, flatMax ? ` / ${flatMax}` : "")}
-            </div>`, coverFault ? "danger" : null) : ""}
+            </div>`, flatWarning) : ""}
 
           ${gdrConnected ? section("guiding",
             `Guiding · ${guiding === null ? "" : guiding ? "Active · " : "Stopped · "}bars full scale 4"`, `

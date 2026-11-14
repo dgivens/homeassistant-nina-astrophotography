@@ -14,7 +14,7 @@ It provides:
 - buttons and actions to cool, slew, park, focus and run sequences
 - Home Assistant events for everything N.I.N.A. reports
 - eight dashboard cards
-- six automation blueprints
+- seven automation blueprints
 
 ![The dashboard cards on a live rig imaging Sh2 132: the observatory card above a pier camera, the weather, autofocus and sky map cards, and the live stack, latest image and frame statistics cards](https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/dashboard.png)
 
@@ -225,7 +225,9 @@ angle, shown once a plate solve syncs the rotator.
 With a flat panel, it adds a Flat Panel chip, whether the cover is open and
 the light on, and the brightness in the panel's own units, and Open or Close
 Flat Cover. A cover part-way, in error or not read offers both. An ASCOM panel
-reads brightness 0 while its light is off.
+reads brightness 0 while its light is off. A light frame saved after the cover
+closed turns the chip red: that frame is blank, and so is every light after it
+until the cover opens.
 
 Tap or click a card's header to collapse the card, or a section's heading,
 such as **ADU range** or **Wind**, to collapse that section. A collapsed
@@ -241,7 +243,8 @@ A collapsed card still shows what needs attention:
 
 - **Weather**: the safety status and the dew alert.
 - **Observatory**: a lost or unresponsive link, a meridian flip, a dome
-  shutter or flat panel cover error, and, while a sequence runs, a disconnected camera or mount
+  shutter or flat panel cover error, light frames behind the closed flat
+  cover, and, while a sequence runs, a disconnected camera or mount
   or stopped guiding. Stop Sequence, Park and Close Dome stay, each while it
   applies, and a collapsed **Controls** section keeps them too.
 - **Autofocus**: a failed run.
@@ -295,6 +298,7 @@ on one and pick your rig's entities.
 | [Session shutdown](custom_components/nina_astrophotography/blueprints/session_shutdown.yaml) | At a set time, first waits up to two hours for the sequence to finish (on by default), then stops it if it's still running, parks, optionally closes the dome over a parked mount — alerting if it does not close — and warms the camera. |
 | [Meridian flip warning](custom_components/nina_astrophotography/blueprints/meridian_flip_warning.yaml) | Notifies before a meridian flip, when it starts, and when it finishes. |
 | [Guiding alert](custom_components/nina_astrophotography/blueprints/guiding_alert.yaml) | Notifies, and optionally runs autofocus, when guiding RMS stays high. |
+| [Flat cover closed on lights](custom_components/nina_astrophotography/blueprints/cover_closed_alert.yaml) | Notifies when a light frame is saved with the flat panel's cover closed. Flats and darks behind it don't alert, and neither does closing it after the night's last light. Needs the panel connected while imaging. |
 | [Imaging stall alert](custom_components/nina_astrophotography/blueprints/imaging_stall_alert.yaml) | Notifies when frames stop for a bad reason (N.I.N.A. unreachable, mount parked mid-sequence, no frames), and clears when they resume. [Details](docs/reference.md#the-imaging-stall-alert-blueprint). |
 
 They live in `config/blueprints/automation/nina_astrophotography/`, and each

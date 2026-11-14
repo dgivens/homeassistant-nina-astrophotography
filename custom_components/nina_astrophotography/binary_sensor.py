@@ -220,6 +220,15 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         attributes=_autofocus_verdict,
     ),
     NinaBinarySensorDescription(
+        key="light_frames_behind_cover",
+        translation_key="light_frames_behind_cover",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        kind="flat_device",
+        supported=supports("flat_device", "supports_open_close"),
+        # A light is blank behind a closed cover; flats and darks are not.
+        value=lambda data: data.light_behind_cover,
+    ),
+    NinaBinarySensorDescription(
         key="sequencer_running",
         translation_key="sequencer_running",
         device_class=BinarySensorDeviceClass.RUNNING,

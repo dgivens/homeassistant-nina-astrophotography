@@ -11,7 +11,13 @@ from datetime import datetime, timedelta
 import time
 from typing import Literal
 
-from .api.models import EquipmentSnapshot, NinaEvent, SequenceWait, SequenceWaitKind
+from .api.models import (
+    EquipmentSnapshot,
+    Frame,
+    NinaEvent,
+    SequenceWait,
+    SequenceWaitKind,
+)
 
 
 class EventLedger:
@@ -80,6 +86,39 @@ class GuiderStopLatch:
 
 def _same_stop(stop: datetime, other: datetime | None) -> bool:
     return other is not None and abs(stop - other) <= _SAME_STOP
+
+
+class CoverClosedLatch:
+    """Whether the newest frame is a light saved behind the flat panel's
+    closed cover.
+
+    "A sequence running with the cover closed" is no test: flats and darks run
+    that way. What gives a light away is arriving after the cover was seen
+    closed, so the latch keeps the newest frame at that moment and flags a
+    newer one. That is a comparison of frames, not of times, so the rig's
+    clock and Home Assistant's need not agree. Any other reading clears it,
+    `Unknown` from a panel that dropped out included: the cover may have
+    opened unseen, and the next close starts afresh.
+    """
+
+    def __init__(self) -> None:
+        self._closed = False
+        self._before: tuple[datetime, str] | None = None
+
+    def observe(self, cover_state: str | None, newest: Frame | None) -> None:
+        if cover_state != "Closed":
+            self._closed = False
+        elif not self._closed:
+            self._closed = True
+            self._before = None if newest is None else newest.identity
+
+    def light_behind_cover(self, newest: Frame | None) -> bool:
+        return (
+            self._closed
+            and newest is not None
+            and newest.image_type == "LIGHT"
+            and newest.identity != self._before
+        )
 
 
 @dataclass

@@ -28,6 +28,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   units, and Open or Close Flat Cover under Controls, each asking for
   confirmation. A cover part-way, in error or not read offers both, and an
   error turns the chip red and stays on a collapsed card.
+- **A warning for light frames taken behind the closed flat cover** (#288):
+  `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` turns
+  `on` when the newest frame is a light saved after the cover was seen
+  closed. Flats and darks behind the cover, and a cover closed after the
+  night's last light, leave it `off`. The observatory card turns the Flat
+  Panel chip red and keeps the warning on a collapsed card, and the new
+  **Flat cover closed on lights** blueprint sends a notification.
 - **The image panel has a Lights only button** beside the recent frames (#270). It
   limits the main image and the strip to lights, so the last sub stays on
   screen through a flat run of any length. The card's `lights_only` option

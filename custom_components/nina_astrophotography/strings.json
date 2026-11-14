@@ -73,6 +73,9 @@
       "imaging": {
         "name": "Imaging"
       },
+      "light_frames_behind_cover": {
+        "name": "Light frames behind closed cover"
+      },
       "mount_at_home": {
         "name": "At home"
       },

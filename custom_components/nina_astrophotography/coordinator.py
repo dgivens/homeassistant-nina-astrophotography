@@ -44,6 +44,7 @@ from .const import CONF_HOST, DEFAULT_OUTAGE_GRACE, DEFAULT_ROLLOVER_HOUR
 from .derive import flip_offset_minutes
 from .device import KINDS
 from .polling import (
+    CoverClosedLatch,
     EndedWait,
     EventLedger,
     GuiderStopLatch,
@@ -168,6 +169,9 @@ class NinaData:
     star."""
     meridian_flip: MeridianFlip | None
     """The flip N.I.N.A. is in, its wait with tracking off included, or None."""
+    light_behind_cover: bool
+    """Whether the newest frame is a light saved since the flat panel's cover
+    was seen closed. See `CoverClosedLatch`."""
     reachable: bool = True
     """Whether N.I.N.A. answered the last poll. False while an outage is held
     within its grace, and kept false once the coordinator fails, so the one
@@ -232,6 +236,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._reseed_guard = ReseedGuard()
         self._ledger = EventLedger()
         self._guider_stop = GuiderStopLatch()
+        self._cover = CoverClosedLatch()
         self._waits = WaitLedger()
         self._seeded = False
         self._replayed = False
@@ -672,6 +677,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             now=moment,
             rollover_hour=self._rollover_hour,
         )
+        recent = recent_frames(self.frames.values(), self.generation)
+        newest = recent[0].frame if recent else None
+        flat = snapshot.flat_device
+        self._cover.observe(None if flat is None else flat.cover_state, newest)
         return NinaData(
             snapshot=snapshot,
             session=session,
@@ -685,7 +694,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 or target_name(self._sequence)
             ),
             autofocus_report=self._last_autofocus,
-            recent_frames=recent_frames(self.frames.values(), self.generation),
+            recent_frames=recent,
             profile=self._profile,
             generation=self.generation,
             version=self._version,
@@ -697,6 +706,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 pending_guider_stop(self.events, self.generation)
             ),
             meridian_flip=self._meridian_flip(moment),
+            light_behind_cover=self._cover.light_behind_cover(newest),
             reachable=self._reachable,
         )
 

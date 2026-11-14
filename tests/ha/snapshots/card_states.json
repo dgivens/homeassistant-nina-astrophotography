@@ -119,6 +119,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "camera_is_exposing"
    },
+   "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover": {
+    "device_id": "flat_device",
+    "entity_id": "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover",
+    "platform": "nina_astrophotography",
+    "translation_key": "light_frames_behind_cover"
+   },
    "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
     "device_id": "focuser",
     "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_failed",
@@ -677,6 +683,13 @@
    "binary_sensor.n_i_n_a_camera_exposing": {
     "attributes": {
      "friendly_name": "N.I.N.A. Camera Exposing"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover": {
+    "attributes": {
+     "device_class": "problem",
+     "friendly_name": "N.I.N.A. Flat Panel Light frames behind closed cover"
     },
     "state": "off"
    },
