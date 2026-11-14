@@ -68,6 +68,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ---
 ### Fixed
 
+- **`light.<instance>_flat_panel_light` comes on dim on a panel whose
+  brightness range is under 128** (#284), such as N.I.N.A.'s simulator panel
+  at 0–100, rather than at full output. Every level scales to at least one
+  step above the panel's minimum: the minimum leaves an ASCOM panel dark, and
+  N.I.N.A.'s light-on after it lights the panel at `MaxBrightness`.
+
 - **The reference says what `number.<instance>_flat_panel_brightness` does to
   the panel's light** (#283). The number sends only the brightness, but
   N.I.N.A.'s ASCOM driver sets one by switching the calibrator on at it, so an
