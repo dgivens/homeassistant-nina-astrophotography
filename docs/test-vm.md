@@ -187,7 +187,7 @@ contributor can reproduce. The rig replaces it:
   - it requires N.I.N.A. **3.3.0.1053** (`MinimumApplicationVersion`);
   - it targets **.NET 10** (`net10.0-windows`).
 
-  Stable 2.2.15.2 requires 3.2.0.9001 and targets .NET 8
+  Stable 2.2.15.3 requires 3.2.0.9001 and targets .NET 8
   ([releases][ninaapi-rel]).
 - **The 3.0 release notes** ([`3.0.0.0-b.1`][ninaapi-b1]):
   - add a `/v3` API with no response envelope, status codes carrying the result,
