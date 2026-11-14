@@ -10,15 +10,15 @@ jobs:
     name: Unit suite (HA-free)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync
       # -p no:homeassistant makes the runtime half of the seam guard meaningful
       # as a secondary; tests/unit/test_seam.py is the real check.
       - run: uv run coverage run -m pytest tests/unit -p no:homeassistant -q
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-unit
           path: .coverage.*
@@ -28,8 +28,8 @@ jobs:
     name: Home Assistant suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       # The tests marked `needs_node` run shipped Lovelace modules under node.
@@ -37,12 +37,12 @@ jobs:
       # when node is missing — a green run over nothing.
       - uses: actions/setup-node@v7
         with:
-          node-version: "24"
+          node-version: "26"
       - run: uv sync --group test-ha
       # No -n auto: pytest-socket is active under PHACC and the push path
       # creates tasks outside the test's control.
       - run: uv run coverage run -m pytest tests/ha -q
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-ha
           path: .coverage.*
@@ -53,9 +53,9 @@ jobs:
     needs: [unit, ha]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: actions/download-artifact@v8
         with:
           pattern: coverage-*
           merge-multiple: true
@@ -68,8 +68,8 @@ jobs:
     name: Ruff
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       - run: uv sync --group dev
@@ -80,8 +80,8 @@ jobs:
     name: Pyright
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           enable-cache: true
       # test-ha is what installs `homeassistant`; the paths and rules checked
@@ -93,8 +93,8 @@ jobs:
     name: Fixture redaction
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.3
       - run: uv sync
       - run: uv run python scripts/check_fixtures.py tests/fixtures/*.json tests/fixtures/rig/*
 
@@ -102,14 +102,14 @@ jobs:
     name: hassfest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: home-assistant/actions/hassfest@master
 
   hacs:
     name: HACS validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: hacs/action@main
         with:
           category: integration

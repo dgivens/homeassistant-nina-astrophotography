@@ -11,7 +11,11 @@ off is unverified.
 
 from typing import Any
 
-from homeassistant.components.light import ATTR_BRIGHTNESS, LightEntity
+# The package root is the one path that holds across 2026.9 and 2026.10.
+from homeassistant.components.light import (
+    ATTR_BRIGHTNESS,  # pyright: ignore[reportPrivateImportUsage]
+    LightEntity,
+)
 from homeassistant.components.light.const import ColorMode
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError

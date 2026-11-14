@@ -93,7 +93,11 @@ class NinaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
 
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
+            step_id="user",
+            # Home Assistant 2026.10 annotates a schema as probatio's, which
+            # stands in for voluptuous at runtime; 2026.9 imports only voluptuous.
+            data_schema=STEP_USER_SCHEMA,  # pyright: ignore[reportArgumentType]
+            errors=errors,
         )
 
     def _address_in_use(self, host: str, port: int) -> bool:
@@ -143,7 +147,7 @@ class NinaOptionsFlow(config_entries.OptionsFlowWithReload):
         options = self.config_entry.options
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema(
+            data_schema=vol.Schema(  # pyright: ignore[reportArgumentType]
                 {
                     vol.Optional(
                         CONF_ROLLOVER_HOUR,

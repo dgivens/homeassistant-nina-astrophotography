@@ -501,7 +501,9 @@ def _register_services(hass: HomeAssistant) -> None:
             DOMAIN,
             service,
             _service(handler),
-            schema=vol.Schema({**cv.TARGET_SERVICE_FIELDS, **(fields or {})}),
+            # Home Assistant 2026.10 annotates a schema as probatio's, which
+            # stands in for voluptuous at runtime; 2026.9 imports only voluptuous.
+            schema=vol.Schema({**cv.TARGET_SERVICE_FIELDS, **(fields or {})}),  # pyright: ignore[reportArgumentType]
         )
 
     def register_command(
