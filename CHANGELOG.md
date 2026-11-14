@@ -8,6 +8,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
+- **The frame statistics card's HFR, star count and mean ADU graphs print the
+  high and low of their line** on the left (#271), and the newest value on the
+  right: HFR to two decimals, stars and ADU as whole numbers. The star count
+  and mean ADU lines cover the newest lights of one target, filter and
+  exposure, and the HFR line every light the graph shows.
 - **`custom:nina-site-camera-card`** shows a pier, all-sky or observatory
   camera in the same frame as the other cards (#264), from any camera or image
   entities. Two or more get chips to choose between them, a tap opens the
@@ -31,7 +36,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   2026.10.4** (#273), whose core validates with probatio in voluptuous's place.
   `nina-units.js` converts `atm`, the pressure unit that release offers.
 
----
 ### Fixed
 
 - **A screen reader reaches the live stack card's Start/Stop as a control of

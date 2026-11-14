@@ -522,20 +522,23 @@ class NinaFrameStatsCard extends HTMLElement {
     // A folded chart has no canvas, which each draw skips.
     if (hasData && fold.open("card")) {
       requestAnimationFrame(() => {
-        this._drawSparkline("hfr-chart", this._hfr, theme.accent, true, lightColours);
-        this._drawSparkline("stars-chart", this._stars, theme.accent2, false, lightColours,
+        this._drawSparkline("hfr-chart", this._hfr, theme.accent, true, lightColours, 2);
+        this._drawSparkline("stars-chart", this._stars, theme.accent2, false, lightColours, 0,
           (mean) => STARS_MIN_SPAN * mean);
-        this._drawSparkline("adu-chart", this._adu, theme.warn, false, lightColours,
+        this._drawSparkline("adu-chart", this._adu, theme.warn, false, lightColours, 0,
           () => this._aduFloor);
       });
     }
   }
 
+  // Prints, to `digits` places, the high and low of the joined line in the
+  // left margin and its newest value in the right.
+  //
   // Given `minSpan`, a function of the run's mean, the chart is scaled to the
   // newest run and the rest of the night drawn faded behind it: another
   // filter, target or exposure sits whole factors away and would flatten the
   // run. A run with fewer than two readings is scaled with the whole night.
-  _drawSparkline(canvasId, data, fillColour, showAvgLine, colours, minSpan = null) {
+  _drawSparkline(canvasId, data, fillColour, showAvgLine, colours, digits, minSpan = null) {
     const canvas = this.shadowRoot.getElementById(canvasId);
     if (!canvas) return;
 
@@ -554,22 +557,26 @@ class NinaFrameStatsCard extends HTMLElement {
     const known = (indices) => indices.filter((i) => data[i] !== null && data[i] !== undefined);
     const all = data.map((_, i) => i);
     const run = minSpan !== null && known(this._run).length >= 2 ? this._run : null;
-    const inRun = new Set(run ?? all);
+    const path = run ?? all;
+    const inRun = new Set(path);
+    // The joined line, which the scale fits and the numbers describe.
+    const line = known(path);
+    const drawn = line.map((i) => data[i]);
+    const high = Math.max(...drawn);
+    const low = Math.min(...drawn);
     let minVal, maxVal;
     if (minSpan === null) {
-      minVal = Math.min(...valid) * 0.95;
-      maxVal = Math.max(...valid) * 1.05;
+      minVal = low * 0.95;
+      maxVal = high * 1.05;
     } else {
-      const scaled = known(run ?? all).map((i) => data[i]);
-      const lo = Math.min(...scaled);
-      const hi = Math.max(...scaled);
       // A run of zero stars has no span at all, relative or not.
-      const span = Math.max(hi - lo, minSpan(this._mean(scaled))) || 1;
-      minVal = (lo + hi) / 2 - span * (0.5 + RUN_HEADROOM);
-      maxVal = (lo + hi) / 2 + span * (0.5 + RUN_HEADROOM);
+      const span = Math.max(high - low, minSpan(this._mean(drawn))) || 1;
+      minVal = (low + high) / 2 - span * (0.5 + RUN_HEADROOM);
+      maxVal = (low + high) / 2 + span * (0.5 + RUN_HEADROOM);
     }
     const range = maxVal - minVal || 1;
-    const pad = { l: 4, r: 4, t: 6, b: 4 };
+    // The side margins hold the numbers, wide enough for five digits of ADU.
+    const pad = { l: 34, r: 36, t: 6, b: 4 };
     const plotW = W - pad.l - pad.r;
     const plotH = H - pad.t - pad.b;
 
@@ -620,8 +627,6 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.restore();
     }
 
-    const path = run ?? all;
-    const line = known(path);
     ctx.beginPath();
     line.forEach((i, k) => {
       if (k === 0) ctx.moveTo(xOf(i), yOf(data[i]));
@@ -690,18 +695,23 @@ class NinaFrameStatsCard extends HTMLElement {
       }
     }
 
-    const lastY = yOf(data[data.length - 1]);
-    if (lastY !== null) {
-      const v = data[data.length - 1];
-      const label = typeof v === "number" && v > 100
-        ? Math.round(v).toString()
-        : typeof v === "number"
-        ? v.toFixed(2)
-        : "";
-      ctx.font = "bold 10px sans-serif";
-      ctx.fillStyle = theme.ink(0.85);
-      ctx.fillText(label, xOf(data.length - 1) + 4, Math.max(lastY, 14));
-    }
+    // The high and low describe the joined line only: the faded lights behind
+    // it can sit far outside. They sit at the margin's ends, not level with
+    // their points, which on a flat night are within a line of text.
+    const fmt = (v) => v.toFixed(digits);
+    ctx.font = "9px sans-serif";
+    ctx.fillStyle = theme.ink(0.55);
+    ctx.textAlign = "right";
+    ctx.fillText(fmt(high), pad.l - 5, pad.t + 7);
+    if (fmt(low) !== fmt(high)) ctx.fillText(fmt(low), pad.l - 5, H - pad.b);
+
+    // Beside the newest frame that measured anything, kept on the canvas.
+    const newest = line[line.length - 1];
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillStyle = theme.ink(0.85);
+    ctx.textAlign = "left";
+    ctx.fillText(fmt(data[newest]), W - pad.r + 6,
+      Math.min(Math.max(yOf(data[newest]) + 3, 9), H - 2));
   }
 
   getCardSize() { return 7; }
