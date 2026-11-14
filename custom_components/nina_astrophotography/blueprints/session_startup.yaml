@@ -12,7 +12,6 @@ blueprint:
     N.I.N.A. lists it under.
   domain: automation
   author: dgivens
-  source_url: https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/session_startup.yaml
   homeassistant:
     min_version: "2024.10.0"
   input:

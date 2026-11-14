@@ -1,7 +1,6 @@
 """Fixtures for the Home-Assistant-dependent suite."""
 
 from dataclasses import replace
-from pathlib import Path
 import shutil
 import sys
 from typing import NamedTuple
@@ -18,6 +17,10 @@ import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography.api.v2 import NinaEventStream
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
+from custom_components.nina_astrophotography.blueprint_sync import (
+    MANAGED_FOLDER,
+    SHIPPED_DIR,
+)
 from custom_components.nina_astrophotography.const import (
     CONF_HOST,
     CONF_PORT,
@@ -62,7 +65,14 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     return
 
 
-BLUEPRINTS = Path(__file__).resolve().parents[2] / "blueprints"
+# The managed blueprint folder, relative to the config directory.
+MANAGED = f"blueprints/automation/{MANAGED_FOLDER}"
+
+
+@pytest.fixture
+def hass_config_dir(hass_tmp_config_dir: str) -> str:
+    """A config directory per test, since setup writes the blueprints into it."""
+    return hass_tmp_config_dir
 
 
 @pytest.fixture
@@ -73,7 +83,7 @@ async def installed(hass: HomeAssistant):
     Turned off again afterwards: a time trigger registers a timer that would
     otherwise outlive the test.
     """
-    shutil.copytree(BLUEPRINTS, hass.config.path("blueprints"), dirs_exist_ok=True)
+    shutil.copytree(SHIPPED_DIR, hass.config.path(MANAGED), dirs_exist_ok=True)
 
     async def use_blueprint(name: str, inputs: dict) -> None:
         assert await async_setup_component(
@@ -82,7 +92,7 @@ async def installed(hass: HomeAssistant):
             {
                 AUTOMATION_DOMAIN: {
                     "use_blueprint": {
-                        "path": f"nina_astrophotography/{name}",
+                        "path": f"{MANAGED_FOLDER}/{name}",
                         "input": inputs,
                     }
                 }

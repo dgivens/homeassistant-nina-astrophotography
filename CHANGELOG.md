@@ -43,6 +43,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
+- **The integration installs and updates its blueprints** (#256). They ship
+  inside `custom_components/nina_astrophotography/blueprints/`, and each start
+  of Home Assistant writes any that differ to
+  `config/blueprints/automation/nina_astrophotography/` and reloads the
+  automations, so every automation built from one runs the installed release's
+  version. That folder belongs to the integration: an edit there is
+  overwritten, and **Take control** on an automation is how to customise one.
+  A copy imported from GitHub is never updated, so an automation still using
+  one raises a repair that says how to move it onto the installed copy, then
+  restart before deleting the old one. A
+  released input is never removed or renamed, and a new one comes with a
+  default. The blueprints no longer carry a `source_url`, so Home Assistant
+  offers no **Re-import**, and `just deploy-blueprints` is gone.
 - **The observatory card shows both rotator angles out of the box** (#266).
   `number.<instance>_rotator_mechanical_position` ships enabled, as a control
   beside the sky position, and `binary_sensor.<instance>_rotator_synced` is a

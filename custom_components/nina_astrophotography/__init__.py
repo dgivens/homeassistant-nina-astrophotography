@@ -40,6 +40,7 @@ from .api.errors import (
 )
 from .api.models import NinaEvent
 from .api.v2 import NinaClientV2, NinaEventStream
+from .blueprint_sync import async_install_blueprints, async_track_imported_copies
 from .const import (
     CAMERA_SETPOINT_RANGE,
     CONF_HOST,
@@ -134,11 +135,15 @@ _ROTATOR_ENABLED = (
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the actions, the image proxy and the Lovelace cards."""
+    """Register the actions, the image proxy and the Lovelace cards, and
+    install the blueprints.
+    """
     _register_services(hass)
     async_register_views(hass)
     await async_serve_cards(hass)
     await async_register_frontend_resources(hass)
+    await async_install_blueprints(hass)
+    await async_track_imported_copies(hass)
     return True
 
 

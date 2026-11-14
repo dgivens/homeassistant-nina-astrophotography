@@ -19,10 +19,12 @@ Home Assistant 2026.9.0 or later is required.
    doesn't work. Each card logs `NINA-…-CARD vX.Y.Z` to the browser console;
    if you see `v1.0.0`, an old resource is still loading. Hard-reload the
    dashboard after removing them.
-2. **Re-import the blueprints and rebuild their automations.** All five
-   blueprints were rewritten with new inputs, and `imaging_stall_alert.yaml`
-   is new. The 1.4.x blueprints used entities 2.0 doesn't create, so they did
-   nothing after the upgrade anyway.
+2. **Rebuild the blueprint automations.** All five blueprints were rewritten
+   with new inputs, and `imaging_stall_alert.yaml` is new. The 1.4.x
+   blueprints used entities 2.0 doesn't create, so they did nothing after the
+   upgrade anyway. The integration installs the current blueprints itself, in
+   `config/blueprints/automation/nina_astrophotography/`, replacing any 1.4.x
+   copies there.
 3. **Update automations that use these actions**, which didn't work in 1.4.5:
    - `camera_capture`: use `duration` instead of `exposure`. `binning` and
      `filter_index` are removed.

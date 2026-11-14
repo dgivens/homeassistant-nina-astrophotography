@@ -691,5 +691,11 @@
     "unknown_tracking_mode": {
       "message": "The mount offers a tracking mode the API cannot encode: {option}."
     }
+  },
+  "issues": {
+    "imported_blueprint": {
+      "title": "An automation runs an imported copy of a N.I.N.A. blueprint",
+      "description": "`{imported}` is a copy of a N.I.N.A. blueprint imported from GitHub, and these automations still use it: {automations}. Nothing updates an imported copy, so they miss every fix made to the blueprint since it was imported.\n\nThe integration installs its own copy, `{managed}`, and updates it with each release. Open each automation, choose **⋮ → Edit in YAML**, change `path: {imported}` to `path: {managed}`, and save. Every input you set carries over.\n\nThen restart Home Assistant: until it restarts, an automation whose blueprint changed only in its description or comments still reports the old copy, so this repair stays open and Home Assistant refuses to delete that copy. After the restart, delete `{imported}` under **Settings → Automations & scenes → Blueprints**."
+    }
   }
 }

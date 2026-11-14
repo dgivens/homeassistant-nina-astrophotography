@@ -88,7 +88,7 @@ along with the rest of HACS.
 The Marketplace (or HACS) offers each new release as an update. Updating a
 loaded integration takes effect after a restart; the Marketplace raises a
 repair with a restart button. Update a manual install by replacing the folder
-and restarting.
+and restarting. The [blueprints](#blueprints) update with the integration.
 
 ## Setup
 
@@ -284,21 +284,34 @@ lovelace:
 
 ## Blueprints
 
-To add one, go to **Settings → Automations & Scenes → Blueprints → Import
-Blueprint** and paste its URL from the table. Then click **Create automation**
-on the imported blueprint and pick your rig's entities.
+The integration installs these blueprints itself, so they are already under
+**Settings → Automations & Scenes → Blueprints**. Click **Create automation**
+on one and pick your rig's entities.
 
 | Blueprint | What it does |
 |---|---|
-| [Unsafe conditions abort](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/weather_abort.yaml) | When the safety monitor reports unsafe or stops reporting: stop the sequence, park, warm the camera and, if you enable it, close the dome once the mount confirms park — given the shutter status, it alerts if the dome does not close. Can resume when conditions clear. Notifies when N.I.N.A. itself stops answering, soonest with the rig's Reachable sensor. |
-| [Session startup](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/session_startup.yaml) | At a set time, if the safety monitor reads safe: unpark, optionally open the dome, cool the camera and wait out the ramp, check safety again, then load a named sequence (or keep the loaded one) and start it. It leaves tracking to the sequence's first slew. |
-| [Session shutdown](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/session_shutdown.yaml) | At a set time, first waits up to two hours for the sequence to finish (on by default), then stops it if it's still running, parks, optionally closes the dome over a parked mount — alerting if it does not close — and warms the camera. |
-| [Meridian flip warning](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/meridian_flip_warning.yaml) | Notifies before a meridian flip, when it starts, and when it finishes. |
-| [Guiding alert](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/guiding_alert.yaml) | Notifies, and optionally runs autofocus, when guiding RMS stays high. |
-| [Imaging stall alert](https://github.com/dgivens/homeassistant-nina-astrophotography/blob/main/blueprints/automation/nina_astrophotography/imaging_stall_alert.yaml) | Notifies when frames stop for a bad reason (N.I.N.A. unreachable, mount parked mid-sequence, no frames), and clears when they resume. [Details](docs/reference.md#the-imaging-stall-alert-blueprint). |
+| [Unsafe conditions abort](custom_components/nina_astrophotography/blueprints/weather_abort.yaml) | When the safety monitor reports unsafe or stops reporting: stop the sequence, park, warm the camera and, if you enable it, close the dome once the mount confirms park — given the shutter status, it alerts if the dome does not close. Can resume when conditions clear. Notifies when N.I.N.A. itself stops answering, soonest with the rig's Reachable sensor. |
+| [Session startup](custom_components/nina_astrophotography/blueprints/session_startup.yaml) | At a set time, if the safety monitor reads safe: unpark, optionally open the dome, cool the camera and wait out the ramp, check safety again, then load a named sequence (or keep the loaded one) and start it. It leaves tracking to the sequence's first slew. |
+| [Session shutdown](custom_components/nina_astrophotography/blueprints/session_shutdown.yaml) | At a set time, first waits up to two hours for the sequence to finish (on by default), then stops it if it's still running, parks, optionally closes the dome over a parked mount — alerting if it does not close — and warms the camera. |
+| [Meridian flip warning](custom_components/nina_astrophotography/blueprints/meridian_flip_warning.yaml) | Notifies before a meridian flip, when it starts, and when it finishes. |
+| [Guiding alert](custom_components/nina_astrophotography/blueprints/guiding_alert.yaml) | Notifies, and optionally runs autofocus, when guiding RMS stays high. |
+| [Imaging stall alert](custom_components/nina_astrophotography/blueprints/imaging_stall_alert.yaml) | Notifies when frames stop for a bad reason (N.I.N.A. unreachable, mount parked mid-sequence, no frames), and clears when they resume. [Details](docs/reference.md#the-imaging-stall-alert-blueprint). |
 
-Alternatively, copy the `blueprints/automation/nina_astrophotography/` folder
-into `config/blueprints/automation/` and reload automations.
+They live in `config/blueprints/automation/nina_astrophotography/`, and each
+start of Home Assistant brings them up to the installed release, so every
+automation built from one picks up its fixes without you doing anything. An
+input a release has shipped keeps its name, and a new one comes with a
+default, so an automation keeps working across updates.
+
+That folder belongs to the integration: an edit to a file in it is overwritten
+by the next update. To change what an automation does, open it and choose
+**⋮ → Take control**, which turns it into an ordinary automation you can edit
+and which no update touches.
+
+A copy imported from GitHub, under `config/blueprints/automation/dgivens/`, is
+never updated. An automation still using one raises a repair saying how to
+move it onto the installed copy. Restart Home Assistant after moving them:
+until then the repair may stay open and the old copy may refuse to delete.
 
 ## Actions
 
@@ -560,9 +573,9 @@ behind, pointing at a route nothing serves.
    `/nina_astrophotography_static/` entries yourself.
 2. **Remove the cards** from your dashboards. A card left behind shows
    "Custom element doesn't exist".
-3. **Delete the automations** you built from the blueprints, then the
-   blueprints themselves under **Settings → Automations & Scenes →
-   Blueprints**, or delete `config/blueprints/automation/nina_astrophotography/`.
+3. **Delete the automations** you built from the blueprints, then delete
+   `config/blueprints/automation/nina_astrophotography/`, and any copies you
+   imported under `config/blueprints/automation/dgivens/`.
 4. **Remove the integration's files**: remove N.I.N.A. Astrophotography in
    **Settings → Marketplace** (or HACS), or delete
    `config/custom_components/nina_astrophotography/` if you installed it by

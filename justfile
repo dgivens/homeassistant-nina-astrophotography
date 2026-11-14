@@ -79,20 +79,12 @@ clean:
     rm -rf .pytest_cache .hypothesis
     rm -f .coverage .coverage.* coverage.json
 
-# Rsync the integration, including its Lovelace cards, to a running Home
-# Assistant instance for manual testing.
+# Rsync the integration, including its Lovelace cards and blueprints, to a
+# running Home Assistant instance for manual testing.
 deploy:
     # --delete is safe here: the target directory belongs entirely to this integration.
     rsync -rv --delete \
         --exclude '__pycache__' --exclude '*.pyc' \
         custom_components/nina_astrophotography/ \
         {{ ha_host }}:{{ ha_config }}/custom_components/nina_astrophotography/
-    @echo "Deployed. Restart Home Assistant (or reload the integration) to pick it up."
-
-# Sync the automation blueprints.
-deploy-blueprints:
-    # HA files an imported blueprint under the GitHub user's folder, not the repo's.
-    rsync -v blueprints/automation/nina_astrophotography/*.yaml \
-        {{ ha_host }}:{{ ha_config }}/blueprints/automation/dgivens/
-
-deploy-all: deploy deploy-blueprints
+    @echo "Deployed. Restart Home Assistant (or reload the integration) to pick it up; the blueprints update only on a restart."
