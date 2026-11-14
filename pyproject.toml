@@ -15,6 +15,12 @@ dependencies = []
 # pip-installed, so there is nothing to build.
 package = false
 default-groups = ["test"]
+# Home Assistant hard-pins Pillow, and pytest-homeassistant-custom-component
+# hard-pins Home Assistant, so Pillow cannot move until that package ships a
+# release for a newer Home Assistant. Pillow is test-only here: the integration
+# declares no requirements and never imports it. Drop this once the pinned
+# Home Assistant itself requires Pillow 13 (2026.11 does).
+override-dependencies = ["pillow==13.0.0"]
 
 [dependency-groups]
 # The fast suite. Deliberately Home-Assistant-free: the modules it covers have
