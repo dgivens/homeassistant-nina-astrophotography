@@ -108,14 +108,16 @@ class NinaFlatLight(NinaEntity, LightEntity):
         """Scale HA's 1-255 into driver units, refusing anything outside it.
 
         N.I.N.A. would clamp it silently; HA's light schema clamps first, so
-        this is a guard.
+        this is a guard. Every level stays above the driver's minimum, for
+        the reason `dimmest_level` gives.
         """
         if not 1 <= ha_brightness <= _HA_MAX:
             raise ServiceValidationError(
                 f"Brightness must be between 1 and {_HA_MAX}, got {ha_brightness}"
             )
         low, high = self._range or (0.0, 0.0)
-        return round(low + (ha_brightness / _HA_MAX) * (high - low))
+        scaled = round(low + (ha_brightness / _HA_MAX) * (high - low))
+        return max(scaled, dimmest_level((low, high)))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         # Never fall back to full: an idle panel's brightness scales to 0.

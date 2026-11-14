@@ -67,6 +67,18 @@ async def test_a_bare_turn_on_does_not_go_to_full_output(
     assert sent.brightness == 16  # round(1 / 255 * 4096): HA level 1, the dim default
 
 
+async def test_a_bare_turn_on_of_a_narrow_range_panel_stays_above_its_minimum(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """The simulator panel's range is 0-100, where level 1 of 255 rounds to 0:
+    dark on an ASCOM panel, and the set-light after it lights the panel at
+    MaxBrightness.
+    """
+    await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+    await _turn_on(hass)
+    assert rig.sent[0] == ("/equipment/flatdevice/set-brightness", {"brightness": 1})
+
+
 async def test_a_bare_turn_on_restores_the_last_level_used(
     hass: HomeAssistant, flat_panel_entry, sent
 ) -> None:
