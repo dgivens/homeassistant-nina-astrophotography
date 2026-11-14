@@ -335,6 +335,13 @@ How a flat run shows up elsewhere:
   own light toggle included, comes on at full brightness. A panel on one of
   N.I.N.A.'s native drivers, such as Alnitak's or Pegasus's, keeps its light as
   it is. Use `light.<instance>_flat_panel_light` to turn the panel on or off.
+- Turning the light on, or `flat_panel_set_light`, sends the brightness and
+  waits for the panel to report it, which takes a few seconds: N.I.N.A. reads
+  the panel once per device polling interval. An ASCOM or Alpaca panel is lit
+  by the brightness itself; a native one is then switched on. A panel that
+  does not report the brightness within 30 seconds is
+  refused with an error and not switched on, though an ASCOM or Alpaca panel
+  may still come on at that brightness.
 
 ## Autofocus
 

@@ -86,6 +86,16 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ---
 ### Fixed
 
+- **An ASCOM or Alpaca flat panel comes on at the brightness asked for, not
+  at full output, the first time after N.I.N.A. connects it** (#285).
+  N.I.N.A. runs a brightness and a light-on concurrently, and a light-on that
+  runs first lights the panel at `MaxBrightness`. So
+  `light.<instance>_flat_panel_light` and `flat_panel_set_light` send the
+  brightness alone and wait for the panel to report it: an ASCOM or Alpaca
+  panel is lit by it, and a native one is switched on after it. A panel that
+  does not report it within 30 seconds is refused, and `flat_panel_set_light`
+  sends no light-on to a panel that is already lit.
+
 - **`number.<instance>_flat_panel_brightness` is unavailable on a panel
   reporting no brightness range** (#290), such as a cover-only panel, rather
   than offering Home Assistant's default 0–100 slider and refusing every

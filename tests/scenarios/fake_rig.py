@@ -13,7 +13,7 @@ not appear in the URL: the client passes them to `session.get` separately.
 Imports nothing from Home Assistant: `tests/unit` uses this too.
 """
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 
 from helpers import FakeResponse, FakeSession, ok
 
@@ -65,6 +65,7 @@ class FakeRig(FakeSession):
         self.states = states
         self._sequence = list(sequence or ())
         self.sent: list[tuple[str, dict | None]] = []
+        self._reactions: dict[str, Callable[[], None]] = {}
         self.state_name = ""
         self.goto(start)
         self._step = self._sequence.index(start) if start in self._sequence else -1
@@ -82,6 +83,25 @@ class FakeRig(FakeSession):
         """
         state = {**self.states[self.state_name], path: envelope}
         self.states = {**self.states, self.state_name: state}
+
+    def serve_device(self, device: str, block: dict | None) -> None:
+        """Serve the current state with one `/equipment/info` device block
+        updated by `block`, or left out when `block` is None.
+        """
+        envelope = self.states[self.state_name]["/equipment/info"]
+        assert isinstance(envelope, dict)
+        response = dict(envelope["Response"])
+        if block is None:
+            del response[device]
+        else:
+            response[device] = {**response[device], **block}
+        self.respond("/equipment/info", {**envelope, "Response": response})
+
+    def after(self, command: str, react: Callable[[], None]) -> None:
+        """Run `react` once `command` is sent: the rig carrying it out, for
+        the poll to read back.
+        """
+        self._reactions[command] = react
 
     def advance(self) -> str:
         """Move to the next state of the ordered sequence, and name it."""
@@ -138,6 +158,8 @@ class FakeRig(FakeSession):
         value = self._lookup(path, params)
         if _is_command(path):
             self.sent.append((path, params))
+            if (react := self._reactions.pop(path, None)) is not None:
+                react()
             if value is None:
                 value = ok()
         if value is None:

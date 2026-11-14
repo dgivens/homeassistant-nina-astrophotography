@@ -368,11 +368,20 @@ async def cover_only_flat_panel_entry(set_up_with_flat_device):
 
 
 class _Sent:
-    """Records the flat panel commands the entity sends, in order."""
+    """Records the flat panel commands the entity sends, in order, and has the
+    panel read back what they did.
+
+    `lights_with_brightness` is the driver: an ASCOM panel is lit by any
+    brightness above 0, a native one keeps its light as it is. A `None` panel
+    never reports a brightness at all.
+    """
 
     def __init__(self, monkeypatch) -> None:
         self._monkeypatch = monkeypatch
         self.calls: list[tuple[str, object]] = []
+        self.lights_with_brightness: bool | None = True
+        self._readings: dict[str, object] = {}
+        self._reads_back = False
 
     @property
     def brightness(self):
@@ -387,6 +396,27 @@ class _Sent:
     def patch(self, name: str, method) -> None:
         self._monkeypatch.setattr(NinaClientV2, name, method)
 
+    def land(self, **readings) -> None:
+        """Have every later `/equipment/info` read show `readings` on the panel.
+
+        Wraps whatever read is in force at the first command, so it follows
+        the snapshot the test set up with.
+        """
+        self._readings.update(readings)
+        if self._reads_back:
+            return
+        self._reads_back = True
+        read = NinaClientV2.get_equipment
+
+        async def get_equipment(client):
+            snapshot = await read(client)
+            if snapshot.flat_device is None:
+                return snapshot
+            panel = replace(snapshot.flat_device, **self._readings)
+            return replace(snapshot, flat_device=panel)
+
+        self.patch("get_equipment", get_equipment)
+
 
 @pytest.fixture
 def sent(monkeypatch) -> _Sent:
@@ -395,9 +425,14 @@ def sent(monkeypatch) -> _Sent:
 
     async def set_flat_brightness(self, brightness: int) -> None:
         recorder.calls.append(("set_flat_brightness", brightness))
+        if recorder.lights_with_brightness is None:
+            return
+        lit = {"light_on": True} if recorder.lights_with_brightness else {}
+        recorder.land(brightness=float(brightness), **lit)
 
     async def set_flat_light(self, on: bool) -> None:
         recorder.calls.append(("set_flat_light", on))
+        recorder.land(light_on=on)
 
     recorder.patch("set_flat_brightness", set_flat_brightness)
     recorder.patch("set_flat_light", set_flat_light)

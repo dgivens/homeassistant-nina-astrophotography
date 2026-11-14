@@ -551,6 +551,7 @@ async def _handle_flat_panel_set_light(call: ServiceCall) -> None:
     in this process, or at `MaxBrightness` when it has set none; so switching on
     a panel reporting no range is refused rather than sent. An ASCOM panel off
     reports brightness 0, so the level kept is only a lit panel's own.
+    `light.async_light_at` says when the `set-light` follows.
     """
     coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
     client, panel = coordinator.client, coordinator.data.snapshot.flat_device
@@ -581,8 +582,7 @@ async def _handle_flat_panel_set_light(call: ServiceCall) -> None:
         level = round(panel.brightness)
     else:
         level = light.dimmest_level((low, high))
-    await client.set_flat_brightness(level)
-    await client.set_flat_light(True)
+    await light.async_light_at(client, level)
 
 
 async def _handle_flat_panel_set_brightness(call: ServiceCall) -> None:

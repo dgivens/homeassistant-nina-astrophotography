@@ -540,7 +540,7 @@
     },
     "flat_panel_set_light": {
       "name": "Set Flat Panel Light",
-      "description": "Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest; never at full output. Refused while the panel reports no brightness range.",
+      "description": "Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest; never at full output. The light is switched on only once the panel reports that brightness, and refused if it does not within 30 seconds or reports no brightness range.",
       "fields": {
         "light_on": {
           "name": "Light On",
@@ -645,6 +645,9 @@
     },
     "entry_not_loaded": {
       "message": "N.I.N.A. instance {instance} is not loaded, so the action was not sent."
+    },
+    "flat_panel_brightness_not_reported": {
+      "message": "The flat panel did not report brightness {level} within {seconds} seconds, so its light was not switched on: N.I.N.A. could light it at full output. The brightness was sent, and an ASCOM or Alpaca panel may still come on at it. A device polling interval set long in N.I.N.A.'s options slows the report."
     },
     "flat_panel_brightness_while_off": {
       "message": "A brightness lights the panel, so it is refused when switching the light off. The action was not sent."

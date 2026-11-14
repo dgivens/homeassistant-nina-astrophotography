@@ -25,6 +25,7 @@ import voluptuous as vol
 import yaml
 
 import custom_components.nina_astrophotography as integration
+from custom_components.nina_astrophotography import light
 from custom_components.nina_astrophotography.const import DOMAIN
 from ha.registry import get_device
 from helpers import failure
@@ -436,19 +437,6 @@ async def test_a_value_at_its_limit_is_sent(
     assert rig.sent[-1][0] == path
 
 
-def _serve_with(rig, device: str, block: dict | None) -> None:
-    """Serve the current state with one `/equipment/info` device block
-    replaced, or left out when `block` is None.
-    """
-    envelope = rig.states[rig.state_name]["/equipment/info"]
-    response = dict(envelope["Response"])
-    if block is None:
-        del response[device]
-    else:
-        response[device] = {**response[device], **block}
-    rig.respond("/equipment/info", {**envelope, "Response": response})
-
-
 @pytest.mark.parametrize(
     ("state", "device", "block", "service", "data"),
     [
@@ -505,7 +493,7 @@ async def test_a_device_that_reports_no_limit_leaves_the_value_to_nina(
     """
     rig.goto(state)
     if device is not None:
-        _serve_with(rig, device, block)
+        rig.serve_device(device, block)
     await set_up_at(hass, config_entry, rig, state)
 
     await _call(hass, service, **data)
@@ -524,7 +512,7 @@ async def test_a_slot_whose_name_another_slot_shares_is_sent(
         {"Name": "Empty", "Id": 2},
         {"Name": "Ha", "Id": 3},
     ]
-    _serve_with(rig, "FilterWheel", {"AvailableFilters": filters})
+    rig.serve_device("FilterWheel", {"AvailableFilters": filters})
     await set_up_at(hass, config_entry, rig, "imaging")
 
     await _call(hass, "filterwheel_change_filter", filter_index=1)
@@ -536,32 +524,22 @@ _SET_BRIGHTNESS = "/equipment/flatdevice/set-brightness"
 _SET_LIGHT = ("/equipment/flatdevice/set-light", {"on": "true"})
 
 
+def _reports(rig, level: int, *, lit: bool) -> None:
+    """Once the brightness is sent, the panel reads `level`, lit by it or not."""
+    rig.after(
+        _SET_BRIGHTNESS,
+        lambda: rig.serve_device("FlatDevice", {"Brightness": level, "LightOn": lit}),
+    )
+
+
+@pytest.mark.synthetic
 @pytest.mark.parametrize(
-    ("block", "data", "sent"),
+    ("block", "data", "level"),
     [
-        pytest.param(
-            {}, {}, [(_SET_BRIGHTNESS, {"brightness": 16}), _SET_LIGHT], id="idle"
-        ),
-        pytest.param(
-            {"Brightness": 2048, "LightOn": True},
-            {},
-            [(_SET_BRIGHTNESS, {"brightness": 2048}), _SET_LIGHT],
-            id="already-lit",
-            marks=pytest.mark.synthetic,
-        ),
-        pytest.param(
-            {"Brightness": 4096},
-            {},
-            [(_SET_BRIGHTNESS, {"brightness": 16}), _SET_LIGHT],
-            id="off-holding-the-maximum",
-            marks=pytest.mark.synthetic,
-        ),
-        pytest.param(
-            {},
-            {"brightness": 1024},
-            [(_SET_BRIGHTNESS, {"brightness": 1024}), _SET_LIGHT],
-            id="brightness-given",
-        ),
+        pytest.param({}, {}, 16, id="idle"),
+        pytest.param({"Brightness": 2048, "LightOn": True}, {}, 2048, id="already-lit"),
+        pytest.param({"Brightness": 4096}, {}, 16, id="off-holding-the-maximum"),
+        pytest.param({}, {"brightness": 1024}, 1024, id="brightness-given"),
     ],
 )
 async def test_switching_the_panel_on_does_not_go_to_full_output(
@@ -571,20 +549,73 @@ async def test_switching_the_panel_on_does_not_go_to_full_output(
     set_up_at,
     block: dict,
     data: dict,
-    sent: list,
+    level: int,
 ) -> None:
     """A bare `set-light?on=true` lights the panel at the last level N.I.N.A.
     set, or at `MaxBrightness`, so a brightness always goes first: the one
     given, a lit panel's own, or the dimmest — 16 of this panel's 4096.
     """
-    _serve_with(rig, "FlatDevice", block)
+    rig.serve_device("FlatDevice", block)
     await set_up_at(hass, config_entry, rig, "imaging")
+    _reports(rig, level, lit=True)
 
     await _call(hass, "flat_panel_set_light", light_on=True, **data)
+
+    assert rig.sent[0] == (_SET_BRIGHTNESS, {"brightness": level})
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("lit", "sent"),
+    [
+        pytest.param(True, [(_SET_BRIGHTNESS, {"brightness": 16})], id="ascom"),
+        pytest.param(
+            False, [(_SET_BRIGHTNESS, {"brightness": 16}), _SET_LIGHT], id="native"
+        ),
+    ],
+)
+async def test_the_light_is_switched_on_only_once_the_panel_holds_the_brightness(
+    hass: HomeAssistant, config_entry, rig, set_up_at, lit: bool, sent: list
+) -> None:
+    """N.I.N.A. runs the two commands concurrently, and an ASCOM panel's
+    light-on that overtakes the brightness comes on at `MaxBrightness`. A
+    brightness lights an ASCOM panel by itself; a native driver's needs the
+    light-on.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging")
+    _reports(rig, 16, lit=lit)
+
+    await _call(hass, "flat_panel_set_light", light_on=True)
 
     assert rig.sent == sent
 
 
+@pytest.mark.parametrize(
+    "block",
+    [
+        pytest.param({}, id="off"),
+        # Until N.I.N.A. next reads the panel, it reports the state before the
+        # command: lit, after a switch-off just sent.
+        pytest.param(
+            {"Brightness": 2048, "LightOn": True},
+            id="lit-at-another-level",
+            marks=pytest.mark.synthetic,
+        ),
+    ],
+)
+async def test_a_panel_that_never_reports_the_brightness_is_not_switched_on(
+    hass: HomeAssistant, config_entry, rig, set_up_at, monkeypatch, block: dict
+) -> None:
+    monkeypatch.setattr(light, "_SETTLE_TIMEOUT", 0)
+    rig.serve_device("FlatDevice", block)
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    with pytest.raises(HomeAssistantError, match="did not report brightness 16"):
+        await _call(hass, "flat_panel_set_light", light_on=True, brightness=16)
+    assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 16})]
+
+
+@pytest.mark.synthetic
 async def test_the_dimmest_level_lights_a_panel_with_a_narrow_range(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
@@ -593,6 +624,7 @@ async def test_the_dimmest_level_lights_a_panel_with_a_narrow_range(
     MaxBrightness.
     """
     await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+    _reports(rig, 1, lit=True)
 
     await _call(hass, "flat_panel_set_light", light_on=True)
 
@@ -603,7 +635,7 @@ async def test_the_dimmest_level_lights_a_panel_with_a_narrow_range(
 async def test_switching_a_lit_panel_off_sends_no_brightness(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
-    _serve_with(rig, "FlatDevice", {"Brightness": 2048, "LightOn": True})
+    rig.serve_device("FlatDevice", {"Brightness": 2048, "LightOn": True})
     await set_up_at(hass, config_entry, rig, "imaging")
 
     await _call(hass, "flat_panel_set_light", light_on=False)
@@ -675,7 +707,7 @@ async def test_a_flat_panel_command_it_cannot_carry_out_safely_is_refused(
 ) -> None:
     if block is not None:
         rig.goto(state)
-        _serve_with(rig, "FlatDevice", block)
+        rig.serve_device("FlatDevice", block)
     await set_up_at(hass, config_entry, rig, state)
 
     service, fields = data

@@ -218,7 +218,9 @@ flat_panel_set_light:
   description: >-
     Switch the flat panel's light on or off. It comes on at the brightness
     given, else at the level it is already lit at, else at its dimmest; never
-    at full output. Refused while the panel reports no brightness range.
+    at full output. The light is switched on only once the panel reports that
+    brightness, and refused if it does not within 30 seconds or reports no
+    brightness range.
   target:
     entity:
       integration: nina_astrophotography
