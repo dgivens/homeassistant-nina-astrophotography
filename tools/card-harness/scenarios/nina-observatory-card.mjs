@@ -34,6 +34,7 @@ const COVER_STATE = "sensor.n_i_n_a_flat_panel_cover_state";
 const COVER = "switch.n_i_n_a_flat_panel_cover";
 const FLAT_LIGHT = "light.n_i_n_a_flat_panel_light";
 const FLAT_LEVEL = "number.n_i_n_a_flat_panel_brightness";
+const BEHIND_COVER = "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover";
 
 // The cover's sensor and switch read the same cover, so a scenario moves both.
 const cover = (dump, sensor, sw) =>
@@ -180,6 +181,16 @@ export const scenarios = {
 
   // A red chip and both buttons. The rig's panel has not failed.
   flat_panel_cover_error: { hass: (dump) => cover(dump, "Error", "unknown").build() },
+
+  // A light saved behind the closed cover: a red chip, and the warning kept
+  // when the card folds. The rig's newest frame after its close is a flat.
+  flat_panel_lights_behind_cover: {
+    hass: (dump) => rig(dump, FLATS).override(BEHIND_COVER, "on").build(),
+  },
+  flat_panel_lights_behind_cover_folded: {
+    hass: (dump) => rig(dump, FLATS).override(BEHIND_COVER, "on").build(),
+    folded: ["card"],
+  },
 
   // The cover's diagnostic sensor disabled: the switch says closed.
   flat_panel_cover_state_disabled: {
