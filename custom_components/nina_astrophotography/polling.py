@@ -131,7 +131,8 @@ class CoverClosedLatch:
             or newest.identity == self._before
         ):
             return False
-        # `date` is the save time, so this start is late by the download.
+        # `date` is the save time, so this start is late by the download and
+        # the save: a light shorter than those can still be flagged.
         started = newest.date - timedelta(seconds=newest.exposure_time or 0)
         return closed_at is None or started >= closed_at
 

@@ -334,10 +334,11 @@ How a flat run shows up elsewhere:
   before N.I.N.A. reported the cover closed but saved after. It goes `off`
   when the cover opens or a frame of another type follows, and after a Home
   Assistant restart until the next light. It relies on the driver reporting
-  the cover `Closed`: a cover reading `Unknown` or `Error` cannot turn it on. A panel switched off or
-  disconnected while imaging reports no cover, so the sensor is `unavailable`
-  and cannot warn; when the panel reconnects reading closed, the lights taken
-  before then do not turn it on, and only a light after that does.
+  the cover `Closed`: a cover reading `Unknown` or `Error` cannot turn it on.
+  A panel switched off or disconnected while imaging reports no cover, so the
+  sensor is `unavailable` and cannot warn; when the panel reconnects reading
+  closed, the lights taken before then do not turn it on, and only a light
+  after that does.
 - `number.<instance>_flat_panel_brightness` sets only the brightness, in the
   panel's own units. On an ASCOM or Alpaca panel that also lights it at any
   level above 0, and 0 darkens it. After the number is set to 0, or N.I.N.A.
