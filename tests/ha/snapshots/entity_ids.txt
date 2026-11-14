@@ -1,5 +1,6 @@
 binary_sensor.n_i_n_a_camera_exposing
 binary_sensor.n_i_n_a_filter_wheel_moving
+binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover
 binary_sensor.n_i_n_a_focuser_autofocus_failed
 binary_sensor.n_i_n_a_focuser_moving
 binary_sensor.n_i_n_a_imaging
