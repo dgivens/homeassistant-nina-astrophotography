@@ -16,7 +16,7 @@ It provides:
 - eight dashboard cards
 - six automation blueprints
 
-![Six of the dashboard cards on a live rig: the observatory and autofocus cards, the weather and sky map cards, and the latest image and frame statistics cards](https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/dashboard.png)
+![The dashboard cards on a live rig imaging Sh2 132: the observatory card above a pier camera, the weather, autofocus and sky map cards, and the live stack, latest image and frame statistics cards](https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/dashboard.png)
 
 This is a maintained fork of
 [C3X0Astro/homeassistant-nina-astrophotography](https://github.com/C3X0Astro/homeassistant-nina-astrophotography),
@@ -212,8 +212,8 @@ type: custom:nina-observatory-card
 | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/observatory.png" alt="Observatory card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/image-panel.png" alt="Latest image card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/sky-map.png" alt="Sky map card" width="260"> |
 | **Weather** | **Autofocus** | **Frame statistics** |
 | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/weather.png" alt="Weather card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/autofocus.png" alt="Autofocus card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/frame-stats.png" alt="Frame statistics card" width="260"> |
-| **Live stack** | | |
-| <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/livestack.png" alt="Live stack card: Sh2 132's R stack at 7 frames, with chips for Latest, G 13 and R 7" width="260"> | | |
+| **Live stack** | **Site camera** | |
+| <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/livestack.png" alt="Live stack card: Sh2 132's R stack at 15 frames, with chips for Latest, G 4 and R 15" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/site-camera.png" alt="Site camera card: a pier camera's all-sky view over the telescope, with an Open link" width="260"> | |
 
 With a dome, the observatory card adds a Dome chip and Open or Close Dome:
 

@@ -15,6 +15,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
+- **The README's dashboard and card samples are current**, taken from a live
+  rig, and the gallery gains the site camera card.
 - **The card harness logs each image a card asks for** (#264), and `Rig.add`
   gives a scenario a row from another integration.
 - **The test VM's stable channel installs Advanced API 2.2.15.3** (#276), and the
@@ -33,6 +35,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 ### Fixed
+
+- **The observatory card shows the last frame's mean ADU as a whole number**,
+  as the latest image card does, rather than every decimal the sensor holds.
 
 - **A screen reader reaches the live stack card's Start/Stop as a control of
   its own** (#262). The button sits beside the header that collapses the

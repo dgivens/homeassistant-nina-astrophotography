@@ -33,6 +33,10 @@ export const scenarios = {
   // Every id resolved, and the equipment up.
   station: { hass: (dump) => rig(dump, UP).build() },
 
+  // A night with frames, which is the only state where Last image has
+  // readings to print.
+  session: { hass: (dump) => rig(dump, "dawn_flats").build() },
+
   // The same rig with no registry, which is the prefix fallback.
   templated: { hass: (dump) => rig(dump, UP).unresolvable().build() },
 
