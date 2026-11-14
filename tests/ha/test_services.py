@@ -487,23 +487,6 @@ def _serve_with(rig, device: str, block: dict | None) -> None:
             id="camera-reports-no-range",
             marks=pytest.mark.synthetic,
         ),
-        pytest.param(
-            "imaging_guiding",
-            None,
-            None,
-            "flat_panel_set_brightness",
-            {"level": 99999},
-            id="panel-disconnected",
-        ),
-        pytest.param(
-            "imaging",
-            "FlatDevice",
-            {"MinBrightness": 0, "MaxBrightness": 0},
-            "flat_panel_set_brightness",
-            {"level": 99999},
-            id="panel-reports-no-range",
-            marks=pytest.mark.synthetic,
-        ),
     ],
 )
 async def test_a_device_that_reports_no_limit_leaves_the_value_to_nina(
@@ -652,6 +635,13 @@ async def test_switching_a_lit_panel_off_sends_no_brightness(
             id="no-range",
             marks=pytest.mark.synthetic,
         ),
+        pytest.param(
+            "imaging",
+            {"MinBrightness": 0, "MaxBrightness": 0},
+            ("flat_panel_set_brightness", {"level": 1024}),
+            id="level-with-no-range",
+            marks=pytest.mark.synthetic,
+        ),
         # Down: N.I.N.A. may connect it before the next poll, and would light
         # it at full output.
         pytest.param(
@@ -659,6 +649,12 @@ async def test_switching_a_lit_panel_off_sends_no_brightness(
             None,
             ("flat_panel_set_light", {"light_on": True}),
             id="disconnected",
+        ),
+        pytest.param(
+            "imaging_guiding",
+            None,
+            ("flat_panel_set_brightness", {"level": 1024}),
+            id="level-while-disconnected",
         ),
         pytest.param(
             "imaging",

@@ -554,7 +554,7 @@
     },
     "flat_panel_set_brightness": {
       "name": "Set Flat Panel Brightness",
-      "description": "Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and switches off at 0; other drivers leave the light as it is.",
+      "description": "Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and switches off at 0; other drivers leave the light as it is. Refused while the panel reports no brightness range.",
       "fields": {
         "level": {
           "name": "Level",
@@ -650,7 +650,7 @@
       "message": "A brightness lights the panel, so it is refused when switching the light off. The action was not sent."
     },
     "flat_panel_no_range": {
-      "message": "The flat panel reports no brightness range, so its light was not switched on: N.I.N.A. could light it at full output."
+      "message": "The flat panel reports no brightness range, so the action was not sent: N.I.N.A. could light it at full output."
     },
     "flat_panel_unsupported": {
       "message": "The flat panel reports no {feature}, so the action was not sent."
@@ -660,9 +660,6 @@
     },
     "no_cooling_setpoint": {
       "message": "The cooler cannot be started: the camera reports no target temperature."
-    },
-    "no_driver_range": {
-      "message": "{entity_id} cannot be set: the driver reports no usable range."
     },
     "no_instance": {
       "message": "No N.I.N.A. instance is loaded, so the action was not sent."

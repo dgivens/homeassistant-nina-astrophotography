@@ -586,11 +586,20 @@ async def _handle_flat_panel_set_light(call: ServiceCall) -> None:
 
 
 async def _handle_flat_panel_set_brightness(call: ServiceCall) -> None:
+    """Set a level within the panel's range, refusing a panel reporting none.
+
+    An ASCOM panel lights at any level above 0 and N.I.N.A. clamps to
+    `MaxBrightness`, so a level sent to a panel whose range is unknown, or that
+    connects before the next poll, could light it at full output.
+    """
     coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
     level = call.data["level"]
     panel = coordinator.data.snapshot.flat_device
-    if panel is not None and panel.brightness_range is not None:
-        _within_device_range("Level", level, "flat panel", *panel.brightness_range)
+    if panel is None or panel.brightness_range is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="flat_panel_no_range"
+        )
+    _within_device_range("Level", level, "flat panel", *panel.brightness_range)
     await coordinator.client.set_flat_brightness(level)
 
 

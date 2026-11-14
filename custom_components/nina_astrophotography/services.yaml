@@ -245,7 +245,8 @@ flat_panel_set_brightness:
   name: Set Flat Panel Brightness
   description: >-
     Set the flat panel's brightness. An ASCOM panel lights at any level above
-    0 and switches off at 0; other drivers leave the light as it is.
+    0 and switches off at 0; other drivers leave the light as it is. Refused
+    while the panel reports no brightness range.
   target:
     entity:
       integration: nina_astrophotography

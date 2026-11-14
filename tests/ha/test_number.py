@@ -88,16 +88,15 @@ async def test_out_of_range_input_is_refused_rather_than_silently_clamped(
     assert rig.sent == []
 
 
-async def test_a_panel_reporting_no_range_is_refused_rather_than_sent_to(
-    hass: HomeAssistant, set_up_with_flat_device, sent
+@pytest.mark.parametrize("entity_id", [BRIGHTNESS, "light.n_i_n_a_flat_panel_light"])
+async def test_a_connected_panel_reporting_no_range_is_unavailable(
+    hass: HomeAssistant, set_up_with_flat_device, entity_id: str
 ) -> None:
-    """A cover-only panel reports Min 0 / Max 0, and every value is in range of
-    an empty range.
+    """A cover-only panel reports Min 0 / Max 0, which maps to no range; the
+    number would otherwise offer Home Assistant's default 0-100.
     """
     await set_up_with_flat_device(brightness_range=None)
-    with pytest.raises(ServiceValidationError):
-        await _set(hass, BRIGHTNESS, 0)
-    assert sent.calls == []
+    assert state_of(hass, entity_id).state == "unavailable"
 
 
 async def test_a_set_sends_only_set_brightness_in_the_drivers_own_units(

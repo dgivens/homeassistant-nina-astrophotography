@@ -20,8 +20,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `brightness`, and `flat_panel_set_brightness` sets a `level`. Levels are in
   the panel's own units and held to the range it reports. The light comes on
   at the brightness given, else at the level it is already lit at, else at its
-  dimmest, and switching on a panel reporting no range is refused, since
-  N.I.N.A. could light it at full output. A panel reporting no cover or no
+  dimmest, and switching on or setting a level on a panel reporting no range
+  is refused, since N.I.N.A. could light it at full output. A panel reporting no cover or no
   light has that action refused.
 - **The observatory card shows the flat panel** (#269): a Flat Panel chip and
   section with the cover, the light and the brightness in the panel's own
@@ -85,6 +85,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 ### Fixed
+
+- **`number.<instance>_flat_panel_brightness` is unavailable on a panel
+  reporting no brightness range** (#290), such as a cover-only panel, rather
+  than offering Home Assistant's default 0–100 slider and refusing every
+  value. `number.<instance>_camera_usb_limit` does the same on a camera
+  reporting no USB limit range. As for any unavailable entity, Home Assistant
+  skips a `number.set_value` on it rather than raising an error.
 
 - **`light.<instance>_flat_panel_light` comes on dim on a panel whose
   brightness range is under 128** (#284), such as N.I.N.A.'s simulator panel

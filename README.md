@@ -333,7 +333,7 @@ command, not when the equipment finishes.
 | `filterwheel_change_filter` | Change filter |
 | `flat_panel_set_cover` | Open or close the flat panel's cover. It does not check whether a sequence is running, and closing it mid-exposure ruins the frame |
 | `flat_panel_set_light` | Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest, and never at full output; a panel reporting no brightness range is refused |
-| `flat_panel_set_brightness` | Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and goes dark at 0; a native Alnitak or Pegasus driver leaves the light as it is |
+| `flat_panel_set_brightness` | Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and goes dark at 0; a native Alnitak or Pegasus driver leaves the light as it is. A panel reporting no brightness range is refused |
 | `guider_start` / `guider_stop` | Start / stop guiding |
 | `rotator_move` | Rotate to a sky position angle; refused until a plate solve syncs the rotator |
 | `rotator_move_mechanical` | Rotate to a mechanical angle within the rotator's range |
@@ -373,8 +373,10 @@ which would silently clamp them. That holds for the fixed limits above and for
 the ranges the connected equipment reports: the camera's maximum exposure and
 its gain range, the filter wheel's slots, and the flat panel's brightness
 range. A panel reporting no cover or no light has that action refused.
-Equipment that reports no range, or is disconnected, leaves the value to
-N.I.N.A., as does the focuser's upper limit.
+Other equipment that reports no range, or is disconnected, leaves the value to
+N.I.N.A., as does the focuser's upper limit; a flat panel reporting no
+brightness range, which a disconnected one does too, has a brightness or a
+switch on refused, since N.I.N.A. could light it at full output.
 
 The rotator's range is N.I.N.A.'s, from its profile: a full, half or quarter
 turn from a start angle, set in the rotator's settings in N.I.N.A., and it can
