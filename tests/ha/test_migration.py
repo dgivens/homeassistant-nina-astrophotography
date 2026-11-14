@@ -11,6 +11,7 @@ from homeassistant.helpers import entity_registry as er
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.nina_astrophotography.config_flow import NinaConfigFlow
 from custom_components.nina_astrophotography.const import (
     CONF_HOST,
     CONF_INSTANCE_NAME,
@@ -106,9 +107,11 @@ async def test_an_upgraded_entry_typed_in_capitals_still_blocks_a_duplicate(
 
 
 def _register_rotator_rows_disabled(
-    entity_registry: er.EntityRegistry, entry: MockConfigEntry, user_disabled: str
+    entity_registry: er.EntityRegistry,
+    entry: MockConfigEntry,
+    user_disabled: str | None,
 ) -> None:
-    """As an earlier version left them, with one row the user disabled besides."""
+    """As an earlier version left them, less any row the user disabled."""
     for entity_id, suffix in ROTATOR_ROWS.items():
         domain, object_id = entity_id.split(".")
         entity_registry.async_get_or_create(
@@ -123,23 +126,24 @@ def _register_rotator_rows_disabled(
         )
 
 
-def _enabled(entity_registry: er.EntityRegistry) -> set[str]:
-    return {
-        row.entity_id
-        for row in entity_registry.entities.values()
-        if row.entity_id in ROTATOR_ROWS and row.disabled_by is None
-    }
+def _reporting(hass: HomeAssistant) -> set[str]:
+    """The rows with a state: enabled, and the integration's own entity."""
+    return {entity_id for entity_id in ROTATOR_ROWS if hass.states.get(entity_id)}
 
 
-async def test_an_upgrade_enables_the_rotator_rows_the_card_reads(
-    hass: HomeAssistant, config_entry: MockConfigEntry, rig, entity_registry
+@pytest.mark.parametrize("user_disabled", [None, *ROTATOR_ROWS])
+async def test_an_upgrade_enables_the_rotator_rows_the_user_did_not_disable(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    rig,
+    entity_registry,
+    user_disabled: str | None,
 ) -> None:
-    """A row the user disabled stays so."""
     config_entry.add_to_hass(hass)
-    synced, mechanical = ROTATOR_ROWS
-    _register_rotator_rows_disabled(entity_registry, config_entry, user_disabled=synced)
+    _register_rotator_rows_disabled(entity_registry, config_entry, user_disabled)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
-    assert _enabled(entity_registry) == {mechanical}
+    await hass.async_block_till_done()
+    assert _reporting(hass) == set(ROTATOR_ROWS) - {user_disabled}
 
 
 async def test_an_upgrade_honours_an_entry_that_disables_new_entities(
@@ -147,7 +151,15 @@ async def test_an_upgrade_honours_an_entry_that_disables_new_entities(
 ) -> None:
     """Home Assistant records that system option as `disabled_by` integration."""
     config_entry.add_to_hass(hass)
-    _register_rotator_rows_disabled(entity_registry, config_entry, user_disabled="")
+    _register_rotator_rows_disabled(entity_registry, config_entry, None)
     hass.config_entries.async_update_entry(config_entry, pref_disable_new_entities=True)
     assert await hass.config_entries.async_setup(config_entry.entry_id)
-    assert _enabled(entity_registry) == set()
+    await hass.async_block_till_done()
+    assert _reporting(hass) == set()
+
+
+async def test_an_upgraded_entry_is_at_the_current_minor_version(
+    loaded_entry: MockConfigEntry,
+) -> None:
+    """Or its migration runs again at every start."""
+    assert loaded_entry.minor_version == NinaConfigFlow.MINOR_VERSION

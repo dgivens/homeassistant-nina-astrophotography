@@ -75,6 +75,7 @@ async def test_the_usb_limit_range_is_this_cameras_own(
     [
         (BRIGHTNESS, 99999),
         ("number.n_i_n_a_rotator_position", 400),
+        (MECHANICAL_POSITION, 400),
         ("number.n_i_n_a_camera_target_temperature", -80),
     ],
 )
@@ -179,7 +180,11 @@ async def test_the_mechanical_position_ships_as_an_enabled_control(
     loaded_entry: MockConfigEntry, entity_registry
 ) -> None:
     """The observatory card reads it."""
-    entry = entity_registry.async_get(MECHANICAL_POSITION)
+    entry = entity_registry.async_get(
+        registered(
+            NUMBER_DOMAIN, entity_registry, loaded_entry, "rotator_mechanical_position"
+        )
+    )
     assert (entry.entity_category, entry.disabled_by) == (None, None)
 
 

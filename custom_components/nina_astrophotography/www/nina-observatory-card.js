@@ -451,7 +451,6 @@ class NinaObservatoryCard extends HTMLElement {
     // Unsynced, N.I.N.A. reports the mechanical angle as the sky angle.
     const rotSky       = isOn(h, this._eid("binary_sensor", "rotator_synced"))
       ? numState(h, rotatorId, 1) : "—";
-    // Ships disabled.
     const rotMech      = numState(h, this._eid("number", "rotator_mechanical_position"), 1);
 
     // NaN rather than 0 when there is no reading: a missing RMS rendered as

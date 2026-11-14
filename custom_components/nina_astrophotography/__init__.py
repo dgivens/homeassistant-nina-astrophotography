@@ -268,6 +268,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bo
     versions registered disabled. Only rows the integration disabled, and not
     on an entry whose system options disable new entities, which Home
     Assistant records the same way: a row a user disabled is left alone.
+    Home Assistant reloads the entry 30 s after a row is enabled.
     """
     if entry.version == 1 and entry.minor_version < 2:
         data = {k: v for k, v in entry.data.items() if k != CONF_POLL_INTERVAL}
