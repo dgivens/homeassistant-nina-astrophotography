@@ -198,7 +198,7 @@ type: custom:nina-observatory-card
 
 | Card | Shows | Options (all optional) |
 |---|---|---|
-| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, guiding, last frame, and controls. Stop, park, and opening or closing the dome ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | — |
+| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, flat panel, guiding, last frame, and controls. Stop, park, and opening or closing the dome or the flat panel's cover ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | — |
 | `custom:nina-frame-stats-card` | HFR, star count and ADU trends for the session's frames, and a per-filter breakdown | — |
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default: your sequence's "AF After Temperature Change" trigger, else 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, their statistics, and a countdown for the sub being exposed | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85); `lights_only`: show only lights in the image and the strip (default `false`); a browser that presses the card's Lights only button away from this keeps its own choice, unless `show_strip` is off |
@@ -222,6 +222,11 @@ With a dome, the observatory card adds a Dome chip and Open or Close Dome:
 With a rotator, it adds a Rotator chip, the mechanical angle, and the sky
 angle, shown once a plate solve syncs the rotator.
 
+With a flat panel, it adds a Flat Panel chip, whether the cover is open and
+the light on, and the brightness in the panel's own units, and Open or Close
+Flat Cover. A cover part-way, in error or not read offers both. An ASCOM panel
+reads brightness 0 while its light is off.
+
 Tap or click a card's header to collapse the card, or a section's heading,
 such as **ADU range** or **Wind**, to collapse that section. A collapsed
 heading points right; tap it again to expand it. A collapsed card says
@@ -236,7 +241,7 @@ A collapsed card still shows what needs attention:
 
 - **Weather**: the safety status and the dew alert.
 - **Observatory**: a lost or unresponsive link, a meridian flip, a dome
-  shutter error, and, while a sequence runs, a disconnected camera or mount
+  shutter or flat panel cover error, and, while a sequence runs, a disconnected camera or mount
   or stopped guiding. Stop Sequence, Park and Close Dome stay, each while it
   applies, and a collapsed **Controls** section keeps them too.
 - **Autofocus**: a failed run.

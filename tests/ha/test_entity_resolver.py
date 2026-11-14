@@ -116,6 +116,11 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
         ("sensor", "dome_shutter_status"): "no dome on this rig",
         ("button", "dome_open"): "no dome on this rig",
         ("button", "dome_close"): "no dome on this rig",
+        # Nor a flat panel connected; the simulator's resolve (below).
+        ("sensor", "flat_panel_cover_state"): "no flat panel on this rig",
+        ("switch", "flat_panel_cover"): "no flat panel on this rig",
+        ("light", "flat_panel_light"): "no flat panel on this rig",
+        ("number", "flat_panel_brightness"): "no flat panel on this rig",
         # Present and disabled, which is the case the test below pins.
         ("sensor", "sequence_progress"): "ships disabled",
     },
@@ -208,20 +213,21 @@ async def test_only_the_entities_that_cannot_resolve_fall_back(
 
 
 @needs_node
-async def test_every_dome_read_resolves_on_a_rig_with_a_dome(
-    hass: HomeAssistant, config_entry, rig, hass_ws_client, set_up_at
+@pytest.mark.parametrize("device", ["dome", "flat_panel"])
+async def test_every_dome_and_flat_panel_read_resolves_on_the_simulator(
+    hass: HomeAssistant, config_entry, rig, hass_ws_client, set_up_at, device: str
 ) -> None:
-    """Each dome entity the observatory card reads ships enabled, so none is
-    left out of what a dashboard receives.
+    """Each dome and flat panel entity the observatory card reads ships
+    enabled, so none is left out of what a dashboard receives.
     """
     await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
 
     resolved = await _resolve(hass, await _snapshot(hass, hass_ws_client))
 
     card = next(card for card in RESOLVING if card.name == "nina-observatory-card.js")
-    dome = {f"{domain}.{key}" for domain, key, _ in lookups(card) if "dome" in key}
-    assert dome
-    assert dome <= resolved.keys()
+    reads = {f"{domain}.{key}" for domain, key, _ in lookups(card) if device in key}
+    assert reads
+    assert reads <= resolved.keys()
 
 
 @needs_node

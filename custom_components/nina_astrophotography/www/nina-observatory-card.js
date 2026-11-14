@@ -16,7 +16,7 @@ import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { THEME, applyTheme } from "./nina-theme.js";
 import {
   displayed, flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
-  quantity, shown,
+  quantity, safe, shown,
 } from "./nina-units.js";
 
 const VERSION = "2.6.0";
@@ -33,6 +33,23 @@ const CONFIRM = {
 // A closing roll-off roof can strike a telescope that is not parked, and a
 // mount that cannot be read may be anywhere.
 const CONFIRM_CLOSE_UNPARKED = "Close the dome? The mount is not confirmed parked.";
+// One action opens and closes the flat panel's cover, so each way asks its own.
+// Flats and darks run with the cover closed, so a close is not refused
+// mid-sequence, only warned of.
+const CONFIRM_COVER_OPEN = "Open the flat panel cover? It spoils any flats or darks under way.";
+const CONFIRM_COVER_CLOSE = "Close the flat panel cover? It blocks the telescope.";
+const CONFIRM_COVER_CLOSE_RUNNING =
+  "Close the flat panel cover? A sequence is running, and lights taken behind it are blank.";
+
+// N.I.N.A.'s cover states. It reports a cover still moving, or stuck, as
+// neither open nor closed; `NotPresent` is a panel without a cover.
+const COVER = {
+  Open: "Open",
+  Closed: "Closed",
+  NeitherOpenNorClosed: "Part open",
+  Error: "Error",
+  Unknown: "—",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -423,6 +440,34 @@ class NinaObservatoryCard extends HTMLElement {
     const notSafe      = !!h.states[unsafeId] && state(h, unsafeId) !== "off";
     // A park remembered from before N.I.N.A. went quiet is not a current one.
     this._mountUnparked = quiet || !parked;
+    this._seqRunning = seqRunning;
+
+    // A panel may have a cover, a light, or both, so any of its rows says it
+    // is connected.
+    const coverStateId = this._eid("sensor", "flat_panel_cover_state");
+    const coverId      = this._eid("switch", "flat_panel_cover");
+    const flatLightId  = this._eid("light", "flat_panel_light");
+    const flatLevelId  = this._eid("number", "flat_panel_brightness");
+    const flatConnected = [coverStateId, coverId, flatLightId, flatLevelId]
+      .some((id) => available(h, id));
+    // The sensor names a cover stuck part-way, which the switch reads as
+    // `unknown`; the switch stands in where the sensor is disabled.
+    const coverRead    = h.states[coverStateId] ? state(h, coverStateId)
+      : { on: "Open", off: "Closed" }[state(h, coverId)];
+    const coverState   = missing(coverRead) ? "Unknown" : coverRead;
+    const cover        = COVER[coverState] ?? safe(coverState);
+    // The switch exists only on a panel that can move its cover, and reads
+    // `unknown` for one part-way, which is when it needs a button most.
+    const canCover     = flatConnected && !!h.states[coverId]
+      && state(h, coverId) !== "unavailable";
+    const flatLit      = onOff(h, flatLightId);
+    const flatLevel    = numState(h, flatLevelId, 0);
+    const flatMax      = h.states[flatLevelId]?.attributes?.max;
+    // The number keeps Home Assistant's default 0–100 on a panel reporting no
+    // range, where the light is unavailable; a maximum of 1 is a light that
+    // only switches, which Light already says.
+    const dimmable     = flatLit !== null && flatLevel !== "—" && !(flatMax <= 1);
+    const coverFault   = flatConnected && coverState === "Error";
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
@@ -520,6 +565,11 @@ class NinaObservatoryCard extends HTMLElement {
           ? btn("btn-stop-guide", "◼ Stop Guiding", "danger")
           : btn("btn-start-guide", "▶ Start Guiding", "success", unread(guiding, "guider")),
       ],
+      // Part-way, in error or unread, the cover may need moving either way.
+      [
+        canCover && coverState !== "Open" ? btn("btn-cover-open", "☐ Open Flat Cover") : "",
+        canCover && coverState !== "Closed" ? btn("btn-cover-close", "▣ Close Flat Cover") : "",
+      ],
     ];
 
     const showFlipWarning =
@@ -551,6 +601,7 @@ class NinaObservatoryCard extends HTMLElement {
     // rig idle by day has every reason to be disconnected.
     const faults = [
       !unreachable && shutter === "error" ? "Dome shutter error" : "",
+      coverFault ? "Flat panel cover error" : "",
       camLost ? "Camera disconnected" : "",
       mntLost ? "Mount disconnected" : "",
       seqRunning && !quiet && gdrConnected && guiding === false && !flipping ? "Guiding stopped" : "",
@@ -597,7 +648,7 @@ class NinaObservatoryCard extends HTMLElement {
           <span class="dot ${dot}"></span>
           ${CHEVRON}
         </div>
-        ${fold.banner(worst([cameraLevel, mountLevel, guidingLevel]))}
+        ${fold.banner(worst([cameraLevel, mountLevel, guidingLevel, coverFault ? "danger" : null]))}
 
         ${!fold.open("card") ? (folded.length ? `
         <div class="body${link.stale ? " stale" : ""}">${folded.join("")}</div>` : "") : `
@@ -627,6 +678,9 @@ class NinaObservatoryCard extends HTMLElement {
             ${chip("Filter Wheel", fwConnected)}
             ${chip("Guider", gdrConnected)}
             ${rotConnected ? chip("Rotator", true) : ""}
+            ${!flatConnected ? ""
+              : coverFault ? chip("Flat Panel · cover error", true, "fault")
+              : chip("Flat Panel", true)}
             ${!domeConnected ? ""
               : shutter === "error" ? chip("Dome · shutter error", true, "fault")
               : chip("Dome", true)}
@@ -665,6 +719,13 @@ class NinaObservatoryCard extends HTMLElement {
               ${rotMech === "—" ? "" : metric("Mechanical", rotMech, "°")}
             </div>`) : ""}
 
+          ${flatConnected ? section("flat_panel", `Flat Panel${flatLit ? " · 💡 Lit" : ""}`, `
+            <div class="metric-grid">
+              ${coverState === "NotPresent" ? "" : metric("Cover", cover, "")}
+              ${flatLit === null ? "" : metric("Light", flatLit ? "On" : "Off", "")}
+              ${!dimmable ? "" : metric("Brightness", flatLevel, flatMax ? ` / ${flatMax}` : "")}
+            </div>`, coverFault ? "danger" : null) : ""}
+
           ${gdrConnected ? section("guiding",
             `Guiding · ${guiding === null ? "" : guiding ? "Active · " : "Stopped · "}bars full scale 4"`, `
               <div class="guider-meter">
@@ -697,7 +758,8 @@ class NinaObservatoryCard extends HTMLElement {
           <div class="section controls">
             ${fold.heading("controls", "section-title", "Controls")}
             ${fold.open("controls")
-              ? controls.map((row) => `<div class="btn-row">${row.join("")}</div>`).join("")
+              ? controls.filter((row) => row.some(Boolean))
+                .map((row) => `<div class="btn-row">${row.join("")}</div>`).join("")
               : safetyRow}
           </div>
 
@@ -731,6 +793,9 @@ class NinaObservatoryCard extends HTMLElement {
     bind("btn-warm",       () => svc("camera_warm", { minutes: 20 }));
     bind("btn-start-guide",() => svc("guider_start"));
     bind("btn-stop-guide", () => svc("guider_stop"));
+    bind("btn-cover-open", () => svc("flat_panel_set_cover", { open: true }, CONFIRM_COVER_OPEN));
+    bind("btn-cover-close",() => svc("flat_panel_set_cover", { open: false },
+      this._seqRunning ? CONFIRM_COVER_CLOSE_RUNNING : CONFIRM_COVER_CLOSE));
   }
 
   getCardSize() { return 8; }

@@ -11,6 +11,9 @@
  *
  * The `simulator_dome_*` dumps are the test VM's rig, the one with a dome: an
  * OmniSim dome parked and closed, or open and following an unparked mount.
+ *
+ * `dawn_flats` is the one capture of the reference rig's flat panel: a 0–4096
+ * panel with its cover closed and its light off, after the flats.
  */
 
 import { flipScenarios, linkScenarios, rig } from "../hass.mjs";
@@ -26,6 +29,15 @@ const SYNCED = "binary_sensor.n_i_n_a_rotator_synced";
 const GUIDER = "switch.n_i_n_a_guider";
 const CAMERA = "sensor.n_i_n_a_camera_state";
 const COOLER = "switch.n_i_n_a_camera_cooler";
+const FLATS = "dawn_flats";
+const COVER_STATE = "sensor.n_i_n_a_flat_panel_cover_state";
+const COVER = "switch.n_i_n_a_flat_panel_cover";
+const FLAT_LIGHT = "light.n_i_n_a_flat_panel_light";
+const FLAT_LEVEL = "number.n_i_n_a_flat_panel_brightness";
+
+// The cover's sensor and switch read the same cover, so a scenario moves both.
+const cover = (dump, sensor, sw) =>
+  rig(dump, FLATS).override(COVER_STATE, sensor).override(COVER, sw);
 
 // No `draw` hook: the card has no canvas.
 
@@ -145,6 +157,81 @@ export const scenarios = {
     after: (dump) => [rig(dump, "simulator_dome_unreachable").build()],
   },
 
+  // A Flat Panel chip and section, and Open Flat Cover.
+  flat_panel: { hass: (dump) => rig(dump, FLATS).build() },
+
+  // Close Flat Cover. No capture holds the cover open.
+  flat_panel_open: { hass: (dump) => cover(dump, "Open", "on").build() },
+
+  // Lit at half its range, which the section's heading says. No capture holds
+  // the light on; HA's 128 of 255 is the panel's 2048 of 4096.
+  flat_panel_lit: {
+    hass: (dump) => rig(dump, FLATS)
+      .override(FLAT_LIGHT, "on", {
+        ...dump[FLATS].states[FLAT_LIGHT].attributes, brightness: 128, color_mode: "brightness",
+      })
+      .override(FLAT_LEVEL, "2048.0")
+      .build(),
+  },
+
+  // A cover moving, or stuck, between the two: both buttons. N.I.N.A. reports
+  // the travel, but no capture caught it.
+  flat_panel_part_open: { hass: (dump) => cover(dump, "NeitherOpenNorClosed", "unknown").build() },
+
+  // A red chip and both buttons. The rig's panel has not failed.
+  flat_panel_cover_error: { hass: (dump) => cover(dump, "Error", "unknown").build() },
+
+  // The cover's diagnostic sensor disabled: the switch says closed.
+  flat_panel_cover_state_disabled: {
+    hass: (dump) => rig(dump, FLATS).without("flat_panel_cover_state").build(),
+  },
+
+  // A panel with a light and no cover: no cover reading and no button. The
+  // rig's panel has a cover.
+  flat_panel_light_only: {
+    hass: (dump) => rig(dump, FLATS).override(COVER_STATE, "NotPresent")
+      .without("flat_panel_cover").build(),
+  },
+
+  // A panel with a cover and no light: its brightness number reads Home
+  // Assistant's default 0–100, which is no reading. The rig's panel has a light.
+  flat_panel_cover_only: {
+    hass: (dump) => rig(dump, FLATS)
+      .override(FLAT_LIGHT, "unavailable")
+      .override(FLAT_LEVEL, "0.0", {
+        ...dump[FLATS].states[FLAT_LEVEL].attributes, min: 0, max: 100,
+      })
+      .build(),
+  },
+
+  // An on/off light, whose range ASCOM sets to 0–1: no brightness. The rig's
+  // panel dims.
+  flat_panel_switched_light: {
+    hass: (dump) => rig(dump, FLATS)
+      .override(FLAT_LEVEL, "0.0", {
+        ...dump[FLATS].states[FLAT_LEVEL].attributes, min: 0, max: 1,
+      })
+      .build(),
+  },
+
+  // N.I.N.A. lost over a panel: its last readings, dimmed, and no cover
+  // button, since only commands that end activity send without a link.
+  flat_panel_lost: {
+    hass: (dump) => rig(dump, DOME).build(),
+    after: (dump) => [
+      rig(dump, "simulator_dome_unreachable").changedAt(new Date(Date.now() - 45_000)).build(),
+    ],
+  },
+
+  // The panel's driver down under a live hub: no chip, section or button.
+  flat_panel_down: {
+    hass: (dump) => {
+      const r = rig(dump, FLATS);
+      for (const id of [COVER_STATE, COVER, FLAT_LIGHT, FLAT_LEVEL]) r.override(id, "unavailable");
+      return r.build();
+    },
+  },
+
   // Folded to its header, which keeps `flip_soon`'s warning and, the session
   // running and the mount unparked, Stop and Park.
   folded: { hass: (dump) => rig(dump, UP).override(FLIP, 20).build(), folded: ["card"] },
@@ -159,6 +246,12 @@ export const scenarios = {
   // Folded over `dome_shutter_error`: the fault line, and Close Dome.
   folded_shutter_error: {
     hass: (dump) => rig(dump, DOME).override(SHUTTER, "error").build(),
+    folded: ["card"],
+  },
+
+  // Folded over `flat_panel_cover_error`: the fault line and the banner's cue.
+  folded_cover_error: {
+    hass: (dump) => cover(dump, "Error", "unknown").build(),
     folded: ["card"],
   },
 
