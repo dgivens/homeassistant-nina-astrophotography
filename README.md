@@ -213,7 +213,7 @@ type: custom:nina-observatory-card
 | **Weather** | **Autofocus** | **Frame statistics** |
 | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/weather.png" alt="Weather card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/autofocus.png" alt="Autofocus card" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/frame-stats.png" alt="Frame statistics card" width="260"> |
 | **Live stack** | **Site camera** | |
-| <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/livestack.png" alt="Live stack card: Sh2 132's R stack at 14 frames, with chips for Latest, G 4 and R 14" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/site-camera.png" alt="Site camera card: a pier camera's all-sky view over the telescope, with an Open link" width="260"> | |
+| <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/livestack.png" alt="Live stack card: Sh2 132's R stack at 15 frames, with chips for Latest, G 4 and R 15" width="260"> | <img src="https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/cards/site-camera.png" alt="Site camera card: a pier camera's all-sky view over the telescope, with an Open link" width="260"> | |
 
 With a dome, the observatory card adds a Dome chip and Open or Close Dome:
 
