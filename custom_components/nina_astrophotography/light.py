@@ -10,6 +10,7 @@ native drivers keep brightness and light apart, so `set-light` switches the
 panel on.
 """
 
+import asyncio
 import math
 from typing import Any
 
@@ -20,10 +21,13 @@ from homeassistant.components.light import (
 )
 from homeassistant.components.light.const import ColorMode
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ServiceValidationError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .api.errors import NinaError
 from .api.models import FlatDeviceModel
+from .api.v2 import NinaClientV2
+from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator
 from .device import observed
 from .entity import NinaEntity, async_add_observed, refusals_raised
@@ -31,6 +35,55 @@ from .entity import NinaEntity, async_add_observed, refusals_raised
 PARALLEL_UPDATES = 1
 
 _HA_MAX = 255
+
+# N.I.N.A. reads the panel once per device polling interval, 2 s by default
+# and settable by the operator, so a brightness set shows seconds after the
+# command answers.
+_SETTLE_INTERVAL = 1.0
+_SETTLE_TIMEOUT = 30.0
+
+
+async def async_light_at(client: NinaClientV2, level: int) -> None:
+    """Light the panel at `level`, in driver units, and never above it.
+
+    N.I.N.A. runs `set-brightness` and `set-light` without waiting for either,
+    so both can be in flight at once. An ASCOM panel's light-on that runs
+    before the brightness is stored comes on at `MaxBrightness`, the first
+    time after a connect. So the brightness goes alone, and `set-light` follows
+    only once the panel reports that level and still reads off: an ASCOM panel
+    is lit by the brightness itself, and a native one comes on at it.
+
+    Being lit is not enough on its own: until N.I.N.A. next reads the panel, it
+    reports the state from before the command, including a switch-off just
+    sent. A panel that never reports the level is refused rather than sent a
+    `set-light` that could race the brightness.
+    """
+    await client.set_flat_brightness(level)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + _SETTLE_TIMEOUT
+    while True:
+        try:
+            panel = (await client.get_equipment()).flat_device
+        except NinaError:
+            panel = None
+        if (
+            panel is not None
+            and panel.brightness is not None
+            and round(panel.brightness) == level
+        ):
+            if not panel.light_on:
+                await client.set_flat_light(True)
+            return
+        if loop.time() >= deadline:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="flat_panel_brightness_not_reported",
+                translation_placeholders={
+                    "level": str(level),
+                    "seconds": f"{_SETTLE_TIMEOUT:g}",
+                },
+            )
+        await asyncio.sleep(_SETTLE_INTERVAL)
 
 
 def dimmest_level(driver_range: tuple[float, float]) -> int:
@@ -124,10 +177,7 @@ class NinaFlatLight(NinaEntity, LightEntity):
         requested = int(kwargs.get(ATTR_BRIGHTNESS, self._last_on_brightness))
         driver_value = self._to_driver(requested)
         with refusals_raised():
-            # Brightness first: a bare set-light jumps to MaxBrightness.
-            await self.coordinator.client.set_flat_brightness(driver_value)
-            if not self.is_on:
-                await self.coordinator.client.set_flat_light(True)
+            await async_light_at(self.coordinator.client, driver_value)
         self._remembered = requested
         await self.coordinator.async_request_refresh()
 

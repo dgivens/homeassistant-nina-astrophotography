@@ -9,13 +9,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 import pytest
 
-from custom_components.nina_astrophotography.api.errors import NinaCommandError
+from custom_components.nina_astrophotography import light
+from custom_components.nina_astrophotography.api.errors import (
+    NinaCommandError,
+    NinaConnectionError,
+)
 from custom_components.nina_astrophotography.api.models import DeviceMeta
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 from helpers import load_fixture, state_of
 
 ENTITY = "light.n_i_n_a_flat_panel_light"
+_SET_BRIGHTNESS = "/equipment/flatdevice/set-brightness"
 
 
 async def _turn_on(hass: HomeAssistant, **data) -> None:
@@ -67,6 +72,7 @@ async def test_a_bare_turn_on_does_not_go_to_full_output(
     assert sent.brightness == 16  # round(1 / 255 * 4096): HA level 1, the dim default
 
 
+@pytest.mark.synthetic
 async def test_a_bare_turn_on_of_a_narrow_range_panel_stays_above_its_minimum(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
@@ -75,8 +81,12 @@ async def test_a_bare_turn_on_of_a_narrow_range_panel_stays_above_its_minimum(
     MaxBrightness.
     """
     await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
+    rig.after(
+        _SET_BRIGHTNESS,
+        lambda: rig.serve_device("FlatDevice", {"Brightness": 1, "LightOn": True}),
+    )
     await _turn_on(hass)
-    assert rig.sent[0] == ("/equipment/flatdevice/set-brightness", {"brightness": 1})
+    assert rig.sent[0] == (_SET_BRIGHTNESS, {"brightness": 1})
 
 
 async def test_a_bare_turn_on_restores_the_last_level_used(
@@ -88,12 +98,59 @@ async def test_a_bare_turn_on_restores_the_last_level_used(
     assert sent.brightness == 1028  # round(64 / 255 * 4096)
 
 
-async def test_turn_on_sends_the_brightness_before_switching_the_light_on(
-    hass: HomeAssistant, idle_flat_panel_entry, sent
+@pytest.mark.parametrize(
+    ("lights_with_brightness", "calls"),
+    [
+        pytest.param(True, [("set_flat_brightness", 2056)], id="ascom"),
+        pytest.param(
+            False,
+            [("set_flat_brightness", 2056), ("set_flat_light", True)],
+            id="native",
+        ),
+    ],
+)
+async def test_turn_on_switches_the_light_on_only_once_the_panel_holds_the_brightness(
+    hass: HomeAssistant,
+    idle_flat_panel_entry,
+    sent,
+    lights_with_brightness: bool,
+    calls: list,
 ) -> None:
-    """Brightness first: the panel must never pass through full output."""
+    """N.I.N.A. runs the two commands concurrently, and an ASCOM panel's
+    light-on that overtakes the brightness comes on at full output. A
+    brightness lights an ASCOM panel by itself; a native driver's needs the
+    light-on.
+    """
+    sent.lights_with_brightness = lights_with_brightness
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 128})
-    assert sent.calls == [("set_flat_brightness", 2056), ("set_flat_light", True)]
+    assert sent.calls == calls
+
+
+async def test_a_panel_that_never_reports_the_brightness_is_not_switched_on(
+    hass: HomeAssistant, idle_flat_panel_entry, sent, monkeypatch
+) -> None:
+    monkeypatch.setattr(light, "_SETTLE_TIMEOUT", 0)
+    sent.lights_with_brightness = None
+    with pytest.raises(HomeAssistantError, match="did not report brightness 2056"):
+        await _turn_on(hass, **{ATTR_BRIGHTNESS: 128})
+    assert sent.calls == [("set_flat_brightness", 2056)]
+
+
+async def test_a_read_that_fails_while_waiting_for_the_brightness_is_retried(
+    hass: HomeAssistant, idle_flat_panel_entry, sent, monkeypatch
+) -> None:
+    monkeypatch.setattr(light, "_SETTLE_INTERVAL", 0)
+    read = NinaClientV2.get_equipment
+    failures = iter([NinaConnectionError("timed out")])
+
+    async def flaky(client):
+        if (error := next(failures, None)) is not None:
+            raise error
+        return await read(client)
+
+    monkeypatch.setattr(NinaClientV2, "get_equipment", flaky)
+    await _turn_on(hass, **{ATTR_BRIGHTNESS: 128})
+    assert sent.brightness == 2056
 
 
 # Client-side range validation is NOT tested here: Home Assistant's own light

@@ -332,7 +332,7 @@ command, not when the equipment finishes.
 | `focuser_auto_focus` | Run an autofocus with N.I.N.A.'s configured method, outside the sequence |
 | `filterwheel_change_filter` | Change filter |
 | `flat_panel_set_cover` | Open or close the flat panel's cover. It does not check whether a sequence is running, and closing it mid-exposure ruins the frame |
-| `flat_panel_set_light` | Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest, and never at full output; a panel reporting no brightness range is refused |
+| `flat_panel_set_light` | Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest, and never at full output. The light is switched on only once the panel reports that brightness; a panel that does not within 30 seconds, or reports no brightness range, is refused |
 | `flat_panel_set_brightness` | Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and goes dark at 0; a native Alnitak or Pegasus driver leaves the light as it is. A panel reporting no brightness range is refused |
 | `guider_start` / `guider_stop` | Start / stop guiding |
 | `rotator_move` | Rotate to a sky position angle; refused until a plate solve syncs the rotator |
