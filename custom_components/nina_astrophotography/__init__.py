@@ -67,6 +67,8 @@ from .const import (
     SERVICE_MOUNT_SLEW,
     SERVICE_MOUNT_TRACKING,
     SERVICE_MOUNT_UNPARK,
+    SERVICE_ROTATOR_MOVE,
+    SERVICE_ROTATOR_MOVE_MECHANICAL,
     SERVICE_SEQUENCE_LOAD,
     SERVICE_SEQUENCE_START,
     SERVICE_SEQUENCE_STOP,
@@ -715,6 +717,27 @@ def _register_services(hass: HomeAssistant) -> None:
         {
             vol.Optional("force_calibration", default=False): cv.boolean,
         },
+    )
+
+    # ── Rotator ──────────────────────────────────────────────────────────────
+
+    def register_rotator_move(
+        service: str, move: Callable[[NinaClientV2, float], Awaitable[None]]
+    ) -> None:
+        async def handle(call: ServiceCall) -> None:
+            await move(await _client_for_target(hass, call), call.data["position"])
+
+        register(
+            service,
+            handle,
+            {vol.Required("position"): _bounded("Position", float, 0, 360)},
+        )
+
+    # The sky angle is meaningful only once a plate solve syncs the rotator;
+    # the mechanical angle always is.
+    register_rotator_move(SERVICE_ROTATOR_MOVE, NinaClientV2.move_rotator)
+    register_rotator_move(
+        SERVICE_ROTATOR_MOVE_MECHANICAL, NinaClientV2.move_rotator_mechanical
     )
 
     # ── Sequence ─────────────────────────────────────────────────────────────

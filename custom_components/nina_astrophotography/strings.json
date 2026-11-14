@@ -542,6 +542,26 @@
       "name": "Stop Guiding",
       "description": "Stop the autoguider."
     },
+    "rotator_move": {
+      "name": "Move Rotator",
+      "description": "Rotate to a sky position angle. Meaningful once a plate solve has synced the rotator.",
+      "fields": {
+        "position": {
+          "name": "Position",
+          "description": "Target sky position angle in degrees, from 0 to 360."
+        }
+      }
+    },
+    "rotator_move_mechanical": {
+      "name": "Move Rotator (Mechanical)",
+      "description": "Rotate to a mechanical angle, the rotator's own, whatever the sky angle.",
+      "fields": {
+        "position": {
+          "name": "Mechanical Position",
+          "description": "Target mechanical angle in degrees, from 0 to 360."
+        }
+      }
+    },
     "dome_open": {
       "name": "Open Dome",
       "description": "Open the dome shutter. Refused while the safety monitor reports unsafe."

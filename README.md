@@ -314,6 +314,8 @@ command, not when the equipment finishes.
 | `focuser_auto_focus` | Run an autofocus with N.I.N.A.'s configured method, outside the sequence |
 | `filterwheel_change_filter` | Change filter |
 | `guider_start` / `guider_stop` | Start / stop guiding |
+| `rotator_move` | Rotate to a sky position angle, once a plate solve has synced the rotator |
+| `rotator_move_mechanical` | Rotate to a mechanical angle |
 | `dome_open` | Open the dome shutter; refused while the safety monitor reports unsafe |
 | `dome_close` / `dome_park` | Close the shutter / park the dome. Whether parking also closes the shutter is up to the dome's driver |
 | `sequence_load` | Load a sequence, without starting it |
@@ -337,6 +339,8 @@ Actions not listed here take no fields.
 | `focuser_move` | `position` | yes | — | 0 or more steps | Absolute focuser position. The API reports no maximum, so travel beyond the focuser's is left to N.I.N.A. and its driver. |
 | `filterwheel_change_filter` | `filter_index` | yes | — | one of the wheel's slots | **Zero-based** slot: the first filter is `0`. |
 | `guider_start` | `force_calibration` | no | `false` | — | Calibrate before guiding starts. |
+| `rotator_move` | `position` | yes | — | 0–360° | Sky position angle, meaningful only once a plate solve has synced the rotator: `binary_sensor.<instance>_rotator_synced`. |
+| `rotator_move_mechanical` | `position` | yes | — | 0–360° | The rotator's own angle, whatever the sky angle. |
 | `sequence_load` | `sequence_name` | yes | — | — | The sequence's name as N.I.N.A. lists it, without the `.ninasequence` extension. Not a path. |
 
 Out-of-range values are rejected with an error rather than sent to N.I.N.A.,
