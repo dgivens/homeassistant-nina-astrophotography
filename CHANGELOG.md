@@ -23,7 +23,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   Home Assistant 2026.9.4 with the rest of the lock at the newest its pins
   allow.
 - **The Home Assistant suite and pyright run against Home Assistant
-  2026.10.4**, whose core validates with probatio in voluptuous's place.
+  2026.10.4** (#273), whose core validates with probatio in voluptuous's place.
   `nina-units.js` converts `atm`, the pressure unit that release offers.
 
 ---
