@@ -80,7 +80,7 @@
     }),
     dict({
       'enabled_default': True,
-      'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
+      'entity_category': None,
       'entity_id': 'binary_sensor.n_i_n_a_rotator_synced',
       'original_name': 'Synced',
       'unique_id': '01JTESTENTRY0000000000000_rotator_synced',
@@ -246,8 +246,8 @@
       'unique_id': '01JTESTENTRY0000000000000_focuser_position_control',
     }),
     dict({
-      'enabled_default': False,
-      'entity_category': <EntityCategory.CONFIG: 'config'>,
+      'enabled_default': True,
+      'entity_category': None,
       'entity_id': 'number.n_i_n_a_rotator_mechanical_position',
       'original_name': 'Mechanical position',
       'unique_id': '01JTESTENTRY0000000000000_rotator_mechanical_position',
