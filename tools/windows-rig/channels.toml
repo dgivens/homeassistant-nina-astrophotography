@@ -13,9 +13,9 @@ sha256 = "4273B75194B20E57B967BFE1A48A5391F144E56083FC987D4F4779D11D6B2182"
 
 [[stable.plugin]]
 name = "Advanced API"
-version = "2.2.15.2"
-url = "https://github.com/christian-photo/ninaAPI/releases/download/2.2.15.2/ninaAPI.zip"
-sha256 = "0E05F382348AD7B7489C909299528CFB38CE161CB248ECCB904384F759CED379"
+version = "2.2.15.3"
+url = "https://github.com/christian-photo/ninaAPI/releases/download/2.2.15.3/ninaAPI.zip"
+sha256 = "E5AD30F83ED691EA53637BEF095395CE147818AEF763391EDF34AE0514AC6487"
 
 [[stable.plugin]]
 name = "Livestack"
