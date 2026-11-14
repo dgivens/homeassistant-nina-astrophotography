@@ -328,6 +328,13 @@ How a flat run shows up elsewhere:
   `unavailable` until it connects again. While N.I.N.A. is using the panel,
   don't let a scene or automation change its light or brightness; it will
   spoil the flats.
+- `number.<instance>_flat_panel_brightness` sets only the brightness, in the
+  panel's own units. On an ASCOM or Alpaca panel that also lights it at any
+  level above 0, and 0 darkens it. After the number is set to 0, or N.I.N.A.
+  reconnects the panel, the next light-on that sends no brightness, N.I.N.A.'s
+  own light toggle included, comes on at full brightness. A panel on one of
+  N.I.N.A.'s native drivers, such as Alnitak's or Pegasus's, keeps its light as
+  it is. Use `light.<instance>_flat_panel_light` to turn the panel on or off.
 
 ## Autofocus
 
