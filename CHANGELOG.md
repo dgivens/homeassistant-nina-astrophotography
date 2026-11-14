@@ -17,6 +17,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **The card harness logs each image a card asks for** (#264), and `Rig.add`
   gives a scenario a row from another integration.
+- **The development tooling and test libraries are current** (#272): ruff 0.17.5,
+  datamodel-code-generator 0.84.0 — the newest that resolves beside the
+  pydantic Home Assistant pins — pre-commit 4.7.0, and the test suite's
+  Home Assistant 2026.9.4 with the rest of the lock at the newest its pins
+  allow.
 
 ---
 ### Fixed
