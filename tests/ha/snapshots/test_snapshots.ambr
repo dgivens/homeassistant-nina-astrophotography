@@ -30,6 +30,13 @@
       'unique_id': '01JTESTENTRY0000000000000_filterwheel_is_moving',
     }),
     dict({
+      'enabled_default': True,
+      'entity_category': None,
+      'entity_id': 'binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover',
+      'original_name': 'Light frames behind closed cover',
+      'unique_id': '01JTESTENTRY0000000000000_flat_panel_light_frames_behind_cover',
+    }),
+    dict({
       'enabled_default': False,
       'entity_category': <EntityCategory.DIAGNOSTIC: 'diagnostic'>,
       'entity_id': 'binary_sensor.n_i_n_a_focuser_moving',
@@ -42,13 +49,6 @@
       'entity_id': 'binary_sensor.n_i_n_a_imaging',
       'original_name': 'Imaging',
       'unique_id': '01JTESTENTRY0000000000000_imaging',
-    }),
-    dict({
-      'enabled_default': True,
-      'entity_category': None,
-      'entity_id': 'binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover',
-      'original_name': 'Light frames behind closed cover',
-      'unique_id': '01JTESTENTRY0000000000000_light_frames_behind_cover',
     }),
     dict({
       'enabled_default': True,

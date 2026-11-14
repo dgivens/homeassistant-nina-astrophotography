@@ -123,7 +123,7 @@
     "device_id": "flat_device",
     "entity_id": "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover",
     "platform": "nina_astrophotography",
-    "translation_key": "light_frames_behind_cover"
+    "translation_key": "flat_panel_light_frames_behind_cover"
    },
    "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
     "device_id": "focuser",
@@ -6478,7 +6478,7 @@
     "device_id": "flat_device",
     "entity_id": "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover",
     "platform": "nina_astrophotography",
-    "translation_key": "light_frames_behind_cover"
+    "translation_key": "flat_panel_light_frames_behind_cover"
    },
    "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
     "device_id": "focuser",
@@ -8224,7 +8224,7 @@
     "device_id": "flat_device",
     "entity_id": "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover",
     "platform": "nina_astrophotography",
-    "translation_key": "light_frames_behind_cover"
+    "translation_key": "flat_panel_light_frames_behind_cover"
    },
    "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
     "device_id": "focuser",
@@ -9970,7 +9970,7 @@
     "device_id": "flat_device",
     "entity_id": "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover",
     "platform": "nina_astrophotography",
-    "translation_key": "light_frames_behind_cover"
+    "translation_key": "flat_panel_light_frames_behind_cover"
    },
    "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
     "device_id": "focuser",
