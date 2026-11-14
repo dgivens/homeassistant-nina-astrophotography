@@ -17,7 +17,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **The card harness logs each image a card asks for** (#264), and `Rig.add`
   gives a scenario a row from another integration.
-- **CI runs the current major of each action** — checkout v7, setup-uv
+- **CI runs the current major of each action** (#275) — checkout v7, setup-uv
   v10.3.3, upload-artifact v7, download-artifact v8 — and the Lovelace
   module tests under Node 26, the active LTS.
 
