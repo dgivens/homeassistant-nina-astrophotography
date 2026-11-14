@@ -15,9 +15,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
-- **The test environment uses Pillow 13.0.0**, which closes the open
-  Dependabot advisories. Pillow is a transitive test dependency of Home
-  Assistant and is never installed with the integration.
 - **The README's dashboard and card samples are current**, taken from a live
   rig, and the gallery gains the site camera card.
 - **The card harness logs each image a card asks for** (#264), and `Rig.add`
