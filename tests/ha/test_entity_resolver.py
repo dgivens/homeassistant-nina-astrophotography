@@ -121,6 +121,9 @@ CANNOT_RESOLVE: dict[str, dict[tuple[str, str], str]] = {
         ("switch", "flat_panel_cover"): "no flat panel on this rig",
         ("light", "flat_panel_light"): "no flat panel on this rig",
         ("number", "flat_panel_brightness"): "no flat panel on this rig",
+        ("binary_sensor", "flat_panel_light_frames_behind_cover"): (
+            "no flat panel on this rig"
+        ),
         # Present and disabled, which is the case the test below pins.
         ("sensor", "sequence_progress"): "ships disabled",
     },

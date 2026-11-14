@@ -565,11 +565,28 @@ async def test_only_a_light_saved_behind_the_closed_cover_is_flagged(
 
 
 @pytest.mark.synthetic
+@pytest.mark.parametrize(
+    "overnight",
+    [
+        {"cover_state": "Open"},
+        # What the captured down panel reports. Observatories power a panel
+        # off while imaging, so it cannot light, and it reads `Closed` again
+        # only when it reconnects for the flats.
+        {
+            "connected": False,
+            "cover_state": "Unknown",
+            "supports_open_close": False,
+            "supports_on_off": False,
+            "brightness_range": None,
+        },
+    ],
+    ids=["cover open", "panel switched off"],
+)
 async def test_a_light_saved_before_the_cover_closed_is_not_flagged(
-    hass: HomeAssistant, set_up_with_flat_device, push, monkeypatch
+    hass: HomeAssistant, set_up_with_flat_device, push, monkeypatch, overnight: dict
 ) -> None:
     """The cover closes at the end of every night, after its last light."""
-    entry = await set_up_with_flat_device(cover_state="Open")
+    entry = await set_up_with_flat_device(**overnight)
     push(_saved("LIGHT"))
     await hass.async_block_till_done()
 

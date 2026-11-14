@@ -331,10 +331,10 @@ How a flat run shows up elsewhere:
 - `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` is
   `on` while the newest frame is a light saved after the cover was seen
   closed; flats and darks never turn it on. It goes `off` when the cover
-  opens or a frame of another type follows. A panel connected only for the
-  flat run cannot report its cover during the night, so the sensor is
-  `unavailable` then and cannot warn, and a cover that drops out of view is
-  watched afresh from the next time it reads closed.
+  opens or a frame of another type follows. A panel switched off or
+  disconnected while imaging reports no cover, so the sensor is `unavailable`
+  and cannot warn; when the panel reconnects reading closed, the lights taken
+  before then do not turn it on, and only a light after that does.
 - `number.<instance>_flat_panel_brightness` sets only the brightness, in the
   panel's own units. On an ASCOM or Alpaca panel that also lights it at any
   level above 0, and 0 darkens it. After the number is set to 0, or N.I.N.A.

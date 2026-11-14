@@ -11,9 +11,10 @@ blueprint:
     neither does a cover closed after the night's last light. Only a light
     saved after the cover was seen closing does.
 
-    The flat panel has to stay connected in N.I.N.A. while imaging: a panel
-    connected only for the flat run reports no cover during the night, and
-    nothing can be warned of.
+    A panel switched off or disconnected while imaging, so it cannot light,
+    reports no cover, and this stays quiet. When it reconnects for the flats,
+    the lights already taken do not alert: only a light after it reads closed
+    again does.
   domain: automation
   author: dgivens
   homeassistant:
