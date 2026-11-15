@@ -133,6 +133,7 @@ function element(tag) {
     // What a scenario's `act` presses: the card's own handlers, without an event.
     click() {
       for (const { type, listener } of listeners) if (type === "click") listener({});
+      this.onclick?.({});
     },
   };
 }

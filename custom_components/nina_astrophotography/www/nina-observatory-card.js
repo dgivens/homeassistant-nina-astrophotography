@@ -51,6 +51,12 @@ const COVER = {
   Unknown: "—",
 };
 
+// How long a cover may read part-way before it counts as stuck rather than
+// moving. A Flip-Flat travels in 10–20 s; other panels are slower.
+const COVER_TRAVEL_MS = 60_000;
+const COVER_MOVING = "The flat panel cover is moving";
+const COVER_SENT = "Sent; waiting for the flat panel cover to move";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function state(hass, entity_id, fallback = "—") {
@@ -116,6 +122,43 @@ function linkBanner(link, dome) {
       <div class="detail">No answer${time}; it may still be imaging.${shown} ${still}</div>
     </div>
   </div>`;
+}
+
+// Brings `root` in line with `html`, keeping every element whose tag, id and
+// fold are unchanged at its place. A replaced button under the pointer loses
+// its hover and fades back in, which on a card updated every few seconds is a
+// flicker. An element that becomes another control is replaced, never reused:
+// a press or the focus held across an update would otherwise land on Start
+// where the viewer meant Stop.
+function patch(root, html) {
+  const next = document.createElement("template");
+  next.innerHTML = html;
+  morph(root, next.content);
+}
+
+function morph(node, next) {
+  const want = [...next.childNodes];
+  while (node.childNodes.length > want.length) node.lastChild.remove();
+  want.forEach((wanted, i) => {
+    const have = node.childNodes[i];
+    if (!have) {
+      node.appendChild(wanted);
+    } else if (have.nodeName !== wanted.nodeName
+      || (have.nodeType === Node.ELEMENT_NODE
+        && (have.id !== wanted.id || have.dataset.fold !== wanted.dataset.fold))) {
+      have.replaceWith(wanted);
+    } else if (have.nodeType !== Node.ELEMENT_NODE) {
+      if (have.nodeValue !== wanted.nodeValue) have.nodeValue = wanted.nodeValue;
+    } else {
+      for (const { name } of [...have.attributes]) {
+        if (!wanted.hasAttribute(name)) have.removeAttribute(name);
+      }
+      for (const { name, value } of wanted.attributes) {
+        if (have.getAttribute(name) !== value) have.setAttribute(name, value);
+      }
+      morph(have, wanted);
+    }
+  });
 }
 
 function statusDot(on) {
@@ -362,6 +405,9 @@ class NinaObservatoryCard extends HTMLElement {
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
     this._collapse.scope(this._config);
     this._view.reset();
+    // Another rig's cover is not this one's.
+    this._coverPress = this._coverRest = this._coverState = this._coverPartSince = null;
+    this._html = undefined;
   }
 
   set hass(hass) {
@@ -382,8 +428,8 @@ class NinaObservatoryCard extends HTMLElement {
     // The actions resolve which rig they mean from the device targeted; an
     // untargeted call is refused as soon as a second instance is configured.
     const device_id = this._config.device_id;
-    this._hass.callService(domain, service,
-                           device_id ? { ...data, device_id } : data);
+    return this._hass.callService(domain, service,
+                                  device_id ? { ...data, device_id } : data);
   }
 
   _render() {
@@ -455,7 +501,41 @@ class NinaObservatoryCard extends HTMLElement {
     const coverRead    = h.states[coverStateId] ? state(h, coverStateId)
       : { on: "Open", off: "Closed" }[state(h, coverId)];
     const coverState   = missing(coverRead) ? "Unknown" : coverRead;
-    const cover        = COVER[coverState] ?? safe(coverState);
+    const atRest       = (s) => s === "Open" || s === "Closed";
+    const coverBefore  = this._coverState;
+    this._coverState = coverState;
+    // A press holds its button until the reading leaves the state it was
+    // pressed in; a cover part-way is moving until it has been for longer
+    // than a cover's travel, and stuck after. Both are measured on each
+    // update, so they lapse with the next one past the limit.
+    const now          = Date.now();
+    const press        = this._coverPress;
+    if (press && (coverState !== press.from || now - press.at > COVER_TRAVEL_MS)) {
+      this._coverPress = null;
+    }
+    if (atRest(coverState)) this._coverRest = coverState;
+    // The switch reads `unknown` part-way.
+    const coverPartWay = coverState === "NeitherOpenNorClosed"
+      || (!h.states[coverStateId] && coverState === "Unknown");
+    // Timed on this browser's clock from when the card saw the cover leave
+    // rest; a card that first sees it part-way has only the row's
+    // `last_changed`, on Home Assistant's.
+    if (!coverPartWay) {
+      this._coverPartSince = null;
+    } else if (this._coverPartSince == null) {
+      this._coverPartSince = atRest(coverBefore) ? now
+        : Date.parse((h.states[coverStateId] ?? h.states[coverId])?.last_changed);
+    }
+    // A press from a cover stuck, in error or unread changes no reading
+    // while it waits, so it holds only its own button.
+    const coverMoving  = atRest(this._coverPress?.from)
+      || (coverPartWay && now - this._coverPartSince <= COVER_TRAVEL_MS);
+    // Which way it is going: the press, else away from where this card last
+    // saw it at rest; null for a cover first seen moving.
+    const coverOpening = this._coverPress?.open
+      ?? { Closed: true, Open: false }[this._coverRest] ?? null;
+    const cover        = coverMoving && coverPartWay ? "Moving"
+      : COVER[coverState] ?? safe(coverState);
     // The switch exists only on a panel that can move its cover, and reads
     // `unknown` for one part-way, which is when it needs a button most.
     const canCover     = flatConnected && !!h.states[coverId]
@@ -531,6 +611,20 @@ class NinaObservatoryCard extends HTMLElement {
       `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"`
       + `${off ? ` disabled title="${off}"` : ""}>${label}</button>`;
     const LOST = link.lost ? "N.I.N.A. unreachable" : "N.I.N.A. is not answering";
+    const coverOpen  = (off) => btn("btn-cover-open", "🌕 Open Flat Cover", "", off);
+    const coverClose = (off) => btn("btn-cover-close", "🌑 Close Flat Cover", "", off);
+    const coverPressed = (open) => this._coverPress?.open === open ? COVER_SENT : "";
+    // One button for a cover at rest, and the one it is moving by, held until
+    // it arrives. Stuck part-way, in error or unread, it may need moving
+    // either way.
+    const coverButtons = !canCover ? []
+      : coverMoving
+        ? [coverOpening === true ? coverOpen(COVER_MOVING)
+          : coverOpening === false ? coverClose(COVER_MOVING)
+          : btn("btn-cover-moving", "⏳ Flat Cover Moving", "", COVER_MOVING)]
+        : coverState === "Open" ? [coverClose()]
+        : coverState === "Closed" ? [coverOpen()]
+        : [coverOpen(coverPressed(true)), coverClose(coverPressed(false))];
     // With no current state to choose either of a pair, the set is fixed:
     // commands that end activity stay live, the rest wait.
     const controls = quiet ? [
@@ -569,11 +663,7 @@ class NinaObservatoryCard extends HTMLElement {
           ? btn("btn-stop-guide", "◼ Stop Guiding", "danger")
           : btn("btn-start-guide", "▶ Start Guiding", "success", unread(guiding, "guider")),
       ],
-      // Part-way, in error or unread, the cover may need moving either way.
-      [
-        canCover && coverState !== "Open" ? btn("btn-cover-open", "☐ Open Flat Cover") : "",
-        canCover && coverState !== "Closed" ? btn("btn-cover-close", "▣ Close Flat Cover") : "",
-      ],
+      coverButtons,
     ];
 
     const showFlipWarning =
@@ -773,14 +863,22 @@ class NinaObservatoryCard extends HTMLElement {
       </ha-card>
     `;
 
-    this._collapse.keepFocus(() => { this.shadowRoot.innerHTML = html; });
+    if (html === this._html) return;
+    this._html = html;
+    const root = this.shadowRoot;
+    this._collapse.keepFocus(() => {
+      if (root.firstChild) patch(root, html);
+      else root.innerHTML = html;
+    });
     this._attachListeners();
   }
 
+  // `onclick`, not a listener: a patched render keeps its buttons, and a
+  // listener added on every render would fire once for each.
   _attachListeners() {
     const bind = (id, fn) => {
       const el = this.shadowRoot.getElementById(id);
-      if (el) el.addEventListener("click", fn);
+      if (el) el.onclick = fn;
     };
     const svc = (s, d, ask = CONFIRM[s]) => {
       if (ask && !window.confirm(ask)) return;
@@ -799,9 +897,25 @@ class NinaObservatoryCard extends HTMLElement {
     bind("btn-warm",       () => svc("camera_warm", { minutes: 20 }));
     bind("btn-start-guide",() => svc("guider_start"));
     bind("btn-stop-guide", () => svc("guider_stop"));
-    bind("btn-cover-open", () => svc("flat_panel_set_cover", { open: true }, CONFIRM_COVER_OPEN));
-    bind("btn-cover-close",() => svc("flat_panel_set_cover", { open: false },
-      this._seqRunning ? CONFIRM_COVER_CLOSE_RUNNING : CONFIRM_COVER_CLOSE));
+    bind("btn-cover-open", () => this._setCover(true));
+    bind("btn-cover-close",() => this._setCover(false));
+  }
+
+  // The button pressed stays, disabled, until the cover leaves the state it
+  // was pressed in. A refused call releases it; Home Assistant shows the error.
+  _setCover(open) {
+    const ask = open ? CONFIRM_COVER_OPEN
+      : this._seqRunning ? CONFIRM_COVER_CLOSE_RUNNING : CONFIRM_COVER_CLOSE;
+    if (!window.confirm(ask)) return;
+    const press = { from: this._coverState, open, at: Date.now() };
+    this._coverPress = press;
+    this._render();
+    this._callService("nina_astrophotography", "flat_panel_set_cover", { open })
+      .catch(() => {
+        if (this._coverPress !== press) return;
+        this._coverPress = null;
+        this._render();
+      });
   }
 
   getCardSize() { return 8; }

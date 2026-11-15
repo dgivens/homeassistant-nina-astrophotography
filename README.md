@@ -224,7 +224,8 @@ angle, shown once a plate solve syncs the rotator.
 
 With a flat panel, it adds a Flat Panel chip, whether the cover is open and
 the light on, and the brightness in the panel's own units, and Open or Close
-Flat Cover. A cover part-way, in error or not read offers both. An ASCOM panel
+Flat Cover, greyed out while the cover moves. A cover part-way for longer
+than a minute, in error or not read offers both. An ASCOM panel
 reads brightness 0 while its light is off. A light frame exposed after the cover
 closed turns the chip red: that frame is blank, and so is every light after it
 until the cover opens.

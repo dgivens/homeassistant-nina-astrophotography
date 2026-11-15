@@ -26,8 +26,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The observatory card shows the flat panel** (#269): a Flat Panel chip and
   section with the cover, the light and the brightness in the panel's own
   units, and Open or Close Flat Cover under Controls, each asking for
-  confirmation. A cover part-way, in error or not read offers both, and an
-  error turns the chip red and stays on a collapsed card.
+  confirmation. The button pressed stays, greyed out, until the cover arrives
+  (#294). A cover part-way for longer than a minute, in error or not read
+  offers both, and an error turns the chip red and stays on a collapsed card.
 - **A warning for light frames taken behind the closed flat cover** (#288):
   `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` turns
   `on` when the newest frame is a light exposed after the cover was seen
@@ -93,6 +94,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 ---
 ### Fixed
 
+- **The observatory card's buttons hold still after a press** (#294). An
+  update changes only what changed on the card, so the button under the
+  pointer is kept rather than replaced and faded back into its hover colour.
 - **An ASCOM or Alpaca flat panel comes on at the brightness asked for, not
   at full output, the first time after N.I.N.A. connects it** (#285).
   N.I.N.A. runs a brightness and a light-on concurrently, and a light-on that

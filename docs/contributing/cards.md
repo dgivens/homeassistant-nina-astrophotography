@@ -121,6 +121,14 @@ Traps when changing a card:
 - **A folded card still shows what needs acting on**, and the observatory
   keeps Stop, Park and Close Dome wherever each applies: a folded card or
   Controls section must never hide the emergency stop.
+- **The observatory card patches its shadow root** rather than replacing it,
+  keeping every element whose tag, id and fold are unchanged, so the button
+  under the pointer keeps its hover through an update; an element that becomes
+  another control is replaced, so a press or the focus never carries from Stop
+  to Start. Bind its controls with
+  `onclick`: a listener added on every render fires once per render on a kept
+  button. `ops.mjs`'s stub holds no node tree, so there every render assigns
+  the markup whole, and only `render.html` exercises the patch.
 - A scenario's `folded: [...]` folds sections for that run alone. The stub's
   `getElementById` answers `null` for an id the markup lacks, as a browser
   does, so a draw guarded on its canvas is skipped there too.

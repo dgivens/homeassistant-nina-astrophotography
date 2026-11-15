@@ -175,9 +175,64 @@ export const scenarios = {
       .build(),
   },
 
-  // A cover moving, or stuck, between the two: both buttons. N.I.N.A. reports
-  // the travel, but no capture caught it.
-  flat_panel_part_open: { hass: (dump) => cover(dump, "NeitherOpenNorClosed", "unknown").build() },
+  // A cover part-way for longer than it takes to travel is stuck: both
+  // buttons. N.I.N.A. reports the travel, but no capture caught it.
+  flat_panel_stuck: {
+    hass: (dump) => cover(dump, "NeitherOpenNorClosed", "unknown")
+      .changedAt(new Date(Date.now() - 120_000)).build(),
+  },
+
+  // Moving, on a card that never saw where it started: one disabled button.
+  flat_panel_moving: {
+    hass: (dump) => cover(dump, "NeitherOpenNorClosed", "unknown")
+      .changedAt(new Date(Date.now() - 5_000)).build(),
+  },
+
+  // Open pressed on the closed cover: the button stays, disabled, while the
+  // cover travels, and becomes Close once it is open.
+  flat_panel_opening: {
+    hass: (dump) => ({
+      ...rig(dump, FLATS).build(),
+      callService: async () => {},
+    }),
+    act: ({ dump, hand, log }) => {
+      const buttons = (card) => log.push(`buttons ${
+        card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
+      return {
+        pressed: (card) => {
+          window.confirm = () => true;
+          card.shadowRoot.getElementById("btn-cover-open").click();
+          buttons(card);
+        },
+        moving: (card) => {
+          hand(cover(dump, "NeitherOpenNorClosed", "unknown")
+            .changedAt(new Date(Date.now() - 5_000)).build());
+          buttons(card);
+        },
+        open: (card) => {
+          hand(cover(dump, "Open", "on").build());
+          buttons(card);
+        },
+      };
+    },
+  },
+
+  // Open pressed on a cover in error: Close stays, since the press changes no
+  // reading while it waits. The rig's panel has not failed.
+  flat_panel_cover_error_pressed: {
+    hass: (dump) => ({
+      ...cover(dump, "Error", "unknown").build(),
+      callService: async () => {},
+    }),
+    act: ({ log }) => ({
+      pressed: (card) => {
+        window.confirm = () => true;
+        card.shadowRoot.getElementById("btn-cover-open").click();
+        log.push(`buttons ${
+          card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
+      },
+    }),
+  },
 
   // A red chip and both buttons. The rig's panel has not failed.
   flat_panel_cover_error: { hass: (dump) => cover(dump, "Error", "unknown").build() },
