@@ -17,9 +17,7 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.nina_astrophotography.api.errors import NinaRequestError
-from custom_components.nina_astrophotography.api.models import EquipmentSnapshot
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
-from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
 from ha.registry import registered
 from helpers import load_fixture, state_of
 
@@ -579,37 +577,53 @@ async def test_a_light_exposed_before_the_reported_close_is_not_flagged(
 
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
-    "overnight",
-    [
-        {"cover_state": "Open"},
-        # What the captured down panel reports. Observatories power a panel
-        # off while imaging, so it cannot light, and it reads `Closed` again
-        # only when it reconnects for the flats.
-        {
-            "connected": False,
-            "cover_state": "Unknown",
-            "supports_open_close": False,
-            "supports_on_off": False,
-            "brightness_range": None,
-        },
-    ],
-    ids=["cover open", "panel switched off"],
+    "switched_off", [False, True], ids=["cover open", "panel switched off"]
 )
 async def test_a_light_saved_before_the_cover_closed_is_not_flagged(
-    hass: HomeAssistant, set_up_with_flat_device, push, monkeypatch, overnight: dict
+    hass: HomeAssistant,
+    set_up_with_flat_device,
+    flat_device_changes,
+    flat_panel_disconnects,
+    push,
+    switched_off: bool,
 ) -> None:
-    """The cover closes at the end of every night, after its last light."""
-    entry = await set_up_with_flat_device(**overnight)
+    """The cover closes at the end of every night, after its last light.
+    Observatories power a panel off while imaging, so it cannot light.
+    """
+    await set_up_with_flat_device(cover_state="Open")
+    if switched_off:
+        await flat_panel_disconnects()
     push(_saved("LIGHT"))
     await hass.async_block_till_done()
 
-    closed = map_equipment_info(load_fixture("dawn_equipment_info.json"))
+    await flat_device_changes()  # the dawn panel as captured: closed
+    await hass.async_block_till_done()
+    assert state_of(hass, BEHIND_COVER).state == "off"
 
-    async def get_equipment(self: NinaClientV2) -> EquipmentSnapshot:
-        return closed
 
-    monkeypatch.setattr(NinaClientV2, "get_equipment", get_equipment)
-    await entry.runtime_data.coordinator.async_refresh()
+@pytest.mark.synthetic
+async def test_a_light_behind_the_closed_cover_stays_flagged_through_a_disconnect(
+    hass: HomeAssistant, loaded_entry, push, flat_panel_disconnects
+) -> None:
+    """A panel powered off leaves its cover where it was: a cover jammed shut
+    blanks the rest of the night.
+    """
+    push(_saved("LIGHT"))
+    await flat_panel_disconnects()
+    await hass.async_block_till_done()
+    assert state_of(hass, BEHIND_COVER).state == "on"
+
+
+@pytest.mark.synthetic
+async def test_a_light_after_the_cover_opened_and_the_panel_dropped_is_not_flagged(
+    hass: HomeAssistant, loaded_entry, push, flat_panel_disconnects
+) -> None:
+    """The rig's own order: the sequence opens the cover, then disconnects the
+    panel within the second, before a poll reads it open.
+    """
+    push({"Event": "FLAT-COVER-OPENED"})
+    await flat_panel_disconnects()
+    push(_saved("LIGHT"))
     await hass.async_block_till_done()
     assert state_of(hass, BEHIND_COVER).state == "off"
 

@@ -14,8 +14,9 @@ from nina_astrophotography.api.models import (
 )
 from nina_astrophotography.api.v2.mapper import map_event, map_frame
 from nina_astrophotography.session import (
-    cover_closed_at,
+    CoverMove,
     fold,
+    last_cover_move,
     latest_stack,
     latest_target,
     meridian_flip,
@@ -738,15 +739,27 @@ def test_the_stacks_of_another_process_are_not_listed(night_events) -> None:
 
 
 @pytest.mark.parametrize(
-    ("capture", "closed_at"),
+    ("capture", "move"),
     [
-        ("dawn", datetime.fromisoformat("2026-09-04T06:21:45.9633511-05:00")),
-        # Opened at dusk and not closed since.
-        ("imaging_guiding", None),
+        (
+            "dawn",
+            CoverMove(
+                closed=True,
+                time=datetime.fromisoformat("2026-09-04T06:21:45.9633511-05:00"),
+            ),
+        ),
+        (
+            "imaging_guiding",
+            CoverMove(
+                closed=False,
+                time=datetime.fromisoformat("2026-09-04T20:22:20.0079478-05:00"),
+            ),
+        ),
+        ("wait_for_time", None),
     ],
 )
-def test_the_cover_reads_closed_from_its_newest_cover_event(
-    capture: str, closed_at: datetime | None
+def test_the_last_cover_move_is_the_newest_cover_event(
+    capture: str, move: CoverMove | None
 ) -> None:
     events = [map_event(e, "g1") for e in load_fixture(f"{capture}_event_history.json")]
-    assert cover_closed_at(events, "g1") == closed_at
+    assert last_cover_move(events, "g1") == move

@@ -1,6 +1,6 @@
 """Fixtures for the Home-Assistant-dependent suite."""
 
-from dataclasses import replace
+from dataclasses import fields, replace
 import shutil
 import sys
 from typing import NamedTuple
@@ -353,6 +353,24 @@ def flat_device_changes(hass, config_entry, monkeypatch):
         await config_entry.runtime_data.coordinator.async_refresh()
 
     return _change
+
+
+@pytest.fixture
+def flat_panel_disconnects(flat_device_changes):
+    """Take the loaded entry's panel down as `imaging_guiding` captured it, and
+    poll. The dawn panel's identity is kept, so it reads as the same device.
+    """
+    down = map_equipment_info(
+        load_fixture("imaging_guiding_equipment_info.json")
+    ).flat_device
+    assert down is not None
+
+    async def _down() -> None:
+        await flat_device_changes(
+            **{f.name: getattr(down, f.name) for f in fields(down) if f.name != "meta"}
+        )
+
+    return _down
 
 
 @pytest.fixture

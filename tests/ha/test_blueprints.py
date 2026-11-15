@@ -80,7 +80,7 @@ REQUIRED: dict[str, dict[str, object]] = {
 # built rather than skipped.
 OPTIONAL: dict[str, dict[str, object]] = {
     "cover_closed_alert.yaml": {},
-    "cover_fault_alert.yaml": {"stuck_after": 30},
+    "cover_fault_alert.yaml": {"stuck_after": 30, "after_move_only": True},
     "guiding_alert.yaml": {"run_autofocus": True},
     "imaging_stall_alert.yaml": {
         "rig_reachable": ["binary_sensor.rig_reachable"],
@@ -167,7 +167,7 @@ async def test_a_blueprint_builds_an_automation(
 RELEASED: dict[str, frozenset[str]] = {
     "cover_closed_alert.yaml": frozenset({"behind_cover", "notify_target"}),
     "cover_fault_alert.yaml": frozenset(
-        {"cover_state", "notify_target", "stuck_after"}
+        {"after_move_only", "cover_state", "notify_target", "stuck_after"}
     ),
     "guiding_alert.yaml": frozenset(
         {

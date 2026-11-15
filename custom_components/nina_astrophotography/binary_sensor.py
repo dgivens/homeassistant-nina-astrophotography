@@ -225,6 +225,9 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.PROBLEM,
         kind="flat_device",
         supported=supports("flat_device", "supports_open_close"),
+        # A panel powered off after a move keeps its cover where it was, and
+        # the lights behind it stay blank.
+        survives_disconnect=True,
         # A light is blank behind a closed cover; flats and darks are not.
         value=lambda data: data.light_behind_cover,
     ),
