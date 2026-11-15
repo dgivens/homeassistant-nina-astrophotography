@@ -198,7 +198,7 @@ type: custom:nina-observatory-card
 
 | Card | Shows | Options (all optional) |
 |---|---|---|
-| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, flat panel, guiding, last frame, and controls. Stop, park, and opening or closing the dome or the flat panel's cover ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | `cover_stuck_after`: seconds the flat panel's cover may read part-way before the card shows it as stuck (default 60, at most a day); set it 10 s longer than your cover takes to open or close, since the cover is read every 10 s |
+| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, flat panel, guiding, last frame, and controls. Stop, park, and opening or closing the dome or the flat panel's cover ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | `cover_stuck_after`: seconds the flat panel's cover may read part-way before the card shows it as stuck (default 60, 20 to 600); set it a little longer than your cover takes to open or close plus the 10 s between reads |
 | `custom:nina-frame-stats-card` | HFR, star count and ADU trends for the session's frames, and a per-filter breakdown | — |
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default: your sequence's "AF After Temperature Change" trigger, else 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, their statistics, and a countdown for the sub being exposed | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85); `lights_only`: show only lights in the image and the strip (default `false`); a browser that presses the card's Lights only button away from this keeps its own choice, unless `show_strip` is off |
@@ -224,10 +224,14 @@ angle, shown once a plate solve syncs the rotator.
 
 With a flat panel, it adds a Flat Panel chip, whether the cover is open and
 the light on, and the brightness in the panel's own units, and Open or Close
-Flat Cover, greyed out while the cover moves. N.I.N.A. reports a cover stuck
+Flat Cover, greyed out while the cover moves; Open Flat Cover is also greyed
+out while the light is on, and Close Flat Cover asks first, then forces the
+close, while a sequence runs. N.I.N.A. reports a cover stuck
 part-way the same as one still moving, so a cover part-way for longer than
 `cover_stuck_after` (a minute by default) counts as stuck: it turns the chip
-red and offers both buttons, as a cover in error or not read does. An ASCOM
+red and offers both buttons, as a cover in error or not read does. The card
+keeps a held cover fault and the behind-cover warning while the panel is
+disconnected. An ASCOM
 panel reads brightness 0 while its light is off. A light frame exposed after
 the cover closed turns the chip red too: that frame is blank, and so is every
 light after it until the cover opens.
@@ -248,8 +252,9 @@ A collapsed card still shows what needs attention:
 - **Observatory**: a lost or unresponsive link, a meridian flip, a dome
   shutter or flat panel cover error, a flat panel cover stuck part-way,
   light frames behind the closed flat cover, and, while a sequence runs, a
-  disconnected camera or mount or stopped guiding. Stop Sequence, Park and Close Dome stay, each while it
-  applies, and a collapsed **Controls** section keeps them too.
+  disconnected camera or mount or stopped guiding. Stop Sequence, Park and
+  Close Dome stay, each while it applies, and a collapsed **Controls** section
+  keeps them too.
 - **Autofocus**: a failed run.
 - **Live stack**: whether stacking is running or N.I.N.A. is unreachable, and
   Start/Stop. It asks N.I.N.A. for no stack while collapsed, and on expanding
@@ -301,8 +306,9 @@ on one and pick your rig's entities.
 | [Session shutdown](custom_components/nina_astrophotography/blueprints/session_shutdown.yaml) | At a set time, first waits up to two hours for the sequence to finish (on by default), then stops it if it's still running, parks, optionally closes the dome over a parked mount — alerting if it does not close — and warms the camera. |
 | [Meridian flip warning](custom_components/nina_astrophotography/blueprints/meridian_flip_warning.yaml) | Notifies before a meridian flip, when it starts, and when it finishes. |
 | [Guiding alert](custom_components/nina_astrophotography/blueprints/guiding_alert.yaml) | Notifies, and optionally runs autofocus, when guiding RMS stays high. |
-| [Flat cover closed on lights](custom_components/nina_astrophotography/blueprints/cover_closed_alert.yaml) | Notifies when a light frame is saved with the flat panel's cover closed. Flats and darks behind it don't alert, and neither does closing it after the night's last light. A panel switched off for the night stays quiet, and so does its reconnecting for the flats. |
-| [Flat cover fault](custom_components/nina_astrophotography/blueprints/cover_fault_alert.yaml) | Notifies when the flat panel's cover reports an error, or stays part-way longer than it takes to travel (60 seconds by default), since some drivers never report a stuck cover as an error. [Details](docs/reference.md#flats). |
+| [Flat cover closed on lights](custom_components/nina_astrophotography/blueprints/cover_closed_alert.yaml) | Notifies when a light frame is saved with the flat panel's cover closed. Flats and darks behind it don't alert, and neither does closing it after the night's last light. A panel switched off for the night stays quiet, and so does its reconnecting for the flats. [Details](docs/reference.md#flat-panel-cover-and-light). |
+| [Flat cover fault](custom_components/nina_astrophotography/blueprints/cover_fault_alert.yaml) | Notifies when the flat panel's cover reports an error, or stays part-way longer than it takes to travel (60 seconds by default), since some drivers never report a stuck cover as an error. Optionally alerts only on a cover that reached part-way from open or closed, for drivers that read part-way while idle. [Details](docs/reference.md#flat-panel-cover-and-light). |
+| [Flat panel left lit](custom_components/nina_astrophotography/blueprints/flat_panel_left_lit_alert.yaml) | Notifies when the flat panel's light has been on for a set time (30 minutes by default) with no flat saved by the same rig; each flat restarts the count. Relies on the event socket. [Details](docs/reference.md#the-flat-panel-left-lit-blueprint). |
 | [Imaging stall alert](custom_components/nina_astrophotography/blueprints/imaging_stall_alert.yaml) | Notifies when frames stop for a bad reason (N.I.N.A. unreachable, mount parked mid-sequence, no frames), and clears when they resume. [Details](docs/reference.md#the-imaging-stall-alert-blueprint). |
 
 They live in `config/blueprints/automation/nina_astrophotography/`, and each
@@ -339,9 +345,9 @@ command, not when the equipment finishes.
 | `focuser_move` | Move the focuser to an absolute position |
 | `focuser_auto_focus` | Run an autofocus with N.I.N.A.'s configured method, outside the sequence |
 | `filterwheel_change_filter` | Change filter |
-| `flat_panel_set_cover` | Open or close the flat panel's cover. It does not check whether a sequence is running, and closing it mid-exposure ruins the frame |
-| `flat_panel_set_light` | Switch the flat panel's light on or off. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest, and never at full output. The light is switched on only once the panel reports that brightness; a panel that does not within 30 seconds, or reports no brightness range, is refused |
-| `flat_panel_set_brightness` | Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and goes dark at 0; a native Alnitak or Pegasus driver leaves the light as it is. A panel reporting no brightness range is refused |
+| `flat_panel_set_cover` | Open or close the flat panel's cover. Opening is refused while the panel is lit, and closing while a sequence runs unless forced, since closing mid-exposure ruins the frame |
+| `flat_panel_set_light` | Switch the flat panel's light on or off. A panel with a cover is lit only while the cover reads `Closed`. It comes on at the brightness given, else at the level it is already lit at, else at its dimmest, and never at full output. The light is switched on only once the panel reports that brightness; a panel that does not within 30 seconds, or reports no brightness range, is refused |
+| `flat_panel_set_brightness` | Set the flat panel's brightness. An ASCOM panel lights at any level above 0 and goes dark at 0; a native Alnitak or Pegasus driver leaves the light as it is. On a panel with a cover, any level above the minimum is refused unless the cover reads `Closed`. A panel reporting no brightness range is refused. [What a level does to the light](docs/reference.md#flat-panel-cover-and-light) |
 | `guider_start` / `guider_stop` | Start / stop guiding |
 | `rotator_move` | Rotate to a sky position angle; refused until a plate solve syncs the rotator |
 | `rotator_move_mechanical` | Rotate to a mechanical angle within the rotator's range |
@@ -368,6 +374,7 @@ Actions not listed here take no fields.
 | `focuser_move` | `position` | yes | — | 0 or more steps | Absolute focuser position. The API reports no maximum, so travel beyond the focuser's is left to N.I.N.A. and its driver. |
 | `filterwheel_change_filter` | `filter_index` | yes | — | one of the wheel's slots | **Zero-based** slot: the first filter is `0`. |
 | `flat_panel_set_cover` | `open` | yes | — | — | `true` opens the cover; `false` closes it. |
+| `flat_panel_set_cover` | `force` | no | `false` | — | Close the cover even while a sequence runs. Only when closing. |
 | `flat_panel_set_light` | `light_on` | yes | — | — | `true` lights the panel; `false` switches it off. |
 | `flat_panel_set_light` | `brightness` | no | the lit level, else the dimmest | above the panel's minimum, up to its maximum | The level to light the panel at, in the panel's own units. Only with `light_on: true`. |
 | `flat_panel_set_brightness` | `level` | yes | — | the panel's own minimum to maximum | In the panel's own units, not Home Assistant's 0–255: an Alnitak reports 0–255, a Pegasus FlatMaster 20–220, a DeepSkyDad FP 0–4096. Use `flat_panel_set_light` to switch off: what `0` does depends on the driver. |

@@ -38,9 +38,10 @@ capture, so `disconnect()` derives their down-blocks by the rule the corpus
 does show: drop `DeviceId`, `Name`, `DisplayName`, `Description`,
 `DriverInfo`, `DriverVersion` and `SupportedActions`, and set `Connected` false
 (the focuser goes 15 keys to 8, the rotator 15 to 8, the weather station 22 to
-15, the flat panel 17 to 10, each losing exactly that set). The other eight are
-copied from a capture that holds them down: seven from the restart capture, and
-the flat panel from `imaging_guiding`, since it is up at the restart.
+15, the flat panel 17 to 10, each losing exactly that set). That is the rule the
+corpus shows; the flat panel's down block is captured, not derived. The other eight are copied from a capture that holds them down: seven
+from the restart capture, and the flat panel from `imaging_guiding`, since it
+is up at the restart.
 
 A derived block keeps the connected block's readings, which a real disconnect
 may reset: the captured flat panel down reports `SupportsOnOff` and

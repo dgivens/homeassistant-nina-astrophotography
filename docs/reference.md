@@ -18,6 +18,7 @@ instance name `N.I.N.A.` the prefix is `n_i_n_a`, so
 - [The imaging stall alert blueprint](#the-imaging-stall-alert-blueprint)
 - [Weather](#weather)
 - [Flats](#flats)
+  - [Flat panel cover and light](#flat-panel-cover-and-light)
 - [Autofocus](#autofocus)
 - [The autofocus curve attributes](#the-autofocus-curve-attributes)
 - [Other attributes](#other-attributes)
@@ -328,6 +329,29 @@ How a flat run shows up elsewhere:
   `unavailable` until it connects again. While N.I.N.A. is using the panel,
   don't let a scene or automation change its light or brightness; it will
   spoil the flats.
+### Flat panel cover and light
+
+The flat panel's cover and light are guarded against lighting a panel that
+shines into the observatory, and against closing the cover on a running
+sequence's lights.
+
+- **Lighting needs a closed cover.** On a panel with a cover, turning the light
+  on (`light.<instance>_flat_panel_light`, `flat_panel_set_light`) and any
+  brightness above the panel's minimum (`flat_panel_set_brightness`,
+  `number.<instance>_flat_panel_brightness`) are refused unless the cover reads
+  `Closed`. A panel with no cover is exempt. Switching off and setting the
+  minimum are always allowed, and a disconnected panel reports no cover, so
+  N.I.N.A. refuses it itself.
+- **Opening needs a dark panel.** `flat_panel_set_cover` open and
+  `switch.<instance>_flat_panel_cover` on are refused while the light is on.
+- **Closing while a sequence runs needs `force`.** `flat_panel_set_cover` with
+  `open: false` is refused while the sequencer runs, unless `force: true`: a
+  closed cover blanks every light frame the sequence takes after it. The cover
+  switch's turn-off is not held back, and the observatory card asks first, then
+  sends `force: true`.
+- N.I.N.A.'s Advanced API has no endpoint to halt a cover mid-travel; its flat
+  device endpoints are info, connect, disconnect, list-devices, rescan,
+  set-light, set-cover and set-brightness.
 - `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` is
   `on` while the newest frame is a light exposed after the cover was seen
   closed; flats and darks never turn it on, and nor does a light exposed
@@ -335,25 +359,43 @@ How a flat run shows up elsewhere:
   when the cover opens or a frame of another type follows, and after a Home
   Assistant restart until the next light. It relies on the driver reporting
   the cover `Closed`: a cover reading `Unknown` or `Error` cannot turn it on.
-  A panel switched off or disconnected while imaging reports no cover, so the
-  sensor is `unavailable` and cannot warn; when the panel reconnects reading
-  closed, the lights taken before then do not turn it on, and only a light
-  after that does.
+  A sequence that disconnects the panel after closing its cover does not make
+  the sensor `unavailable`: it holds its reading through the disconnect until
+  N.I.N.A. reports the cover opened. A panel switched off or disconnected
+  before the cover was seen closed reports no cover and cannot warn; when it
+  reconnects reading closed, the lights taken before then do not turn the
+  sensor on, and only a light after that does.
 - `sensor.<instance>_flat_panel_cover_state` reads `NeitherOpenNorClosed`
   both while the cover travels and when it is stuck part-way; some drivers
   never turn a stuck cover into `Error`. On a panel that reports it cannot
-  open or close a cover, it reads `NotPresent` whatever the driver says.
+  open or close a cover, it reads `NotPresent` whatever the driver says. A
+  part-way or `Error` reading survives a panel disconnect until N.I.N.A.
+  reports the cover opened or closed after it; any other reading is
+  `unavailable` while the panel is down. What the sensors hold is forgotten
+  when Home Assistant restarts.
 - The observatory card shows a cover part-way for longer than its
-  `cover_stuck_after` (default 60 seconds) as stuck, and the **Flat cover
-  fault** blueprint notifies after its own *Stuck after* time, or at once on
-  `Error`. The cover is read every 10 seconds, so a cover can read part-way
-  for up to 10 seconds longer than it takes to travel: set either one longer
-  than that. Both count from the sensor's last change:
+  `cover_stuck_after` as stuck. The option is 20 to 600 seconds, default 60,
+  in YAML and in the editor alike. The card keeps a held cover fault and the
+  behind-cover warning through a panel disconnect, and disables Open Flat
+  Cover while the panel is lit.
+- The **Flat cover fault** blueprint notifies after its own *Stuck after*
+  time, default 60 seconds, or at once on `Error`.
+- The cover is read every 10 seconds, so a cover can read part-way for up to
+  10 seconds longer than it takes to travel: set the card's
+  `cover_stuck_after` and the blueprint's *Stuck after* a little longer than
+  your cover's travel plus that read. Both count from the sensor's last
+  change:
   - an outage that makes it `unavailable` restarts the count, so a link that
     keeps dropping can hold off the alert indefinitely;
   - the card, while N.I.N.A. is not answering, times the last readings to when
     it went quiet, and with the Reachable sensor disabled does not show a
     held reading as stuck.
+- The blueprint's optional *Only after a move* input (`after_move_only`,
+  default off) alerts on a part-way cover only when it reached it from `Open`
+  or `Closed`, for a driver that reads part-way while idle or unhomed. A cover
+  first read part-way never alerts, and an `Error` always does. It also
+  catches a cover left part-way or in error when a sequence disconnects the
+  panel.
 - The blueprint alerts for a cover already at fault when Home Assistant
   starts, once its *Stuck after* time has passed, so each restart repeats the
   alert while the fault lasts. Reloading or editing the automation while the
@@ -362,19 +404,39 @@ How a flat run shows up elsewhere:
   jammed one reads `Open` or `Closed`, and neither the card nor the blueprint
   can tell.
 - `number.<instance>_flat_panel_brightness` sets only the brightness, in the
-  panel's own units. On an ASCOM or Alpaca panel that also lights it at any
-  level above 0, and 0 darkens it. After the number is set to 0, or N.I.N.A.
-  reconnects the panel, the next light-on that sends no brightness, N.I.N.A.'s
-  own light toggle included, comes on at full brightness. A panel on one of
-  N.I.N.A.'s native drivers, such as Alnitak's or Pegasus's, keeps its light as
-  it is. Use `light.<instance>_flat_panel_light` to turn the panel on or off.
+  panel's own units, and is a box input rather than a slider. On an ASCOM or
+  Alpaca panel a level above 0 also lights it, and 0 darkens it. After the
+  number is set to 0, or N.I.N.A. reconnects the panel, the next light-on that
+  sends no brightness, N.I.N.A.'s own light toggle included, comes on at full
+  brightness. A panel on one of N.I.N.A.'s native drivers, such as Alnitak's
+  or Pegasus's, keeps its light as it is. Use
+  `light.<instance>_flat_panel_light` to turn the panel on or off.
 - Turning the light on, or `flat_panel_set_light`, sends the brightness and
   waits for the panel to report it, which takes a few seconds: N.I.N.A. reads
-  the panel once per device polling interval. An ASCOM or Alpaca panel is lit
-  by the brightness itself; a native one is then switched on. A panel that
-  does not report the brightness within 30 seconds is
-  refused with an error and not switched on, though an ASCOM or Alpaca panel
-  may still come on at that brightness.
+  the panel once per device polling interval. A reading within one Home
+  Assistant step of the level sent counts as that level, and never one at or
+  below the minimum. An ASCOM or Alpaca panel is lit by the brightness itself;
+  a native one is then switched on. A panel that does not report the level
+  within 30 seconds is refused with an error that names the level it reports
+  when it is lit at another one, and is not switched on, though an ASCOM or
+  Alpaca panel may still come on at the level sent.
+
+#### The flat panel left lit blueprint
+
+**Flat Panel Left Lit** (`flat_panel_left_lit_alert.yaml`) notifies when the
+panel's light has been on for *Lit with no flat for* (`lit_minutes`, default
+30, 5 to 240) with no FLAT saved by the same rig. Its other inputs are the
+`flat_panel_light` and `notify_target`.
+
+- Each FLAT saved restarts the count. It sees flats through the
+  `nina_image_save` event, so it relies on the event socket: with the socket
+  down, a flat run longer than the threshold alerts. A light or dark does not
+  count.
+- A light that is `unavailable` never alerts, and the count starts over once
+  it reads lit again.
+- It alerts once each time the panel is left lit. A panel already lit when
+  Home Assistant starts alerts once the time has passed, so a restart while
+  lit repeats the alert.
 
 ## Autofocus
 
