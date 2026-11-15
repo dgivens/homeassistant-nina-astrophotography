@@ -454,6 +454,17 @@ _PART_WAY = "NeitherOpenNorClosed"
         ([("Closed", _CLOSED), (_PART_WAY, _CLOSED), (None, None)], _PART_WAY),
         ([("Closed", None), (_PART_WAY, None)], None),
         ([("Open", _OPENED), (None, _OPENED)], None),
+        (
+            [
+                ("Open", _OPENED),
+                (_PART_WAY, _CLOSED),
+                (None, _CLOSED),
+                (_PART_WAY, _CLOSED),
+                (None, _CLOSED),
+            ],
+            _PART_WAY,
+        ),
+        ([(None, _OPENED), (_PART_WAY, _CLOSED), (None, _CLOSED)], None),
     ],
     ids=[
         "opened, then disconnected",
@@ -465,6 +476,8 @@ _PART_WAY = "NeitherOpenNorClosed"
         "N.I.N.A. restarted",
         "still connected",
         "left at rest",
+        "jammed on a move first read part-way",
+        "first read after a restart lags the close",
     ],
 )
 def test_a_disconnect_holds_a_cover_fault_no_move_has_resolved(

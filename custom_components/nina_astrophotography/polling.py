@@ -177,10 +177,11 @@ class CoverFaultHold:
     move N.I.N.A. reported after the cover was last seen at rest: N.I.N.A.
     raises `FLAT-COVER-OPENED` and `-CLOSED` only once the move has finished.
 
-    The baseline is taken when the cover is first seen at rest, not when it
-    is first seen part-way: a poll can still read a cover part-way after
-    N.I.N.A. has reported it open, and a baseline taken then would hold the
-    finished move as a fault.
+    The baseline is taken when the cover is first seen at rest, or while the
+    panel is down and holds nothing, since nothing moves a disconnected
+    cover; never when it is first seen part-way: a poll can still read a
+    cover part-way after N.I.N.A. has reported it open, and a baseline taken
+    then would hold the finished move as a fault.
     """
 
     def __init__(self) -> None:
@@ -204,6 +205,7 @@ class CoverFaultHold:
         # `move` reads `None` again after a N.I.N.A. restart, which moved nothing.
         if self._reading in _COVER_FAULTS and (move is None or move == self._since):
             return self._reading
+        self._read, self._reading, self._since = True, None, move
         return None
 
 
