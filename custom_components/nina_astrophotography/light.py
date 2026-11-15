@@ -7,7 +7,7 @@ Brightness is scaled between the driver's own `MinBrightness` and
 `set-light?on=true` can jump to `MaxBrightness`, a hazard in a shared
 observatory. On an ASCOM panel the brightness alone lights it; N.I.N.A.'s
 native drivers keep brightness and light apart, so `set-light` switches the
-panel on.
+panel on. A panel with a cover is lit only while the cover reads closed.
 """
 
 import asyncio
@@ -29,7 +29,7 @@ from .api.models import FlatDeviceModel
 from .api.v2 import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator
-from .device import observed
+from .device import observed, raise_unless_cover_closed
 from .entity import NinaEntity, async_add_observed, refusals_raised
 
 PARALLEL_UPDATES = 1
@@ -43,7 +43,27 @@ _SETTLE_INTERVAL = 1.0
 _SETTLE_TIMEOUT = 30.0
 
 
-async def async_light_at(client: NinaClientV2, level: int) -> None:
+def lowest_lit_level(low: float) -> int:
+    """The lowest driver level that lights the panel: just above its minimum.
+
+    An ASCOM panel at its minimum is dark, and N.I.N.A.'s next `set-light`
+    then lights it at `MaxBrightness`.
+    """
+    return math.floor(low) + 1
+
+
+def driver_level(ha_level: int, driver_range: tuple[float, float]) -> int:
+    """Home Assistant's 1-255 in driver units, never below `lowest_lit_level`.
+
+    A range under 128 would otherwise round level 1 down to the minimum.
+    """
+    low, high = driver_range
+    return max(round(low + ha_level / _HA_MAX * (high - low)), lowest_lit_level(low))
+
+
+async def async_light_at(
+    client: NinaClientV2, level: int, driver_range: tuple[float, float]
+) -> None:
     """Light the panel at `level`, in driver units, and never above it.
 
     N.I.N.A. runs `set-brightness` and `set-light` without waiting for either,
@@ -53,11 +73,17 @@ async def async_light_at(client: NinaClientV2, level: int) -> None:
     only once the panel reports that level and still reads off: an ASCOM panel
     is lit by the brightness itself, and a native one comes on at it.
 
+    A reading within one Home Assistant step of `level` is that level, since a
+    driver may store a brightness at its own resolution; but never the
+    minimum, which is the dark panel the race lights at full output.
+
     Being lit is not enough on its own: until N.I.N.A. next reads the panel, it
     reports the state from before the command, including a switch-off just
     sent. A panel that never reports the level is refused rather than sent a
     `set-light` that could race the brightness.
     """
+    low, high = driver_range
+    tolerance = max((high - low) / _HA_MAX, 1.0)
     await client.set_flat_brightness(level)
     loop = asyncio.get_running_loop()
     deadline = loop.time() + _SETTLE_TIMEOUT
@@ -66,35 +92,33 @@ async def async_light_at(client: NinaClientV2, level: int) -> None:
             panel = (await client.get_equipment()).flat_device
         except NinaError:
             panel = None
+        reported = None if panel is None else panel.brightness
         if (
             panel is not None
-            and panel.brightness is not None
-            and round(panel.brightness) == level
+            and reported is not None
+            and reported > low
+            and abs(reported - level) <= tolerance
         ):
             if not panel.light_on:
                 await client.set_flat_light(True)
             return
         if loop.time() >= deadline:
+            placeholders = {"level": str(level), "seconds": f"{_SETTLE_TIMEOUT:g}"}
+            if panel is not None and panel.light_on and reported is not None:
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="flat_panel_lit_at_another_level",
+                    translation_placeholders={
+                        **placeholders,
+                        "reported": f"{reported:g}",
+                    },
+                )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="flat_panel_brightness_not_reported",
-                translation_placeholders={
-                    "level": str(level),
-                    "seconds": f"{_SETTLE_TIMEOUT:g}",
-                },
+                translation_placeholders=placeholders,
             )
         await asyncio.sleep(_SETTLE_INTERVAL)
-
-
-def dimmest_level(driver_range: tuple[float, float]) -> int:
-    """Home Assistant's level 1 in driver units, and always above the minimum.
-
-    An ASCOM panel set to its minimum, 0, is dark, and N.I.N.A.'s next
-    `set-light` then lights it at `MaxBrightness`; a range under 128 would
-    round level 1 down to it.
-    """
-    low, high = driver_range
-    return max(round(low + (high - low) / _HA_MAX), math.floor(low) + 1)
 
 
 class NinaFlatLight(NinaEntity, LightEntity):
@@ -157,27 +181,23 @@ class NinaFlatLight(NinaEntity, LightEntity):
         low, high = driver_range
         return round((panel.brightness - low) / (high - low) * _HA_MAX)
 
-    def _to_driver(self, ha_brightness: int) -> int:
-        """Scale HA's 1-255 into driver units, refusing anything outside it.
-
-        N.I.N.A. would clamp it silently; HA's light schema clamps first, so
-        this is a guard. Every level stays above the driver's minimum, for
-        the reason `dimmest_level` gives.
-        """
-        if not 1 <= ha_brightness <= _HA_MAX:
-            raise ServiceValidationError(
-                f"Brightness must be between 1 and {_HA_MAX}, got {ha_brightness}"
-            )
-        low, high = self._range or (0.0, 0.0)
-        scaled = round(low + (ha_brightness / _HA_MAX) * (high - low))
-        return max(scaled, dimmest_level((low, high)))
-
     async def async_turn_on(self, **kwargs: Any) -> None:
+        raise_unless_cover_closed(self.coordinator.data)
+        if (driver_range := self._range) is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="flat_panel_no_range"
+            )
         # Never fall back to full: an idle panel's brightness scales to 0.
         requested = int(kwargs.get(ATTR_BRIGHTNESS, self._last_on_brightness))
-        driver_value = self._to_driver(requested)
+        # N.I.N.A. would clamp it silently; HA's light schema clamps first, so
+        # this is a guard.
+        if not 1 <= requested <= _HA_MAX:
+            raise ServiceValidationError(
+                f"Brightness must be between 1 and {_HA_MAX}, got {requested}"
+            )
+        level = driver_level(requested, driver_range)
         with refusals_raised():
-            await async_light_at(self.coordinator.client, driver_value)
+            await async_light_at(self.coordinator.client, level, driver_range)
         self._remembered = requested
         await self.coordinator.async_request_refresh()
 

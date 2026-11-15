@@ -100,14 +100,14 @@ async def test_a_connected_panel_reporting_no_range_is_unavailable(
 
 
 async def test_a_set_sends_only_set_brightness_in_the_drivers_own_units(
-    hass: HomeAssistant, flat_panel_entry, sent
+    hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """The number is raw driver units, where the `light` is HA's 0-255. An
     ASCOM panel lights above 0 and darkens at 0 without `set-light`; native
     drivers leave the light as it is.
     """
     await _set(hass, BRIGHTNESS, 1024)
-    assert sent.calls == [("set_flat_brightness", 1024)]
+    assert rig.sent == [("/equipment/flatdevice/set-brightness", {"brightness": 1024})]
 
 
 async def test_a_set_does_not_read_the_new_value_back_from_the_response(

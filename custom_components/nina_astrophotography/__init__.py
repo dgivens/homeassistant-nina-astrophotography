@@ -5,8 +5,7 @@ from dataclasses import asdict
 from datetime import timedelta
 import functools
 import logging
-import math
-from typing import Any
+from typing import Any, Literal
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import (
@@ -38,7 +37,7 @@ from .api.errors import (
     NinaRequestError,
     NinaUnavailableError,
 )
-from .api.models import NinaEvent
+from .api.models import FlatDeviceModel, NinaEvent
 from .api.v2 import NinaClientV2, NinaEventStream
 from .blueprint_sync import async_install_blueprints, async_track_imported_copies
 from .const import (
@@ -84,7 +83,10 @@ from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData, NinaRuntime
 from .device import (
     async_sync_devices,
     kind_of,
+    raise_closing_while_running,
     raise_outside_rotator_range,
+    raise_unless_cover_closed,
+    raise_while_lit,
     refused_while_unsafe,
     refused_while_unsynced,
 )
@@ -437,9 +439,14 @@ async def _entry_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaConfi
     return entry
 
 
+async def _coordinator_for(hass: HomeAssistant, call: ServiceCall) -> NinaCoordinator:
+    """The coordinator of the rig a call is aimed at."""
+    return (await _entry_for_target(hass, call)).runtime_data.coordinator
+
+
 async def _client_for_target(hass: HomeAssistant, call: ServiceCall) -> NinaClientV2:
     """The client of the rig a call is aimed at."""
-    return (await _entry_for_target(hass, call)).runtime_data.coordinator.client
+    return (await _coordinator_for(hass, call)).client
 
 
 def _format(value: float) -> str:
@@ -519,12 +526,19 @@ def _service(handler: Callable[[ServiceCall], Awaitable[None]]):
     return wrapped
 
 
-def _refuse_unsupported(supported: bool | None, feature: str) -> None:
+def _refuse_unsupported(
+    panel: FlatDeviceModel | None, feature: Literal["cover", "light"]
+) -> None:
     """Refuse a command for a feature the connected panel reports it lacks.
 
     A disconnected panel reports every capability false, so only an
     explicit false from a connected one is believed.
     """
+    if panel is None or not panel.connected:
+        return
+    supported = (
+        panel.supports_open_close if feature == "cover" else panel.supports_on_off
+    )
     if supported is False:
         raise ServiceValidationError(
             translation_domain=DOMAIN,
@@ -533,14 +547,31 @@ def _refuse_unsupported(supported: bool | None, feature: str) -> None:
         )
 
 
+def _panel_range(panel: FlatDeviceModel | None) -> tuple[float, float]:
+    """The panel's brightness range, refusing a panel reporting none.
+
+    An ASCOM panel lights at any level above 0 and N.I.N.A. clamps to
+    `MaxBrightness`, so a level sent to a panel whose range is unknown, or that
+    connects before the next poll, could light it at full output.
+    """
+    if panel is None or panel.brightness_range is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="flat_panel_no_range"
+        )
+    return panel.brightness_range
+
+
 async def _handle_flat_panel_set_cover(call: ServiceCall) -> None:
-    coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
-    panel = coordinator.data.snapshot.flat_device
-    if panel is not None and panel.connected:
-        _refuse_unsupported(panel.supports_open_close, "cover")
+    """Open the cover, refused while the panel reads lit; or close it, refused
+    while the sequencer runs unless `force` is set.
+    """
+    coordinator = await _coordinator_for(call.hass, call)
+    _refuse_unsupported(coordinator.data.snapshot.flat_device, "cover")
     if call.data["open"]:
+        raise_while_lit(coordinator.data)
         await coordinator.client.open_flat_cover()
     else:
+        raise_closing_while_running(coordinator.data, call.data["force"])
         await coordinator.client.close_flat_cover()
 
 
@@ -553,11 +584,10 @@ async def _handle_flat_panel_set_light(call: ServiceCall) -> None:
     reports brightness 0, so the level kept is only a lit panel's own.
     `light.async_light_at` says when the `set-light` follows.
     """
-    coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
+    coordinator = await _coordinator_for(call.hass, call)
     client, panel = coordinator.client, coordinator.data.snapshot.flat_device
     requested = call.data.get("brightness")
-    if panel is not None and panel.connected:
-        _refuse_unsupported(panel.supports_on_off, "light")
+    _refuse_unsupported(panel, "light")
     if not call.data["light_on"]:
         if requested is not None:
             raise ServiceValidationError(
@@ -566,40 +596,37 @@ async def _handle_flat_panel_set_light(call: ServiceCall) -> None:
             )
         await client.set_flat_light(False)
         return
-    if panel is None or panel.brightness_range is None:
-        raise ServiceValidationError(
-            translation_domain=DOMAIN, translation_key="flat_panel_no_range"
-        )
-    low, high = panel.brightness_range
+    raise_unless_cover_closed(coordinator.data)
+    low, high = driver_range = _panel_range(panel)
+    lowest = light.lowest_lit_level(low)
     if requested is not None:
-        # Above the minimum: an ASCOM panel at 0 is dark, and the set-light
-        # after it lights the panel at MaxBrightness.
-        _within_device_range(
-            "Brightness", requested, "flat panel", math.floor(low) + 1, high
-        )
+        _within_device_range("Brightness", requested, "flat panel", lowest, high)
         level = requested
-    elif panel.light_on and panel.brightness is not None and panel.brightness > low:
-        level = round(panel.brightness)
+    elif (
+        panel is not None
+        and panel.light_on
+        and panel.brightness is not None
+        and panel.brightness > low
+    ):
+        level = max(round(panel.brightness), lowest)
     else:
-        level = light.dimmest_level((low, high))
-    await light.async_light_at(client, level)
+        level = light.driver_level(1, driver_range)
+    await light.async_light_at(client, level, driver_range)
 
 
 async def _handle_flat_panel_set_brightness(call: ServiceCall) -> None:
-    """Set a level within the panel's range, refusing a panel reporting none.
+    """Set a level within the panel's range.
 
-    An ASCOM panel lights at any level above 0 and N.I.N.A. clamps to
-    `MaxBrightness`, so a level sent to a panel whose range is unknown, or that
-    connects before the next poll, could light it at full output.
+    An ASCOM panel lights at any level above its minimum, so such a level is
+    held to the cover as switching on is; a native driver keeps the light as it
+    is.
     """
-    coordinator = (await _entry_for_target(call.hass, call)).runtime_data.coordinator
+    coordinator = await _coordinator_for(call.hass, call)
     level = call.data["level"]
-    panel = coordinator.data.snapshot.flat_device
-    if panel is None or panel.brightness_range is None:
-        raise ServiceValidationError(
-            translation_domain=DOMAIN, translation_key="flat_panel_no_range"
-        )
-    _within_device_range("Level", level, "flat panel", *panel.brightness_range)
+    low, high = _panel_range(coordinator.data.snapshot.flat_device)
+    _within_device_range("Level", level, "flat panel", low, high)
+    if level > low:
+        raise_unless_cover_closed(coordinator.data)
     await coordinator.client.set_flat_brightness(level)
 
 
@@ -654,8 +681,7 @@ def _register_services(hass: HomeAssistant) -> None:
         register_command(service, command)
 
     async def handle_dome_open(call: ServiceCall) -> None:
-        entry = await _entry_for_target(hass, call)
-        coordinator = entry.runtime_data.coordinator
+        coordinator = await _coordinator_for(hass, call)
         if (key := refused_while_unsafe(coordinator.data)) is not None:
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key=key)
         await coordinator.client.open_dome()
@@ -698,7 +724,7 @@ def _register_services(hass: HomeAssistant) -> None:
     )
 
     async def handle_camera_capture(call: ServiceCall) -> None:
-        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        coordinator = await _coordinator_for(hass, call)
         duration, gain = call.data["duration"], call.data.get("gain")
         if gain is not None and gain < 1:
             raise ServiceValidationError(
@@ -780,7 +806,7 @@ def _register_services(hass: HomeAssistant) -> None:
     # ── Filter Wheel ─────────────────────────────────────────────────────────
 
     async def handle_filterwheel_change_filter(call: ServiceCall) -> None:
-        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        coordinator = await _coordinator_for(hass, call)
         index = call.data["filter_index"]
         wheel = coordinator.data.snapshot.filter_wheel
         # Slots are the wheel's own `Id`s, which need not run 0..n-1.
@@ -811,6 +837,7 @@ def _register_services(hass: HomeAssistant) -> None:
         _handle_flat_panel_set_cover,
         {
             vol.Required("open"): cv.boolean,
+            vol.Optional("force", default=False): cv.boolean,
         },
     )
 
@@ -823,9 +850,6 @@ def _register_services(hass: HomeAssistant) -> None:
         },
     )
 
-    # Driver units, within the panel's own `MinBrightness`–`MaxBrightness`. An
-    # ASCOM panel lights at any level above 0; a native driver keeps the light
-    # as it is.
     register(
         SERVICE_FLAT_PANEL_SET_BRIGHTNESS,
         _handle_flat_panel_set_brightness,
@@ -851,7 +875,7 @@ def _register_services(hass: HomeAssistant) -> None:
     # ── Rotator ──────────────────────────────────────────────────────────────
 
     async def handle_rotator_move(call: ServiceCall) -> None:
-        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        coordinator = await _coordinator_for(hass, call)
         if (key := refused_while_unsynced(coordinator.data)) is not None:
             raise ServiceValidationError(translation_domain=DOMAIN, translation_key=key)
         await coordinator.client.move_rotator(call.data["position"])
@@ -865,7 +889,7 @@ def _register_services(hass: HomeAssistant) -> None:
     )
 
     async def handle_rotator_move_mechanical(call: ServiceCall) -> None:
-        coordinator = (await _entry_for_target(hass, call)).runtime_data.coordinator
+        coordinator = await _coordinator_for(hass, call)
         raise_outside_rotator_range(coordinator.data, call.data["position"])
         await coordinator.client.move_rotator_mechanical(call.data["position"])
 

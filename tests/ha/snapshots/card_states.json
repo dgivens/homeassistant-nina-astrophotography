@@ -939,7 +939,7 @@
      "friendly_name": "N.I.N.A. Flat Panel Brightness",
      "max": 4096.0,
      "min": 0.0,
-     "mode": "slider",
+     "mode": "box",
      "step": 1
     },
     "state": "0.0"
@@ -7396,7 +7396,7 @@
      "friendly_name": "N.I.N.A. Flat Panel Brightness",
      "max": 100.0,
      "min": 0.0,
-     "mode": "slider",
+     "mode": "box",
      "step": 1
     },
     "state": "0.0"
@@ -9142,7 +9142,7 @@
      "friendly_name": "N.I.N.A. Flat Panel Brightness",
      "max": 100.0,
      "min": 0.0,
-     "mode": "slider",
+     "mode": "box",
      "step": 1
     },
     "state": "0.0"
@@ -10874,7 +10874,7 @@
      "friendly_name": "N.I.N.A. Flat Panel Brightness",
      "max": 100.0,
      "min": 0.0,
-     "mode": "slider",
+     "mode": "box",
      "step": 1
     },
     "state": "unavailable"
