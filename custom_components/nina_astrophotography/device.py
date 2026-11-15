@@ -122,6 +122,47 @@ def raise_outside_rotator_range(data: NinaData, angle: float) -> None:
     )
 
 
+def raise_unless_cover_closed(data: NinaData) -> None:
+    """Refuse lighting the panel while its cover reads anything but closed.
+
+    A panel lit with its cover open shines into the observatory, onto every
+    other telescope in a shared one. A panel with no cover is exempt, and so is
+    a disconnected one, which reports none: N.I.N.A. refuses it itself.
+    """
+    panel = data.snapshot.flat_device
+    if (
+        panel is None
+        or panel.supports_open_close is False
+        or panel.cover_state in ("Closed", "NotPresent")
+    ):
+        return
+    raise ServiceValidationError(
+        translation_domain=DOMAIN,
+        translation_key="flat_panel_cover_not_closed",
+        translation_placeholders={"cover": panel.cover_state or "Unknown"},
+    )
+
+
+def raise_while_lit(data: NinaData) -> None:
+    """Refuse opening the cover while the panel reads lit, for the reason
+    `raise_unless_cover_closed` gives.
+    """
+    if read_field("flat_device", "light_on")(data):
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="flat_panel_lit"
+        )
+
+
+def raise_closing_while_running(data: NinaData, force: bool) -> None:
+    """Refuse closing the cover while the sequencer runs, unless forced: a
+    closed cover blanks every light frame the sequence takes after it.
+    """
+    if data.running and not force:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="flat_panel_close_while_running"
+        )
+
+
 def channels_of(data: NinaData) -> tuple[SwitchChannelModel, ...]:
     """Every channel the N.I.N.A. switch device reports; empty while absent."""
     device = data.snapshot.switch_device

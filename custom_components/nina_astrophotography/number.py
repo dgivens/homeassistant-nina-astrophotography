@@ -20,7 +20,9 @@ than the light's 0–255. What the panel does with it is the driver's: N.I.N.A.'
 ASCOM CoverCalibrator driver, which also serves Alpaca panels, sets a
 brightness by calling `CalibratorOn`, so any level above 0 lights the panel and
 0 darkens it, while N.I.N.A.'s native drivers, such as Alnitak's and
-Pegasus's, leave the light as it is.
+Pegasus's, leave the light as it is. So a level above the minimum is refused
+while a panel's cover reads anything but closed, and the entity is a box: a
+slider dragged by mistake on a 0–4096 panel would light it.
 """
 
 from collections.abc import Awaitable, Callable, Iterator
@@ -45,6 +47,7 @@ from .device import (
     channel_key,
     channels_for,
     raise_outside_rotator_range,
+    raise_unless_cover_closed,
     read_field,
     refused_while_following,
     refused_while_unsynced,
@@ -83,15 +86,23 @@ class NinaNumberDescription(NinaEntityDescription, NumberEntityDescription):
     as given, where `bounds` cannot say so."""
 
 
+def _raise_if_lit_behind_open_cover(data: NinaData, value: float) -> None:
+    """Refuse a level that would light an ASCOM panel, while its cover is open."""
+    bounds = read_field("flat_device", "brightness_range")(data)
+    if bounds is not None and value > bounds[0]:
+        raise_unless_cover_closed(data)
+
+
 DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
     NinaNumberDescription(
         key="flat_panel_brightness",
         translation_key="flat_panel_brightness",
         native_step=1,
-        mode=NumberMode.SLIDER,
+        mode=NumberMode.BOX,
         kind="flat_device",
         value=read_field("flat_device", "brightness"),
         bounds=read_field("flat_device", "brightness_range"),
+        check=_raise_if_lit_behind_open_cover,
         command=lambda client, value: client.set_flat_brightness(round(value)),
     ),
     NinaNumberDescription(

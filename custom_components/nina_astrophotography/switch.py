@@ -13,6 +13,9 @@ mid-exposure. `sensor.guider_status` tells the running states apart.
 setpoint, so on cools to the one the camera reports; a camera reporting none is
 refused.
 
+**The flat panel cover is not opened while the panel reads lit**, which would
+shine it into the observatory.
+
 **A switch device channel is a switch only when binary** (`Max - Min ==
 StepSize`), and its on/off values are its own range ends. It reads `Value`,
 never `TargetValue`.
@@ -34,7 +37,7 @@ from .api.models import SwitchChannelModel
 from .api.v2.client import NinaClientV2
 from .const import DOMAIN
 from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
-from .device import channel_key, channels_for, read_field, supports
+from .device import channel_key, channels_for, raise_while_lit, read_field, supports
 from .entity import (
     NinaChannelEntity,
     NinaDescribedEntity,
@@ -112,6 +115,15 @@ async def _set_guiding(client: NinaClientV2, data: NinaData, on: bool) -> None:
         await client.stop_guiding()
 
 
+async def _set_cover(client: NinaClientV2, data: NinaData, on: bool) -> None:
+    """Open the cover, refused while the panel reads lit, or close it."""
+    if not on:
+        await client.close_flat_cover()
+        return
+    raise_while_lit(data)
+    await client.open_flat_cover()
+
+
 async def _set_cooler(client: NinaClientV2, data: NinaData, on: bool) -> None:
     """Cool to the driver's current setpoint, or warm up.
 
@@ -161,7 +173,7 @@ DESCRIPTIONS: tuple[NinaSwitchDescription, ...] = (
         kind="flat_device",
         supported=supports("flat_device", "supports_open_close"),
         value=_cover_open,
-        command=_either("open_flat_cover", "close_flat_cover"),
+        command=_set_cover,
     ),
     NinaSwitchDescription(
         key="livestack",

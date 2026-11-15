@@ -17,6 +17,8 @@ import pytest
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant, State
 
+    from scenarios.fake_rig import FakeRig
+
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 needs_node = pytest.mark.skipif(
@@ -101,6 +103,17 @@ def failure(error="Camera not connected", status=409):
         "Success": False,
         "Type": "API",
     }
+
+
+def panel_reports(rig: FakeRig, level: float, *, lit: bool) -> None:
+    """Once a brightness is sent, the flat panel reads `level`, lit or not.
+
+    An ASCOM panel is lit by the brightness itself; a native one is not.
+    """
+    rig.after(
+        "/equipment/flatdevice/set-brightness",
+        lambda: rig.serve_device("FlatDevice", {"Brightness": level, "LightOn": lit}),
+    )
 
 
 def _read(name: str) -> Any:

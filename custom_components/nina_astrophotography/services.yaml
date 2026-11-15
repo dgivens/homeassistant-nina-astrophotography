@@ -201,7 +201,9 @@ filterwheel_change_filter:
 
 flat_panel_set_cover:
   name: Set Flat Panel Cover
-  description: Open or close the flat panel's cover.
+  description: >-
+    Open or close the flat panel's cover. Opening is refused while the panel
+    is lit, and closing while the sequencer runs unless forced.
   target:
     entity:
       integration: nina_astrophotography
@@ -212,6 +214,14 @@ flat_panel_set_cover:
       required: true
       selector:
         boolean:
+    force:
+      name: Force
+      description: >-
+        Close the cover even while the sequencer runs, which blanks every light
+        frame it takes after. Only when closing.
+      default: false
+      selector:
+        boolean:
 
 flat_panel_set_light:
   name: Set Flat Panel Light
@@ -220,7 +230,8 @@ flat_panel_set_light:
     given, else at the level it is already lit at, else at its dimmest; never
     at full output. The light is switched on only once the panel reports that
     brightness, and refused if it does not within 30 seconds or reports no
-    brightness range.
+    brightness range. Switching on is refused while the cover reads anything
+    but closed.
   target:
     entity:
       integration: nina_astrophotography
@@ -247,8 +258,9 @@ flat_panel_set_brightness:
   name: Set Flat Panel Brightness
   description: >-
     Set the flat panel's brightness. An ASCOM panel lights at any level above
-    0 and switches off at 0; other drivers leave the light as it is. Refused
-    while the panel reports no brightness range.
+    its minimum and switches off at it; other drivers leave the light as it
+    is. Refused while the panel reports no brightness range, and above the
+    minimum while its cover reads anything but closed.
   target:
     entity:
       integration: nina_astrophotography

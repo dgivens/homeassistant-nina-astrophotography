@@ -28,7 +28,7 @@ import custom_components.nina_astrophotography as integration
 from custom_components.nina_astrophotography import light
 from custom_components.nina_astrophotography.const import DOMAIN
 from ha.registry import get_device
-from helpers import failure
+from helpers import failure, panel_reports
 
 SERVICES_YAML = yaml.safe_load(
     (Path(integration.__file__).parent / "services.yaml").read_text(encoding="utf-8")
@@ -524,14 +524,6 @@ _SET_BRIGHTNESS = "/equipment/flatdevice/set-brightness"
 _SET_LIGHT = ("/equipment/flatdevice/set-light", {"on": "true"})
 
 
-def _reports(rig, level: int, *, lit: bool) -> None:
-    """Once the brightness is sent, the panel reads `level`, lit by it or not."""
-    rig.after(
-        _SET_BRIGHTNESS,
-        lambda: rig.serve_device("FlatDevice", {"Brightness": level, "LightOn": lit}),
-    )
-
-
 @pytest.mark.synthetic
 @pytest.mark.parametrize(
     ("block", "data", "level"),
@@ -557,7 +549,7 @@ async def test_switching_the_panel_on_does_not_go_to_full_output(
     """
     rig.serve_device("FlatDevice", block)
     await set_up_at(hass, config_entry, rig, "imaging")
-    _reports(rig, level, lit=True)
+    panel_reports(rig, level, lit=True)
 
     await _call(hass, "flat_panel_set_light", light_on=True, **data)
 
@@ -583,7 +575,7 @@ async def test_the_light_is_switched_on_only_once_the_panel_holds_the_brightness
     light-on.
     """
     await set_up_at(hass, config_entry, rig, "imaging")
-    _reports(rig, 16, lit=lit)
+    panel_reports(rig, 16, lit=lit)
 
     await _call(hass, "flat_panel_set_light", light_on=True)
 
@@ -591,28 +583,51 @@ async def test_the_light_is_switched_on_only_once_the_panel_holds_the_brightness
 
 
 @pytest.mark.parametrize(
-    "block",
+    ("block", "error"),
     [
-        pytest.param({}, id="off"),
+        # Brightness 0 is within one step of 16 on this panel, but it is the
+        # dark minimum, never the level.
+        pytest.param({}, "did not report brightness 16", id="off"),
         # Until N.I.N.A. next reads the panel, it reports the state before the
         # command: lit, after a switch-off just sent.
         pytest.param(
             {"Brightness": 2048, "LightOn": True},
+            "reads lit at brightness 2048, not the 16 sent",
             id="lit-at-another-level",
             marks=pytest.mark.synthetic,
         ),
     ],
 )
 async def test_a_panel_that_never_reports_the_brightness_is_not_switched_on(
-    hass: HomeAssistant, config_entry, rig, set_up_at, monkeypatch, block: dict
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    monkeypatch,
+    block: dict,
+    error: str,
 ) -> None:
     monkeypatch.setattr(light, "_SETTLE_TIMEOUT", 0)
     rig.serve_device("FlatDevice", block)
     await set_up_at(hass, config_entry, rig, "imaging")
 
-    with pytest.raises(HomeAssistantError, match="did not report brightness 16"):
+    with pytest.raises(HomeAssistantError, match=error):
         await _call(hass, "flat_panel_set_light", light_on=True, brightness=16)
     assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 16})]
+
+
+@pytest.mark.synthetic
+async def test_a_reading_within_one_step_of_the_level_is_that_level(
+    hass: HomeAssistant, loaded_entry, rig
+) -> None:
+    """A driver may store a brightness at its own resolution; one step of this
+    panel's 4096 in Home Assistant's 255 is 16.
+    """
+    panel_reports(rig, 1040, lit=False)
+
+    await _call(hass, "flat_panel_set_light", light_on=True, brightness=1024)
+
+    assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 1024}), _SET_LIGHT]
 
 
 @pytest.mark.synthetic
@@ -624,7 +639,7 @@ async def test_the_dimmest_level_lights_a_panel_with_a_narrow_range(
     MaxBrightness.
     """
     await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
-    _reports(rig, 1, lit=True)
+    panel_reports(rig, 1, lit=True)
 
     await _call(hass, "flat_panel_set_light", light_on=True)
 
@@ -860,3 +875,167 @@ async def test_an_angle_the_profiles_range_allows_is_sent(
     await _call(hass, service, position=position)
 
     assert rig.sent[-1] == (path, {"position": float(position)})
+
+
+_LIGHT = "light.n_i_n_a_flat_panel_light"
+_BRIGHTNESS = "number.n_i_n_a_flat_panel_brightness"
+_COVER = "switch.n_i_n_a_flat_panel_cover"
+
+# Every way to light the panel, each at about driver level 1024 of 4096.
+_LIGHTING = [
+    pytest.param(
+        DOMAIN,
+        "flat_panel_set_light",
+        {"light_on": True, "brightness": 1024},
+        id="set-light",
+    ),
+    pytest.param(
+        DOMAIN, "flat_panel_set_brightness", {"level": 1024}, id="set-brightness"
+    ),
+    pytest.param(
+        "light", "turn_on", {"entity_id": _LIGHT, "brightness": 64}, id="light-turn-on"
+    ),
+    pytest.param(
+        "number", "set_value", {"entity_id": _BRIGHTNESS, "value": 1024}, id="number"
+    ),
+]
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize("cover", ["Open", "NeitherOpenNorClosed", "Unknown"])
+@pytest.mark.parametrize(("domain", "service", "data"), _LIGHTING)
+async def test_the_panel_is_not_lit_while_its_cover_is_not_closed(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    cover: str,
+    domain: str,
+    service: str,
+    data: dict,
+) -> None:
+    """Lit with its cover open, the panel shines into a shared observatory."""
+    rig.serve_device("FlatDevice", {"CoverState": cover})
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(domain, service, data, blocking=True)
+    assert rig.sent == []
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(("domain", "service", "data"), _LIGHTING)
+async def test_a_panel_with_no_cover_is_lit_whatever_its_cover_reads(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    domain: str,
+    service: str,
+    data: dict,
+) -> None:
+    rig.serve_device("FlatDevice", {"SupportsOpenClose": False, "CoverState": "Open"})
+    await set_up_at(hass, config_entry, rig, "imaging")
+    panel_reports(rig, 1024, lit=True)
+
+    await hass.services.async_call(domain, service, data, blocking=True)
+
+    assert rig.sent[0][0] == _SET_BRIGHTNESS
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("domain", "service", "data", "sent"),
+    [
+        pytest.param(
+            DOMAIN,
+            "flat_panel_set_light",
+            {"light_on": False},
+            ("/equipment/flatdevice/set-light", {"on": "false"}),
+            id="set-light-off",
+        ),
+        pytest.param(
+            DOMAIN,
+            "flat_panel_set_brightness",
+            {"level": 0},
+            (_SET_BRIGHTNESS, {"brightness": 0}),
+            id="set-brightness-minimum",
+        ),
+        pytest.param(
+            "light",
+            "turn_off",
+            {"entity_id": _LIGHT},
+            ("/equipment/flatdevice/set-light", {"on": "false"}),
+            id="light-turn-off",
+        ),
+        pytest.param(
+            "number",
+            "set_value",
+            {"entity_id": _BRIGHTNESS, "value": 0},
+            (_SET_BRIGHTNESS, {"brightness": 0}),
+            id="number-minimum",
+        ),
+    ],
+)
+async def test_darkening_the_panel_is_sent_with_its_cover_open(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    domain: str,
+    service: str,
+    data: dict,
+    sent: tuple,
+) -> None:
+    rig.serve_device("FlatDevice", {"CoverState": "Open"})
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    await hass.services.async_call(domain, service, data, blocking=True)
+
+    assert rig.sent == [sent]
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("domain", "service", "data"),
+    [
+        pytest.param(DOMAIN, "flat_panel_set_cover", {"open": True}, id="action"),
+        pytest.param("switch", "turn_on", {"entity_id": _COVER}, id="switch"),
+    ],
+)
+async def test_the_cover_is_not_opened_while_the_panel_is_lit(
+    hass: HomeAssistant,
+    config_entry,
+    rig,
+    set_up_at,
+    domain: str,
+    service: str,
+    data: dict,
+) -> None:
+    rig.serve_device("FlatDevice", {"Brightness": 2048, "LightOn": True})
+    await set_up_at(hass, config_entry, rig, "imaging")
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(domain, service, data, blocking=True)
+    assert rig.sent == []
+
+
+async def test_the_cover_is_not_closed_while_the_sequencer_runs(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    """A closed cover blanks every light frame the sequence takes after it."""
+    await set_up_at(hass, config_entry, rig, "wait_for_time")
+
+    with pytest.raises(ServiceValidationError):
+        await _call(hass, "flat_panel_set_cover", open=False)
+    assert rig.sent == []
+
+
+async def test_a_forced_close_is_sent_while_the_sequencer_runs(
+    hass: HomeAssistant, config_entry, rig, set_up_at
+) -> None:
+    await set_up_at(hass, config_entry, rig, "wait_for_time")
+
+    await _call(hass, "flat_panel_set_cover", open=False, force=True)
+
+    assert rig.sent == [("/equipment/flatdevice/set-cover", {"closed": "true"})]
