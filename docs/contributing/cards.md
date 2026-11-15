@@ -127,8 +127,9 @@ Traps when changing a card:
   another control is replaced, so a press or the focus never carries from Stop
   to Start. Bind its controls with
   `onclick`: a listener added on every render fires once per render on a kept
-  button. `ops.mjs`'s stub holds no node tree, so there every render assigns
-  the markup whole, and only `render.html` exercises the patch.
+  button. `ops.mjs`'s stub holds no node tree, only the markup as one text
+  node, so there every render replaces it whole, and only `render.html`
+  exercises the patch.
 - A scenario's `folded: [...]` folds sections for that run alone. The stub's
   `getElementById` answers `null` for an id the markup lacks, as a browser
   does, so a draw guarded on its canvas is skipped there too.

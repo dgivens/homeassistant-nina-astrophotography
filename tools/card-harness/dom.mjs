@@ -94,6 +94,10 @@ function element(tag) {
       markup = value;
       this.children.length = 0;
     },
+    // A `<template>`'s parsed markup, as the one text node `morph` copies over.
+    get content() {
+      return { childNodes: [markupNode(markup)] };
+    },
     get className() {
       return [...classes].join(" ");
     },
@@ -136,6 +140,15 @@ function element(tag) {
       this.onclick?.({});
     },
   };
+}
+
+/**
+ * The whole of a markup string as a single text node. The stub parses nothing,
+ * so a card patching its root against a template replaces this node's text,
+ * which is the markup assigned whole.
+ */
+function markupNode(value) {
+  return { nodeName: "#text", nodeType: 3, nodeValue: value };
 }
 
 /** One node and its children, with only the fields the card set. */
@@ -197,6 +210,28 @@ export function install({ width = 320, height = 320, dpr = 2, images } = {}) {
     get innerHTML() {
       return html;
     },
+    // The markup as one node, for a card that patches its root: `morph`
+    // appends it to an empty root and then rewrites its text.
+    get childNodes() {
+      if (html === "") return [];
+      return [{
+        nodeName: "#text",
+        nodeType: 3,
+        get nodeValue() { return html; },
+        set nodeValue(value) { html = value; },
+        remove() { html = ""; },
+      }];
+    },
+    get firstChild() {
+      return this.childNodes[0] ?? null;
+    },
+    get lastChild() {
+      return this.childNodes.at(-1) ?? null;
+    },
+    appendChild(node) {
+      html = node.nodeValue;
+      return node;
+    },
     // An id the card's own markup puts on a `<canvas>` is the canvas; any
     // other id it holds is a recorded node, and one it lacks is `null`, as a
     // section folded out of the markup leaves it.
@@ -235,6 +270,7 @@ export function install({ width = 320, height = 320, dpr = 2, images } = {}) {
   };
   globalThis.window = { devicePixelRatio: dpr, customCards: [] };
   globalThis.document = { createElement: element };
+  globalThis.Node = { ELEMENT_NODE: 1, TEXT_NODE: 3 };
   // No stylesheet resolves here, so no theme does: a card draws in the dark
   // palette it falls back to, which keeps a log comparable across versions.
   globalThis.getComputedStyle = () => ({ getPropertyValue: () => "" });
