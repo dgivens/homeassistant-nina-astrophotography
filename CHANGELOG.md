@@ -57,8 +57,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
     disconnects the panel once its cover has moved leaves the warning holding
     until N.I.N.A. reports the cover opened, and the cover state holding a
     part-way or error reading until N.I.N.A. reports a finished move, so a
-    cover that jams on the way still alerts. What is held is forgotten when
-    Home Assistant restarts.
+    cover that jams on the way still alerts, and the observatory card keeps
+    the red Flat Panel chip, marked disconnected. What is held is forgotten
+    when Home Assistant restarts.
   - **The Flat panel left lit blueprint** notifies when the panel's light has
     been on for 30 minutes (adjustable) with no flat saved, after an aborted
     flat run or a panel switched on and forgotten.
