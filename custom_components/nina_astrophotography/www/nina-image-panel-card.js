@@ -59,7 +59,7 @@ import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { aduFullScale, quantityIn, safe, shown } from "./nina-units.js";
 import { ON_IMAGE, THEME, applyTheme, palette } from "./nina-theme.js";
 
-const VERSION = "2.6.0";
+const VERSION = "2.7.0";
 
 const DEFAULT_QUALITY = 85;
 const DEFAULT_STRIP_COUNT = 6;

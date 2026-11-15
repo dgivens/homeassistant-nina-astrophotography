@@ -34,6 +34,15 @@
   heads each release in Home Assistant's update dialog with the tag, and
   appends the title whenever it differs, so `2.3.0` reads "v2.3.0 - 2.3.0".
   A beta is `v<version>b<N>`, published as a pre-release.
+- **The release notes are the CHANGELOG section**, not GitHub's generated
+  list of PR titles, followed by a `### Contributors` section that thanks by
+  `@login` everyone outside the maintainers whose pull request, review or
+  issue went into the release, naming what each did, and then the line
+  `**Full Changelog**: <compare URL>` from GitHub's generated notes. Find them
+  with `gh api repos/{owner}/{repo}/releases/generate-notes -f
+  tag_name=v<version> -f previous_tag_name=v<previous>`, which lists each
+  PR's author and a *New Contributors* section; check reviews and issue
+  authors too, which it leaves out. A release with none drops the section.
 
 ## Quality bar
 

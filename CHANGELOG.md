@@ -4,7 +4,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
-## [Unreleased]
+## [2.7.0] - 2026-11-15
 
 ### Added
 
@@ -89,8 +89,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   one raises a repair that says how to move it onto the installed copy, then
   restart before deleting the old one. A
   released input is never removed or renamed, and a new one comes with a
-  default. The blueprints no longer carry a `source_url`, so Home Assistant
-  offers no **Re-import**, and `just deploy-blueprints` is gone.
+  default. The blueprints carry no `source_url`, so Home Assistant offers no
+  **Re-import**, and there is no `just deploy-blueprints`.
 - **The weather card leaves out the dew alert while the safety monitor reads
   unsafe** (#295), or last read unsafe before N.I.N.A. stopped answering: the
   safety banner already calls for closing up. The Dew Point cell keeps its
@@ -105,6 +105,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The card harness logs each image a card asks for** (#264) and each
   action it calls, and `Rig.add` gives a scenario a row from another
   integration.
+- **A release's notes credit its contributors.** The GitHub release carries
+  the CHANGELOG section, then a *Contributors* section thanking everyone
+  outside the maintainers whose pull request, review or issue shaped it, and
+  GitHub's compare link to the previous release.
 - **The test VM's stable channel installs Advanced API 2.2.15.3** (#276), and the
   AMD64 ASTAP pin matches the archive SourceForge serves.
 - **CI runs the current major of each action** (#275) — checkout v7, setup-uv
