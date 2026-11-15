@@ -133,9 +133,11 @@ what it set off. `render.html` fires none.
 
 `act` is what a viewer does once the states are in: named steps, each a
 function of the card, run in order and logged as `act <name>`. An element's
-`click()` runs the card's own click handlers. Every image fails at once unless
-`images` is `"hold"`; then each stays in flight until a step calls `load()`, so
-a scenario can act while one is loading. `log` lets a step record what is on
+`click()` runs the card's own click handlers, and each action a press calls is
+logged as `callService <domain>.<service> <data>`, carried out by nothing.
+Every image fails at once unless `images` is `"hold"`; then each stays in
+flight until a step calls `load()`, so a scenario can act while one is
+loading. `log` lets a step record what is on
 screen at that point, which the final markup cannot show, and `hand(hass)`
 gives the card a later state built from `dump`, as `after` does, between two
 steps. `render.html` runs no steps.

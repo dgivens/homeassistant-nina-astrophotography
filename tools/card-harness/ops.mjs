@@ -103,6 +103,10 @@ hass.callWS = async (message) => {
   log.push(`callWS ${JSON.stringify(message)}`);
   return { path: message.path };
 };
+// A command a card sends is the record; nothing carries it out.
+hass.callService = async (domain, service, data) => {
+  log.push(`callService ${domain}.${service} ${JSON.stringify(data)}`);
+};
 // Held so a scenario's `events` can be fired at whichever the card subscribed.
 const subscribed = [];
 hass.connection = {
@@ -135,7 +139,9 @@ for (const { type, data } of scenario.events?.(dump) ?? []) {
 // Later states, handed over in turn; the output is what the last one left.
 const hand = (next) => {
   log.push("hass");
-  instance.hass = { ...next, callWS: hass.callWS, connection: hass.connection };
+  instance.hass = {
+    ...next, callWS: hass.callWS, callService: hass.callService, connection: hass.connection,
+  };
 };
 for (const next of scenario.after?.(dump) ?? []) {
   hand(next);

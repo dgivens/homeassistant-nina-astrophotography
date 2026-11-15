@@ -946,14 +946,18 @@ class NinaObservatoryCard extends HTMLElement {
 
   // The button pressed stays, disabled, until the cover leaves the state it
   // was pressed in. A refused call releases it; Home Assistant shows the error.
+  // The action refuses a close while a sequence runs unless forced, so one the
+  // viewer confirmed over a running sequence is.
   _setCover(open) {
+    const force = !open && this._seqRunning;
     const ask = open ? CONFIRM_COVER_OPEN
-      : this._seqRunning ? CONFIRM_COVER_CLOSE_RUNNING : CONFIRM_COVER_CLOSE;
+      : force ? CONFIRM_COVER_CLOSE_RUNNING : CONFIRM_COVER_CLOSE;
     if (!window.confirm(ask)) return;
     const press = { from: this._cover.state, open, at: Date.now() };
     this._cover.press = press;
     this._render();
-    this._callService("nina_astrophotography", "flat_panel_set_cover", { open })
+    this._callService("nina_astrophotography", "flat_panel_set_cover",
+                      force ? { open, force } : { open })
       .catch(() => {
         if (this._cover.press !== press) return;
         this._cover.press = null;

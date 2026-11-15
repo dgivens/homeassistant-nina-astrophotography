@@ -47,6 +47,19 @@ const cover = (dump, sensor, sw) =>
 const partWayFor = (dump, ago) =>
   cover(dump, "NeitherOpenNorClosed", "unknown").changedAt(new Date(Date.now() - ago));
 
+// What the cover's buttons read at this step.
+const coverButtons = (log, card) => log.push(`buttons ${
+  card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
+// Presses a cover button, logging what the card asks and confirming it.
+const pressCover = (log, card, id) => {
+  window.confirm = (ask) => {
+    log.push(`confirm ${ask}`);
+    return true;
+  };
+  card.shadowRoot.getElementById(id).click();
+  coverButtons(log, card);
+};
+
 // No `draw` hook: the card has no canvas.
 
 export const scenarios = {
@@ -196,47 +209,40 @@ export const scenarios = {
   // Open pressed on the closed cover: the button stays, disabled, while the
   // cover travels, and becomes Close once it is open.
   flat_panel_opening: {
-    hass: (dump) => ({
-      ...rig(dump, FLATS).build(),
-      callService: async () => {},
+    hass: (dump) => rig(dump, FLATS).build(),
+    act: ({ dump, hand, log }) => ({
+      pressed: (card) => pressCover(log, card, "btn-cover-open"),
+      moving: (card) => {
+        hand(cover(dump, "NeitherOpenNorClosed", "unknown")
+          .changedAt(new Date(Date.now() - 5_000)).build());
+        coverButtons(log, card);
+      },
+      open: (card) => {
+        hand(cover(dump, "Open", "on").build());
+        coverButtons(log, card);
+      },
     }),
-    act: ({ dump, hand, log }) => {
-      const buttons = (card) => log.push(`buttons ${
-        card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
-      return {
-        pressed: (card) => {
-          window.confirm = () => true;
-          card.shadowRoot.getElementById("btn-cover-open").click();
-          buttons(card);
-        },
-        moving: (card) => {
-          hand(cover(dump, "NeitherOpenNorClosed", "unknown")
-            .changedAt(new Date(Date.now() - 5_000)).build());
-          buttons(card);
-        },
-        open: (card) => {
-          hand(cover(dump, "Open", "on").build());
-          buttons(card);
-        },
-      };
-    },
+  },
+
+  // Close pressed on an open cover with no sequence running: the plain
+  // question, and no `force`.
+  flat_panel_closing: {
+    hass: (dump) => cover(dump, "Open", "on").build(),
+    act: ({ log }) => ({ pressed: (card) => pressCover(log, card, "btn-cover-close") }),
+  },
+  // The same during a sequence, which the action refuses unless forced: the
+  // card warns of blank lights, and the close it confirms is sent with
+  // `force`. The rig's flats ran with no sequence, so it is switched on here.
+  flat_panel_closing_running: {
+    hass: (dump) => cover(dump, "Open", "on").override(SEQUENCER, "on").build(),
+    act: ({ log }) => ({ pressed: (card) => pressCover(log, card, "btn-cover-close") }),
   },
 
   // Open pressed on a cover in error: Close stays, since the press changes no
   // reading while it waits. The rig's panel has not failed.
   flat_panel_cover_error_pressed: {
-    hass: (dump) => ({
-      ...cover(dump, "Error", "unknown").build(),
-      callService: async () => {},
-    }),
-    act: ({ log }) => ({
-      pressed: (card) => {
-        window.confirm = () => true;
-        card.shadowRoot.getElementById("btn-cover-open").click();
-        log.push(`buttons ${
-          card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
-      },
-    }),
+    hass: (dump) => cover(dump, "Error", "unknown").build(),
+    act: ({ log }) => ({ pressed: (card) => pressCover(log, card, "btn-cover-open") }),
   },
 
   // Part-way for two minutes, but N.I.N.A. stopped answering 30 s into it:
