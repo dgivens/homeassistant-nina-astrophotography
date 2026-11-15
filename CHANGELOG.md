@@ -63,6 +63,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   released input is never removed or renamed, and a new one comes with a
   default. The blueprints no longer carry a `source_url`, so Home Assistant
   offers no **Re-import**, and `just deploy-blueprints` is gone.
+- **The weather card leaves out the dew alert while the safety monitor reads
+  unsafe** (#295): the UNSAFE banner already says the night is over. The Dew
+  Point cell keeps its warning colour.
 - **The observatory card shows both rotator angles out of the box** (#266).
   `number.<instance>_rotator_mechanical_position` ships enabled, as a control
   beside the sky position, and `binary_sensor.<instance>_rotator_synced` is a

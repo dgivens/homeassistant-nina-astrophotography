@@ -14,7 +14,8 @@
  *
  * The limits a reading is coloured by are options too, in °C and m/s whatever
  * unit Home Assistant shows the reading in:
- *   dew_margin: 3          # dew alert while the air is within this of its dew point
+ *   dew_margin: 3          # dew alert while the air is within this of its dew
+ *                          # point, unless the safety monitor reads unsafe
  *   wind_warn: 8           # and wind_danger: 12
  *
  * The sky brightness cell can be left out, for a station that reads 0 lx all
@@ -324,6 +325,9 @@ class NinaWeatherCard extends HTMLElement {
     // Dew threat: the air within `dew_margin` of its dew point.
     const dewMargin = tempC !== null && dewC !== null ? tempC - dewC : null;
     const dewThreat = dewMargin !== null && dewMargin < L.dewMargin;
+    // Unsafe means the night is being shut down, which makes dew moot; the dew
+    // point cell keeps its warning.
+    const dewAlertShown = dewThreat && !isUnsafe;
     const windLevel = this._windLevel(windMs);
     const windColor = windLevel === "danger" ? "var(--danger)"
       : windLevel === "warn" ? "var(--warn)" : "var(--text)";
@@ -492,7 +496,7 @@ class NinaWeatherCard extends HTMLElement {
           </div>
         </div>
 
-        ${!fold.open("card") ? (wxConnected && dewThreat ? `
+        ${!fold.open("card") ? (wxConnected && dewAlertShown ? `
           <div class="body${link.stale ? " stale" : ""}">${dewAlert}</div>
         ` : "") : !wxConnected ? `
           <div class="not-connected">
@@ -509,7 +513,7 @@ class NinaWeatherCard extends HTMLElement {
             </div>
           ` : ""}
 
-          ${dewThreat ? dewAlert : ""}
+          ${dewAlertShown ? dewAlert : ""}
 
           ${atmosphere}
 

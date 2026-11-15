@@ -92,6 +92,18 @@ export const scenarios = {
       rig(dump, UP).override(TEMPERATURE, 22.0).override(HUMIDITY, 91.0).build(),
   },
 
+  // `dew` with the monitor reading unsafe: the banner reads UNSAFE and the dew
+  // alert is left out, while the dew point cell keeps its warning. The verdict
+  // is invented as `unsafe`'s is.
+  unsafe_dew: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(TEMPERATURE, 22.0)
+        .override(HUMIDITY, 91.0)
+        .override(SAFETY, "on")
+        .build(),
+  },
+
   // Air at its dew point under the captured clear sky; dew forming, no fog
   // layer; safety verdict left as captured. Invented as `dew` is, as a
   // self-consistent pair: air at its 20.5 °C dew point is saturated, 100%.
@@ -229,6 +241,17 @@ export const scenarios = {
   folded: {
     hass: (dump) =>
       rig(dump, UP).override(TEMPERATURE, 22.0).override(HUMIDITY, 91.0).build(),
+    folded: ["card"],
+  },
+
+  // `unsafe_dew` folded to its header: the UNSAFE banner and no dew alert.
+  folded_unsafe_dew: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(TEMPERATURE, 22.0)
+        .override(HUMIDITY, 91.0)
+        .override(SAFETY, "on")
+        .build(),
     folded: ["card"],
   },
 
