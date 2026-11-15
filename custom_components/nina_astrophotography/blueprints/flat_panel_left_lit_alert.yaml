@@ -1,0 +1,109 @@
+blueprint:
+  name: "N.I.N.A. – Flat Panel Left Lit"
+  description: >
+    Notifies when the flat panel's light has been on for the time below with no
+    flat frame saved. A panel left lit after an aborted flat run, or switched
+    on by hand and forgotten, wears out an EL panel and lights up the site.
+
+    Every flat N.I.N.A. saves while the panel is lit starts the count again, so
+    a flat run of any length stays quiet, however long the panel stays lit
+    between filters. A light or dark saved under the lit panel does not count.
+    Flats are seen through N.I.N.A.'s event socket: while it is down they are
+    missed, and a flat run longer than the time below alerts.
+
+    It alerts once each time the panel is left lit. A panel already lit when
+    Home Assistant starts alerts once the time below has passed, so a restart
+    repeats the alert. A panel that is disconnected, or that N.I.N.A. cannot
+    switch, reads unavailable and never alerts; once it reads lit again the
+    count starts over, as it does after N.I.N.A. is unreachable.
+  domain: automation
+  author: dgivens
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        flat_panel_light:
+          name: Flat panel light
+          description: The flat panel's light.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: light
+
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        lit_minutes:
+          name: Lit with no flat for
+          description: >
+            How long the panel may stay lit with no flat saved. Longer than the
+            gap between flats while N.I.N.A. changes filter and finds the
+            exposure, and, to stay quiet while the event socket is down, longer
+            than a whole flat run.
+          default: 30
+          selector:
+            number:
+              min: 5
+              max: 240
+              mode: box
+              unit_of_measurement: min
+        notify_target:
+          name: Notify
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+
+# Each trigger that passes the conditions restarts the count; one that fails
+# them leaves the run under way alone.
+mode: restart
+
+variables:
+  flat_panel_light: !input flat_panel_light
+  lit_minutes: !input lit_minutes
+
+triggers:
+  - trigger: state
+    entity_id: !input flat_panel_light
+    to: "on"
+  - trigger: event
+    event_type: nina_image_save
+    event_data:
+      frame:
+        image_type: FLAT
+    id: flat
+  # A panel already lit when Home Assistant starts makes no state change for
+  # the state trigger to see.
+  - trigger: homeassistant
+    event: start
+
+conditions:
+  - condition: state
+    entity_id: !input flat_panel_light
+    state: "on"
+  # Every rig fires `nina_image_save`, so a flat must come from this panel's.
+  - condition: template
+    value_template: >
+      {{ trigger.id != 'flat'
+         or (config_entry_id(flat_panel_light) is not none
+             and trigger.event.data.entry_id
+                 == config_entry_id(flat_panel_light)) }}
+
+actions:
+  - delay:
+      minutes: !input lit_minutes
+  - condition: state
+    entity_id: !input flat_panel_light
+    state: "on"
+  - action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "💡 Flat panel left lit"
+      message: >
+        The flat panel has been lit for {{ lit_minutes }} minutes with no flat
+        saved. Switch it off if no flat run is under way.

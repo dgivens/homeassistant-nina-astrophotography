@@ -36,6 +36,10 @@ REQUIRED: dict[str, dict[str, object]] = {
         "cover_state": "sensor.rig_flat_panel_cover_state",
         "notify_target": ["notify.phone"],
     },
+    "flat_panel_left_lit_alert.yaml": {
+        "flat_panel_light": "light.rig_flat_panel_light",
+        "notify_target": ["notify.phone"],
+    },
     "guiding_alert.yaml": {
         "nina_rig": "device-id",
         "rms_sensor": "sensor.rig_guider_rms_total",
@@ -81,6 +85,7 @@ REQUIRED: dict[str, dict[str, object]] = {
 OPTIONAL: dict[str, dict[str, object]] = {
     "cover_closed_alert.yaml": {},
     "cover_fault_alert.yaml": {"stuck_after": 30},
+    "flat_panel_left_lit_alert.yaml": {"lit_minutes": 45},
     "guiding_alert.yaml": {"run_autofocus": True},
     "imaging_stall_alert.yaml": {
         "rig_reachable": ["binary_sensor.rig_reachable"],
@@ -168,6 +173,9 @@ RELEASED: dict[str, frozenset[str]] = {
     "cover_closed_alert.yaml": frozenset({"behind_cover", "notify_target"}),
     "cover_fault_alert.yaml": frozenset(
         {"cover_state", "notify_target", "stuck_after"}
+    ),
+    "flat_panel_left_lit_alert.yaml": frozenset(
+        {"flat_panel_light", "lit_minutes", "notify_target"}
     ),
     "guiding_alert.yaml": frozenset(
         {
@@ -298,6 +306,7 @@ def test_every_declared_input_is_recorded_as_released(path: Path) -> None:
 RELEASED_REQUIRED: dict[str, frozenset[str]] = {
     "cover_closed_alert.yaml": frozenset({"behind_cover", "notify_target"}),
     "cover_fault_alert.yaml": frozenset({"cover_state", "notify_target"}),
+    "flat_panel_left_lit_alert.yaml": frozenset({"flat_panel_light", "notify_target"}),
     "guiding_alert.yaml": frozenset(
         {"guider_status", "nina_rig", "notify_target", "rms_sensor"}
     ),
