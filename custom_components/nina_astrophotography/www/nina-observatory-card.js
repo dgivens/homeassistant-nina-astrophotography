@@ -61,6 +61,8 @@ const MIN_COVER_STUCK_AFTER = 20;
 const MAX_COVER_STUCK_AFTER = 600;
 const COVER_MOVING = "The flat panel cover is moving";
 const COVER_SENT = "Sent; waiting for the flat panel cover to move";
+// The action refuses to open the cover of a lit panel.
+const COVER_LIT = "The flat panel light is on";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -653,7 +655,8 @@ class NinaObservatoryCard extends HTMLElement {
       `<button class="nina-btn${cls && ` ${cls}`}" id="${id}"`
       + `${off ? ` disabled title="${off}"` : ""}>${label}</button>`;
     const LOST = link.lost ? "N.I.N.A. unreachable" : "N.I.N.A. is not answering";
-    const coverOpen  = (off) => btn("btn-cover-open", "🌕 Open Flat Cover", "", off);
+    const coverOpen  = (off) =>
+      btn("btn-cover-open", "🌕 Open Flat Cover", "", off || (flatLit ? COVER_LIT : ""));
     const coverClose = (off) => btn("btn-cover-close", "🌑 Close Flat Cover", "", off);
     const coverPressed = (open) => seen.press?.open === open ? COVER_SENT : "";
     // One button for a cover at rest, and the one it is moving by, held until

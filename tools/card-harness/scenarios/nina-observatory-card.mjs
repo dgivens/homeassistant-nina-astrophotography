@@ -47,6 +47,13 @@ const cover = (dump, sensor, sw) =>
 const partWayFor = (dump, ago) =>
   cover(dump, "NeitherOpenNorClosed", "unknown").changedAt(new Date(Date.now() - ago));
 
+// The flats rig `r` with its panel's light on at half its range.
+const lit = (dump, r) => r
+  .override(FLAT_LIGHT, "on", {
+    ...dump[FLATS].states[FLAT_LIGHT].attributes, brightness: 128, color_mode: "brightness",
+  })
+  .override(FLAT_LEVEL, "2048.0");
+
 // What the cover's buttons read at this step.
 const coverButtons = (log, card) => log.push(`buttons ${
   card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
@@ -184,16 +191,12 @@ export const scenarios = {
   // Close Flat Cover. No capture holds the cover open.
   flat_panel_open: { hass: (dump) => cover(dump, "Open", "on").build() },
 
-  // Lit at half its range, which the section's heading says. No capture holds
-  // the light on; HA's 128 of 255 is the panel's 2048 of 4096.
-  flat_panel_lit: {
-    hass: (dump) => rig(dump, FLATS)
-      .override(FLAT_LIGHT, "on", {
-        ...dump[FLATS].states[FLAT_LIGHT].attributes, brightness: 128, color_mode: "brightness",
-      })
-      .override(FLAT_LEVEL, "2048.0")
-      .build(),
-  },
+  // Lit at half its range, which the section's heading says, and Open Flat
+  // Cover disabled, since the action refuses to open a lit panel. No capture
+  // holds the light on; HA's 128 of 255 is the panel's 2048 of 4096.
+  flat_panel_lit: { hass: (dump) => lit(dump, rig(dump, FLATS)).build() },
+  // Stuck part-way and lit: Close stays live, Open is still refused.
+  flat_panel_lit_stuck: { hass: (dump) => lit(dump, partWayFor(dump, 120_000)).build() },
 
   // A cover part-way for longer than the default 60 s it may travel is
   // stuck: both buttons, a red chip, and kept when the card folds.
