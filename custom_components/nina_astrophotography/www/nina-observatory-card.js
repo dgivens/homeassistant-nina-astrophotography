@@ -584,7 +584,7 @@ class NinaObservatoryCard extends HTMLElement {
     const coverFault   = flatConnected && coverState === "Error";
     // Flats and darks run behind a closed cover; a light saved since it closed
     // is blank, and so is every one after it until the cover opens.
-    const behindCoverId = this._eid("binary_sensor", "flat_panel_light_frames_behind_cover", "flat_panel_light_frames_behind_closed_cover");
+    const behindCoverId = this._eid("binary_sensor", "flat_panel_light_frames_behind_closed_cover");
     const behindCover  = flatConnected && isOn(h, behindCoverId);
     const flatWarning  = coverFault || coverStuck || behindCover ? "danger" : null;
 

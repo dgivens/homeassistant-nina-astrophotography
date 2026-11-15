@@ -67,7 +67,7 @@
       "filterwheel_is_moving": {
         "name": "Moving"
       },
-      "flat_panel_light_frames_behind_cover": {
+      "flat_panel_light_frames_behind_closed_cover": {
         "name": "Light frames behind closed cover"
       },
       "focuser_is_moving": {

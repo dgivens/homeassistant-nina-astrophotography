@@ -220,8 +220,8 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         attributes=_autofocus_verdict,
     ),
     NinaBinarySensorDescription(
-        key="flat_panel_light_frames_behind_cover",
-        translation_key="flat_panel_light_frames_behind_cover",
+        key="flat_panel_light_frames_behind_closed_cover",
+        translation_key="flat_panel_light_frames_behind_closed_cover",
         device_class=BinarySensorDeviceClass.PROBLEM,
         kind="flat_device",
         supported=supports("flat_device", "supports_open_close"),
