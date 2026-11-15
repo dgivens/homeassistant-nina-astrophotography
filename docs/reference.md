@@ -424,8 +424,9 @@ sequence's lights.
   waits for the panel to report it, which takes a few seconds: N.I.N.A. reads
   the panel once per device polling interval. A reading within one Home
   Assistant step of the level sent, and never less than one of the panel's
-  own units, counts as that level, but never one at or below the minimum. An ASCOM or Alpaca panel is lit by the brightness itself;
-  a native one is then switched on. A panel that does not report the level
+  own units, counts as that level, but never one at or below the minimum.
+  An ASCOM or Alpaca panel is lit by the brightness itself; a native one is
+  then switched on. A panel that does not report the level
   within 30 seconds is refused with an error that names the level it reports
   when it is lit at another one, and is not switched on, though an ASCOM or
   Alpaca panel may still come on at the level sent.
