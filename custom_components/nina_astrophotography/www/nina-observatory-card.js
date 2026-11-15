@@ -8,6 +8,7 @@
  *   type: custom:nina-observatory-card
  *   device_id: abc123   # which rig, for two or more; any one of its devices
  *   prefix: n_i_n_a     # fallback only, for the entities that cannot resolve
+ *   cover_stuck_after: 60   # seconds a flat cover may read part-way
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
@@ -46,14 +47,17 @@ const CONFIRM_COVER_CLOSE_RUNNING =
 const COVER = {
   Open: "Open",
   Closed: "Closed",
-  NeitherOpenNorClosed: "Part open",
+  NeitherOpenNorClosed: "Part-way",
   Error: "Error",
   Unknown: "—",
 };
-
 // How long a cover may read part-way before it counts as stuck rather than
-// moving. A Flip-Flat travels in 10–20 s; other panels are slower.
-const COVER_TRAVEL_MS = 60_000;
+// moving, in seconds. A Flip-Flat travels in 10–20 s; other panels are slower.
+// Some drivers report a stuck cover as part-way indefinitely, never `Error`.
+const DEFAULT_COVER_STUCK_AFTER = 60;
+// A day. Past about 24.8 days a `setTimeout` delay overflows and fires at
+// once, which would re-render the card in a loop.
+const MAX_COVER_STUCK_AFTER = 86400;
 const COVER_MOVING = "The flat panel cover is moving";
 const COVER_SENT = "Sent; waiting for the flat panel cover to move";
 
@@ -400,7 +404,12 @@ class NinaObservatoryCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = config || {};
+    const stuckAfter = Number(config?.cover_stuck_after);
+    this._config = {
+      ...config,
+      cover_stuck_after: stuckAfter > 0
+        ? Math.min(stuckAfter, MAX_COVER_STUCK_AFTER) : DEFAULT_COVER_STUCK_AFTER,
+    };
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
     this._collapse.scope(this._config);
@@ -415,6 +424,23 @@ class NinaObservatoryCard extends HTMLElement {
     this._rig.refresh(hass);
     applyTheme(this);
     this._render();
+  }
+
+  // A detached card drops the wait for a part-way cover to count as stuck,
+  // and a render on reattaching sets it again.
+  connectedCallback() {
+    if (this._hass) this._render();
+  }
+
+  disconnectedCallback() {
+    this._awaitStuck(null);
+  }
+
+  // Renders again in `ms`, once a part-way cover counts as stuck.
+  _awaitStuck(ms) {
+    clearTimeout(this._stuckTimer);
+    this._stuckTimer = ms > 0 && this.isConnected
+      ? setTimeout(() => this._render(), ms) : undefined;
   }
 
   // Falls back to a prefixed `slug` when nothing resolves. The select keyed
@@ -505,12 +531,12 @@ class NinaObservatoryCard extends HTMLElement {
     const coverBefore  = this._coverState;
     this._coverState = coverState;
     // A press holds its button until the reading leaves the state it was
-    // pressed in; a cover part-way is moving until it has been for longer
-    // than a cover's travel, and stuck after. Both are measured on each
-    // update, so they lapse with the next one past the limit.
+    // pressed in, or a cover's travel has passed, which lapses with the next
+    // update past it.
     const now          = Date.now();
+    const travelMs     = this._config.cover_stuck_after * 1000;
     const press        = this._coverPress;
-    if (press && (coverState !== press.from || now - press.at > COVER_TRAVEL_MS)) {
+    if (press && (coverState !== press.from || now - press.at > travelMs)) {
       this._coverPress = null;
     }
     if (atRest(coverState)) this._coverRest = coverState;
@@ -526,10 +552,19 @@ class NinaObservatoryCard extends HTMLElement {
       this._coverPartSince = atRest(coverBefore) ? now
         : Date.parse((h.states[coverStateId] ?? h.states[coverId])?.last_changed);
     }
+    // A cover part-way is moving until it has been for a cover's travel, and
+    // stuck after. Readings held over a quiet link are timed to when it went
+    // quiet, which is as late as they are known; without that moment their
+    // age is unknown, and the cover is never stuck.
+    const asOf         = link.stale ? link.since : now;
+    const partFor      = coverPartWay ? (asOf ?? NaN) - this._coverPartSince : NaN;
+    const coverStuck   = flatConnected && partFor >= travelMs;
+    // No state change marks the moment it turns stuck.
+    this._awaitStuck(flatConnected && coverPartWay && !link.stale ? travelMs - partFor : null);
     // A press from a cover stuck, in error or unread changes no reading
     // while it waits, so it holds only its own button.
     const coverMoving  = atRest(this._coverPress?.from)
-      || (coverPartWay && now - this._coverPartSince <= COVER_TRAVEL_MS);
+      || (coverPartWay && !(partFor >= travelMs));
     // Which way it is going: the press, else away from where this card last
     // saw it at rest; null for a cover first seen moving.
     const coverOpening = this._coverPress?.open
@@ -551,7 +586,7 @@ class NinaObservatoryCard extends HTMLElement {
     // is blank, and so is every one after it until the cover opens.
     const behindCoverId = this._eid("binary_sensor", "flat_panel_light_frames_behind_cover", "flat_panel_light_frames_behind_closed_cover");
     const behindCover  = flatConnected && isOn(h, behindCoverId);
-    const flatWarning  = coverFault || behindCover ? "danger" : null;
+    const flatWarning  = coverFault || coverStuck || behindCover ? "danger" : null;
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
@@ -696,6 +731,7 @@ class NinaObservatoryCard extends HTMLElement {
     const faults = [
       !unreachable && shutter === "error" ? "Dome shutter error" : "",
       coverFault ? "Flat panel cover error" : "",
+      coverStuck ? "Flat panel cover stuck part-way" : "",
       behindCover ? "Light frames behind the closed flat cover" : "",
       camLost ? "Camera disconnected" : "",
       mntLost ? "Mount disconnected" : "",
@@ -775,6 +811,7 @@ class NinaObservatoryCard extends HTMLElement {
             ${rotConnected ? chip("Rotator", true) : ""}
             ${!flatConnected ? ""
               : coverFault ? chip("Flat Panel · cover error", true, "fault")
+              : coverStuck ? chip("Flat Panel · cover stuck", true, "fault")
               : behindCover ? chip("Flat Panel · lights behind cover", true, "fault")
               : chip("Flat Panel", true)}
             ${!domeConnected ? ""
@@ -920,7 +957,19 @@ class NinaObservatoryCard extends HTMLElement {
 
   getCardSize() { return 8; }
 
-  static getConfigForm() { return configForm(); }
+  static getConfigForm() {
+    return configForm([
+      {
+        name: "cover_stuck_after",
+        label: "Flat cover stuck after",
+        helper: "How long the flat panel's cover may read part-way before the "
+          + "card shows it as stuck. Longer than your cover takes to open or close, "
+          + "plus 10 s: the cover is read every 10 s.",
+        default: DEFAULT_COVER_STUCK_AFTER,
+        selector: { number: { min: 20, max: 600, mode: "box", unit_of_measurement: "s" } },
+      },
+    ]);
+  }
 
   static getStubConfig() {
     return {};

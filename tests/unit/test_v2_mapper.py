@@ -107,6 +107,17 @@ def test_only_the_literal_24_sentinel_or_tracking_off_nulls_the_flip_time(
     assert mount.time_to_meridian_flip == expected
 
 
+@pytest.mark.synthetic
+@pytest.mark.parametrize("cover_state", ["NeitherOpenNorClosed", "Closed", "Unknown"])
+def test_a_panel_that_cannot_move_a_cover_reports_none(cover_state) -> None:
+    """The dawn panel's `CoverState` is moved and `SupportsOpenClose` cleared."""
+    wire = load("dawn_flatdevice_connected.json")
+    panel = map_flat_device(
+        {**wire, "CoverState": cover_state, "SupportsOpenClose": False}
+    )
+    assert panel.cover_state == "NotPresent"
+
+
 def test_the_per_device_endpoint_shape_maps_too() -> None:
     """dawn_flatdevice_connected.json is a bare FlatDeviceInfo, not a snapshot."""
     panel = map_flat_device(load("dawn_flatdevice_connected.json"))

@@ -27,8 +27,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   section with the cover, the light and the brightness in the panel's own
   units, and Open or Close Flat Cover under Controls, each asking for
   confirmation. The button pressed stays, greyed out, until the cover arrives
-  (#294). A cover part-way for longer than a minute, in error or not read
-  offers both, and an error turns the chip red and stays on a collapsed card.
+  (#294). A cover part-way for longer than `cover_stuck_after` (a minute by
+  default), in error or not read offers both, and an error turns the chip red and stays on a collapsed card.
 - **A warning for light frames taken behind the closed flat cover** (#288):
   `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` turns
   `on` when the newest frame is a light exposed after the cover was seen
@@ -36,6 +36,14 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   night's last light, leave it `off`. The observatory card turns the Flat
   Panel chip red and keeps the warning on a collapsed card, and the new
   **Flat cover closed on lights** blueprint sends a notification.
+- **A flat panel cover stuck part-way is a fault** (#289). N.I.N.A. reports a
+  cover still moving and one stuck the same way, and some drivers never turn
+  a stuck cover into an error. Part-way for longer than the observatory
+  card's new `cover_stuck_after` option (default 60 seconds), the cover turns
+  the Flat Panel chip red and stays on a collapsed card. The new **Flat cover
+  fault** blueprint notifies when the cover stays part-way past its own
+  threshold, or reports an error. A cover stuck part-way can vignette or
+  block lights, or spoil flats.
 - **The image panel has a Lights only button** beside the recent frames (#270). It
   limits the main image and the strip to lights, so the last sub stays on
   screen through a flat run of any length. The card's `lights_only` option
@@ -51,6 +59,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
+- **`sensor.<instance>_flat_panel_cover_state` reads `NotPresent` on a panel
+  that reports it cannot open or close a cover** (#289), whatever cover state
+  its driver reports, so a panel with no cover never reads as stuck part-way.
 - **The integration installs and updates its blueprints** (#256). They ship
   inside `custom_components/nina_astrophotography/blueprints/`, and each start
   of Home Assistant writes any that differ to

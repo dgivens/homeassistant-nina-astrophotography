@@ -1,0 +1,121 @@
+blueprint:
+  name: "N.I.N.A. – Flat Cover Fault"
+  description: >
+    Notifies when the flat panel's cover reports an error, or stays part-way
+    for longer than it takes to open or close.
+
+    N.I.N.A. reports a cover that is moving, or stuck, as neither open nor
+    closed, and some drivers report a stuck cover that way indefinitely rather
+    than as an error. A cover stuck part-way can vignette or block the lights,
+    or spoil flats taken under it, so once it has been part-way longer than its
+    travel, it alerts as an error does.
+
+    A cover without position sensing reports where it was told to go, so a
+    jammed one reads open or closed and cannot alert. A cover already at fault
+    when Home Assistant starts alerts once the time below has passed, so a
+    restart repeats the alert while the fault persists. Reloading or editing
+    this automation while the cover is already stuck drops the alert until the
+    cover's state next changes, and each time N.I.N.A. is unreachable the count
+    starts again.
+  domain: automation
+  author: dgivens
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        cover_state:
+          name: Flat panel cover state
+          description: >
+            The flat panel's "Cover state" sensor. On a panel with no cover to
+            move it reads `NotPresent`, and never alerts.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        stuck_after:
+          name: Stuck after
+          description: >
+            How long the cover may read part-way before it counts as stuck:
+            longer than your cover takes to open or close, plus 10 seconds,
+            since the cover is read every 10 seconds. A Flip-Flat travels in 10
+            to 20 seconds, others take longer.
+          default: 60
+          selector:
+            number:
+              min: 20
+              max: 600
+              mode: box
+              unit_of_measurement: s
+        notify_target:
+          name: Notify
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+
+# A restart's run waits out `stuck_after` and then checks the cover, so a
+# fault arising during that wait is caught by its check rather than lost.
+mode: single
+max_exceeded: silent
+
+variables:
+  cover_state: !input cover_state
+
+triggers:
+  - trigger: state
+    entity_id: !input cover_state
+    to: "NeitherOpenNorClosed"
+    for:
+      seconds: !input stuck_after
+    id: stuck
+  - trigger: state
+    entity_id: !input cover_state
+    to: "Error"
+    id: error
+  # A cover already part-way or in error when Home Assistant starts makes no
+  # state change for the triggers above to see.
+  - trigger: homeassistant
+    event: start
+    id: started
+
+actions:
+  - if:
+      - condition: trigger
+        id: started
+    then:
+      - delay:
+          seconds: !input stuck_after
+  # The state triggers have already timed the cover, so only a restart's run
+  # checks it.
+  - condition: or
+    conditions:
+      - condition: trigger
+        id: [stuck, error]
+      - condition: state
+        entity_id: !input cover_state
+        state: "Error"
+      - condition: state
+        entity_id: !input cover_state
+        state: "NeitherOpenNorClosed"
+        for:
+          seconds: !input stuck_after
+  - action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "⚠️ Flat cover fault"
+      message: >
+        {% if is_state(cover_state, 'Error') %}
+        The flat panel's cover reports an error.
+        {% else %}
+        The flat panel's cover is stuck part-way. Lights may be vignetted or
+        blocked, and flats unevenly lit.
+        {% endif %}

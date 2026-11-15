@@ -35,10 +35,17 @@ const COVER = "switch.n_i_n_a_flat_panel_cover";
 const FLAT_LIGHT = "light.n_i_n_a_flat_panel_light";
 const FLAT_LEVEL = "number.n_i_n_a_flat_panel_brightness";
 const BEHIND_COVER = "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover";
+const REACHABLE = "binary_sensor.n_i_n_a_reachable";
+const SEQUENCER = "binary_sensor.n_i_n_a_sequencer_running";
+const IMAGE_COUNT = "sensor.n_i_n_a_session_image_count";
 
 // The cover's sensor and switch read the same cover, so a scenario moves both.
 const cover = (dump, sensor, sw) =>
   rig(dump, FLATS).override(COVER_STATE, sensor).override(COVER, sw);
+// Part-way, every row last changed `ago` ms before now. N.I.N.A. reports the
+// travel, but no capture caught it.
+const partWayFor = (dump, ago) =>
+  cover(dump, "NeitherOpenNorClosed", "unknown").changedAt(new Date(Date.now() - ago));
 
 // No `draw` hook: the card has no canvas.
 
@@ -175,18 +182,16 @@ export const scenarios = {
       .build(),
   },
 
-  // A cover part-way for longer than it takes to travel is stuck: both
-  // buttons. N.I.N.A. reports the travel, but no capture caught it.
-  flat_panel_stuck: {
-    hass: (dump) => cover(dump, "NeitherOpenNorClosed", "unknown")
-      .changedAt(new Date(Date.now() - 120_000)).build(),
+  // A cover part-way for longer than the default 60 s it may travel is
+  // stuck: both buttons, a red chip, and kept when the card folds.
+  flat_panel_stuck: { hass: (dump) => partWayFor(dump, 120_000).build() },
+  flat_panel_stuck_folded: {
+    hass: (dump) => partWayFor(dump, 120_000).build(),
+    folded: ["card"],
   },
 
   // Moving, on a card that never saw where it started: one disabled button.
-  flat_panel_moving: {
-    hass: (dump) => cover(dump, "NeitherOpenNorClosed", "unknown")
-      .changedAt(new Date(Date.now() - 5_000)).build(),
-  },
+  flat_panel_moving: { hass: (dump) => partWayFor(dump, 5_000).build() },
 
   // Open pressed on the closed cover: the button stays, disabled, while the
   // cover travels, and becomes Close once it is open.
@@ -232,6 +237,37 @@ export const scenarios = {
           card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
       },
     }),
+  },
+
+  // Part-way for two minutes, but N.I.N.A. stopped answering 30 s into it:
+  // the readings are as of then, so not stuck. No capture holds a panel
+  // through an outage, so the link's moment is stamped by hand.
+  flat_panel_cover_travelling_not_answering: {
+    hass: (dump) => {
+      const hass = partWayFor(dump, 120_000).override(REACHABLE, "off").build();
+      hass.states[REACHABLE].last_changed = new Date(Date.now() - 90_000).toISOString();
+      return hass;
+    },
+  },
+  // Stuck, then N.I.N.A. lost with the Reachable sensor disabled, so nothing
+  // says when it went quiet: the readings' age is unknown, so not stuck.
+  flat_panel_cover_stuck_lost_unknown_since: {
+    hass: (dump) => partWayFor(dump, 120_000).build(),
+    after: (dump) => [
+      rig(dump, FLATS).without("reachable")
+        .override(SEQUENCER, "unavailable").override(IMAGE_COUNT, "unavailable").build(),
+    ],
+  },
+  // A slower cover, given 180 s: two minutes part-way is still travel.
+  flat_panel_cover_slow: {
+    config: { cover_stuck_after: 180 },
+    hass: (dump) => partWayFor(dump, 120_000).build(),
+  },
+  // A threshold past what a timer can hold is held to a day: no fault, and
+  // no render loop.
+  flat_panel_cover_stuck_after_infinite: {
+    config: { cover_stuck_after: Infinity },
+    hass: (dump) => partWayFor(dump, 120_000).build(),
   },
 
   // A red chip and both buttons. The rig's panel has not failed.

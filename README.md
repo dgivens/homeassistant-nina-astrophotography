@@ -14,7 +14,7 @@ It provides:
 - buttons and actions to cool, slew, park, focus and run sequences
 - Home Assistant events for everything N.I.N.A. reports
 - eight dashboard cards
-- seven automation blueprints
+- eight automation blueprints
 
 ![The dashboard cards on a live rig imaging Sh2 132: the observatory card above a pier camera, the weather, autofocus and sky map cards, and the live stack, latest image and frame statistics cards](https://raw.githubusercontent.com/dgivens/homeassistant-nina-astrophotography/main/docs/images/dashboard.png)
 
@@ -198,7 +198,7 @@ type: custom:nina-observatory-card
 
 | Card | Shows | Options (all optional) |
 |---|---|---|
-| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, flat panel, guiding, last frame, and controls. Stop, park, and opening or closing the dome or the flat panel's cover ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | — |
+| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, flat panel, guiding, last frame, and controls. Stop, park, and opening or closing the dome or the flat panel's cover ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | `cover_stuck_after`: seconds the flat panel's cover may read part-way before the card shows it as stuck (default 60, at most a day); set it 10 s longer than your cover takes to open or close, since the cover is read every 10 s |
 | `custom:nina-frame-stats-card` | HFR, star count and ADU trends for the session's frames, and a per-filter breakdown | — |
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default: your sequence's "AF After Temperature Change" trigger, else 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, their statistics, and a countdown for the sub being exposed | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85); `lights_only`: show only lights in the image and the strip (default `false`); a browser that presses the card's Lights only button away from this keeps its own choice, unless `show_strip` is off |
@@ -224,11 +224,13 @@ angle, shown once a plate solve syncs the rotator.
 
 With a flat panel, it adds a Flat Panel chip, whether the cover is open and
 the light on, and the brightness in the panel's own units, and Open or Close
-Flat Cover, greyed out while the cover moves. A cover part-way for longer
-than a minute, in error or not read offers both. An ASCOM panel
-reads brightness 0 while its light is off. A light frame exposed after the cover
-closed turns the chip red: that frame is blank, and so is every light after it
-until the cover opens.
+Flat Cover, greyed out while the cover moves. N.I.N.A. reports a cover stuck
+part-way the same as one still moving, so a cover part-way for longer than
+`cover_stuck_after` (a minute by default) counts as stuck: it turns the chip
+red and offers both buttons, as a cover in error or not read does. An ASCOM
+panel reads brightness 0 while its light is off. A light frame exposed after
+the cover closed turns the chip red too: that frame is blank, and so is every
+light after it until the cover opens.
 
 Tap or click a card's header to collapse the card, or a section's heading,
 such as **ADU range** or **Wind**, to collapse that section. A collapsed
@@ -244,9 +246,9 @@ A collapsed card still shows what needs attention:
 
 - **Weather**: the safety status and the dew alert.
 - **Observatory**: a lost or unresponsive link, a meridian flip, a dome
-  shutter or flat panel cover error, light frames behind the closed flat
-  cover, and, while a sequence runs, a disconnected camera or mount
-  or stopped guiding. Stop Sequence, Park and Close Dome stay, each while it
+  shutter or flat panel cover error, a flat panel cover stuck part-way,
+  light frames behind the closed flat cover, and, while a sequence runs, a
+  disconnected camera or mount or stopped guiding. Stop Sequence, Park and Close Dome stay, each while it
   applies, and a collapsed **Controls** section keeps them too.
 - **Autofocus**: a failed run.
 - **Live stack**: whether stacking is running or N.I.N.A. is unreachable, and
@@ -300,6 +302,7 @@ on one and pick your rig's entities.
 | [Meridian flip warning](custom_components/nina_astrophotography/blueprints/meridian_flip_warning.yaml) | Notifies before a meridian flip, when it starts, and when it finishes. |
 | [Guiding alert](custom_components/nina_astrophotography/blueprints/guiding_alert.yaml) | Notifies, and optionally runs autofocus, when guiding RMS stays high. |
 | [Flat cover closed on lights](custom_components/nina_astrophotography/blueprints/cover_closed_alert.yaml) | Notifies when a light frame is saved with the flat panel's cover closed. Flats and darks behind it don't alert, and neither does closing it after the night's last light. A panel switched off for the night stays quiet, and so does its reconnecting for the flats. |
+| [Flat cover fault](custom_components/nina_astrophotography/blueprints/cover_fault_alert.yaml) | Notifies when the flat panel's cover reports an error, or stays part-way longer than it takes to travel (60 seconds by default), since some drivers never report a stuck cover as an error. [Details](docs/reference.md#flats). |
 | [Imaging stall alert](custom_components/nina_astrophotography/blueprints/imaging_stall_alert.yaml) | Notifies when frames stop for a bad reason (N.I.N.A. unreachable, mount parked mid-sequence, no frames), and clears when they resume. [Details](docs/reference.md#the-imaging-stall-alert-blueprint). |
 
 They live in `config/blueprints/automation/nina_astrophotography/`, and each

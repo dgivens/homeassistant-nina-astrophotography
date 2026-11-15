@@ -313,30 +313,46 @@ async def loaded_entry(hass, config_entry, rig) -> MockConfigEntry:
     return config_entry
 
 
-@pytest.fixture
-def set_up_with_flat_device(hass, config_entry, rig, monkeypatch):
-    """Set the entry up against the dawn snapshot with its panel varied.
+def _serve_flat_device(monkeypatch, **changes) -> None:
+    """Serve the dawn snapshot with its panel varied.
 
     Varies the mapped MODEL, not the captured wire JSON: the fixture rule bans
     hand-written wire documents, and every flat-panel state a test needs is one
     field away from the panel the rig actually reported.
     """
+    snapshot = map_equipment_info(load_fixture("dawn_equipment_info.json"))
+    assert snapshot.flat_device is not None
+    snapshot = replace(snapshot, flat_device=replace(snapshot.flat_device, **changes))
+    monkeypatch.setattr(NinaClientV2, "get_equipment", lambda self: _async(snapshot))
+
+
+@pytest.fixture
+def set_up_with_flat_device(hass, config_entry, rig, monkeypatch):
+    """Set the entry up against the dawn snapshot with its panel varied."""
 
     async def _set_up(**changes):
-        snapshot = map_equipment_info(load_fixture("dawn_equipment_info.json"))
-        assert snapshot.flat_device is not None
-        snapshot = replace(
-            snapshot, flat_device=replace(snapshot.flat_device, **changes)
-        )
-        monkeypatch.setattr(
-            NinaClientV2, "get_equipment", lambda self: _async(snapshot)
-        )
+        _serve_flat_device(monkeypatch, **changes)
         config_entry.add_to_hass(hass)
         assert await hass.config_entries.async_setup(config_entry.entry_id)
         await hass.async_block_till_done()
         return config_entry
 
     return _set_up
+
+
+@pytest.fixture
+def flat_device_changes(hass, config_entry, monkeypatch):
+    """Vary the loaded entry's panel, and poll it.
+
+    The refresh writes the states itself, so this does not wait for Home
+    Assistant to settle, which an automation in a `delay` would hold off.
+    """
+
+    async def _change(**changes):
+        _serve_flat_device(monkeypatch, **changes)
+        await config_entry.runtime_data.coordinator.async_refresh()
+
+    return _change
 
 
 @pytest.fixture

@@ -339,6 +339,28 @@ How a flat run shows up elsewhere:
   sensor is `unavailable` and cannot warn; when the panel reconnects reading
   closed, the lights taken before then do not turn it on, and only a light
   after that does.
+- `sensor.<instance>_flat_panel_cover_state` reads `NeitherOpenNorClosed`
+  both while the cover travels and when it is stuck part-way; some drivers
+  never turn a stuck cover into `Error`. On a panel that reports it cannot
+  open or close a cover, it reads `NotPresent` whatever the driver says.
+- The observatory card shows a cover part-way for longer than its
+  `cover_stuck_after` (default 60 seconds) as stuck, and the **Flat cover
+  fault** blueprint notifies after its own *Stuck after* time, or at once on
+  `Error`. The cover is read every 10 seconds, so a cover can read part-way
+  for up to 10 seconds longer than it takes to travel: set either one longer
+  than that. Both count from the sensor's last change:
+  - an outage that makes it `unavailable` restarts the count, so a link that
+    keeps dropping can hold off the alert indefinitely;
+  - the card, while N.I.N.A. is not answering, times the last readings to when
+    it went quiet, and with the Reachable sensor disabled does not show a
+    held reading as stuck.
+- The blueprint alerts for a cover already at fault when Home Assistant
+  starts, once its *Stuck after* time has passed, so each restart repeats the
+  alert while the fault lasts. Reloading or editing the automation while the
+  cover is already stuck drops the alert until the cover's state next changes.
+- A cover without position sensing reports where it was told to go, so a
+  jammed one reads `Open` or `Closed`, and neither the card nor the blueprint
+  can tell.
 - `number.<instance>_flat_panel_brightness` sets only the brightness, in the
   panel's own units. On an ASCOM or Alpaca panel that also lights it at any
   level above 0, and 0 darkens it. After the number is set to 0, or N.I.N.A.

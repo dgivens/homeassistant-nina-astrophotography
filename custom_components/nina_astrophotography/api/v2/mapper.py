@@ -428,15 +428,21 @@ def map_dome(wire: dict) -> DomeModel:
 
 def map_flat_device(wire: dict) -> FlatDeviceModel:
     readings = _readings(wire)
+    supports_open_close = _flag(wire, "SupportsOpenClose")
+    cover_state = _text(readings, "CoverState")
+    # A panel with no cover to move may still report one part-way, which
+    # would read as a cover stuck there.
+    if cover_state is not None and supports_open_close is False:
+        cover_state = "NotPresent"
     return FlatDeviceModel(
         connected=_connected(wire),
         meta=_meta(wire),
-        cover_state=_text(readings, "CoverState"),
+        cover_state=cover_state,
         light_on=_flag(readings, "LightOn"),
         brightness=_number(readings, "Brightness"),
         brightness_range=_range(readings, "MinBrightness", "MaxBrightness"),
         supports_on_off=_flag(wire, "SupportsOnOff"),
-        supports_open_close=_flag(wire, "SupportsOpenClose"),
+        supports_open_close=supports_open_close,
     )
 
 
