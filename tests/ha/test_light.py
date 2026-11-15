@@ -10,17 +10,16 @@ from homeassistant.exceptions import HomeAssistantError
 import pytest
 
 from custom_components.nina_astrophotography import light
-from custom_components.nina_astrophotography.api.errors import (
-    NinaCommandError,
-    NinaConnectionError,
-)
+from custom_components.nina_astrophotography.api.errors import NinaConnectionError
 from custom_components.nina_astrophotography.api.models import DeviceMeta
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from custom_components.nina_astrophotography.api.v2.mapper import map_equipment_info
-from helpers import load_fixture, state_of
+from helpers import failure, load_fixture, panel_reports, state_of
 
 ENTITY = "light.n_i_n_a_flat_panel_light"
 _SET_BRIGHTNESS = "/equipment/flatdevice/set-brightness"
+_SET_LIGHT = "/equipment/flatdevice/set-light"
+_IDLE = {"Brightness": 0, "LightOn": False}
 
 
 async def _turn_on(hass: HomeAssistant, **data) -> None:
@@ -41,12 +40,14 @@ async def _turn_off(hass: HomeAssistant) -> None:
     )
 
 
+@pytest.mark.synthetic
 async def test_brightness_scales_into_the_drivers_own_range(
-    hass: HomeAssistant, flat_panel_entry, sent
+    hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """This panel reports MaxBrightness 4096; an Alnitak reports 255."""
+    panel_reports(rig, 4096, lit=True)
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 255})
-    assert sent.brightness == 4096
+    assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 4096})]
 
 
 async def test_the_reported_brightness_is_scaled_back_into_ha_units(
@@ -58,8 +59,9 @@ async def test_the_reported_brightness_is_scaled_back_into_ha_units(
     assert state_of(hass, ENTITY).attributes[ATTR_BRIGHTNESS] == 128
 
 
+@pytest.mark.synthetic
 async def test_a_bare_turn_on_does_not_go_to_full_output(
-    hass: HomeAssistant, idle_flat_panel_entry, sent
+    hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """THE safety test on this entity.
 
@@ -68,8 +70,10 @@ async def test_a_bare_turn_on_does_not_go_to_full_output(
     panel's ordinary idle state is Brightness 0, which is exactly the state that
     tempts a falsy-fallback implementation into sending 255.
     """
+    panel_reports(rig, 16, lit=True)
     await _turn_on(hass)
-    assert sent.brightness == 16  # round(1 / 255 * 4096): HA level 1, the dim default
+    # round(1 / 255 * 4096): HA level 1, the dim default
+    assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 16})]
 
 
 @pytest.mark.synthetic
@@ -81,63 +85,56 @@ async def test_a_bare_turn_on_of_a_narrow_range_panel_stays_above_its_minimum(
     MaxBrightness.
     """
     await set_up_at(hass, config_entry, rig, "simulator_dome_parked")
-    rig.after(
-        _SET_BRIGHTNESS,
-        lambda: rig.serve_device("FlatDevice", {"Brightness": 1, "LightOn": True}),
-    )
+    panel_reports(rig, 1, lit=True)
     await _turn_on(hass)
     assert rig.sent[0] == (_SET_BRIGHTNESS, {"brightness": 1})
 
 
+@pytest.mark.synthetic
 async def test_a_bare_turn_on_restores_the_last_level_used(
-    hass: HomeAssistant, flat_panel_entry, sent
+    hass: HomeAssistant, loaded_entry, rig
 ) -> None:
+    panel_reports(rig, 1028, lit=True)
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 64})
+    rig.after(_SET_LIGHT, lambda: rig.serve_device("FlatDevice", _IDLE))
     await _turn_off(hass)
+    # Polled idle, so a bare turn_on has no current level to fall back on.
+    await loaded_entry.runtime_data.coordinator.async_refresh()
+    panel_reports(rig, 1028, lit=True)
     await _turn_on(hass)
-    assert sent.brightness == 1028  # round(64 / 255 * 4096)
+    assert rig.sent[-1] == (
+        _SET_BRIGHTNESS,
+        {"brightness": 1028},
+    )  # round(64 / 255 * 4096)
 
 
-@pytest.mark.parametrize(
-    ("lights_with_brightness", "calls"),
-    [
-        pytest.param(True, [("set_flat_brightness", 2056)], id="ascom"),
-        pytest.param(
-            False,
-            [("set_flat_brightness", 2056), ("set_flat_light", True)],
-            id="native",
-        ),
-    ],
-)
-async def test_turn_on_switches_the_light_on_only_once_the_panel_holds_the_brightness(
-    hass: HomeAssistant,
-    idle_flat_panel_entry,
-    sent,
-    lights_with_brightness: bool,
-    calls: list,
+@pytest.mark.synthetic
+async def test_turn_on_switches_the_light_on_once_the_panel_holds_the_brightness(
+    hass: HomeAssistant, loaded_entry, rig
 ) -> None:
-    """N.I.N.A. runs the two commands concurrently, and an ASCOM panel's
-    light-on that overtakes the brightness comes on at full output. A
-    brightness lights an ASCOM panel by itself; a native driver's needs the
-    light-on.
+    """A native driver's panel holds the brightness unlit; the ASCOM case, and
+    the race this ordering avoids, are in `test_services.py`.
     """
-    sent.lights_with_brightness = lights_with_brightness
+    panel_reports(rig, 2056, lit=False)
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 128})
-    assert sent.calls == calls
+    assert rig.sent == [
+        (_SET_BRIGHTNESS, {"brightness": 2056}),
+        (_SET_LIGHT, {"on": "true"}),
+    ]
 
 
 async def test_a_panel_that_never_reports_the_brightness_is_not_switched_on(
-    hass: HomeAssistant, idle_flat_panel_entry, sent, monkeypatch
+    hass: HomeAssistant, loaded_entry, rig, monkeypatch
 ) -> None:
     monkeypatch.setattr(light, "_SETTLE_TIMEOUT", 0)
-    sent.lights_with_brightness = None
     with pytest.raises(HomeAssistantError, match="did not report brightness 2056"):
         await _turn_on(hass, **{ATTR_BRIGHTNESS: 128})
-    assert sent.calls == [("set_flat_brightness", 2056)]
+    assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 2056})]
 
 
+@pytest.mark.synthetic
 async def test_a_read_that_fails_while_waiting_for_the_brightness_is_retried(
-    hass: HomeAssistant, idle_flat_panel_entry, sent, monkeypatch
+    hass: HomeAssistant, loaded_entry, rig, monkeypatch
 ) -> None:
     monkeypatch.setattr(light, "_SETTLE_INTERVAL", 0)
     read = NinaClientV2.get_equipment
@@ -149,8 +146,9 @@ async def test_a_read_that_fails_while_waiting_for_the_brightness_is_retried(
         return await read(client)
 
     monkeypatch.setattr(NinaClientV2, "get_equipment", flaky)
+    panel_reports(rig, 2056, lit=True)
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 128})
-    assert sent.brightness == 2056
+    assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 2056})]
 
 
 # Client-side range validation is NOT tested here: Home Assistant's own light
@@ -177,23 +175,27 @@ async def test_a_disconnected_panel_reporting_a_zero_range_is_unavailable(
 
 
 async def test_turn_off_uses_set_light_not_brightness_zero(
-    hass: HomeAssistant, flat_panel_entry, sent
+    hass: HomeAssistant, loaded_entry, rig
 ) -> None:
     """Brightness 0 darkens an ASCOM panel, but leaves the light switched on
     under N.I.N.A.'s native drivers.
     """
     await _turn_off(hass)
-    assert sent.last_call == ("set_flat_light", False)
+    assert rig.sent == [(_SET_LIGHT, {"on": "false"})]
 
 
+@pytest.mark.synthetic
 async def test_turn_on_of_a_lit_panel_only_adjusts_the_brightness(
-    hass: HomeAssistant, flat_panel_entry, sent
+    hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:
     """set-light on an already-lit panel is a no-op at best; FLAT-LIGHT-TOGGLED
     would fire for nothing.
     """
+    rig.serve_device("FlatDevice", {"Brightness": 2048, "LightOn": True})
+    await set_up_at(hass, config_entry, rig, "imaging")
+    panel_reports(rig, 1028, lit=True)
     await _turn_on(hass, **{ATTR_BRIGHTNESS: 64})
-    assert sent.calls == [("set_flat_brightness", 1028)]
+    assert rig.sent == [(_SET_BRIGHTNESS, {"brightness": 1028})]
 
 
 async def test_a_panel_that_disconnects_after_being_observed_stays_as_unavailable(
@@ -268,19 +270,16 @@ async def test_the_light_appears_when_the_panel_is_first_seen_after_setup(
 
 
 @pytest.mark.parametrize(
-    ("command", "act"),
+    ("path", "act"),
     [
-        ("set_flat_brightness", lambda hass: _turn_on(hass, **{ATTR_BRIGHTNESS: 10})),
-        ("set_flat_light", _turn_off),
+        (_SET_BRIGHTNESS, lambda hass: _turn_on(hass, **{ATTR_BRIGHTNESS: 10})),
+        (_SET_LIGHT, _turn_off),
     ],
     ids=["turn_on", "turn_off"],
 )
 async def test_a_refused_command_surfaces_as_a_home_assistant_error(
-    hass: HomeAssistant, flat_panel_entry, sent, command, act
+    hass: HomeAssistant, loaded_entry, rig, path, act
 ) -> None:
-    async def refuse(self, *_args) -> None:
-        raise NinaCommandError("Flat device not connected")
-
-    sent.patch(command, refuse)
+    rig.respond(path, failure("Flat device not connected"))
     with pytest.raises(HomeAssistantError, match="Flat device not connected"):
         await act(hass)
