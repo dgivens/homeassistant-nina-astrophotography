@@ -14,7 +14,9 @@ setpoint, so on cools to the one the camera reports; a camera reporting none is
 refused.
 
 **The flat panel cover is not opened while the panel reads lit**, which would
-shine it into the observatory.
+shine it into the observatory. Closing is not held back while a sequence runs,
+as `flat_panel_set_cover` holds it: a switch cannot pass `force`, and closing is
+the protective direction.
 
 **A switch device channel is a switch only when binary** (`Max - Min ==
 StepSize`), and its on/off values are its own range ends. It reads `Value`,

@@ -80,9 +80,6 @@ class NinaSensorDescription(NinaEntityDescription, SensorEntityDescription):
     """A sensor, plus how to read it out of the published snapshot."""
 
     value: Callable[[NinaData], float | int | str | datetime | None]
-    available_while_down: Callable[[NinaData], bool] | None = None
-    """Keeps the entity available while its device is down, for as long as
-    this returns true."""
 
 
 def _frame(field: str) -> Callable[[NinaData], Any]:
@@ -749,7 +746,7 @@ EQUIPMENT: tuple[NinaSensorDescription, ...] = (
         value=lambda data: (
             read_field("flat_device", "cover_state")(data) or data.cover_fault_held
         ),
-        available_while_down=lambda data: data.cover_fault_held is not None,
+        survives_disconnect=lambda data: data.cover_fault_held is not None,
     ),
     # ── Sequence ─────────────────────────────────────────────────────────
     NinaSensorDescription(
@@ -983,11 +980,6 @@ class NinaSensor(NinaDescribedEntity, SensorEntity):
     entity_description: NinaSensorDescription
     # Cards read these live; recorded, each would write KBs per frame.
     _unrecorded_attributes = frozenset({"recent_frames", "recent_lights"})
-
-    @property
-    def _survives_disconnect(self) -> bool:
-        held = self.entity_description.available_while_down
-        return held is not None and held(self.coordinator.data)
 
     @property
     def native_value(self) -> float | int | str | datetime | None:

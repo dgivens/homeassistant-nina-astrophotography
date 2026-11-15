@@ -46,8 +46,8 @@ from .coordinator import NinaConfigEntry, NinaCoordinator, NinaData
 from .device import (
     channel_key,
     channels_for,
+    raise_if_level_lights_open_panel,
     raise_outside_rotator_range,
-    raise_unless_cover_closed,
     read_field,
     refused_while_following,
     refused_while_unsynced,
@@ -86,13 +86,6 @@ class NinaNumberDescription(NinaEntityDescription, NumberEntityDescription):
     as given, where `bounds` cannot say so."""
 
 
-def _raise_if_lit_behind_open_cover(data: NinaData, value: float) -> None:
-    """Refuse a level that would light an ASCOM panel, while its cover is open."""
-    bounds = read_field("flat_device", "brightness_range")(data)
-    if bounds is not None and value > bounds[0]:
-        raise_unless_cover_closed(data)
-
-
 DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
     NinaNumberDescription(
         key="flat_panel_brightness",
@@ -102,7 +95,7 @@ DESCRIPTIONS: tuple[NinaNumberDescription, ...] = (
         kind="flat_device",
         value=read_field("flat_device", "brightness"),
         bounds=read_field("flat_device", "brightness_range"),
-        check=_raise_if_lit_behind_open_cover,
+        check=raise_if_level_lights_open_panel,
         command=lambda client, value: client.set_flat_brightness(round(value)),
     ),
     NinaNumberDescription(

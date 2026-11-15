@@ -143,6 +143,15 @@ def raise_unless_cover_closed(data: NinaData) -> None:
     )
 
 
+def raise_if_level_lights_open_panel(data: NinaData, level: float) -> None:
+    """Refuse a brightness above the panel's minimum unless its cover is
+    closed: an ASCOM panel lights at any such level.
+    """
+    bounds = read_field("flat_device", "brightness_range")(data)
+    if bounds is not None and level > bounds[0]:
+        raise_unless_cover_closed(data)
+
+
 def raise_while_lit(data: NinaData) -> None:
     """Refuse opening the cover while the panel reads lit, for the reason
     `raise_unless_cover_closed` gives.

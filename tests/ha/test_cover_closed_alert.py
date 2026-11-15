@@ -4,7 +4,7 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import async_mock_service
 
-from helpers import load_fixture
+from helpers import image_saved
 
 BEHIND_COVER = "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover"
 
@@ -18,10 +18,7 @@ async def test_a_light_behind_the_closed_cover_notifies(
         "cover_closed_alert.yaml",
         {"behind_cover": BEHIND_COVER, "notify_target": ["notify.phone"]},
     )
-    payload = load_fixture("live_image_save_push.json")
-    payload["ImageStatistics"]["ImageType"] = "LIGHT"
-
-    push(payload)
+    push(image_saved("LIGHT"))
     await hass.async_block_till_done()
 
     assert len(sent) == 1

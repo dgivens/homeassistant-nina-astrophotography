@@ -44,13 +44,16 @@ class NinaEntityDescription(EntityDescription):
     `kind` names the child device; `None` puts it on the hub. `supported` gates
     creation on a capability the driver reports, such as a flat panel's cover.
     `refusal` names the exception to raise instead of sending the command,
-    `None` when it may be sent.
+    `None` when it may be sent. `survives_disconnect` keeps the entity
+    available while its device is down, for as long as it returns true: for
+    an entity whose job is to report that, or a fault that outlives it.
     """
 
     kind: str | None
     supported: Callable[[NinaData], bool] | None = None
     refusal: Callable[[NinaData], str | None] | None = None
     attributes: Callable[[NinaData], Mapping[str, Any]] | None = None
+    survives_disconnect: Callable[[NinaData], bool] | None = None
     unique_id_suffix: str | None = None
     """The 1.4.5 key, where it differs from `key`, so an upgraded entity keeps
     its registry row. `unique_id` is `{entry_id}_{unique_id_suffix or key}`."""
@@ -118,6 +121,11 @@ class NinaDescribedEntity(NinaEntity):
             kind=description.kind,
         )
         self.entity_description = description
+
+    @property
+    def _survives_disconnect(self) -> bool:
+        survives = self.entity_description.survives_disconnect
+        return survives is not None and survives(self.coordinator.data)
 
     @property
     def extra_state_attributes(self) -> Mapping[str, Any] | None:

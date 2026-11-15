@@ -102,10 +102,8 @@ async def test_a_bare_turn_on_restores_the_last_level_used(
     await loaded_entry.runtime_data.coordinator.async_refresh()
     panel_reports(rig, 1028, lit=True)
     await _turn_on(hass)
-    assert rig.sent[-1] == (
-        _SET_BRIGHTNESS,
-        {"brightness": 1028},
-    )  # round(64 / 255 * 4096)
+    # round(64 / 255 * 4096)
+    assert rig.sent[-1] == (_SET_BRIGHTNESS, {"brightness": 1028})
 
 
 @pytest.mark.synthetic

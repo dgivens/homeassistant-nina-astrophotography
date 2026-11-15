@@ -84,6 +84,7 @@ from .device import (
     async_sync_devices,
     kind_of,
     raise_closing_while_running,
+    raise_if_level_lights_open_panel,
     raise_outside_rotator_range,
     raise_unless_cover_closed,
     raise_while_lit,
@@ -625,8 +626,7 @@ async def _handle_flat_panel_set_brightness(call: ServiceCall) -> None:
     level = call.data["level"]
     low, high = _panel_range(coordinator.data.snapshot.flat_device)
     _within_device_range("Level", level, "flat panel", low, high)
-    if level > low:
-        raise_unless_cover_closed(coordinator.data)
+    raise_if_level_lights_open_panel(coordinator.data, level)
     await coordinator.client.set_flat_brightness(level)
 
 

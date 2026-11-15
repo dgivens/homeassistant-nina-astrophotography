@@ -132,11 +132,11 @@ function linkBanner(link, dome) {
 }
 
 // Brings `root` in line with `html`, keeping every element whose tag, id and
-// fold are unchanged at its place; an empty root takes every node. A replaced button under the pointer loses
-// its hover and fades back in, which on a card updated every few seconds is a
-// flicker. An element that becomes another control is replaced, never reused:
-// a press or the focus held across an update would otherwise land on Start
-// where the viewer meant Stop.
+// fold are unchanged at its place; an empty root takes every node. A replaced
+// button under the pointer loses its hover and fades back in, which on a card
+// updated every few seconds is a flicker. An element that becomes another
+// control is replaced, never reused: a press or the focus held across an
+// update would otherwise land on Start where the viewer meant Stop.
 function patch(root, html) {
   const next = document.createElement("template");
   next.innerHTML = html;

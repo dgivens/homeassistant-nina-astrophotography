@@ -19,7 +19,7 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.nina_astrophotography.api.errors import NinaRequestError
 from custom_components.nina_astrophotography.api.v2.client import NinaClientV2
 from ha.registry import registered
-from helpers import load_fixture, state_of
+from helpers import image_saved, state_of
 
 AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
@@ -545,19 +545,12 @@ async def test_a_flip_that_lapsed_without_its_end_does_not_hold_the_next(
     assert state_of(hass, MERIDIAN_FLIP).attributes["slews_at"] is not None
 
 
-def _saved(image_type: str, **readings: object) -> dict:
-    """The captured IMAGE-SAVE push, as a frame of `image_type`."""
-    payload = load_fixture("live_image_save_push.json")
-    payload["ImageStatistics"] |= {"ImageType": image_type, **readings}
-    return payload
-
-
 @pytest.mark.synthetic
 @pytest.mark.parametrize(("image_type", "state"), [("LIGHT", "on"), ("DARK", "off")])
 async def test_only_a_light_saved_behind_the_closed_cover_is_flagged(
     hass: HomeAssistant, loaded_entry, push, image_type: str, state: str
 ) -> None:
-    push(_saved(image_type))
+    push(image_saved(image_type))
     await hass.async_block_till_done()
     assert state_of(hass, BEHIND_COVER).state == state
 
@@ -570,7 +563,7 @@ async def test_a_light_exposed_before_the_reported_close_is_not_flagged(
     after the cover closing for its flats. Saved after the dawn flats, but
     exposed from before the rig's 06:21:45 FLAT-COVER-CLOSED.
     """
-    push(_saved("LIGHT", Date="2026-09-04T06:27:00-05:00", ExposureTime=600.0))
+    push(image_saved("LIGHT", Date="2026-09-04T06:27:00-05:00", ExposureTime=600.0))
     await hass.async_block_till_done()
     assert state_of(hass, BEHIND_COVER).state == "off"
 
@@ -593,7 +586,7 @@ async def test_a_light_saved_before_the_cover_closed_is_not_flagged(
     await set_up_with_flat_device(cover_state="Open")
     if switched_off:
         await flat_panel_disconnects()
-    push(_saved("LIGHT"))
+    push(image_saved("LIGHT"))
     await hass.async_block_till_done()
 
     await flat_device_changes()  # the dawn panel as captured: closed
@@ -608,7 +601,7 @@ async def test_a_light_behind_the_closed_cover_stays_flagged_through_a_disconnec
     """A panel powered off leaves its cover where it was: a cover jammed shut
     blanks the rest of the night.
     """
-    push(_saved("LIGHT"))
+    push(image_saved("LIGHT"))
     await flat_panel_disconnects()
     await hass.async_block_till_done()
     assert state_of(hass, BEHIND_COVER).state == "on"
@@ -623,7 +616,7 @@ async def test_a_light_after_the_cover_opened_and_the_panel_dropped_is_not_flagg
     """
     push({"Event": "FLAT-COVER-OPENED"})
     await flat_panel_disconnects()
-    push(_saved("LIGHT"))
+    push(image_saved("LIGHT"))
     await hass.async_block_till_done()
     assert state_of(hass, BEHIND_COVER).state == "off"
 

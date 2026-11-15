@@ -11,7 +11,7 @@ from pytest_homeassistant_custom_component.common import (
     async_mock_service,
 )
 
-from helpers import load_fixture
+from helpers import image_saved
 
 BLUEPRINT = "flat_panel_left_lit_alert.yaml"
 INPUTS = {
@@ -44,23 +44,14 @@ def later(hass: HomeAssistant, freezer):
 
 
 @pytest.fixture
-async def switched_on(installed, set_up_with_flat_device, flat_device_changes, later):
+async def switched_on(installed, set_up_with_flat_device, flat_device_changes, freezer):
     """The panel off at setup, then switched on under the blueprint.
 
-    After `later`, so the countdown is scheduled on the frozen clock.
+    After `freezer`, so the countdown is scheduled on the frozen clock.
     """
     await set_up_with_flat_device()
     await installed(BLUEPRINT, INPUTS)
     await flat_device_changes(**LIT)
-
-
-def _saved(push, image_type: str, minute: int) -> None:
-    payload = load_fixture("live_image_save_push.json")
-    statistics = payload["ImageStatistics"]
-    statistics["ImageType"] = image_type
-    statistics["Filename"] = f"frame_{minute:04d}.fits"
-    statistics["Date"] = (SAVED_FROM + timedelta(minutes=minute)).isoformat()
-    push(payload)
 
 
 @pytest.mark.usefixtures("switched_on")
@@ -81,7 +72,13 @@ async def test_only_flats_saved_under_the_panel_keep_it_quiet(
 ) -> None:
     for minute in range(10, 70, 10):
         await later(10)
-        _saved(push, image_type, minute)
+        push(
+            image_saved(
+                image_type,
+                Filename=f"frame_{minute:04d}.fits",
+                Date=(SAVED_FROM + timedelta(minutes=minute)).isoformat(),
+            )
+        )
 
     await later(10)
 

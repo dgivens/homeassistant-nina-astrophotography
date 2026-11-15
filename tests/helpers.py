@@ -105,6 +105,13 @@ def failure(error="Camera not connected", status=409):
     }
 
 
+def image_saved(image_type: str, **statistics: object) -> dict:
+    """The captured IMAGE-SAVE push, as a frame of `image_type`."""
+    payload = load_fixture("live_image_save_push.json")
+    payload["ImageStatistics"] |= {"ImageType": image_type, **statistics}
+    return payload
+
+
 def panel_reports(rig: FakeRig, level: float, *, lit: bool) -> None:
     """Once a brightness is sent, the flat panel reads `level`, lit or not.
 

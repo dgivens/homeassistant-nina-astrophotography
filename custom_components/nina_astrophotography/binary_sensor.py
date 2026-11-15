@@ -45,13 +45,11 @@ PARALLEL_UPDATES = 0
 class NinaBinarySensorDescription(NinaEntityDescription, BinarySensorEntityDescription):
     """A binary sensor, plus how to read it out of the snapshot.
 
-    `survives_disconnect` keeps an entity available while its device is down,
-    for the one whose job is to report that; `survives_outage` likewise while
-    N.I.N.A. is unreachable.
+    `survives_outage` keeps an entity available while N.I.N.A. is
+    unreachable, as `survives_disconnect` does while its device is down.
     """
 
     value: Callable[[NinaData], bool | None]
-    survives_disconnect: bool = False
     survives_outage: bool = False
 
 
@@ -178,7 +176,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         entity_category=EntityCategory.DIAGNOSTIC,
         kind="safety_monitor",
-        survives_disconnect=True,
+        survives_disconnect=lambda _data: True,
         value=read_field("safety_monitor", "connected"),
     ),
     NinaBinarySensorDescription(
@@ -227,7 +225,7 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         supported=supports("flat_device", "supports_open_close"),
         # A panel powered off after a move keeps its cover where it was, and
         # the lights behind it stay blank.
-        survives_disconnect=True,
+        survives_disconnect=lambda _data: True,
         # A light is blank behind a closed cover; flats and darks are not.
         value=lambda data: data.light_behind_cover,
     ),
@@ -335,10 +333,6 @@ class NinaBinarySensor(NinaDescribedEntity, BinarySensorEntity):
     entity_description: NinaBinarySensorDescription
     # Read live by the stall alert; recorded, each wait would write the history.
     _unrecorded_attributes = frozenset({"recent_waits"})
-
-    @property
-    def _survives_disconnect(self) -> bool:
-        return self.entity_description.survives_disconnect
 
     @property
     def available(self) -> bool:
