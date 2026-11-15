@@ -325,8 +325,8 @@ class NinaWeatherCard extends HTMLElement {
     // Dew threat: the air within `dew_margin` of its dew point.
     const dewMargin = tempC !== null && dewC !== null ? tempC - dewC : null;
     const dewThreat = dewMargin !== null && dewMargin < L.dewMargin;
-    // Unsafe means the night is being shut down, which makes dew moot; the dew
-    // point cell keeps its warning.
+    // An unsafe verdict already calls for closing up, which makes dew moot; the
+    // dew point cell keeps its warning.
     const dewAlertShown = dewThreat && !isUnsafe;
     const windLevel = this._windLevel(windMs);
     const windColor = windLevel === "danger" ? "var(--danger)"
@@ -656,9 +656,9 @@ class NinaWeatherCard extends HTMLElement {
           {
             name: "dew_margin",
             label: "Dew margin",
-            helper: "Show the dew alert while the air is within this of its dew point. "
-              + "Smaller with dew heaters on the optics. In °C, whatever unit the "
-              + "temperature is shown in.",
+            helper: "Show the dew alert while the air is within this of its dew point, "
+              + "unless the safety monitor reads unsafe. Smaller with dew heaters on "
+              + "the optics. In °C, whatever unit the temperature is shown in.",
             default: LIMITS.dew_margin,
             ...number("°C", { min: 0 }),
           },

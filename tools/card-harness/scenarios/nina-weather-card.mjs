@@ -104,6 +104,21 @@ export const scenarios = {
         .build(),
   },
 
+  // `unsafe_dew`, then N.I.N.A. lost past the grace: the banner reads the
+  // safety state unknown, its last reading unsafe, and the held readings
+  // still leave the dew alert out.
+  lost_unsafe_dew: {
+    hass: (dump) =>
+      rig(dump, UP)
+        .override(TEMPERATURE, 22.0)
+        .override(HUMIDITY, 91.0)
+        .override(SAFETY, "on")
+        .build(),
+    after: (dump) => [
+      rig(dump, "nina_unreachable").changedAt(new Date(Date.now() - 45_000)).build(),
+    ],
+  },
+
   // Air at its dew point under the captured clear sky; dew forming, no fog
   // layer; safety verdict left as captured. Invented as `dew` is, as a
   // self-consistent pair: air at its 20.5 °C dew point is saturated, 100%.
