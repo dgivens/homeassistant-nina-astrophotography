@@ -8,7 +8,7 @@
  *   type: custom:nina-observatory-card
  *   device_id: abc123   # which rig, for two or more; any one of its devices
  *   prefix: n_i_n_a     # fallback only, for the entities that cannot resolve
- *   cover_stuck_after: 60   # seconds a flat cover may read part-way
+ *   cover_stuck_after: 60   # seconds a flat cover may read part-way, 20–600
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
@@ -55,9 +55,10 @@ const COVER = {
 // moving, in seconds. A Flip-Flat travels in 10–20 s; other panels are slower.
 // Some drivers report a stuck cover as part-way indefinitely, never `Error`.
 const DEFAULT_COVER_STUCK_AFTER = 60;
-// A day. Past about 24.8 days a `setTimeout` delay overflows and fires at
-// once, which would re-render the card in a loop.
-const MAX_COVER_STUCK_AFTER = 86400;
+// The editor's range, and the Flat cover fault blueprint's: the cover is read
+// every 10 s, so a Flip-Flat's travel plus one read, up to ten minutes.
+const MIN_COVER_STUCK_AFTER = 20;
+const MAX_COVER_STUCK_AFTER = 600;
 const COVER_MOVING = "The flat panel cover is moving";
 const COVER_SENT = "Sent; waiting for the flat panel cover to move";
 
@@ -408,7 +409,8 @@ class NinaObservatoryCard extends HTMLElement {
     this._config = {
       ...config,
       cover_stuck_after: stuckAfter > 0
-        ? Math.min(stuckAfter, MAX_COVER_STUCK_AFTER) : DEFAULT_COVER_STUCK_AFTER,
+        ? Math.min(Math.max(stuckAfter, MIN_COVER_STUCK_AFTER), MAX_COVER_STUCK_AFTER)
+        : DEFAULT_COVER_STUCK_AFTER,
     };
     this._rig = new RigEntities(
       this._config.prefix || DEFAULT_PREFIX, this._config.device_id);
@@ -970,7 +972,12 @@ class NinaObservatoryCard extends HTMLElement {
           + "card shows it as stuck. Longer than your cover takes to open or close, "
           + "plus 10 s: the cover is read every 10 s.",
         default: DEFAULT_COVER_STUCK_AFTER,
-        selector: { number: { min: 20, max: 600, mode: "box", unit_of_measurement: "s" } },
+        selector: {
+          number: {
+            min: MIN_COVER_STUCK_AFTER, max: MAX_COVER_STUCK_AFTER,
+            mode: "box", unit_of_measurement: "s",
+          },
+        },
       },
     ]);
   }

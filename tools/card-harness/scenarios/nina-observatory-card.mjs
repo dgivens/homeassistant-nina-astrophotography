@@ -263,11 +263,17 @@ export const scenarios = {
     config: { cover_stuck_after: 180 },
     hass: (dump) => partWayFor(dump, 120_000).build(),
   },
-  // A threshold past what a timer can hold is held to a day: no fault, and
-  // no render loop.
+  // A threshold past the editor's ten minutes is held to them: two minutes
+  // part-way is no fault, and Infinity no render loop.
   flat_panel_cover_stuck_after_infinite: {
     config: { cover_stuck_after: Infinity },
     hass: (dump) => partWayFor(dump, 120_000).build(),
+  },
+  // One shorter than a read is held to the editor's 20 s: a cover 15 s
+  // part-way is still moving.
+  flat_panel_cover_stuck_after_too_short: {
+    config: { cover_stuck_after: 5 },
+    hass: (dump) => partWayFor(dump, 15_000).build(),
   },
 
   // A red chip and both buttons. The rig's panel has not failed.
