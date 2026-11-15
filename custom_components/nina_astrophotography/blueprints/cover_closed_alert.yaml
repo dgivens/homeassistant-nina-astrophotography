@@ -16,7 +16,7 @@ blueprint:
     A panel switched off or disconnected while imaging, so it cannot light,
     leaves its cover where it was last read. Lights alert through the
     disconnect when that was closed and N.I.N.A. has not reported it opened
-    since — a cover that jammed shut, or an Open the sequence carried on past
+    since — a cover that jammed shut, or an open N.I.N.A. never reported
     — and stay quiet once it has. When the panel reconnects for the flats,
     the lights already taken do not alert: only a light after it reads closed
     again does. What is held through a disconnect is forgotten when Home

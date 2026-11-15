@@ -106,7 +106,7 @@ class CoverClosedLatch:
     It clears on a connected reading other than `Closed`, or once N.I.N.A.
     reports the cover opened after it latched. A disconnect clears nothing:
     a panel powered off once its cover has moved leaves it where it was, so a
-    cover that jammed shut, or an Open the sequence carried on past, keeps
+    cover that jammed shut, or an open N.I.N.A. never reported, keeps
     flagging every light. An open N.I.N.A. reported before the cover was seen
     closed means the cover was closed outside N.I.N.A., and the latch holds.
 
