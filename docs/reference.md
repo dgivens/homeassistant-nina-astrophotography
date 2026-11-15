@@ -339,9 +339,14 @@ sequence's lights.
   on (`light.<instance>_flat_panel_light`, `flat_panel_set_light`) and any
   brightness above the panel's minimum (`flat_panel_set_brightness`,
   `number.<instance>_flat_panel_brightness`) are refused unless the cover reads
-  `Closed`. A panel with no cover is exempt. Switching off and setting the
-  minimum are always allowed, and a disconnected panel reports no cover, so
-  N.I.N.A. refuses it itself.
+  `Closed`. That includes a cover whose driver reports `Unknown` or no state,
+  as some Alpaca and DIY drivers do until the cover's first move; closing it
+  through Home Assistant clears that. The brightness refusal applies on
+  N.I.N.A.'s native drivers (Alnitak, Pegasus) too, where a brightness alone
+  does not light the panel, because the integration cannot tell which kind
+  of driver it has. A panel with no cover is exempt. Switching off and
+  setting the minimum are always allowed, and a disconnected panel reports no
+  cover, so N.I.N.A. refuses it itself.
 - **Opening needs a dark panel.** `flat_panel_set_cover` open and
   `switch.<instance>_flat_panel_cover` on are refused while the light is on.
 - **Closing while a sequence runs needs `force`.** `flat_panel_set_cover` with
@@ -361,18 +366,21 @@ sequence's lights.
   the cover `Closed`: a cover reading `Unknown` or `Error` cannot turn it on.
   A sequence that disconnects the panel after closing its cover does not make
   the sensor `unavailable`: it holds its reading through the disconnect until
-  N.I.N.A. reports the cover opened. A panel switched off or disconnected
-  before the cover was seen closed reports no cover and cannot warn; when it
-  reconnects reading closed, the lights taken before then do not turn the
-  sensor on, and only a light after that does.
-- `sensor.<instance>_flat_panel_cover_state` reads `NeitherOpenNorClosed`
-  both while the cover travels and when it is stuck part-way; some drivers
-  never turn a stuck cover into `Error`. On a panel that reports it cannot
-  open or close a cover, it reads `NotPresent` whatever the driver says. A
-  part-way or `Error` reading survives a panel disconnect until N.I.N.A.
-  reports the cover opened or closed after it; any other reading is
-  `unavailable` while the panel is down. What the sensors hold is forgotten
-  when Home Assistant restarts.
+  N.I.N.A. reports the cover opened. A `FLAT-COVER-OPENED` missed while the
+  event socket is down leaves it held after an open-then-disconnect, so lights
+  can alert falsely until a connected reading shows the cover not closed. A
+  panel switched off or disconnected before the cover was seen closed reports
+  no cover and cannot warn; when it reconnects reading closed, the lights
+  taken before then do not turn the sensor on, and only a light after that
+  does.
+- `sensor.<instance>_flat_panel_cover_state` reads `NeitherOpenNorClosed` both
+  while the cover travels and when it is stuck part-way; some drivers never
+  turn a stuck cover into `Error`. On a panel that reports it cannot open or
+  close a cover, it reads `NotPresent` whatever the driver says. A part-way or
+  `Error` reading survives a panel disconnect until N.I.N.A. reports the cover
+  opened or closed after it was last seen at rest, or since the panel was last
+  down; any other reading is `unavailable` while the panel is down. What the
+  sensors hold is forgotten when Home Assistant restarts.
 - The observatory card shows a cover part-way for longer than its
   `cover_stuck_after` as stuck. The option is 20 to 600 seconds, default 60,
   in YAML and in the editor alike. The card keeps a held cover fault and the
@@ -393,9 +401,10 @@ sequence's lights.
 - The blueprint's optional *Only after a move* input (`after_move_only`,
   default off) alerts on a part-way cover only when it reached it from `Open`
   or `Closed`, for a driver that reads part-way while idle or unhomed. A cover
-  first read part-way never alerts, and an `Error` always does. It also
-  catches a cover left part-way or in error when a sequence disconnects the
-  panel.
+  first read part-way never alerts, and an `Error` always does. With it on,
+  a cover left part-way when a sequence disconnects the panel alerts only if
+  it was read `Open` or `Closed` after the panel connected: on a rig whose
+  panel is down all day, a first reading already part-way never alerts.
 - The blueprint alerts for a cover already at fault when Home Assistant
   starts, once its *Stuck after* time has passed, so each restart repeats the
   alert while the fault lasts. Reloading or editing the automation while the
