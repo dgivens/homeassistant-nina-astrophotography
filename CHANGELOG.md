@@ -15,35 +15,39 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   plate solve syncs the rotator, as N.I.N.A. would leave the rotator where it
   is. `number.<instance>_rotator_position` and
   `_rotator_mechanical_position` refuse the same moves.
-- **Actions for the flat panel** (#268): `flat_panel_set_cover` opens or
-  closes the cover, `flat_panel_set_light` switches the light, at an optional
-  `brightness`, and `flat_panel_set_brightness` sets a `level`. Levels are in
-  the panel's own units and held to the range it reports. The light comes on
-  at the brightness given, else at the level it is already lit at, else at its
-  dimmest, and switching on or setting a level on a panel reporting no range
-  is refused, since N.I.N.A. could light it at full output. A panel reporting no cover or no
-  light has that action refused.
-- **The observatory card shows the flat panel** (#269): a Flat Panel chip and
-  section with the cover, the light and the brightness in the panel's own
-  units, and Open or Close Flat Cover under Controls, each asking for
-  confirmation. The button pressed stays, greyed out, until the cover arrives
-  (#294). A cover part-way for longer than `cover_stuck_after` (a minute by
-  default), in error or not read offers both, and an error turns the chip red and stays on a collapsed card.
-- **A warning for light frames taken behind the closed flat cover** (#288):
-  `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover` turns
-  `on` when the newest frame is a light exposed after the cover was seen
-  closed. Flats and darks behind the cover, and a cover closed after the
-  night's last light, leave it `off`. The observatory card turns the Flat
-  Panel chip red and keeps the warning on a collapsed card, and the new
-  **Flat cover closed on lights** blueprint sends a notification.
-- **A flat panel cover stuck part-way is a fault** (#289). N.I.N.A. reports a
-  cover still moving and one stuck the same way, and some drivers never turn
-  a stuck cover into an error. Part-way for longer than the observatory
-  card's new `cover_stuck_after` option (default 60 seconds), the cover turns
-  the Flat Panel chip red and stays on a collapsed card. The new **Flat cover
-  fault** blueprint notifies when the cover stays part-way past its own
-  threshold, or reports an error. A cover stuck part-way can vignette or
-  block lights, or spoil flats.
+- **Flat panel control and monitoring** (#268, #269, #288, #289, #294):
+  - **Actions:** `flat_panel_set_cover` opens or closes the cover,
+    `flat_panel_set_light` switches the light, at an optional `brightness`,
+    and `flat_panel_set_brightness` sets a `level`. Levels are in the panel's
+    own units and held to the range it reports. The light comes on at the
+    brightness given, else at the level it is already lit at, else at its
+    dimmest, and is lit as `light.<instance>_flat_panel_light` is: the
+    brightness alone first, then a light-on only if the panel reports that
+    level and still reads off. A panel that does not report it within 30
+    seconds is refused. Switching on or setting a level on a panel reporting
+    no range is refused, since N.I.N.A. could light it at full output, and a
+    panel reporting no cover or no light has that action refused.
+  - **The observatory card shows the flat panel:** a Flat Panel chip and a
+    section with the cover, the light and the brightness in the panel's own
+    units, and Open or Close Flat Cover under Controls, each asking for
+    confirmation. A cover at rest offers the one button that moves it, and
+    the button pressed stays, greyed out, until the cover arrives. A cover
+    stuck, in error or not read offers both.
+  - **A cover stuck part-way is a fault.** N.I.N.A. reports a cover still
+    moving and one stuck the same way, and some drivers never turn a stuck
+    cover into an error. Part-way for longer than the observatory card's
+    `cover_stuck_after` option (default 60 seconds), or in error, the cover
+    turns the Flat Panel chip red and stays on a collapsed card. The **Flat
+    cover fault** blueprint notifies when the cover stays part-way past its
+    own threshold, or reports an error. A cover stuck part-way can vignette or
+    block lights, or spoil flats.
+  - **A warning for light frames taken behind the closed cover:**
+    `binary_sensor.<instance>_flat_panel_light_frames_behind_closed_cover`
+    turns `on` when the newest frame is a light exposed after the cover was
+    seen closed. Flats and darks behind the cover, and a cover closed after
+    the night's last light, leave it `off`. The observatory card turns the
+    Flat Panel chip red and keeps the warning on a collapsed card, and the
+    **Flat cover closed on lights** blueprint sends a notification.
 - **The image panel has a Lights only button** beside the recent frames (#270). It
   limits the main image and the strip to lights, so the last sub stays on
   screen through a flat run of any length. The card's `lights_only` option
@@ -59,9 +63,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Changed
 
-- **`sensor.<instance>_flat_panel_cover_state` reads `NotPresent` on a panel
-  that reports it cannot open or close a cover** (#289), whatever cover state
-  its driver reports, so a panel with no cover never reads as stuck part-way.
 - **The integration installs and updates its blueprints** (#256). They ship
   inside `custom_components/nina_astrophotography/blueprints/`, and each start
   of Home Assistant writes any that differ to
@@ -106,47 +107,45 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `MaxBrightness` of 0. The camera, safety monitor and switch hub are the
   three derived down-blocks, as `tests/scenarios/README.md` says.
 
----
 ### Fixed
 
 - **The observatory card's buttons hold still after a press** (#294). An
   update changes only what changed on the card, so the button under the
   pointer is kept rather than replaced and faded back into its hover colour.
-- **An ASCOM or Alpaca flat panel comes on at the brightness asked for, not
-  at full output, the first time after N.I.N.A. connects it** (#285).
-  N.I.N.A. runs a brightness and a light-on concurrently, and a light-on that
-  runs first lights the panel at `MaxBrightness`. So
-  `light.<instance>_flat_panel_light` and `flat_panel_set_light` send the
-  brightness alone and wait for the panel to report it: an ASCOM or Alpaca
-  panel is lit by it, and a native one is switched on after it. A panel that
-  does not report it within 30 seconds is refused, and `flat_panel_set_light`
-  sends no light-on to a panel that is already lit.
-
-- **`number.<instance>_flat_panel_brightness` is unavailable on a panel
-  reporting no brightness range** (#290), such as a cover-only panel, rather
-  than offering Home Assistant's default 0–100 slider and refusing every
-  value. `number.<instance>_camera_usb_limit` does the same on a camera
-  reporting no USB limit range. As for any unavailable entity, Home Assistant
-  skips a `number.set_value` on it rather than raising an error.
-
-- **`light.<instance>_flat_panel_light` comes on dim on a panel whose
-  brightness range is under 128** (#284), such as N.I.N.A.'s simulator panel
-  at 0–100, rather than at full output. Every level scales to at least one
-  step above the panel's minimum: the minimum leaves an ASCOM panel dark, and
-  N.I.N.A.'s light-on after it lights the panel at `MaxBrightness`.
-
-- **The reference says what `number.<instance>_flat_panel_brightness` does to
-  the panel's light** (#283). The number sends only the brightness, but
-  N.I.N.A.'s ASCOM driver sets one by switching the calibrator on at it, so an
-  ASCOM or Alpaca panel lights at any level above 0 and goes dark at 0. A panel
-  on one of N.I.N.A.'s native drivers, such as Alnitak's or Pegasus's, keeps
-  its light as it is. The reference also says when an ASCOM or Alpaca panel's
-  next bare light-on, N.I.N.A.'s own toggle included, comes on at full
-  brightness. `light.<instance>_flat_panel_light` turns any panel on or off.
-
+- **The flat panel's light, brightness and cover state** (#283, #284, #285,
+  #289, #290):
+  - **`light.<instance>_flat_panel_light` comes on at the brightness asked
+    for, never at full output.** N.I.N.A. runs a brightness and a light-on
+    concurrently, and a light-on that runs first lights an ASCOM or Alpaca
+    panel at `MaxBrightness` the first time after N.I.N.A. connects it. So the
+    light sends the brightness alone and waits for the panel to report it: an
+    ASCOM or Alpaca panel is lit by it, and a native one is switched on after
+    it. A panel that does not report it within 30 seconds is refused. Every
+    level also scales to at least one step above the panel's minimum, so a
+    panel whose range is under 128, such as N.I.N.A.'s simulator panel at
+    0–100, comes on dim: the minimum leaves an ASCOM panel dark, and the
+    light-on after it lights the panel at `MaxBrightness`.
+  - **`number.<instance>_flat_panel_brightness` is unavailable on a panel
+    reporting no brightness range**, such as a cover-only panel, rather than
+    offering Home Assistant's default 0–100 slider and refusing every value.
+    `number.<instance>_camera_usb_limit` does the same on a camera reporting
+    no USB limit range. As for any unavailable entity, Home Assistant skips a
+    `number.set_value` on it rather than raising an error.
+  - **`sensor.<instance>_flat_panel_cover_state` reads `NotPresent` on a
+    panel that reports it cannot open or close a cover**, whatever cover
+    state its driver reports, so a panel with no cover never reads as stuck
+    part-way.
+  - **The reference says what `number.<instance>_flat_panel_brightness` does
+    to the panel's light.** The number sends only the brightness, but
+    N.I.N.A.'s ASCOM driver sets one by switching the calibrator on at it, so
+    an ASCOM or Alpaca panel lights at any level above 0 and goes dark at 0.
+    A panel on one of N.I.N.A.'s native drivers, such as Alnitak's or
+    Pegasus's, keeps its light as it is. The reference also says when an ASCOM
+    or Alpaca panel's next bare light-on, N.I.N.A.'s own toggle included,
+    comes on at full brightness. `light.<instance>_flat_panel_light` turns any
+    panel on or off.
 - **The observatory card shows the last frame's mean ADU as a whole number**,
   as the latest image card does, rather than every decimal the sensor holds.
-
 - **A screen reader reaches the live stack card's Start/Stop as a control of
   its own** (#262). The button sits beside the header that collapses the
   card, not inside it, and stays in place on a collapsed card.
