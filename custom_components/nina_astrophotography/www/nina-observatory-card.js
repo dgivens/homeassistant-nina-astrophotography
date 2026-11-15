@@ -278,6 +278,11 @@ const STYLE = `
   .equip-chip.disconnected { opacity: 0.5; }
   .equip-chip.fault { border-color: var(--danger); color: var(--danger); }
   .equip-chip.fault .dot { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
+  /* A fault held by a device that is down: not dimmed, its dot hollow */
+  .equip-chip.fault.disconnected { opacity: 1; }
+  .equip-chip.fault.disconnected .dot {
+    background: transparent; box-shadow: none; outline: 1px solid var(--danger); outline-offset: -1px;
+  }
 
   /* ── Section ── */
   .section { display: flex; flex-direction: column; gap: 6px; }
@@ -521,13 +526,19 @@ class NinaObservatoryCard extends HTMLElement {
     this._seqRunning = seqRunning;
 
     // A panel may have a cover, a light, or both, so any of its rows says it
-    // is connected.
+    // is connected — but the cover's state, which stays available through a
+    // disconnect while it holds a fault, says so only where nothing else is
+    // enabled to.
     const coverStateId = this._eid("sensor", "flat_panel_cover_state");
     const coverId      = this._eid("switch", "flat_panel_cover");
     const flatLightId  = this._eid("light", "flat_panel_light");
     const flatLevelId  = this._eid("number", "flat_panel_brightness");
-    const flatConnected = [coverStateId, coverId, flatLightId, flatLevelId]
-      .some((id) => available(h, id));
+    const flatRows     = [coverId, flatLightId, flatLevelId];
+    const coverStateUp = available(h, coverStateId);
+    const flatConnected = flatRows.some((id) => available(h, id))
+      || (coverStateUp && flatRows.every((id) => !h.states[id]));
+    // Something reports the cover: the panel, or a fault held while it is down.
+    const coverReported = flatConnected || coverStateUp;
     // The sensor names a cover stuck part-way, which the switch reads as
     // `unknown`; the switch stands in where the sensor is disabled.
     const coverRead    = h.states[coverStateId] ? state(h, coverStateId)
@@ -566,9 +577,9 @@ class NinaObservatoryCard extends HTMLElement {
     const partFor      = coverPartWay ? (asOf ?? NaN) - seen.partSince : NaN;
     // False for NaN: a cover not part-way, or readings of unknown age.
     const partStuck    = partFor >= travelMs;
-    const coverStuck   = flatConnected && partStuck;
+    const coverStuck   = coverReported && partStuck;
     // No state change marks the moment it turns stuck.
-    this._awaitStuck(flatConnected && coverPartWay && !link.stale ? travelMs - partFor : null);
+    this._awaitStuck(coverReported && coverPartWay && !link.stale ? travelMs - partFor : null);
     const travelling   = coverPartWay && !partStuck;
     // A press from rest waits for the cover to leave it, and is dropped as soon
     // as it does. A press from a cover stuck, in error or unread changes no
@@ -590,12 +601,15 @@ class NinaObservatoryCard extends HTMLElement {
     // The number is unavailable on a panel reporting no range; a maximum of 1
     // is a light that only switches, which Light already says.
     const dimmable     = flatLit !== null && flatLevel !== "—" && !(flatMax <= 1);
-    const coverFault   = flatConnected && coverState === "Error";
+    const coverFault   = coverReported && coverState === "Error";
     // Flats and darks run behind a closed cover; a light saved since it closed
-    // is blank, and so is every one after it until the cover opens.
+    // is blank, and so is every one after it until the cover opens. It stays
+    // on through the panel disconnecting, which a sequence may do mid-run.
     const behindCoverId = this._eid("binary_sensor", "flat_panel_light_frames_behind_closed_cover");
-    const behindCover  = flatConnected && isOn(h, behindCoverId);
+    const behindCover  = isOn(h, behindCoverId);
     const flatWarning  = coverFault || coverStuck || behindCover ? "danger" : null;
+    // A fault outlives the panel disconnecting; the chip says it is down.
+    const flatChip     = flatConnected ? "Flat Panel" : "Flat Panel disconnected";
 
     const target       = state(h, this._eid("sensor", "sequence_target"), "No target");
     // Ships disabled and reads `unknown` on a Target Scheduler rig; a bar at 0%
@@ -822,11 +836,10 @@ class NinaObservatoryCard extends HTMLElement {
             ${chip("Filter Wheel", fwConnected)}
             ${chip("Guider", gdrConnected)}
             ${rotConnected ? chip("Rotator", true) : ""}
-            ${!flatConnected ? ""
-              : coverFault ? chip("Flat Panel · cover error", true, "fault")
-              : coverStuck ? chip("Flat Panel · cover stuck", true, "fault")
-              : behindCover ? chip("Flat Panel · lights behind cover", true, "fault")
-              : chip("Flat Panel", true)}
+            ${coverFault ? chip(`${flatChip} · cover error`, flatConnected, "fault")
+              : coverStuck ? chip(`${flatChip} · cover stuck`, flatConnected, "fault")
+              : behindCover ? chip(`${flatChip} · lights behind cover`, flatConnected, "fault")
+              : flatConnected ? chip("Flat Panel", true) : ""}
             ${!domeConnected ? ""
               : shutter === "error" ? chip("Dome · shutter error", true, "fault")
               : chip("Dome", true)}
@@ -994,7 +1007,8 @@ class NinaObservatoryCard extends HTMLElement {
   }
 }
 
-// `fault` marks a connected device reporting a failure of its own.
+// `fault` marks a device reporting a failure of its own, or holding one it
+// reported before it disconnected.
 function chip(label, connected, fault = "") {
   return `<div class="equip-chip ${connected ? "connected" : "disconnected"}${fault && ` ${fault}`}">
     ${statusDot(connected)} ${label}

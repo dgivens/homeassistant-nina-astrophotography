@@ -54,6 +54,14 @@ const lit = (dump, r) => r
   })
   .override(FLAT_LEVEL, "2048.0");
 
+// The panel's driver down under a live hub. The cover's state stays up only
+// while it holds a fault the panel reported before it went: `held`.
+const panelDown = (dump, held = "unavailable") => {
+  const r = rig(dump, FLATS).override(COVER_STATE, held);
+  for (const id of [COVER, FLAT_LIGHT, FLAT_LEVEL]) r.override(id, "unavailable");
+  return r;
+};
+
 // What the cover's buttons read at this step.
 const coverButtons = (log, card) => log.push(`buttons ${
   card.shadowRoot.innerHTML.match(/<button[^>]*id="btn-cover[^"]*"[^>]*>[^<]*/g).join(" | ")}`);
@@ -341,12 +349,35 @@ export const scenarios = {
   },
 
   // The panel's driver down under a live hub: no chip, section or button.
-  flat_panel_down: {
-    hass: (dump) => {
-      const r = rig(dump, FLATS);
-      for (const id of [COVER_STATE, COVER, FLAT_LIGHT, FLAT_LEVEL]) r.override(id, "unavailable");
-      return r.build();
-    },
+  flat_panel_down: { hass: (dump) => panelDown(dump).build() },
+
+  // A sequence that disconnects the panel once its cover is set, and then
+  // takes a light behind the closed cover: the red chip says the panel is
+  // down, and the warning stays when the card folds. No capture holds it.
+  flat_panel_down_lights_behind_cover: {
+    hass: (dump) => panelDown(dump).override(BEHIND_COVER, "on").build(),
+  },
+  flat_panel_down_lights_behind_cover_folded: {
+    hass: (dump) => panelDown(dump).override(BEHIND_COVER, "on").build(),
+    folded: ["card"],
+  },
+  // Disconnected part-way, which the cover's state holds: no chip while it
+  // could still be travelling, and a red one once it is past
+  // `cover_stuck_after`, timed from when it went part-way.
+  flat_panel_down_held_part_way: {
+    hass: (dump) => panelDown(dump, "NeitherOpenNorClosed")
+      .changedAt(new Date(Date.now() - 5_000)).build(),
+  },
+  flat_panel_down_held_stuck: {
+    hass: (dump) => panelDown(dump, "NeitherOpenNorClosed")
+      .changedAt(new Date(Date.now() - 120_000)).build(),
+  },
+  // Disconnected in error, which the cover's state holds: a red chip, and the
+  // fault kept when the card folds.
+  flat_panel_down_held_error: { hass: (dump) => panelDown(dump, "Error").build() },
+  flat_panel_down_held_error_folded: {
+    hass: (dump) => panelDown(dump, "Error").build(),
+    folded: ["card"],
   },
 
   // Folded to its header, which keeps `flip_soon`'s warning and, the session
