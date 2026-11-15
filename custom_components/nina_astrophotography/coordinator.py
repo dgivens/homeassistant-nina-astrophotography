@@ -171,10 +171,10 @@ class NinaData:
     star."""
     meridian_flip: MeridianFlip | None
     """The flip N.I.N.A. is in, its wait with tracking off included, or None."""
-    light_behind_cover: bool = False
+    light_behind_cover: bool
     """Whether the newest frame is a light saved since the flat panel's cover
     was seen closed. See `CoverClosedLatch`."""
-    cover_fault_held: str | None = None
+    cover_fault_held: str | None
     """A disconnected flat panel's last cover reading, while it is a fault
     N.I.N.A. has not resolved since; `None` while the panel is connected. See
     `CoverFaultHold`."""
@@ -684,7 +684,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
             now=moment,
             rollover_hour=self._rollover_hour,
         )
-        data = NinaData(
+        recent = recent_frames(self.frames.values(), self.generation)
+        flat = snapshot.flat_device
+        move = last_cover_move(self.events, self.generation)
+        return NinaData(
             snapshot=snapshot,
             session=session,
             sequence=self._sequence,
@@ -697,7 +700,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 or target_name(self._sequence)
             ),
             autofocus_report=self._last_autofocus,
-            recent_frames=recent_frames(self.frames.values(), self.generation),
+            recent_frames=recent,
             profile=self._profile,
             generation=self.generation,
             version=self._version,
@@ -709,14 +712,11 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 pending_guider_stop(self.events, self.generation)
             ),
             meridian_flip=self._meridian_flip(moment),
-            reachable=self._reachable,
-        )
-        flat = snapshot.flat_device
-        move = last_cover_move(self.events, self.generation)
-        return replace(
-            data,
-            light_behind_cover=self._cover.update(flat, data.newest_frame, move),
+            light_behind_cover=self._cover.update(
+                flat, recent[0].frame if recent else None, move
+            ),
             cover_fault_held=self._cover_fault.update(flat, move),
+            reachable=self._reachable,
         )
 
     def _hold_flip_reading(
