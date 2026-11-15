@@ -349,14 +349,27 @@ def pending_guider_stop(
     )
 
 
-def cover_closed_at(
-    events: Iterable[NinaEvent], generation: str | None
-) -> datetime | None:
-    """When the newest `FLAT-COVER-CLOSED` was, if no `FLAT-COVER-OPENED` has
-    followed it. On the rig's clock, as frame dates are.
+@dataclass(frozen=True, slots=True)
+class CoverMove:
+    """A cover move N.I.N.A. reported: `FLAT-COVER-CLOSED` or `-OPENED`.
+
+    N.I.N.A. raises either only once its open or close has finished, so a
+    cover that jams on the way reports neither.
     """
+
+    closed: bool
+    time: datetime
+    """On the rig's clock, as frame dates are."""
+
+
+def last_cover_move(
+    events: Iterable[NinaEvent], generation: str | None
+) -> CoverMove | None:
+    """The newest cover move this process reported; `None` if it reported none."""
     newest = _newest(events, _COVER_MOVED, generation)
-    return newest.time if newest is not None and newest.name == _COVER_CLOSED else None
+    if newest is None:
+        return None
+    return CoverMove(closed=newest.name == _COVER_CLOSED, time=newest.time)
 
 
 def _flip_started(

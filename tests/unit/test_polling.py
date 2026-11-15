@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from nina_astrophotography.api.models import (
     EquipmentSnapshot,
+    FlatDeviceModel,
     Frame,
     NinaEvent,
     SequenceWait,
@@ -17,6 +18,7 @@ from nina_astrophotography.api.models import (
 from nina_astrophotography.api.v2.mapper import map_equipment_info, map_frame
 from nina_astrophotography.polling import (
     CoverClosedLatch,
+    CoverFaultHold,
     EventLedger,
     GuiderStopLatch,
     ReseedGuard,
@@ -25,6 +27,7 @@ from nina_astrophotography.polling import (
     WaitLedger,
     imaging,
 )
+from nina_astrophotography.session import CoverMove
 import pytest
 
 from helpers import load_fixture as load
@@ -326,12 +329,22 @@ def test_a_stop_holds_until_a_later_poll_sees_the_guider_running_past_it(
 
 _DAWN = [map_frame(f, "g") for f in load("dawn_image_history_with_flats.json")]
 _LIGHTS = [f for f in _DAWN if f.image_type == "LIGHT"]
-# The night's last two lights, then the first flat after them.
-_LIGHT, _LAST_LIGHT = _LIGHTS[-2:]
+# The night's last four lights, then the first flat after them.
+_EARLIER, _EARLY, _LIGHT, _LAST_LIGHT = _LIGHTS[-4:]
 _FLAT = next(f for f in _DAWN if f.image_type == "FLAT" and f.date > _LAST_LIGHT.date)
-
-
 _LAST_START = _LAST_LIGHT.date - timedelta(seconds=_LAST_LIGHT.exposure_time or 0)
+
+_PANEL = map_equipment_info(load("dawn_equipment_info.json")).flat_device
+# Captured down: a panel the sequence disconnects once its cover has opened.
+_DOWN = map_equipment_info(load("imaging_guiding_equipment_info.json")).flat_device
+_OPENED = CoverMove(closed=False, time=datetime.fromisoformat(T1))
+_CLOSED = CoverMove(closed=True, time=datetime.fromisoformat(T2))
+
+
+def _panel(cover_state: str | None) -> FlatDeviceModel | None:
+    """The dawn panel reading `cover_state`; the captured down panel for None."""
+    assert _PANEL is not None
+    return _DOWN if cover_state is None else replace(_PANEL, cover_state=cover_state)
 
 
 @pytest.mark.parametrize(
@@ -344,11 +357,13 @@ _LAST_START = _LAST_LIGHT.date - timedelta(seconds=_LAST_LIGHT.exposure_time or 
         ([("Closed", _LAST_LIGHT), ("Closed", _FLAT)], False),
         ([("Open", _LIGHT), ("Open", _LAST_LIGHT)], False),
         ([("Closed", _LIGHT), ("Closed", _LAST_LIGHT), ("Open", _LAST_LIGHT)], False),
-        # A panel that drops out may have been opened by hand.
         (
             [("Closed", _LIGHT), ("Unknown", _LAST_LIGHT), ("Closed", _LAST_LIGHT)],
             False,
         ),
+        ([("Closed", _EARLY), (None, _LIGHT), (None, _LAST_LIGHT)], True),
+        ([("Closed", _EARLY), (None, _LIGHT), ("Closed", _LAST_LIGHT)], True),
+        ([(None, _LIGHT), ("Closed", _LAST_LIGHT)], False),
     ],
     ids=[
         "light after the close",
@@ -357,16 +372,52 @@ _LAST_START = _LAST_LIGHT.date - timedelta(seconds=_LAST_LIGHT.exposure_time or 
         "flat after the close",
         "cover open",
         "cover reopened",
-        "panel dropped out",
+        "connected panel reading unknown",
+        "panel disconnected after the close",
+        "panel reconnected still closed",
+        "panel reconnected for the flats",
     ],
 )
 def test_a_light_counts_only_once_the_cover_was_seen_closed(
-    polled: list[tuple[str, Frame | None]], flagged: bool
+    polled: list[tuple[str | None, Frame | None]], flagged: bool
 ) -> None:
     latch = CoverClosedLatch()
-    for cover_state, newest in polled:
-        latch.observe(cover_state, newest)
-    assert latch.light_behind_cover(polled[-1][1], None) is flagged
+    results = [latch.update(_panel(state), newest, None) for state, newest in polled]
+    assert results[-1] is flagged
+
+
+@pytest.mark.parametrize(
+    ("polled", "flagged"),
+    [
+        ([("Closed", _LIGHT, None), (None, _LAST_LIGHT, _OPENED)], False),
+        # A poll reading the cover before it moved, published again with the
+        # event that it opened.
+        (
+            [
+                ("Closed", _EARLIER, None),
+                ("Closed", _EARLY, _OPENED),
+                ("Closed", _LIGHT, _OPENED),
+                ("Closed", _LAST_LIGHT, _OPENED),
+            ],
+            False,
+        ),
+        # Closed by hand after N.I.N.A. opened it.
+        ([("Closed", _LIGHT, _OPENED), ("Closed", _LAST_LIGHT, _OPENED)], True),
+    ],
+    ids=[
+        "opened, then disconnected",
+        "stale closed after the open",
+        "opened before the cover was seen closed",
+    ],
+)
+def test_a_reported_open_after_the_cover_was_seen_closed_clears_it(
+    polled: list[tuple[str | None, Frame | None, CoverMove | None]], flagged: bool
+) -> None:
+    latch = CoverClosedLatch()
+    results = [
+        latch.update(_panel(state), newest, move) for state, newest, move in polled
+    ]
+    assert results[-1] is flagged
 
 
 @pytest.mark.parametrize(
@@ -382,8 +433,46 @@ def test_a_light_exposed_before_the_reported_close_is_not_flagged(
     closed_at: datetime, flagged: bool
 ) -> None:
     latch = CoverClosedLatch()
-    latch.observe("Closed", _LIGHT)
-    assert latch.light_behind_cover(_LAST_LIGHT, closed_at) is flagged
+    latch.update(_panel("Closed"), _LIGHT, None)
+    move = CoverMove(closed=True, time=closed_at)
+    assert latch.update(_panel("Closed"), _LAST_LIGHT, move) is flagged
+
+
+_PART_WAY = "NeitherOpenNorClosed"
+
+
+@pytest.mark.parametrize(
+    ("polled", "held"),
+    [
+        # The captured order: connected, opened, disconnected within the second.
+        ([("Closed", None), (_PART_WAY, None), (None, _OPENED)], None),
+        ([("Closed", None), (_PART_WAY, _OPENED), (None, _OPENED)], None),
+        ([(_PART_WAY, None), (None, _OPENED)], None),
+        ([("Closed", None), (_PART_WAY, None), (None, None)], _PART_WAY),
+        ([("Closed", None), ("Error", None), (None, None)], "Error"),
+        ([("Open", _OPENED), (_PART_WAY, _OPENED), (None, _OPENED)], _PART_WAY),
+        ([("Closed", _CLOSED), (_PART_WAY, _CLOSED), (None, None)], _PART_WAY),
+        ([("Closed", None), (_PART_WAY, None)], None),
+        ([("Open", _OPENED), (None, _OPENED)], None),
+    ],
+    ids=[
+        "opened, then disconnected",
+        "read part-way after the open",
+        "first read part-way",
+        "left part-way",
+        "left in error",
+        "jammed on a later move",
+        "N.I.N.A. restarted",
+        "still connected",
+        "left at rest",
+    ],
+)
+def test_a_disconnect_holds_a_cover_fault_no_move_has_resolved(
+    polled: list[tuple[str | None, CoverMove | None]], held: str | None
+) -> None:
+    hold = CoverFaultHold()
+    results = [hold.update(_panel(state), move) for state, move in polled]
+    assert results[-1] == held
 
 
 _EVENING = datetime(2026, 11, 11, 18, 0, tzinfo=timezone(timedelta(hours=-6)))

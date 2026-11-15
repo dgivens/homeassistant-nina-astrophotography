@@ -10,10 +10,23 @@ blueprint:
     or spoil flats taken under it, so once it has been part-way longer than its
     travel, it alerts as an error does.
 
+    A panel the sequence disconnects after moving its cover still alerts: a
+    cover last read part-way or in error keeps that reading through the
+    disconnect, unless N.I.N.A. has reported it opened or closed since, which
+    it does only once a move has finished. So a cover read mid-move just
+    before a normal open does not alert, and one that jams on the way does.
+
+    Some drivers read part-way while idle, as an unhomed cover can after
+    power-up. "Only after a move" alerts on part-way only when the cover was
+    last read open or closed, which keeps that cover quiet; the cost is that
+    a cover first read part-way — the panel connecting mid-move, or Home
+    Assistant starting — never alerts for it. An error alerts either way.
+
     A cover without position sensing reports where it was told to go, so a
     jammed one reads open or closed and cannot alert. A cover already at fault
     when Home Assistant starts alerts once the time below has passed, so a
-    restart repeats the alert while the fault persists. Reloading or editing
+    restart repeats the alert while the fault persists, though a fault held
+    through a disconnect is forgotten by it. Reloading or editing
     this automation while the cover is already stuck drops the alert until the
     cover's state next changes, and each time N.I.N.A. is unreachable the count
     starts again.
@@ -54,6 +67,14 @@ blueprint:
               max: 600
               mode: box
               unit_of_measurement: s
+        after_move_only:
+          name: Only after a move
+          description: >
+            Alert on a cover part-way only when it was last read open or
+            closed. For a driver that reads part-way while idle.
+          default: false
+          selector:
+            boolean:
         notify_target:
           name: Notify
           selector:
@@ -68,6 +89,7 @@ max_exceeded: silent
 
 variables:
   cover_state: !input cover_state
+  after_move_only: !input after_move_only
 
 triggers:
   - trigger: state
@@ -94,19 +116,31 @@ actions:
       - delay:
           seconds: !input stuck_after
   # The state triggers have already timed the cover, so only a restart's run
-  # checks it.
+  # checks it, and it cannot tell where a part-way cover came from.
   - condition: or
     conditions:
       - condition: trigger
-        id: [stuck, error]
+        id: error
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: stuck
+          - condition: template
+            value_template: >
+              {{ not after_move_only or (trigger.from_state is not none
+                 and trigger.from_state.state in ['Open', 'Closed']) }}
       - condition: state
         entity_id: !input cover_state
         state: "Error"
-      - condition: state
-        entity_id: !input cover_state
-        state: "NeitherOpenNorClosed"
-        for:
-          seconds: !input stuck_after
+      - condition: and
+        conditions:
+          - condition: template
+            value_template: "{{ not after_move_only }}"
+          - condition: state
+            entity_id: !input cover_state
+            state: "NeitherOpenNorClosed"
+            for:
+              seconds: !input stuck_after
   - action: notify.send_message
     target:
       entity_id: !input notify_target

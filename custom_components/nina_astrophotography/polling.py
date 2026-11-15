@@ -13,11 +13,13 @@ from typing import Literal
 
 from .api.models import (
     EquipmentSnapshot,
+    FlatDeviceModel,
     Frame,
     NinaEvent,
     SequenceWait,
     SequenceWaitKind,
 )
+from .session import CoverMove
 
 
 class EventLedger:
@@ -88,42 +90,68 @@ def _same_stop(stop: datetime, other: datetime | None) -> bool:
     return other is not None and abs(stop - other) <= _SAME_STOP
 
 
+# What N.I.N.A. reports a cover moving, or stuck, as; and a driver's fault.
+_COVER_FAULTS = frozenset({"NeitherOpenNorClosed", "Error"})
+
+
 class CoverClosedLatch:
     """Whether the newest frame is a light saved behind the flat panel's
     closed cover.
 
     "A sequence running with the cover closed" is no test: flats and darks run
     that way. What gives a light away is arriving after the cover was seen
-    closed, so the latch keeps the newest frame at that moment and flags a
-    newer one. Any other reading clears it, `Unknown` from a panel that
-    dropped out included: the cover may have opened unseen, and the next
-    close starts afresh.
+    closed, so the latch keeps the newest frame at the moment a connected
+    panel first reads `Closed`, and flags a newer one.
+
+    It clears on a connected reading other than `Closed`, or once N.I.N.A.
+    reports the cover opened after it latched. A disconnect clears nothing:
+    a panel powered off once its cover has moved leaves it where it was, so a
+    cover that jammed shut, or an Open the sequence carried on past, keeps
+    flagging every light. An open N.I.N.A. reported before the cover was seen
+    closed means the cover was closed outside N.I.N.A., and the latch holds.
 
     Arriving later is not enough on its own. N.I.N.A. saves in the
     background, so the next instruction — closing the cover for flats — can
     run before the last light's `IMAGE-SAVE`. A light whose exposure began
     before N.I.N.A. reported the close is therefore not flagged. Both times
-    are the rig's; without a reported close, as for a cover moved outside
-    N.I.N.A., arrival order decides.
+    are the rig's; without a reported close, arrival order decides.
+
+    Pushed events publish with the last poll's snapshot, so a reading is
+    acted on when it changes, not each time it is seen: a stale `Closed`
+    after a reported open would otherwise latch again.
     """
 
     def __init__(self) -> None:
+        self._reading: str | None = None
         self._closed = False
         self._before: tuple[datetime, str] | None = None
+        self._latched_with: CoverMove | None = None
 
-    def observe(self, cover_state: str | None, newest: Frame | None) -> None:
-        if cover_state != "Closed":
-            self._closed = False
-        elif not self._closed:
-            self._closed = True
-            self._before = None if newest is None else newest.identity
-
-    def light_behind_cover(
-        self, newest: Frame | None, closed_at: datetime | None
+    def update(
+        self,
+        flat: FlatDeviceModel | None,
+        newest: Frame | None,
+        move: CoverMove | None,
     ) -> bool:
-        """`closed_at`: when N.I.N.A. last reported the cover closed, unless it
-        has reported it open since.
-        """
+        """`move`: the newest cover move N.I.N.A. reported, `None` if none."""
+        if flat is not None and flat.connected:
+            if flat.cover_state != "Closed":
+                self._closed = False
+            elif self._reading != "Closed" and not self._closed:
+                self._closed = True
+                self._before = None if newest is None else newest.identity
+                self._latched_with = move
+            self._reading = flat.cover_state
+        else:
+            # A reconnect reading `Closed` is a fresh sighting.
+            self._reading = None
+        if (
+            self._closed
+            and move is not None
+            and not move.closed
+            and move != self._latched_with
+        ):
+            self._closed = False
         if (
             not self._closed
             or newest is None
@@ -131,10 +159,52 @@ class CoverClosedLatch:
             or newest.identity == self._before
         ):
             return False
+        if move is None or not move.closed:
+            return True
         # `date` is the save time, so this start is late by the download and
         # the save: a light shorter than those can still be flagged.
         started = newest.date - timedelta(seconds=newest.exposure_time or 0)
-        return closed_at is None or started >= closed_at
+        return started >= move.time
+
+
+class CoverFaultHold:
+    """A disconnected flat panel's last cover reading, while that reading was
+    a fault — part-way or `Error` — that N.I.N.A. has not resolved since.
+
+    A panel powered off after a move leaves its cover where it was, and a
+    disconnected panel reads nothing, so without this a cover left part-way
+    or in error would vanish with the panel. What resolves it is a cover
+    move N.I.N.A. reported after the cover was last seen at rest: N.I.N.A.
+    raises `FLAT-COVER-OPENED` and `-CLOSED` only once the move has finished.
+
+    The baseline is taken when the cover is first seen at rest, not when it
+    is first seen part-way: a poll can still read a cover part-way after
+    N.I.N.A. has reported it open, and a baseline taken then would hold the
+    finished move as a fault.
+    """
+
+    def __init__(self) -> None:
+        self._read = False
+        self._reading: str | None = None
+        self._since: CoverMove | None = None
+
+    def update(
+        self, flat: FlatDeviceModel | None, move: CoverMove | None
+    ) -> str | None:
+        """The held fault reading, or `None`: always while connected."""
+        if flat is not None and flat.connected:
+            reading = flat.cover_state
+            if not self._read or (
+                reading not in _COVER_FAULTS and reading != self._reading
+            ):
+                self._since = move
+            self._read = True
+            self._reading = reading
+            return None
+        # `move` reads `None` again after a N.I.N.A. restart, which moved nothing.
+        if self._reading in _COVER_FAULTS and (move is None or move == self._since):
+            return self._reading
+        return None
 
 
 @dataclass

@@ -29,16 +29,15 @@ def held(hass: HomeAssistant, freezer):
     return _held
 
 
-@pytest.mark.parametrize(("seconds", "alerts"), [(59, 0), (61, 1)])
-async def test_a_cover_part_way_alerts_once_held_past_its_travel(
-    installed, set_up_with_flat_device, notified, held, seconds: float, alerts: int
+async def test_a_cover_part_way_within_its_travel_does_not_alert(
+    installed, set_up_with_flat_device, notified, held
 ) -> None:
     await installed("cover_fault_alert.yaml", INPUTS)
     await set_up_with_flat_device(cover_state="NeitherOpenNorClosed")
 
-    await held(seconds)
+    await held(59)
 
-    assert len(notified) == alerts
+    assert notified == []
 
 
 @pytest.mark.parametrize(
@@ -104,5 +103,63 @@ async def test_a_cover_changing_while_a_start_waits_is_judged_when_the_wait_ends
     await flat_device_changes(cover_state=moved_to)
 
     await held(11)
+
+    assert len(notified) == alerts
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("pushed", "alerts"),
+    [(["FLAT-COVER-OPENED"], 0), ([], 1)],
+    ids=["opened, then disconnected", "left part-way"],
+)
+async def test_a_panel_disconnected_mid_move_alerts_unless_the_move_finished(
+    hass: HomeAssistant,
+    installed,
+    set_up_with_flat_device,
+    flat_device_changes,
+    flat_panel_disconnects,
+    push,
+    notified,
+    held,
+    pushed: list[str],
+    alerts: int,
+) -> None:
+    """The rig's own order: a poll reads the cover mid-move, N.I.N.A. reports
+    it opened, and the sequence disconnects the panel within the second.
+    """
+    await installed("cover_fault_alert.yaml", INPUTS)
+    await set_up_with_flat_device()
+    await flat_device_changes(cover_state="NeitherOpenNorClosed")
+    for name in pushed:
+        push({"Event": name})
+    await flat_panel_disconnects()
+
+    await held(61)
+
+    assert len(notified) == alerts
+
+
+@pytest.mark.parametrize(
+    ("readings", "alerts"),
+    [(["Closed", "NeitherOpenNorClosed"], 1), (["NeitherOpenNorClosed"], 0)],
+    ids=["part-way after a move", "first read part-way"],
+)
+async def test_only_after_a_move_ignores_a_cover_first_read_part_way(
+    installed,
+    set_up_with_flat_device,
+    flat_device_changes,
+    notified,
+    held,
+    readings: list[str],
+    alerts: int,
+) -> None:
+    """An unhomed cover can read part-way from power-up while idle."""
+    await installed("cover_fault_alert.yaml", INPUTS | {"after_move_only": True})
+    await set_up_with_flat_device(cover_state=readings[0])
+    for reading in readings[1:]:
+        await flat_device_changes(cover_state=reading)
+
+    await held(61)
 
     assert len(notified) == alerts

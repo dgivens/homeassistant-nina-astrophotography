@@ -28,6 +28,7 @@ SEQUENCE_PROGRESS = "sensor.n_i_n_a_sequence_progress"
 WAIT_ENDS_AT = "sensor.n_i_n_a_wait_ends_at"
 LAST_FRAME_AT = "sensor.n_i_n_a_last_frame_at"
 EXPOSURE_END = "sensor.n_i_n_a_camera_exposure_end"
+COVER_STATE = "sensor.n_i_n_a_flat_panel_cover_state"
 GUIDER_RMS = (
     "sensor.n_i_n_a_guider_rms_total",
     "sensor.n_i_n_a_guider_rms_ra",
@@ -462,3 +463,37 @@ async def test_the_autofocus_readings_exist_before_a_run_reports(
     assert (
         state_of(hass, "sensor.n_i_n_a_focuser_autofocus_position").state == "unknown"
     )
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("reading", "pushed", "shown"),
+    [
+        ("NeitherOpenNorClosed", [], "NeitherOpenNorClosed"),
+        ("Error", [], "Error"),
+        ("NeitherOpenNorClosed", ["FLAT-COVER-OPENED"], "unavailable"),
+        ("Open", [], "unavailable"),
+    ],
+    ids=["left part-way", "left in error", "opened since", "at rest"],
+)
+async def test_the_cover_state_keeps_an_unresolved_fault_through_a_disconnect(
+    hass: HomeAssistant,
+    set_up_with_flat_device,
+    flat_device_changes,
+    flat_panel_disconnects,
+    push,
+    reading: str,
+    pushed: list[str],
+    shown: str,
+) -> None:
+    """A panel powered off leaves its cover where it was, and the fault alert
+    times the reading.
+    """
+    await set_up_with_flat_device()
+    await flat_device_changes(cover_state=reading)
+    for name in pushed:
+        push({"Event": name})
+    await flat_panel_disconnects()
+    await hass.async_block_till_done()
+
+    assert state_of(hass, COVER_STATE).state == shown
