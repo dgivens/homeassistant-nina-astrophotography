@@ -601,6 +601,9 @@ behind, pointing at a route nothing serves.
 
 ## Development
 
+Looking for something to work on? [`docs/feature-ideas.md`](docs/feature-ideas.md)
+lists features written up far enough to start an issue from.
+
 > [!NOTE]
 > **AI-Assisted Development**
 >  
