@@ -180,8 +180,8 @@ export const scenarios = {
         .build(),
   },
 
-  // The first S light, after the Dark Shark's R run: a run of one, so the
-  // star and ADU charts are scaled with the whole night and nothing is faded.
+  // The first S light, after the Dark Shark's R run: a run of one, so every
+  // chart is scaled with the whole night and nothing is faded.
   first_of_run: { hass: (dump) => asOf(dump, 32).build() },
 
   // Midway through the Dark Shark's L and B pairs, the newest an L: the run is
@@ -195,8 +195,8 @@ export const scenarios = {
 
   // Target Scheduler moving one filter between targets: the S run's first
   // sixteen lights relabelled to another of the night's targets, so NGC 281's
-  // run is the newest eight. Too few for a trend, and the star and ADU charts
-  // scale to those eight. A label only, as with the filter relabels; the card
+  // run is the newest eight. Too few for a trend, and every chart scales to
+  // those eight. A label only, as with the filter relabels; the card
   // reads no per-target breakdown.
   target_rotation: {
     hass: (dump) => {
@@ -209,15 +209,16 @@ export const scenarios = {
     },
   },
 
-  // An HDR plan alternating gain within one filter: every other S light
-  // relabelled to gain 0, so the run is the twelve at the newest light's gain
-  // 100 and the trend has its ten. A label only: the readings stay those of
-  // the captured lights, so no chart moves but for which lights it joins.
-  gain_alternating: {
+  // A plan switching gain within one filter: the S run's first twelve lights
+  // relabelled to gain 0, so a boundary marks the switch, the run is the
+  // newest twelve at gain 100, the trend has its ten and names the gain. A
+  // label only: the readings stay those of the captured lights, and the
+  // charts rescale to the twelve.
+  gain_switch: {
     hass: (dump) => {
       const states = dump[NIGHT].states;
       const lights = states[HFR].attributes.recent_lights.map((light, i) =>
-        (i >= 31 && i % 2 === 1 ? { ...light, gain: 0 } : light));
+        (i >= 31 && i < 43 ? { ...light, gain: 0 } : light));
       return rig(dump, NIGHT)
         .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
         .build();
