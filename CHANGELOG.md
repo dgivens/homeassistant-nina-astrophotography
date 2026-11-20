@@ -4,14 +4,6 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
-## [Unreleased]
-
-### Added
-
-- **`docs/feature-ideas.md` lists features open for contributors to pick
-  up**, each with the operator problem it solves, the API data it needs, and
-  what to watch out for, plus the ideas left out and why.
-
 ## [2.7.0] - 2026-11-15
 
 ### Added
