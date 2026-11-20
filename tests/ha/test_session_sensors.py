@@ -192,6 +192,18 @@ async def test_recent_lights_carry_each_lights_max(
     assert {light["max"] for light in lights} == {65535}
 
 
+@pytest.mark.parametrize(("field", "value"), [("gain", 100), ("offset", 50)])
+async def test_recent_lights_carry_each_lights_camera_settings(
+    hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, field: str, value: int
+) -> None:
+    """The card's newest run is keyed on these: gain moves star count and ADU
+    by whole factors, as exposure does.
+    """
+    await advance("dawn_flats")
+    lights = state_of(hass, LAST_IMAGE_HFR).attributes["recent_lights"]
+    assert {light[field] for light in lights} == {value}
+
+
 async def test_the_session_start_sensor_is_the_most_recent_local_noon(
     hass: HomeAssistant, loaded_entry: MockConfigEntry, advance, entity_registry
 ) -> None:

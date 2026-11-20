@@ -731,9 +731,10 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
   tracks doing it as an option.
 
 - `sensor.<instance>_last_image_hfr` has `recent_lights`: the session's
-  newest 60 lights, oldest first, each with its target, filter, exposure, HFR,
-  star count, and mean and max ADU. The frame statistics card draws its charts
-  from these.
+  newest 60 lights, oldest first, each with its target, filter, exposure, gain,
+  offset, HFR, star count, and mean and max ADU. The frame statistics card
+  draws its charts from these. N.I.N.A. does not report a frame's binning, so
+  it is not among them.
 
   Both cards read the camera's full scale from their frames' max: a camera
   that does not scale its data to 16 bits saturates at or below 4095 or 16383.

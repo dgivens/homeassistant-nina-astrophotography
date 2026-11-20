@@ -253,6 +253,8 @@ def _recent_lights(data: NinaData) -> tuple[Mapping[str, Any], ...]:
             "target": frame.target_name,
             "filter": frame.filter_name,
             "exposure": frame.exposure_time,
+            "gain": frame.gain,
+            "offset": frame.offset,
             "hfr": frame.hfr,
             "stars": frame.stars,
             "mean": frame.mean,
