@@ -27,6 +27,8 @@
   `## [Unreleased]`, in `Added`, `Changed` or `Fixed`: a bold lead sentence,
   then the issue or PR number. State what is true now, not what changed — no
   "no longer" or "now". Start the section if a release has just closed it.
+  The one exception is a PR that changes only docs written for contributors,
+  such as `docs/contributing/` and `docs/feature-ideas.md`: it has no entry.
 - **A release** bumps `version` in `manifest.json`, `pyproject.toml` and
   `uv.lock` and each card's `VERSION`, and dates its CHANGELOG section, then
   tags `v<version>` on `main` and publishes a GitHub release from it — HACS
