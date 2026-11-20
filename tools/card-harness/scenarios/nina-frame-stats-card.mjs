@@ -15,9 +15,10 @@
  * ADU by a power of two, which is exact, rather than invent a camera.
  *
  * The newest run — the lights since the last target change sharing the newest
- * light's filter and exposure — scales the star and ADU charts and bounds the
- * trend. The night truncated at earlier lights reaches a run of one and a run
- * read across interleaved filters.
+ * light's filter, exposure, gain and offset — scales every chart and bounds
+ * the trend. The night truncated at earlier lights reaches a run of one and a
+ * run read across interleaved filters; every captured light shares one gain,
+ * so a run split by gain relabels some.
  *
  * Not reached: a gap in a series, since no captured light lacks a reading,
  * nor a trend that reads Improving or Degrading, since the newest ten S frames
@@ -202,6 +203,21 @@ export const scenarios = {
       const states = dump[NIGHT].states;
       const lights = states[HFR].attributes.recent_lights.map((light, i) =>
         (i >= 31 && i < 47 ? { ...light, target: "Wizard Nebula" } : light));
+      return rig(dump, NIGHT)
+        .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
+        .build();
+    },
+  },
+
+  // An HDR plan alternating gain within one filter: every other S light
+  // relabelled to gain 0, so the run is the twelve at the newest light's gain
+  // 100 and the trend has its ten. A label only: the readings stay those of
+  // the captured lights, so no chart moves but for which lights it joins.
+  gain_alternating: {
+    hass: (dump) => {
+      const states = dump[NIGHT].states;
+      const lights = states[HFR].attributes.recent_lights.map((light, i) =>
+        (i >= 31 && i % 2 === 1 ? { ...light, gain: 0 } : light));
       return rig(dump, NIGHT)
         .override(HFR, states[HFR].state, { ...states[HFR].attributes, recent_lights: lights })
         .build();

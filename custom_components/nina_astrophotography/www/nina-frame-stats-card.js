@@ -539,10 +539,10 @@ class NinaFrameStatsCard extends HTMLElement {
   }
 
   // The chart is scaled to the newest run and the rest of the night drawn
-  // faded behind it: another filter, target, exposure or binning sits far
-  // enough away to flatten the run. `minSpan`, a function of the run's mean, is
-  // the narrowest span it is drawn over. A run with fewer than two readings is
-  // scaled with the whole night.
+  // faded behind it: another filter, target, exposure or gain, and with the
+  // filter usually the binning, sits far enough away to flatten the run.
+  // `minSpan`, a function of the run's mean, is the narrowest span it is drawn
+  // over. A run with fewer than two readings is scaled with the whole night.
   _drawSparkline(canvasId, data, fillColour, showAvgLine, colours, minSpan) {
     const canvas = this.shadowRoot.getElementById(canvasId);
     if (!canvas) return;
@@ -652,8 +652,8 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.stroke();
     }
 
-    // The run's mean: a whole night's mean can sit between two binnings, far
-    // from both.
+    // Over what the chart is scaled to: a whole night's mean can sit between
+    // two binnings, far from both.
     if (showAvgLine) {
       const avg = this._mean(scaled);
       const yAvg = yOf(avg);

@@ -164,17 +164,15 @@ model or session-fold work, and **L** adds a card plus new requests.
   `www/nina-frame-stats-card.js`, which no automation can use.
 - **Proposal:** a `frames_degraded` binary sensor with a `reason` attribute,
   computed in `session.py`, and a blueprint on top of it. Compare each light
-  with a baseline for the same target, filter, exposure and gain (and binning,
-  once #173 lands). Starting values, to be tuned:
+  with a baseline for the same target, filter, exposure and gain. Starting
+  values, to be tuned:
   - stars below half the baseline: cloud or dew;
   - HFR above 1.3 times the baseline for two or three subs: focus or seeing;
   - sky background (median minus an estimate of the offset pedestal) well
     above the baseline: moon, dawn or lit cloud.
 - **Data (already fetched):** each light's HFR, stars, mean and median ADU,
-  RMS, filter, exposure and target (`Frame` in `api/models.py`, folded into
+  RMS, filter, exposure, gain, offset and target (`Frame` in `api/models.py`, folded into
   `session.recent_lights`). `HFRStDev` is on the wire but discarded.
-- **Depends on:** #173. Pixel HFR can't be compared across binnings until each
-  frame carries its binning.
 - **Watch out for:**
   - Key by target as well as filter: moving from a Milky Way field to a sparse
     galaxy field halves the stars and shifts the background, and would fire on
@@ -182,6 +180,10 @@ model or session-fold work, and **L** adds a card plus new requests.
   - Key by filter, not by a run of consecutive frames: filters are interleaved
     by hand as well as by Target Scheduler. Never infer anything from a
     filter's name.
+  - Frames carry no binning, and HFR is in pixels, so 2×2 halves it. Filter
+    stands in for binning, as it does in the frame statistics card, since
+    binning usually changes with the filter. The same filter at another
+    binning will read as a change in focus.
   - Raw mean ADU includes the bias pedestal, so on short narrowband subs a
     "twice the baseline" test barely moves.
   - A target sinking toward the horizon worsens HFR for a real reason, and

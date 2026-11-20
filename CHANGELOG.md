@@ -11,10 +11,10 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 - **The frame statistics card's HFR chart is scaled to the newest run**
   (#173), as the star count and mean ADU charts are, with the rest of the
   night faded behind it, and its dashed average is the run's. HFR is in
-  pixels, so luminance at 1×1 and colour at 2×2 sit a factor of two apart. A
-  chart scaled to both flattened each, and the night's average fell between
-  them. The newest run also shares the newest light's gain and offset, so a
-  plan that changes gain within one filter does not read as a trend.
+  pixels, so luminance at 1×1 and colour at 2×2 sit a factor of two apart: a
+  chart scaled to both would flatten each, with the night's average between
+  them. The newest run is also keyed on gain and offset, so a plan that
+  changes gain within one filter does not read as a trend.
   `recent_lights` on `sensor.<instance>_last_image_hfr` carries each light's
   `gain` and `offset`.
 
