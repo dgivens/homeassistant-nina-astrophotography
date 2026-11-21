@@ -222,3 +222,18 @@ export function aduFullScale(maxima) {
 export function displayed(q, decimals) {
   return q ? q.value.toFixed(q.precision ?? decimals) : null;
 }
+
+/**
+ * A quantity's number to at least `digits` significant figures, its whole part
+ * never cut short and no trailing zeros, or `null` for none. For a reading that
+ * spans orders of magnitude, such as illuminance from a dark sky to noon,
+ * where any fixed number of decimals either pads one end or zeroes the other.
+ * A precision the registry gives takes precedence.
+ */
+export function significant(q, digits) {
+  if (!q) return null;
+  if (q.precision !== null) return q.value.toFixed(q.precision);
+  if (q.value === 0) return "0";
+  const whole = Math.floor(Math.log10(Math.abs(q.value))) + 1;
+  return String(Number(q.value.toFixed(Math.max(0, digits - whole))));
+}

@@ -22,6 +22,13 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   each light's `gain` and `offset`. N.I.N.A. reports no binning per frame, so
   a change of binning within one filter is not told apart.
 
+### Fixed
+
+- **The weather card prints sky brightness to three significant figures**
+  (#117), keeping the whole part and dropping trailing zeros: `0 lx` and
+  `5692 lx` from a station that measures whole lux, `0.00123 lx` from one that
+  resolves a dark sky. A display precision set on the entity takes precedence.
+
 ## [2.7.0] - 2026-11-15
 
 ### Added
