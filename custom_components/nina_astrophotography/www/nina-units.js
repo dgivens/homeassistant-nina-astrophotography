@@ -224,11 +224,11 @@ export function displayed(q, decimals) {
 }
 
 /**
- * A quantity's number to `digits` significant figures, never rounding a whole
- * part and never padding with zeros, or `null` for none. For a reading that
+ * A quantity's number to at least `digits` significant figures, its whole part
+ * never cut short and no trailing zeros, or `null` for none. For a reading that
  * spans orders of magnitude, such as illuminance from a dark sky to noon,
  * where any fixed number of decimals either pads one end or zeroes the other.
- * A precision the registry gives still wins.
+ * A precision the registry gives takes precedence.
  */
 export function significant(q, digits) {
   if (!q) return null;

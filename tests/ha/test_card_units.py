@@ -236,19 +236,23 @@ def test_the_full_scale_is_the_brightest_pixel_rounded_up_to_a_bit_depth(
 
 
 @pytest.mark.parametrize(
-    ("value", "precision", "shown"),
+    ("value", "shown"),
     [
-        (0.0, None, "0"),
-        (1.0, None, "1"),
-        (80123.0, None, "80123"),
-        (94.66666666666694, None, "94.7"),
-        (0.5, None, "0.5"),
-        (0.0012345, None, "0.00123"),
-        (5692.0, 1, "5692.0"),
+        (0.0, "0"),
+        (1.0, "1"),
+        (80123.0, "80123"),
+        (94.66666666666694, "94.7"),
+        (0.5, "0.5"),
+        (0.0012345, "0.00123"),
     ],
 )
 def test_a_significant_reading_keeps_its_whole_part_and_sheds_padding(
-    value: float, precision: int | None, shown: str
+    value: float, shown: str
 ) -> None:
-    q = {"value": value, "unit": "lx", "precision": precision}
+    q = {"value": value, "unit": "lx", "precision": None}
     assert _run([["significant", q, 3]]) == [shown]
+
+
+def test_a_registry_precision_overrides_significant_figures() -> None:
+    q = {"value": 94.66666666666694, "unit": "lx", "precision": 0}
+    assert _run([["significant", q, 3]]) == ["95"]
