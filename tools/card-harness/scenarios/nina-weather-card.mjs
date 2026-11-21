@@ -10,11 +10,11 @@
  * `site_configured` once N.I.N.A. stops answering, where that same source
  * reads `unavailable`.
  *
- * Three channels this source reports as `"NaN"` have no entity anywhere in the
- * corpus: cloud cover, sky quality and star FWHM. Their cells are therefore left
- * out of every scenario below, and the sky-quality section — a bar, a label
- * and a scale — never renders at all. Nothing here can cover it without
- * inventing a channel, which is what `render.html` against a live rig is for.
+ * Three channels this source reports as `"NaN"` have no entity on the reference
+ * rig: cloud cover, sky quality and star FWHM. Only `simulator`, the ASCOM
+ * simulator's dump, renders their cells and the sky-quality section — a bar, a
+ * label and a scale — and its readings are synthetic; a live rig with an SQM is
+ * what `render.html` cannot stand in for.
  */
 
 import { linkScenarios, rig } from "../hass.mjs";
@@ -185,6 +185,15 @@ export const scenarios = {
     hass: (dump) => rig(dump, UP).build(),
     config: { show_sky_brightness: false },
   },
+
+  // The same station at dawn, reading 5692 lx beside `station`'s 0: sky
+  // brightness spans five orders of magnitude, so it prints in significant
+  // figures rather than a fixed number of decimals. The monitor reads unsafe,
+  // as captured.
+  daylight: { hass: (dump) => rig(dump, "dawn_flats").build() },
+
+  // The ASCOM simulator, whose sky brightness has a fractional part.
+  simulator: { hass: (dump) => rig(dump, "simulator_dome_following").build() },
 
   // The pressure entity disabled: its cell is left out, not dashed, and the
   // other three atmosphere cells close up.

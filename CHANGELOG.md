@@ -21,6 +21,11 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   exposure is. `recent_lights` on `sensor.<instance>_last_image_hfr` carries
   each light's `gain` and `offset`. N.I.N.A. reports no binning per frame, so
   a change of binning within one filter is not told apart.
+- **The weather card prints sky brightness to three significant figures**
+  (#117) instead of two decimals: `0 lx` and `5692 lx` rather than `0.00 lx`
+  and `5692.00 lx` from a station that measures whole lux, and `0.00123 lx`
+  rather than `0.00` from one that resolves a dark sky. A display precision
+  set on the entity still wins.
 
 ## [2.7.0] - 2026-11-15
 

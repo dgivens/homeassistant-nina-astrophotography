@@ -233,3 +233,22 @@ def test_the_full_scale_is_the_brightest_pixel_rounded_up_to_a_bit_depth(
     maxima: list[float | None], full_scale: int
 ) -> None:
     assert _run([["aduFullScale", maxima]]) == [full_scale]
+
+
+@pytest.mark.parametrize(
+    ("value", "precision", "shown"),
+    [
+        (0.0, None, "0"),
+        (1.0, None, "1"),
+        (80123.0, None, "80123"),
+        (94.66666666666694, None, "94.7"),
+        (0.5, None, "0.5"),
+        (0.0012345, None, "0.00123"),
+        (5692.0, 1, "5692.0"),
+    ],
+)
+def test_a_significant_reading_keeps_its_whole_part_and_sheds_padding(
+    value: float, precision: int | None, shown: str
+) -> None:
+    q = {"value": value, "unit": "lx", "precision": precision}
+    assert _run([["significant", q, 3]]) == [shown]

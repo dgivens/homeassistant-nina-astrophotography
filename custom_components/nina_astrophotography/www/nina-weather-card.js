@@ -29,7 +29,7 @@
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { CHEVRON, COLLAPSE_STYLE, Collapse, worst } from "./nina-collapse.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
-import { displayed, interval, inUnit, missing, quantity } from "./nina-units.js";
+import { displayed, interval, inUnit, missing, quantity, significant } from "./nina-units.js";
 import { THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.7.0";
@@ -446,7 +446,7 @@ class NinaWeatherCard extends HTMLElement {
       has(channels.rain) && qcell("🌧", "Rain rate", rain, 2, false, rain !== null && rain.value > 0, rain === null),
       has(channels.skyT) && qcell("🌡", "Sky temp", skyT, 1, false, false, skyT === null),
       has(channels.seeing) && cell("👁", "Seeing", seeing?.toFixed(1) ?? null, "\"", seeing !== null && seeing > L.seeingWarn, seeing !== null && seeing > L.seeingDanger, seeing === null),
-      this._showSkyBrightness && has(channels.skyB) && qcell("✨", "Sky brightness", skyB, 2, false, false, skyB === null),
+      this._showSkyBrightness && has(channels.skyB) && cell("✨", "Sky brightness", significant(skyB, 3), skyB?.unit ?? "", false, false, skyB === null),
     ]);
     // A station that names itself before any of its channels has a reading:
     // every channel is created on its first one.
