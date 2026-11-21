@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Test and dev tooling only: the integration declares no runtime requirements.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      python:
+        patterns: ["*"]
+    ignore:
+      # Pins the Home Assistant version the suite runs against, which is a
+      # deliberate choice: a newer one can break pyright and the Pillow override.
+      - dependency-name: "pytest-homeassistant-custom-component"
