@@ -430,8 +430,12 @@ model or session-fold work, and **L** adds a card plus new requests.
 
 Each is a small entity or attribute, of low value on its own:
 
-- HFR in arcseconds: `derive.hfr_arcsec` and `image_scale_arcsec_per_px` are
-  written and tested but nothing uses them. Blocked on #173.
+- HFR in arcseconds, comparable between rigs: `derive.hfr_arcsec` and
+  `image_scale_arcsec_per_px` are written and tested but nothing uses them.
+  Feed them the frame's `FocalLength` and the camera's `PixelSize` and current
+  `BinX` (`CameraModel.pixel_size` and `bin_x`). Frames carry no binning, so a
+  frame shot just before a binning change is scaled with the new one; with the
+  camera disconnected there is no scale, and the reading is unknown.
 - The mount's `Slewing`, which isn't in `MountModel`; it would allow a
   stuck-slewing check.
 - The camera's `LastDownloadTime`, not mapped; a rising download time points to

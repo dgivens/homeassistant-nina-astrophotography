@@ -19,7 +19,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   trend; on a night that changes gain the trend box names the run's, and a
   change of gain or offset is marked on the charts as a new target or
   exposure is. `recent_lights` on `sensor.<instance>_last_image_hfr` carries
-  each light's `gain` and `offset`.
+  each light's `gain` and `offset`. N.I.N.A. reports no binning per frame, so
+  a change of binning within one filter is not told apart.
 
 ## [2.7.0] - 2026-11-15
 

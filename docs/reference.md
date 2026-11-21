@@ -734,7 +734,9 @@ card, an ApexCharts `data_generator`, or a template. For history, chart
   newest 60 lights, oldest first, each with its target, filter, exposure, gain,
   offset, HFR, star count, and mean and max ADU. The frame statistics card
   draws its charts from these. N.I.N.A. does not report a frame's binning, so
-  it is not among them.
+  it is not among them, and the card cannot tell a change of binning within
+  one filter from a change in focus: HFR is in pixels, and 2×2 roughly halves
+  it.
 
   Both cards read the camera's full scale from their frames' max: a camera
   that does not scale its data to 16 bits saturates at or below 4095 or 16383.
