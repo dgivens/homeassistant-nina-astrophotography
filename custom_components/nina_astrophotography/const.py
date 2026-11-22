@@ -39,6 +39,10 @@ POLL_INTERVAL = timedelta(seconds=10)
 DEFAULT_ROLLOVER_HOUR = 12
 # Seconds a failing rig keeps its last data before its entities go unavailable.
 DEFAULT_OUTAGE_GRACE = 30
+# How long every reading of a weather source may hold before it counts as
+# frozen. A working station's temperature, humidity and pressure move within
+# minutes; the margin is for an online source, which refreshes less often.
+WEATHER_FREEZE = timedelta(hours=1)
 
 # No setpoint range reaches the wire; wide enough for any cooled camera.
 CAMERA_SETPOINT_RANGE = (-50, 50)

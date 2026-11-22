@@ -282,6 +282,14 @@ def inside_the_dawn_session(freezer):
 
 
 @pytest.fixture
+def on_the_frozen_station_night(freezer):
+    """22:23 on the rig, when `scheduler_waiting_lost_lock` was captured, with
+    its station still serving the day's reading.
+    """
+    freezer.move_to("2026-09-19T03:23:00+00:00")
+
+
+@pytest.fixture
 def set_up_at():
     """Set the entry up with the rig ALREADY in a state.
 

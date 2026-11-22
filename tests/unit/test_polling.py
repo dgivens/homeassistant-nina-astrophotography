@@ -14,6 +14,7 @@ from nina_astrophotography.api.models import (
     NinaEvent,
     SequenceWait,
     SequenceWaitKind,
+    WeatherModel,
 )
 from nina_astrophotography.api.v2.mapper import map_equipment_info, map_frame
 from nina_astrophotography.polling import (
@@ -25,6 +26,7 @@ from nina_astrophotography.polling import (
     RestartDetector,
     TierSchedule,
     WaitLedger,
+    WeatherFreeze,
     imaging,
 )
 from nina_astrophotography.session import CoverMove
@@ -592,3 +594,69 @@ def test_the_history_keeps_the_ten_newest_newest_first() -> None:
     reads = [(minute, _step() if minute % 2 == 0 else None) for minute in range(24)]
     ended = _ledger(*reads).ended
     assert (len(ended), ended[0].ended) == (10, _at(23))
+
+
+# The station as N.I.N.A. served it two nights running: a midday reading,
+# `Connected: true`.
+_FROZEN = map_equipment_info(
+    load("scheduler_waiting_lost_lock_equipment_info.json")
+).weather
+_HOUR = timedelta(hours=1)
+
+
+def _station(**readings: float | None) -> WeatherModel:
+    assert _FROZEN is not None
+    return replace(_FROZEN, channels={**_FROZEN.channels, **readings})
+
+
+def _freeze(*reads: tuple[float, WeatherModel | None]) -> WeatherFreeze:
+    """Each read is (minutes after the first, the weather polled then)."""
+    freeze = WeatherFreeze(_HOUR)
+    for minutes, weather in reads:
+        freeze.observe(weather, _at(minutes))
+    return freeze
+
+
+def test_readings_held_for_the_window_are_frozen_since_they_were_first_read() -> None:
+    assert _freeze(
+        (0, _station()), (30, _station()), (60, _station())
+    ).frozen_since == _at(0)
+
+
+def test_readings_held_for_less_than_the_window_are_not_frozen() -> None:
+    assert _freeze((0, _station()), (59, _station())).frozen_since is None
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    "moved",
+    [{"temperature": 37.5}, {"wind_speed": 2.8}, {"cloud_cover": 10.0}],
+    ids=["drifting channel", "wind", "a channel that was NaN"],
+)
+def test_any_channel_moving_restarts_the_window(moved: dict[str, float]) -> None:
+    freeze = _freeze((0, _station()), (30, _station(**moved)), (75, _station(**moved)))
+    assert freeze.frozen_since is None
+
+
+@pytest.mark.synthetic
+def test_a_source_with_no_drifting_channel_is_never_frozen() -> None:
+    """Rain 0, calm and 0 lx can hold all night; nothing else is reported."""
+    quiet = _station(
+        temperature=None,
+        humidity=None,
+        dew_point=None,
+        pressure=None,
+        sky_temperature=None,
+    )
+    assert _freeze((0, quiet), (120, quiet)).frozen_since is None
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    "gap",
+    [None, replace(_station(), connected=False)],
+    ids=["never observed", "disconnected"],
+)
+def test_losing_the_source_restarts_the_window(gap: WeatherModel | None) -> None:
+    freeze = _freeze((0, _station()), (30, gap), (40, _station()), (90, _station()))
+    assert freeze.frozen_since is None

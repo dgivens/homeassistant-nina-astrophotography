@@ -6,6 +6,7 @@ the fold filters on.
 """
 
 from collections import deque
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import time
@@ -18,6 +19,7 @@ from .api.models import (
     NinaEvent,
     SequenceWait,
     SequenceWaitKind,
+    WeatherModel,
 )
 from .session import CoverMove
 
@@ -207,6 +209,61 @@ class CoverFaultHold:
             return self._reading
         self._read, self._reading, self._since = True, None, move
         return None
+
+
+# Channels a working station's readings drift in, minute to minute. The rest
+# can legitimately hold all night: no rain, no wind, a clear sky, 0 lx.
+_DRIFTING_CHANNELS = frozenset(
+    {"temperature", "humidity", "dew_point", "pressure", "sky_temperature"}
+)
+
+
+class WeatherFreeze:
+    """Since when a connected weather source's readings have stood still.
+
+    N.I.N.A. reports no age for a reading — `WeatherData` carries no update
+    time, and ASCOM's `TimeSinceLastUpdate` is not exposed — so a station or
+    driver that stops updating keeps `Connected: true` and its last values.
+    What gives it away is every channel holding bit-identical across polls.
+
+    A source reporting none of `_DRIFTING_CHANNELS` is never judged, since
+    its channels can all hold for hours on a still, clear night. A
+    disconnect, or a source reporting nothing, drops the baseline.
+    """
+
+    def __init__(self, window: timedelta) -> None:
+        self._window = window
+        self._readings: Mapping[str, float | None] | None = None
+        self._since: datetime | None = None
+        self._last: datetime | None = None
+
+    def observe(self, weather: WeatherModel | None, read_at: datetime) -> None:
+        """Take one poll's reading; `read_at` is when it was read."""
+        if (
+            weather is None
+            or not weather.connected
+            or not any(
+                weather.channels.get(channel) is not None
+                for channel in _DRIFTING_CHANNELS
+            )
+        ):
+            self._readings = self._since = self._last = None
+            return
+        if weather.channels != self._readings:
+            self._readings, self._since = dict(weather.channels), read_at
+        self._last = read_at
+
+    @property
+    def frozen_since(self) -> datetime | None:
+        """The first poll that read the held readings, once they have held
+        for the window; `None` before that, and while nothing is judged.
+
+        Measured between polls, not against the clock, so a N.I.N.A. outage
+        freezes nothing.
+        """
+        if self._since is None or self._last is None:
+            return None
+        return self._since if self._last - self._since >= self._window else None
 
 
 @dataclass

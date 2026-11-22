@@ -102,6 +102,9 @@
       },
       "sequencer_running": {
         "name": "Sequencer running"
+      },
+      "weather_frozen": {
+        "name": "Readings frozen"
       }
     },
     "button": {

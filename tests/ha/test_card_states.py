@@ -18,6 +18,7 @@ from typing import Any, NamedTuple
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers.json import json_encoder_default
 from homeassistant.util.unit_system import (
     METRIC_SYSTEM,
     US_CUSTOMARY_SYSTEM,
@@ -25,7 +26,7 @@ from homeassistant.util.unit_system import (
 )
 import pytest
 
-from custom_components.nina_astrophotography.const import DOMAIN
+from custom_components.nina_astrophotography.const import DOMAIN, WEATHER_FREEZE
 from helpers import needs_node, run_node
 
 SNAPSHOTS = Path(__file__).parent / "snapshots"
@@ -44,6 +45,8 @@ class Dump(NamedTuple):
     # for one poll, inside the outage grace, or for good.
     missed: bool = False
     lost: bool = False
+    # Whether the rig is polled again, unchanged, a weather freeze window on.
+    frozen: bool = False
 
 
 # `site_configured` rather than the `imaging_guiding` it derives from: it is the
@@ -72,6 +75,9 @@ class Dump(NamedTuple):
 # The `simulator_dome_*` dumps are the test VM's rig (`docs/test-vm.md`), the
 # only one with a dome: parked with the shutter closed, open and following the
 # mount, and parked when N.I.N.A. stops answering.
+#
+# `weather_frozen` is `scheduler_waiting_lost_lock`, whose station served a
+# midday reading through two nights, polled again a freeze window later.
 DUMPS: dict[str, Dump] = {
     "site_configured": Dump("site_configured", None, METRIC_SYSTEM),
     "equipment_disconnected": Dump("equipment_disconnected", None, METRIC_SYSTEM),
@@ -83,6 +89,12 @@ DUMPS: dict[str, Dump] = {
     "simulator_dome_following": Dump("simulator_dome_following", None, METRIC_SYSTEM),
     "simulator_dome_unreachable": Dump(
         "simulator_dome_parked", None, METRIC_SYSTEM, lost=True
+    ),
+    "weather_frozen": Dump(
+        "scheduler_waiting_lost_lock",
+        "on_the_frozen_station_night",
+        METRIC_SYSTEM,
+        frozen=True,
     ),
 }
 
@@ -190,6 +202,7 @@ async def test_the_card_harness_dump_is_current(
     rig,
     set_up_at,
     outage,
+    freezer,
     request: pytest.FixtureRequest,
     dump: str,
     setup: Dump,
@@ -209,12 +222,19 @@ async def test_the_card_harness_dump_is_current(
         await hass.async_block_till_done()
     if setup.lost:
         await outage()
+    if setup.frozen:
+        freezer.tick(WEATHER_FREEZE)
+        await config_entry.runtime_data.coordinator.async_refresh()
+        await hass.async_block_till_done()
 
     current = json.loads(DUMP.read_text(encoding="utf-8")) if DUMP.exists() else {}
     # Round-tripped before comparing: an attribute Home Assistant holds as a
     # tuple comes back from the committed file as a list and is otherwise
     # unequal to itself for ever.
-    fresh = json.loads(json.dumps(_hass_for_a_card(hass, config_entry)))
+    # A datetime attribute is sent to the frontend as ISO text.
+    fresh = json.loads(
+        json.dumps(_hass_for_a_card(hass, config_entry), default=json_encoder_default)
+    )
     if current.get(dump) == fresh:
         return
 

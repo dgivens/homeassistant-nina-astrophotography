@@ -230,6 +230,16 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         value=lambda data: data.light_behind_cover,
     ),
     NinaBinarySensorDescription(
+        key="weather_frozen",
+        translation_key="weather_frozen",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        kind="weather",
+        # A frozen source stays connected and keeps every channel available
+        # with its last value, so nothing else shows it.
+        value=lambda data: data.weather_frozen_since is not None,
+        attributes=lambda data: {"frozen_since": data.weather_frozen_since},
+    ),
+    NinaBinarySensorDescription(
         key="sequencer_running",
         translation_key="sequencer_running",
         device_class=BinarySensorDeviceClass.RUNNING,

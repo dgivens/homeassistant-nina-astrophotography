@@ -24,6 +24,10 @@
  *
  * A reading whose entity is disabled, or that the station never reports, has
  * no cell at all; one that is merely unknown or unavailable shows a dash.
+ *
+ * A station whose every reading has stopped changing while N.I.N.A. still
+ * reports it connected is flagged frozen, and its readings are dimmed: a
+ * "Conditions safe" banner over them gives way to the warning.
  */
 
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
@@ -75,7 +79,7 @@ const STYLE = `
   .safety-banner.unknown {
     background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
-  .safety-banner.unreachable {
+  .safety-banner.unreachable, .safety-banner.frozen {
     background: rgba(244,162,97,0.10);
     border-bottom-color: rgba(244,162,97,0.30);
   }
@@ -89,9 +93,10 @@ const STYLE = `
   .safety-text .safe   { color: var(--success); }
   .safety-text .unsafe { color: var(--danger); }
   .safety-text .unknown{ color: var(--muted); }
-  .safety-text .unreachable { color: var(--warn); }
+  .safety-text .unreachable, .safety-text .frozen { color: var(--warn); }
 
-  /* Readings N.I.N.A. has not confirmed since it stopped answering */
+  /* Readings N.I.N.A. has not confirmed since it stopped answering, or a
+     frozen station's */
   .body.stale { opacity: 0.5; }
 
   /* ── Grid ── */
@@ -303,6 +308,10 @@ class NinaWeatherCard extends HTMLElement {
       return state !== null && state !== "unavailable";
     }));
     const wxName  = wxConnected && sourceLive ? source : "Weather station";
+    // Every reading unchanged for the integration's window, though connected.
+    const frozenRow = this._shown.states?.[this._eid("binary_sensor", "weather_frozen", "weather_readings_frozen")];
+    const frozen = wxConnected && frozenRow?.state === "on";
+    const frozenSince = frozen ? Date.parse(frozenRow.attributes?.frozen_since) || null : null;
     const temp    = this._q(channels.temp);
     const humid   = this._f(channels.humid);
     const dewPt   = this._q(channels.dewPt);
@@ -359,6 +368,12 @@ class NinaWeatherCard extends HTMLElement {
       safetyIcon = "🔘"; safetyLabelCls = "unknown";
       safetyLabel = "Safety monitor has no reading";
       safetyDetail = "The monitor is connected but has not reported yet";
+    } else if (frozen) {
+      // A safe verdict over readings that stopped changing is no comfort: the
+      // monitor may be reading the same station.
+      safetyIcon = "🧊"; safetyLabelCls = "frozen";
+      safetyLabel = "Weather readings frozen";
+      safetyDetail = `No reading has changed${since(frozenSince)}; the station or its driver may have stopped. The safety monitor reports safe.`;
     } else {
       safetyIcon = "✅"; safetyLabelCls = "safe";
       safetyLabel = "Conditions safe";
@@ -368,6 +383,8 @@ class NinaWeatherCard extends HTMLElement {
     let wxStatus, noReadings, noReadingsHint;
     if (link.stale) {
       wxStatus = `N.I.N.A. ${link.lost ? "unreachable" : "not answering"} · last readings`;
+    } else if (frozen) {
+      wxStatus = `Readings frozen${since(frozenSince)} · N.I.N.A. weather station`;
     } else if (wxConnected) {
       wxStatus = "Connected · N.I.N.A. weather station";
     } else if (unreachable) {
@@ -485,7 +502,7 @@ class NinaWeatherCard extends HTMLElement {
           </div>
           ${CHEVRON}
         </div>
-        ${fold.banner(worst([...levels, windRows.length ? windLevel : null]))}
+        ${fold.banner(worst([...levels, windRows.length ? windLevel : null, frozen ? "warn" : null]))}
 
         <!-- Safety banner -->
         <div class="safety-banner ${safetyLabelCls}">
@@ -497,14 +514,14 @@ class NinaWeatherCard extends HTMLElement {
         </div>
 
         ${!fold.open("card") ? (wxConnected && dewAlertShown ? `
-          <div class="body${link.stale ? " stale" : ""}">${dewAlert}</div>
+          <div class="body${link.stale || frozen ? " stale" : ""}">${dewAlert}</div>
         ` : "") : !wxConnected ? `
           <div class="not-connected">
             <div>${noReadings}</div>
             <div class="hint">${noReadingsHint}</div>
           </div>
         ` : `
-        <div class="body${link.stale ? " stale" : ""}">
+        <div class="body${link.stale || frozen ? " stale" : ""}">
 
           ${nothingShown ? `
             <div class="not-connected">

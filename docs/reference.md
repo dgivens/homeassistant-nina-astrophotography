@@ -84,7 +84,7 @@ the readings your source actually provides.
 | Guider | RMS total, RA and declination, status; guider (`switch`); clear calibration (`button`) |
 | Rotator | position, mechanical position (`number`); reverse (`switch`); moving, synced (`binary_sensor`) |
 | Flat Panel | cover state; brightness (`number`); light (`light`); cover (`switch`); light frames behind closed cover (`binary_sensor`) |
-| Weather | temperature, humidity, dew point, pressure, wind speed/direction/gust, rain rate, sky brightness, sky temperature, cloud cover, sky quality, star FWHM |
+| Weather | temperature, humidity, dew point, pressure, wind speed/direction/gust, rain rate, sky brightness, sky temperature, cloud cover, sky quality, star FWHM; readings frozen (`binary_sensor`) |
 | Safety Monitor | unsafe, connected (`binary_sensor`) |
 | Dome | shutter status; azimuth (`number`); following (`switch`); at park, at home, slewing, synchronized (`binary_sensor`); open, close, park, home (`button`) |
 | Switch | one entity per channel the driver reports: a read-only channel is a `sensor`, an on/off channel a `switch`, a range a `number` |
@@ -299,6 +299,19 @@ formula, which adds under 0.35 °C to the error of the humidity reading itself.
 The weather card's dew alert and any automation on the sensor then work as
 they would with a dew point sensor.
 The source's own dew point is used whenever it reports one.
+
+A station or driver that stops updating keeps reporting connected, with every
+channel still available at its last value, so nothing else shows it.
+`binary_sensor.<instance>_weather_readings_frozen` turns `on` once every
+channel has held exactly the same value for an hour, and its `frozen_since`
+attribute is the first poll that read those values. It judges only a source that reports
+at least one of temperature, humidity, dew point, pressure and sky
+temperature, since rain, wind, cloud cover and sky brightness can all hold
+through a still, clear night. It starts measuring when Home Assistant does,
+and again whenever the source reconnects. The weather card shows the freeze in
+place of a safe verdict and dims the readings. The channels themselves stay
+available, so an automation that should not act on frozen readings has to
+check this sensor.
 
 Don't use weather readings to decide it's safe to image. Forecast-based
 sources such as OpenMeteo are gridded forecasts updated every 10 minutes, and

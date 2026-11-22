@@ -123,6 +123,7 @@ read rather than being left wrong.
 | `weather_source_openmeteo.json` | A *second* weather source. Its usable channels are **disjoint** from the physical station's — OpenMeteo has `CloudCover` but not `SkyBrightness`/`SkyTemperature`; the station is the reverse |
 | `live_image_save_push.json` | A live `IMAGE-SAVE` socket payload. Field-for-field identical to the matching `/image-history` record, including `Date` and `Filename` |
 | `simulator_dome_*_push.json` | Live `DOME-SHUTTER-OPENED`, `DOME-SLEWED` (with `From`/`To` azimuths) and `DOME-PARKED` socket payloads from the simulator rig's OmniSim dome. In the same run a close, a home and a second open raised no event at all, socket or `/event-history`. Recorded off the socket by hand, so their `_meta` is written, not the capture script's: the versions are the simulator captures' |
+| `scheduler_waiting_lost_lock_*.json` | A Target Scheduler wait at 22:23 on 2026-09-18, with the guider still reporting `LostLock` after a `GUIDER-STOP`. Its station is **frozen**: `Connected: true` beside a midday reading — 80123 lx, 37.6 °C — which Home Assistant's recorder holds unchanged from 21:00 on 2026-09-17 to 11:00 on 2026-09-19, so its weather is not the station at night |
 | `image_history_session.json` | Pre-existing fixture from an earlier session (89 frames) |
 
 ## Notes for anyone writing tests against these

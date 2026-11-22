@@ -21,6 +21,7 @@ import { linkScenarios, rig } from "../hass.mjs";
 
 const UP = "site_configured";
 const US = "site_configured_us_customary";
+const FROZEN = "weather_frozen";
 const SAFETY = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 const LINK = "binary_sensor.n_i_n_a_safety_monitor_connected";
 const TEMPERATURE = "sensor.n_i_n_a_weather_temperature";
@@ -239,6 +240,18 @@ export const scenarios = {
   // No station and no monitor, which is what a fresh install shows: the
   // not-connected panel in place of the whole body, under a grey banner.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
+
+  // The station that served a midday reading — 37.6 °C, 80123 lx — through
+  // two nights, still connected, beside a monitor reading safe: the frozen
+  // warning in place of the safe banner, over dimmed readings.
+  frozen: { hass: (dump) => rig(dump, FROZEN).build() },
+
+  // `frozen` with the monitor reading unsafe, which still takes the banner;
+  // the header carries the freeze. The verdict is invented as `unsafe`'s is.
+  frozen_unsafe: { hass: (dump) => rig(dump, FROZEN).override(SAFETY, "on").build() },
+
+  // `frozen` folded to its header, which cues the freeze.
+  frozen_folded: { hass: (dump) => rig(dump, FROZEN).build(), folded: ["card"] },
 
   // The lost link: must not read as the unconfigured rig above.
   ...linkScenarios(),

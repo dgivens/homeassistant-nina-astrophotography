@@ -40,7 +40,12 @@ from .api.models import (
 )
 from .api.v2 import NinaClientV2, NinaEventStream
 from .api.v2.events import MAX_RECONNECT_DELAY
-from .const import CONF_HOST, DEFAULT_OUTAGE_GRACE, DEFAULT_ROLLOVER_HOUR
+from .const import (
+    CONF_HOST,
+    DEFAULT_OUTAGE_GRACE,
+    DEFAULT_ROLLOVER_HOUR,
+    WEATHER_FREEZE,
+)
 from .derive import flip_offset_minutes
 from .device import KINDS
 from .polling import (
@@ -55,6 +60,7 @@ from .polling import (
     TierSchedule,
     Wait,
     WaitLedger,
+    WeatherFreeze,
     imaging,
 )
 from .sequence import current_wait, running, target_name
@@ -178,6 +184,10 @@ class NinaData:
     """A disconnected flat panel's last cover reading, while it is a fault
     N.I.N.A. has not resolved since; `None` while the panel is connected. See
     `CoverFaultHold`."""
+    weather_frozen_since: datetime | None = None
+    """The first poll that read the weather source's current readings, once
+    every one has held for `WEATHER_FREEZE`; `None` otherwise. See
+    `WeatherFreeze`."""
     reachable: bool = True
     """Whether N.I.N.A. answered the last poll. False while an outage is held
     within its grace, and kept false once the coordinator fails, so the one
@@ -244,6 +254,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._guider_stop = GuiderStopLatch()
         self._cover = CoverClosedLatch()
         self._cover_fault = CoverFaultHold()
+        self._weather_freeze = WeatherFreeze(WEATHER_FREEZE)
         self._waits = WaitLedger()
         self._seeded = False
         self._replayed = False
@@ -314,6 +325,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         )
         self._log_connection_changes(snapshot)
         self._hold_flip_reading(snapshot, read_at)
+        self._weather_freeze.observe(snapshot.weather, read_at)
         await self._run_tiers(snapshot, count)
         self._last_snapshot = snapshot
         if not self._replayed:
@@ -716,6 +728,7 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
                 flat, recent[0].frame if recent else None, move
             ),
             cover_fault_held=self._cover_fault.update(flat, move),
+            weather_frozen_since=self._weather_freeze.frozen_since,
             reachable=self._reachable,
         )
 
