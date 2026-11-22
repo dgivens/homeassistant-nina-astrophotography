@@ -208,6 +208,15 @@ function since(ms) {
     : "";
 }
 
+// `since()`, with the date when it was not today: a freeze can last days.
+function sinceDated(ms) {
+  if (!ms) return "";
+  const at = new Date(ms);
+  if (at.toDateString() === new Date(Date.now()).toDateString()) return since(ms);
+  const day = at.toLocaleDateString([], { month: "short", day: "numeric" });
+  return ` since ${day}, ${at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 class NinaWeatherCard extends HTMLElement {
   constructor() {
     super();
@@ -373,7 +382,7 @@ class NinaWeatherCard extends HTMLElement {
       // monitor may be reading the same station.
       safetyIcon = "🧊"; safetyLabelCls = "frozen";
       safetyLabel = "Weather readings frozen";
-      safetyDetail = `No reading has changed${since(frozenSince)}; the station or its driver may have stopped. The safety monitor reports safe.`;
+      safetyDetail = `No reading has changed${sinceDated(frozenSince)}; the station or its driver may have stopped. The safety monitor reports safe.`;
     } else {
       safetyIcon = "✅"; safetyLabelCls = "safe";
       safetyLabel = "Conditions safe";
@@ -384,7 +393,7 @@ class NinaWeatherCard extends HTMLElement {
     if (link.stale) {
       wxStatus = `N.I.N.A. ${link.lost ? "unreachable" : "not answering"} · last readings`;
     } else if (frozen) {
-      wxStatus = `Readings frozen${since(frozenSince)} · N.I.N.A. weather station`;
+      wxStatus = `Readings frozen${sinceDated(frozenSince)} · N.I.N.A. weather station`;
     } else if (wxConnected) {
       wxStatus = "Connected · N.I.N.A. weather station";
     } else if (unreachable) {

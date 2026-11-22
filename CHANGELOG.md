@@ -10,7 +10,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **`binary_sensor.<instance>_weather_readings_frozen`** (#305) turns `on`
   when every reading of a connected weather source has held exactly the same
-  value for an hour, which is how a station or driver that has stopped
+  value for three hours, which is how a station or driver that has stopped
   updating looks: N.I.N.A. keeps reporting it connected, and every channel
   stays available at its last value. Its `frozen_since` attribute is the
   first poll that read those values. A source reporting none of temperature,

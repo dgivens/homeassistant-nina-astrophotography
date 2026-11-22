@@ -303,7 +303,7 @@ The source's own dew point is used whenever it reports one.
 A station or driver that stops updating keeps reporting connected, with every
 channel still available at its last value, so nothing else shows it.
 `binary_sensor.<instance>_weather_readings_frozen` turns `on` once every
-channel has held exactly the same value for an hour, and its `frozen_since`
+channel has held exactly the same value for three hours, and its `frozen_since`
 attribute is the first poll that read those values. It judges only a source that reports
 at least one of temperature, humidity, dew point, pressure and sky
 temperature, since rain, wind, cloud cover and sky brightness can all hold
@@ -311,7 +311,8 @@ through a still, clear night. It starts measuring when Home Assistant does,
 and again whenever the source reconnects. The weather card shows the freeze in
 place of a safe verdict and dims the readings. The channels themselves stay
 available, so an automation that should not act on frozen readings has to
-check this sensor.
+check this sensor. Three hours, because OpenWeatherMap's free tier refreshes
+every two, and N.I.N.A. takes every channel from that one answer.
 
 Don't use weather readings to decide it's safe to image. Forecast-based
 sources such as OpenMeteo are gridded forecasts updated every 10 minutes, and

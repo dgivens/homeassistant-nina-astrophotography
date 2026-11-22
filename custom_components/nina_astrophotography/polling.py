@@ -258,8 +258,9 @@ class WeatherFreeze:
         """The first poll that read the held readings, once they have held
         for the window; `None` before that, and while nothing is judged.
 
-        Measured between polls, not against the clock, so a N.I.N.A. outage
-        freezes nothing.
+        Measured between the polls that read the source, not against the
+        clock: nothing is read while N.I.N.A. is unreachable, but the gap
+        counts once a poll reads the same values again.
         """
         if self._since is None or self._last is None:
             return None
