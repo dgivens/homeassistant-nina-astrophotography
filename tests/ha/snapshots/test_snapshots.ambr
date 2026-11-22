@@ -120,6 +120,13 @@
       'original_name': 'Sequencer running',
       'unique_id': '01JTESTENTRY0000000000000_sequencer_running',
     }),
+    dict({
+      'enabled_default': True,
+      'entity_category': None,
+      'entity_id': 'binary_sensor.n_i_n_a_weather_readings_frozen',
+      'original_name': 'Readings frozen',
+      'unique_id': '01JTESTENTRY0000000000000_weather_frozen',
+    }),
   ])
 # ---
 # name: test_registry_snapshot[button]
