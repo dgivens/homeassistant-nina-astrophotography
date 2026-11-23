@@ -101,7 +101,7 @@ def rotator_fold(angle: float, start: float, span: float) -> float:
 def sun_altitude(latitude: float, longitude: float, moment: datetime) -> float:
     """The sun's geometric altitude in degrees, east longitude positive.
 
-    The low-precision solar position, within 0.01° of astral: the stall alert
+    The low-precision solar position, within about 0.01° of astral: the stall alert
     blueprint computes the same in Jinja, so the two agree on when it is dark.
     """
     rad = math.pi / 180

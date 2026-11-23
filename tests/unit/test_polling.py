@@ -690,8 +690,17 @@ def test_a_source_back_on_the_readings_it_froze_on_is_still_frozen(
     gap: WeatherModel | None,
 ) -> None:
     """A reconnect fixes nothing upstream of a dead feed."""
-    freeze = _freeze((0, _station()), (30, gap), (60, _station()))
+    freeze = _freeze((0, _station()), (30, gap), (60, _station()), (61, _station()))
     assert freeze.frozen_since == _at(0)
+
+
+@pytest.mark.synthetic
+def test_the_first_poll_after_a_reconnect_is_not_judged() -> None:
+    """A source queried in the background serves its pre-disconnect readings
+    until its first answer.
+    """
+    down = replace(_station(), connected=False)
+    assert _freeze((0, _station()), (30, down), (60, _station())).frozen_since is None
 
 
 @pytest.mark.synthetic

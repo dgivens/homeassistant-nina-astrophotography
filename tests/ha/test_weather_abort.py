@@ -131,18 +131,16 @@ async def test_a_rig_with_a_reachable_sensor_is_reported_through_it(
     assert [call.data["title"] for call in sent] == [UNREACHABLE] * notified
 
 
-@pytest.mark.parametrize(
-    ("frozen", "resumed"), [("off", True), ("on", False)], ids=["live", "frozen"]
-)
-async def test_the_resume_waits_out_frozen_weather_readings(
-    hass: HomeAssistant, freezer, installed, frozen: str, resumed: bool
-) -> None:
-    """A monitor fed by a frozen station reads safe whatever the sky."""
+@pytest.fixture
+async def aborted(hass: HomeAssistant, freezer, installed):
+    """An abort under auto-resume, over frozen weather readings, with conditions
+    then safe for the resume delay. Returns the `sequence_start` calls.
+    """
     for entity_id, state in {
         UNSAFE: "off",
         CONNECTED: "on",
         PARKED: "on",
-        FROZEN: frozen,
+        FROZEN: "on",
     }.items():
         hass.states.async_set(entity_id, state)
     for service in ("sequence_stop", "mount_park", "camera_warm"):
@@ -153,18 +151,34 @@ async def test_the_resume_waits_out_frozen_weather_readings(
         "weather_abort.yaml",
         INPUTS | {"auto_resume": True, "weather_frozen": [FROZEN]},
     )
-
     # Not `async_block_till_done`: the run waiting to resume is a task it
     # would wait on.
     hass.states.async_set(UNSAFE, "on")
     await _settle()
     hass.states.async_set(UNSAFE, "off")
     await _settle()
-    freezer.tick(timedelta(minutes=16))
+    await _later(hass, freezer, minutes=16)
+    return started
+
+
+async def test_frozen_weather_readings_hold_the_resume(aborted) -> None:
+    """A monitor fed by a frozen station reads safe whatever the sky."""
+    assert not aborted
+
+
+async def test_the_resume_follows_once_the_readings_move_and_stay_safe(
+    hass: HomeAssistant, freezer, aborted
+) -> None:
+    hass.states.async_set(FROZEN, "off")
+    await _settle()
+    await _later(hass, freezer, minutes=16)
+    assert aborted
+
+
+async def _later(hass: HomeAssistant, freezer, minutes: float) -> None:
+    freezer.tick(timedelta(minutes=minutes))
     async_fire_time_changed(hass)
     await _settle()
-
-    assert bool(started) == resumed
 
 
 async def _settle() -> None:

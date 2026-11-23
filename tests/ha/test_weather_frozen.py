@@ -115,3 +115,20 @@ async def test_a_web_source_is_given_longer_than_a_station(
     await set_up_at(hass, config_entry, rig, "weather_openmeteo")
     await poll_after(WEATHER_FREEZE_STATION)
     assert state_of(hass, FROZEN).state == "off"
+
+
+@pytest.mark.synthetic
+async def test_the_sun_is_placed_at_the_rigs_own_site(
+    hass: HomeAssistant,
+    on_the_frozen_station_night,
+    config_entry: MockConfigEntry,
+    rig,
+    set_up_at,
+    poll_after,
+) -> None:
+    """Night over Home Assistant, afternoon at the rig: a remote rig's daylight
+    is no frozen night sky.
+    """
+    await set_up_at(hass, config_entry, rig, "frozen_station_sited_in_daylight")
+    await poll_after(WEATHER_FREEZE_LIT_NIGHT)
+    assert state_of(hass, FROZEN).state == "off"

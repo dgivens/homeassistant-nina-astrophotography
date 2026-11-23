@@ -79,7 +79,7 @@ custom_components/nina_astrophotography/
   views.py            the image proxy: a card fetches frames through Home
                       Assistant's own origin, since N.I.N.A. serves plain HTTP
   brand/              the icon and logo, which Home Assistant and HACS read
-  blueprints/         9 automation blueprints; entities come from typed
+  blueprints/         10 automation blueprints; entities come from typed
                       `!input` selectors, never hardcoded, and each is
                       instantiated for real in tests/ha/test_blueprints.py.
                       `blueprint_sync.py` installs them into

@@ -713,6 +713,13 @@ STATES: dict[str, State] = {
     "site_configured": _with_site(
         _IMAGING_GUIDING, Latitude=31.5478, Longitude=-110.2977, Elevation=1509
     ),
+    # `scheduler_waiting_lost_lock`'s frozen station with its rig sited at
+    # Siding Spring, where 03:23 UTC is early afternoon: its 80123 lx is
+    # daylight there whatever the sky over Home Assistant. Synthetic in
+    # `AstrometrySettings` alone.
+    "frozen_station_sited_in_daylight": _with_site(
+        _LOST_LOCK_AFTER_STOP, Latitude=-31.2733, Longitude=149.0644, Elevation=1165
+    ),
     # A rotator kept to the half range 300° to 120°, wrapping past 0; the
     # captured mechanical angle, 64.12°, is inside it. Synthetic in
     # `RotatorSettings` alone.

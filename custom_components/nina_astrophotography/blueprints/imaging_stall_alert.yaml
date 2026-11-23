@@ -950,7 +950,8 @@ actions:
         {%- set frozen = expand(weather_frozen) | selectattr('state', 'eq', 'on')
            | first | default(none) %}
         {%- if frozen %} · weather readings frozen since
-        {{ frozen.attributes.frozen_since }}{% endif %}
+        {{ as_timestamp(frozen.attributes.frozen_since, 0)
+           | timestamp_custom('%H:%M') }}{% endif %}
         {%- set started = now().timestamp() - sequencer_on_seconds | float(0) %}
         {%- if err and as_timestamp(err.state, 0) >= started %} · last error
         {{ err.attributes.event_type | default('none') }} at {{ err.state }}{% endif %}

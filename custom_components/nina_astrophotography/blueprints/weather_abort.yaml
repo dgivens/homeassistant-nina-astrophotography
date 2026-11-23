@@ -185,7 +185,8 @@ blueprint:
           description: >
             Optional, and recommended with any weather condition above. The
             weather source's "Readings frozen" sensor: while it is on, the
-            sequence is not restarted and you are told why. A station that has
+            restart waits, and you are told why; once the readings change,
+            conditions must stay safe for the wait again. A station that has
             stopped updating keeps reading the conditions it froze on, and a
             safety monitor fed by it keeps reading safe.
           default: []
@@ -476,15 +477,9 @@ actions:
         timeout: "06:00:00"
         continue_on_timeout: false
 
-      # Bare conditions: a false one stops the run, which is the right outcome
-      # when the only thing left to do is restart imaging.
-      - condition: state
-        entity_id: !input safety_unsafe
-        state: "off"
-      - condition: state
-        entity_id: !input safety_connected
-        state: "on"
-
+      # Frozen readings say nothing about the sky, and a monitor fed by the
+      # same station reads safe whatever it does: wait for them to move, then
+      # for conditions to stay safe again. The checks below run after it.
       - alias: "Hold the resume while the weather readings are frozen"
         if:
           - condition: template
@@ -496,13 +491,33 @@ actions:
             target:
               entity_id: !input notify_target
             data:
-              title: "🧊 Not resuming – weather readings frozen"
+              title: "🧊 Resume held – weather readings frozen"
               message: >
                 The safety monitor reads safe, but the weather readings have
                 stopped changing, and a monitor fed by the same station would
-                read safe whatever the sky. The sequence stays stopped.
+                read safe whatever the sky. The sequence restarts once they
+                change and conditions have stayed safe for the wait again.
             continue_on_error: true
-          - stop: "The weather readings are frozen."
+          - wait_template: >
+              {{ expand(weather_frozen) | selectattr('state', 'eq', 'on')
+                 | list | count == 0 }}
+            timeout: "06:00:00"
+            continue_on_timeout: false
+          - delay:
+              minutes: !input resume_delay_minutes
+
+      # Bare conditions: a false one stops the run, which is the right outcome
+      # when the only thing left to do is restart imaging.
+      - condition: state
+        entity_id: !input safety_unsafe
+        state: "off"
+      - condition: state
+        entity_id: !input safety_connected
+        state: "on"
+      - condition: template
+        value_template: >
+          {{ expand(weather_frozen) | selectattr('state', 'eq', 'on')
+             | list | count == 0 }}
 
       - alias: "Resume only if the extra conditions also hold"
         if: !input resume_conditions

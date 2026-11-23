@@ -256,8 +256,11 @@ class WeatherFreeze:
 
     Nothing resets the baseline but a change of readings: a source that
     reconnects, or a N.I.N.A. restart that reconnects it, serving the values
-    it froze on is still frozen, and the time it was down counts. Measured
-    between the polls that read the source, not against the clock.
+    it froze on is still frozen, and the time it was down counts. The first
+    poll after it comes back is not judged: a source N.I.N.A. queries in the
+    background, such as The Weather Company, serves the readings it had
+    before the disconnect until its first answer. Measured between the polls
+    that read the source, not against the clock.
     """
 
     def __init__(self, windows: FreezeWindows) -> None:
@@ -266,6 +269,7 @@ class WeatherFreeze:
         self._since: datetime | None = None
         self._last: datetime | None = None
         self._window: timedelta | None = None
+        self._settled = False
 
     def observe(
         self,
@@ -286,6 +290,7 @@ class WeatherFreeze:
         ):
             self._window = None
             return
+        self._settled = self._window is not None or self._readings is None
         if weather.channels != self._readings:
             self._readings, self._since = dict(weather.channels), read_at
         self._last = read_at
@@ -304,7 +309,12 @@ class WeatherFreeze:
         for the source's window; `None` before that, and while the source is
         not judged.
         """
-        if self._window is None or self._since is None or self._last is None:
+        if (
+            not self._settled
+            or self._window is None
+            or self._since is None
+            or self._last is None
+        ):
             return None
         return self._since if self._last - self._since >= self._window else None
 
