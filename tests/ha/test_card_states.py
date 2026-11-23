@@ -82,6 +82,10 @@ class Dump(NamedTuple):
 #
 # `weather_frozen` is `scheduler_waiting_lost_lock`, whose station served a
 # midday reading through two nights, polled again a freeze window later.
+#
+# `scheduler_waiting` and `wait_for_time` are the two captured waits that name
+# their end: Target Scheduler's for a target's window, and the sequence's own
+# Wait for Time, each dumped from inside it.
 DUMPS: dict[str, Dump] = {
     "site_configured": Dump("site_configured", None, METRIC_SYSTEM),
     "equipment_disconnected": Dump("equipment_disconnected", None, METRIC_SYSTEM),
@@ -100,6 +104,10 @@ DUMPS: dict[str, Dump] = {
         METRIC_SYSTEM,
         frozen=True,
     ),
+    "scheduler_waiting": Dump(
+        "scheduler_waiting", "inside_the_scheduler_wait", METRIC_SYSTEM
+    ),
+    "wait_for_time": Dump("wait_for_time", "inside_the_wait_for_time", METRIC_SYSTEM),
 }
 
 # Home Assistant mints these per run, so they are the one thing here that is not

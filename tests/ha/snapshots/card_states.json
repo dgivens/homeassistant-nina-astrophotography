@@ -6465,6 +6465,1512 @@
    }
   }
  },
+ "scheduler_waiting": {
+  "devices": {
+   "camera": {
+    "id": "camera",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_camera"
+     ]
+    ],
+    "name": "N.I.N.A. Camera",
+    "via_device_id": "hub"
+   },
+   "filter_wheel": {
+    "id": "filter_wheel",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_filter_wheel"
+     ]
+    ],
+    "name": "N.I.N.A. Filter Wheel",
+    "via_device_id": "hub"
+   },
+   "focuser": {
+    "id": "focuser",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_focuser"
+     ]
+    ],
+    "name": "N.I.N.A. Focuser",
+    "via_device_id": "hub"
+   },
+   "guider": {
+    "id": "guider",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_guider"
+     ]
+    ],
+    "name": "N.I.N.A. Guider",
+    "via_device_id": "hub"
+   },
+   "hub": {
+    "id": "hub",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
+     ]
+    ],
+    "name": "N.I.N.A.",
+    "via_device_id": null
+   },
+   "mount": {
+    "id": "mount",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_mount"
+     ]
+    ],
+    "name": "N.I.N.A. Mount",
+    "via_device_id": "hub"
+   },
+   "rotator": {
+    "id": "rotator",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_rotator"
+     ]
+    ],
+    "name": "N.I.N.A. Rotator",
+    "via_device_id": "hub"
+   },
+   "safety_monitor": {
+    "id": "safety_monitor",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_safety_monitor"
+     ]
+    ],
+    "name": "N.I.N.A. Safety Monitor",
+    "via_device_id": "hub"
+   },
+   "switch_device": {
+    "id": "switch_device",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_switch_device"
+     ]
+    ],
+    "name": "N.I.N.A. Switch",
+    "via_device_id": "hub"
+   },
+   "weather": {
+    "id": "weather",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_weather"
+     ]
+    ],
+    "name": "N.I.N.A. Weather",
+    "via_device_id": "hub"
+   }
+  },
+  "entities": {
+   "binary_sensor.n_i_n_a_camera_exposing": {
+    "device_id": "camera",
+    "entity_id": "binary_sensor.n_i_n_a_camera_exposing",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_is_exposing"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_failed",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_failed"
+   },
+   "binary_sensor.n_i_n_a_imaging": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_imaging",
+    "platform": "nina_astrophotography",
+    "translation_key": "imaging"
+   },
+   "binary_sensor.n_i_n_a_mount_at_home": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_at_home",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_at_home"
+   },
+   "binary_sensor.n_i_n_a_mount_at_park": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_at_park",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_at_park"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_connected": {
+    "device_id": "safety_monitor",
+    "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
+    "platform": "nina_astrophotography",
+    "translation_key": "safety_monitor_connected"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_unsafe": {
+    "device_id": "safety_monitor",
+    "entity_id": "binary_sensor.n_i_n_a_safety_monitor_unsafe",
+    "platform": "nina_astrophotography",
+    "translation_key": "safety_unsafe"
+   },
+   "binary_sensor.n_i_n_a_sequence_waiting": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_sequence_waiting",
+    "platform": "nina_astrophotography",
+    "translation_key": "scheduler_waiting"
+   },
+   "binary_sensor.n_i_n_a_sequencer_running": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_sequencer_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequencer_running"
+   },
+   "binary_sensor.n_i_n_a_weather_readings_frozen": {
+    "device_id": "weather",
+    "entity_id": "binary_sensor.n_i_n_a_weather_readings_frozen",
+    "platform": "nina_astrophotography",
+    "translation_key": "weather_frozen"
+   },
+   "button.n_i_n_a_camera_abort_exposure": {
+    "device_id": "camera",
+    "entity_id": "button.n_i_n_a_camera_abort_exposure",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_abort_exposure"
+   },
+   "button.n_i_n_a_focuser_auto_focus": {
+    "device_id": "focuser",
+    "entity_id": "button.n_i_n_a_focuser_auto_focus",
+    "platform": "nina_astrophotography",
+    "translation_key": "focuser_auto_focus"
+   },
+   "button.n_i_n_a_guider_clear_calibration": {
+    "device_id": "guider",
+    "entity_id": "button.n_i_n_a_guider_clear_calibration",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_clear_calibration"
+   },
+   "button.n_i_n_a_mount_find_home": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_find_home",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_find_home"
+   },
+   "button.n_i_n_a_mount_park": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_park",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_park"
+   },
+   "button.n_i_n_a_mount_unpark": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_unpark",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_unpark"
+   },
+   "button.n_i_n_a_sequence_start": {
+    "device_id": "hub",
+    "entity_id": "button.n_i_n_a_sequence_start",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequence_start"
+   },
+   "button.n_i_n_a_sequence_stop": {
+    "device_id": "hub",
+    "entity_id": "button.n_i_n_a_sequence_stop",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequence_stop"
+   },
+   "event.n_i_n_a_error": {
+    "device_id": "hub",
+    "entity_id": "event.n_i_n_a_error",
+    "platform": "nina_astrophotography",
+    "translation_key": "nina_error"
+   },
+   "image.n_i_n_a_last_frame": {
+    "device_id": "hub",
+    "entity_id": "image.n_i_n_a_last_frame",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_frame"
+   },
+   "number.n_i_n_a_camera_target_temperature": {
+    "device_id": "camera",
+    "entity_id": "number.n_i_n_a_camera_target_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_target_temperature"
+   },
+   "number.n_i_n_a_focuser_position": {
+    "device_id": "focuser",
+    "entity_id": "number.n_i_n_a_focuser_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "focuser_position"
+   },
+   "number.n_i_n_a_rotator_mechanical_position": {
+    "device_id": "rotator",
+    "entity_id": "number.n_i_n_a_rotator_mechanical_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_mechanical_position"
+   },
+   "number.n_i_n_a_rotator_position": {
+    "device_id": "rotator",
+    "entity_id": "number.n_i_n_a_rotator_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_position"
+   },
+   "select.n_i_n_a_filter_wheel_filter": {
+    "device_id": "filter_wheel",
+    "entity_id": "select.n_i_n_a_filter_wheel_filter",
+    "platform": "nina_astrophotography",
+    "translation_key": "filter"
+   },
+   "select.n_i_n_a_mount_tracking_rate": {
+    "device_id": "mount",
+    "entity_id": "select.n_i_n_a_mount_tracking_rate",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_tracking_rate"
+   },
+   "sensor.n_i_n_a_camera_cooler_power": {
+    "device_id": "camera",
+    "display_precision": 0,
+    "entity_id": "sensor.n_i_n_a_camera_cooler_power",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_cooler_power"
+   },
+   "sensor.n_i_n_a_camera_exposure_end": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_exposure_end",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_exposure_end"
+   },
+   "sensor.n_i_n_a_camera_gain": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_gain",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_gain"
+   },
+   "sensor.n_i_n_a_camera_offset": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_offset",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_offset"
+   },
+   "sensor.n_i_n_a_camera_state": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_state",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_state"
+   },
+   "sensor.n_i_n_a_camera_temperature": {
+    "device_id": "camera",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_camera_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_temperature"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_duration": {
+    "device_id": "focuser",
+    "display_precision": 0,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_duration",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_duration"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_filter": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_filter",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_filter"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_hfr": {
+    "device_id": "focuser",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_hfr"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_position": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_position"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_hfr": {
+    "device_id": "focuser",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_starting_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_starting_hfr"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_position": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_starting_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_starting_position"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_temperature": {
+    "device_id": "focuser",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_temperature"
+   },
+   "sensor.n_i_n_a_focuser_last_autofocus": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_last_autofocus",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_last_run"
+   },
+   "sensor.n_i_n_a_focuser_temperature": {
+    "device_id": "focuser",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_focuser_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "focuser_temperature"
+   },
+   "sensor.n_i_n_a_guider_rms_declination": {
+    "device_id": "guider",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_guider_rms_declination",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_rms_dec"
+   },
+   "sensor.n_i_n_a_guider_rms_ra": {
+    "device_id": "guider",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_guider_rms_ra",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_rms_ra"
+   },
+   "sensor.n_i_n_a_guider_rms_total": {
+    "device_id": "guider",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_guider_rms_total",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_rms_total"
+   },
+   "sensor.n_i_n_a_guider_status": {
+    "device_id": "guider",
+    "entity_id": "sensor.n_i_n_a_guider_status",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_status"
+   },
+   "sensor.n_i_n_a_last_frame_at": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_frame_at",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_frame_at"
+   },
+   "sensor.n_i_n_a_last_image_exposure": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_last_image_exposure",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_exposure"
+   },
+   "sensor.n_i_n_a_last_image_filter": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_filter",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_filter"
+   },
+   "sensor.n_i_n_a_last_image_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_last_image_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_hfr"
+   },
+   "sensor.n_i_n_a_last_image_mean_adu": {
+    "device_id": "hub",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_last_image_mean_adu",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_mean_adu"
+   },
+   "sensor.n_i_n_a_last_image_rms": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_last_image_rms",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_rms"
+   },
+   "sensor.n_i_n_a_last_image_star_count": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_star_count",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_star_count"
+   },
+   "sensor.n_i_n_a_last_image_target": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_target",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_target"
+   },
+   "sensor.n_i_n_a_mount_altitude": {
+    "device_id": "mount",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_mount_altitude",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_altitude"
+   },
+   "sensor.n_i_n_a_mount_azimuth": {
+    "device_id": "mount",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_mount_azimuth",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_azimuth"
+   },
+   "sensor.n_i_n_a_mount_declination": {
+    "device_id": "mount",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_mount_declination",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_declination"
+   },
+   "sensor.n_i_n_a_mount_right_ascension": {
+    "device_id": "mount",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_mount_right_ascension",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_right_ascension"
+   },
+   "sensor.n_i_n_a_mount_side_of_pier": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_side_of_pier",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_side_of_pier"
+   },
+   "sensor.n_i_n_a_mount_sidereal_time": {
+    "device_id": "mount",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_mount_sidereal_time",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_sidereal_time"
+   },
+   "sensor.n_i_n_a_mount_time_to_meridian_flip": {
+    "device_id": "mount",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_mount_time_to_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_time_to_meridian_flip"
+   },
+   "sensor.n_i_n_a_sequence_target": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_sequence_target",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequence_target"
+   },
+   "sensor.n_i_n_a_session_avg_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_avg_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_avg_hfr"
+   },
+   "sensor.n_i_n_a_session_avg_stars": {
+    "device_id": "hub",
+    "display_precision": 0,
+    "entity_id": "sensor.n_i_n_a_session_avg_stars",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_avg_stars"
+   },
+   "sensor.n_i_n_a_session_best_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_best_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_best_hfr"
+   },
+   "sensor.n_i_n_a_session_image_count": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_image_count",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_image_count"
+   },
+   "sensor.n_i_n_a_session_integration_time": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_integration_time",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_integration_time"
+   },
+   "sensor.n_i_n_a_session_worst_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_worst_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_worst_hfr"
+   },
+   "sensor.n_i_n_a_site_latitude": {
+    "device_id": "hub",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_site_latitude",
+    "platform": "nina_astrophotography",
+    "translation_key": "site_latitude"
+   },
+   "sensor.n_i_n_a_site_longitude": {
+    "device_id": "hub",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_site_longitude",
+    "platform": "nina_astrophotography",
+    "translation_key": "site_longitude"
+   },
+   "sensor.n_i_n_a_wait_ends_at": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_wait_ends_at",
+    "platform": "nina_astrophotography",
+    "translation_key": "wait_ends_at"
+   },
+   "sensor.n_i_n_a_weather_dew_point": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_dew_point",
+    "platform": "nina_astrophotography",
+    "translation_key": "dew_point"
+   },
+   "sensor.n_i_n_a_weather_humidity": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_humidity",
+    "platform": "nina_astrophotography",
+    "translation_key": "humidity"
+   },
+   "sensor.n_i_n_a_weather_pressure": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_pressure",
+    "platform": "nina_astrophotography",
+    "translation_key": "pressure"
+   },
+   "sensor.n_i_n_a_weather_rain_rate": {
+    "device_id": "weather",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_weather_rain_rate",
+    "platform": "nina_astrophotography",
+    "translation_key": "rain_rate"
+   },
+   "sensor.n_i_n_a_weather_sky_brightness": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_sky_brightness",
+    "platform": "nina_astrophotography",
+    "translation_key": "sky_brightness"
+   },
+   "sensor.n_i_n_a_weather_sky_temperature": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_sky_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "sky_temperature"
+   },
+   "sensor.n_i_n_a_weather_source": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_weather_source",
+    "platform": "nina_astrophotography",
+    "translation_key": "weather_source"
+   },
+   "sensor.n_i_n_a_weather_temperature": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "temperature"
+   },
+   "sensor.n_i_n_a_weather_wind_direction": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_wind_direction",
+    "platform": "nina_astrophotography",
+    "translation_key": "wind_direction"
+   },
+   "sensor.n_i_n_a_weather_wind_gust": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_wind_gust",
+    "platform": "nina_astrophotography",
+    "translation_key": "wind_gust"
+   },
+   "sensor.n_i_n_a_weather_wind_speed": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_wind_speed",
+    "platform": "nina_astrophotography",
+    "translation_key": "wind_speed"
+   },
+   "switch.n_i_n_a_camera_cooler": {
+    "device_id": "camera",
+    "entity_id": "switch.n_i_n_a_camera_cooler",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_cooler"
+   },
+   "switch.n_i_n_a_camera_dew_heater": {
+    "device_id": "camera",
+    "entity_id": "switch.n_i_n_a_camera_dew_heater",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_dew_heater"
+   },
+   "switch.n_i_n_a_guider": {
+    "device_id": "guider",
+    "entity_id": "switch.n_i_n_a_guider",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   },
+   "switch.n_i_n_a_livestack": {
+    "device_id": "hub",
+    "entity_id": "switch.n_i_n_a_livestack",
+    "platform": "nina_astrophotography",
+    "translation_key": "livestack"
+   },
+   "switch.n_i_n_a_switch_flat_panel": {
+    "device_id": "switch_device",
+    "entity_id": "switch.n_i_n_a_switch_flat_panel",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   },
+   "switch.n_i_n_a_switch_ota": {
+    "device_id": "switch_device",
+    "entity_id": "switch.n_i_n_a_switch_ota",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   }
+  },
+  "states": {
+   "binary_sensor.n_i_n_a_camera_exposing": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Exposing"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
+    "attributes": {
+     "device_class": "problem",
+     "friendly_name": "N.I.N.A. Focuser Autofocus failed",
+     "r_squared": 0.9738341138894493,
+     "r_squared_threshold": 0.7,
+     "reason": null,
+     "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_imaging": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Imaging"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_at_home": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount At home"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_mount_at_park": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_connected": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Safety Monitor Connected"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_unsafe": {
+    "attributes": {
+     "device_class": "safety",
+     "friendly_name": "N.I.N.A. Safety Monitor Unsafe"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_sequence_waiting": {
+    "attributes": {
+     "ends_at": "2026-09-15T21:05:40.808306-05:00",
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": "scheduler",
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": "2026-09-15T20:45:00-05:00"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_sequencer_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Sequencer running"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_weather_readings_frozen": {
+    "attributes": {
+     "device_class": "problem",
+     "friendly_name": "N.I.N.A. Weather Readings frozen",
+     "frozen_since": null
+    },
+    "state": "off"
+   },
+   "button.n_i_n_a_camera_abort_exposure": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Abort exposure"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_focuser_auto_focus": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Auto focus"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_guider_clear_calibration": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider Clear calibration"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_find_home": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Find home"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_park": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Park"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_unpark": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Unpark"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_sequence_start": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence start"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_sequence_stop": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence stop"
+    },
+    "state": "unknown"
+   },
+   "event.n_i_n_a_error": {
+    "attributes": {
+     "event_type": null,
+     "event_types": [
+      "platesolve_failed",
+      "camera_download_timeout",
+      "autofocus_timeout"
+     ],
+     "friendly_name": "N.I.N.A. Error"
+    },
+    "state": "unknown"
+   },
+   "image.n_i_n_a_last_frame": {
+    "attributes": {
+     "access_token": "<per run>",
+     "entity_picture": "<per run>",
+     "friendly_name": "N.I.N.A. Last frame"
+    },
+    "state": "unknown"
+   },
+   "number.n_i_n_a_camera_target_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Camera Target temperature",
+     "max": 50,
+     "min": -50,
+     "mode": "box",
+     "step": 0.5,
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "0.0"
+   },
+   "number.n_i_n_a_focuser_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Position",
+     "max": 200000,
+     "min": 0,
+     "mode": "box",
+     "step": 1,
+     "unit_of_measurement": "steps"
+    },
+    "state": "2486"
+   },
+   "number.n_i_n_a_rotator_mechanical_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Mechanical position",
+     "max": 360,
+     "min": 0,
+     "mode": "box",
+     "step": 0.01,
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "78.92"
+   },
+   "number.n_i_n_a_rotator_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Position",
+     "max": 360,
+     "min": 0,
+     "mode": "box",
+     "step": 0.01,
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "78.92"
+   },
+   "select.n_i_n_a_filter_wheel_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Filter Wheel Filter",
+     "options": [
+      "L",
+      "R",
+      "G",
+      "B",
+      "H",
+      "O",
+      "S"
+     ]
+    },
+    "state": "L"
+   },
+   "select.n_i_n_a_mount_tracking_rate": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Tracking rate",
+     "options": [
+      "Sidereal",
+      "Lunar",
+      "Solar",
+      "Stopped"
+     ]
+    },
+    "state": "Stopped"
+   },
+   "sensor.n_i_n_a_camera_cooler_power": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Cooler power",
+     "state_class": "measurement",
+     "unit_of_measurement": "%"
+    },
+    "state": "67.0"
+   },
+   "sensor.n_i_n_a_camera_exposure_end": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Camera Exposure end"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_camera_gain": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Gain",
+     "state_class": "measurement"
+    },
+    "state": "100"
+   },
+   "sensor.n_i_n_a_camera_offset": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Offset",
+     "state_class": "measurement"
+    },
+    "state": "50"
+   },
+   "sensor.n_i_n_a_camera_state": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera State"
+    },
+    "state": "Idle"
+   },
+   "sensor.n_i_n_a_camera_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Camera Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_duration": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Focuser Autofocus duration",
+     "state_class": "measurement",
+     "unit_of_measurement": "s"
+    },
+    "state": "242.4762248"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus filter"
+    },
+    "state": "L"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "1.54538174447525"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus position",
+     "state_class": "measurement",
+     "unit_of_measurement": "steps"
+    },
+    "state": "2486"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus starting HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "4.63878381457957"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus starting position",
+     "state_class": "measurement",
+     "unit_of_measurement": "steps"
+    },
+    "state": "2406"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Focuser Autofocus temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "32.0"
+   },
+   "sensor.n_i_n_a_focuser_last_autofocus": {
+    "attributes": {
+     "autofocuser": "Hocus Focus",
+     "curve": [
+      {
+       "error": 0.26065711311184303,
+       "position": 2336,
+       "value": 8.200343313736706
+      },
+      {
+       "error": 0.2397750221840036,
+       "position": 2371,
+       "value": 6.367417446247122
+      },
+      {
+       "error": 0.22337528003231744,
+       "position": 2406,
+       "value": 4.5389356735250965
+      },
+      {
+       "error": 0.20866350785339915,
+       "position": 2441,
+       "value": 2.753154426234438
+      },
+      {
+       "error": 0.11658506232898642,
+       "position": 2476,
+       "value": 1.5453817444752513
+      },
+      {
+       "error": 0.11082873953359525,
+       "position": 2511,
+       "value": 1.7084999002715895
+      },
+      {
+       "error": 0.14139331899138408,
+       "position": 2546,
+       "value": 3.148486353749906
+      },
+      {
+       "error": 0.17104534263759164,
+       "position": 2581,
+       "value": 5.163996824552981
+      },
+      {
+       "error": 0.1646521294312184,
+       "position": 2616,
+       "value": 7.2398785616021994
+      }
+     ],
+     "device_class": "timestamp",
+     "fits": [
+      {
+       "coefficients": [
+        0.0003273717798998502,
+        -1.6268196873943164,
+        2022.7908282362012
+       ],
+       "equation": "y = 0.0003273717798998502 * x^2 + -1.6268196873943164 * x + 2022.7908282362012",
+       "gaussian": null,
+       "hyperbola": null,
+       "judged": true,
+       "name": "Quadratic",
+       "r_squared": 0.9738341138894493
+      },
+      {
+       "coefficients": [
+        -0.051873804950983315,
+        129.36533368135161
+       ],
+       "equation": "y = -0.051873804950983315 * x + 129.36533368135161",
+       "gaussian": null,
+       "hyperbola": null,
+       "judged": true,
+       "name": "LeftTrend",
+       "r_squared": 0.9999591222674346
+      },
+      {
+       "coefficients": [
+        0.05221259405472512,
+        -129.51774829499928
+       ],
+       "equation": "y = 0.05221259405472512 * x + -129.51774829499928",
+       "gaussian": null,
+       "hyperbola": null,
+       "judged": true,
+       "name": "RightTrend",
+       "r_squared": 0.9931056272692941
+      }
+     ],
+     "fitted_hfr": 1.0417072119141864,
+     "fitting": "TRENDPARABOLIC",
+     "friendly_name": "N.I.N.A. Focuser Last autofocus",
+     "measured_points": 9,
+     "method": "STARHFR",
+     "minima": [
+      {
+       "name": "TrendLineIntersection",
+       "position": 2487,
+       "used": true,
+       "value": 0.34510983045109356
+      },
+      {
+       "name": "QuadraticMinimum",
+       "position": 2485,
+       "used": true,
+       "value": 1.7383045933772792
+      }
+     ],
+     "star_detector": "Hocus Focus"
+    },
+    "state": "2026-09-16T01:29:52+00:00"
+   },
+   "sensor.n_i_n_a_focuser_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Focuser Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "31.6"
+   },
+   "sensor.n_i_n_a_guider_rms_declination": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider RMS declination",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_guider_rms_ra": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider RMS RA",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_guider_rms_total": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider RMS total",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_guider_status": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider Status"
+    },
+    "state": "Stopped"
+   },
+   "sensor.n_i_n_a_last_frame_at": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Last frame at"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_exposure": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Last image exposure",
+     "state_class": "measurement",
+     "unit_of_measurement": "s"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image filter"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image HFR",
+     "recent_lights": [],
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_mean_adu": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image mean ADU",
+     "recent_frames": [],
+     "state_class": "measurement"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_rms": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image RMS",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_star_count": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image star count",
+     "state_class": "measurement"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_target": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image target"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_mount_altitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Altitude",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "31.5477777777778"
+   },
+   "sensor.n_i_n_a_mount_azimuth": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Azimuth",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "360.0"
+   },
+   "sensor.n_i_n_a_mount_declination": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Declination",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "90.0"
+   },
+   "sensor.n_i_n_a_mount_right_ascension": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Right ascension",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "12.8225"
+   },
+   "sensor.n_i_n_a_mount_side_of_pier": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Side of pier"
+    },
+    "state": "pierEast"
+   },
+   "sensor.n_i_n_a_mount_sidereal_time": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Sidereal time",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "18.8225"
+   },
+   "sensor.n_i_n_a_mount_time_to_meridian_flip": {
+    "attributes": {
+     "device_class": "duration",
+     "flip_fires_at_minutes": 10.0,
+     "friendly_name": "N.I.N.A. Mount Time to meridian flip",
+     "state_class": "measurement",
+     "unit_of_measurement": "min"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_sequence_target": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence target"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_avg_hfr": {
+    "attributes": {
+     "by_filter": {},
+     "by_target": {},
+     "friendly_name": "N.I.N.A. Session avg HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_avg_stars": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session avg stars",
+     "state_class": "measurement"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_best_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session best HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_image_count": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session image count",
+     "light_count": 0,
+     "state_class": "measurement"
+    },
+    "state": "0"
+   },
+   "sensor.n_i_n_a_session_integration_time": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Session integration time",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_session_worst_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session worst HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_site_latitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Site latitude",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_site_longitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Site longitude",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_wait_ends_at": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Wait ends at"
+    },
+    "state": "2026-09-16T02:05:40+00:00"
+   },
+   "sensor.n_i_n_a_weather_dew_point": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Dew point",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "15.6"
+   },
+   "sensor.n_i_n_a_weather_humidity": {
+    "attributes": {
+     "device_class": "humidity",
+     "friendly_name": "N.I.N.A. Weather Humidity",
+     "state_class": "measurement",
+     "unit_of_measurement": "%"
+    },
+    "state": "34.0"
+   },
+   "sensor.n_i_n_a_weather_pressure": {
+    "attributes": {
+     "device_class": "atmospheric_pressure",
+     "friendly_name": "N.I.N.A. Weather Pressure",
+     "state_class": "measurement",
+     "unit_of_measurement": "hPa"
+    },
+    "state": "962.1"
+   },
+   "sensor.n_i_n_a_weather_rain_rate": {
+    "attributes": {
+     "device_class": "precipitation_intensity",
+     "friendly_name": "N.I.N.A. Weather Rain rate",
+     "state_class": "measurement",
+     "unit_of_measurement": "mm/h"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_weather_sky_brightness": {
+    "attributes": {
+     "device_class": "illuminance",
+     "friendly_name": "N.I.N.A. Weather Sky brightness",
+     "state_class": "measurement",
+     "unit_of_measurement": "lx"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_weather_sky_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Sky temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "4.2"
+   },
+   "sensor.n_i_n_a_weather_source": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Weather source"
+    },
+    "state": "REDACTED"
+   },
+   "sensor.n_i_n_a_weather_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "33.6"
+   },
+   "sensor.n_i_n_a_weather_wind_direction": {
+    "attributes": {
+     "device_class": "wind_direction",
+     "friendly_name": "N.I.N.A. Weather Wind direction",
+     "state_class": "measurement_angle",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "157.0"
+   },
+   "sensor.n_i_n_a_weather_wind_gust": {
+    "attributes": {
+     "device_class": "wind_speed",
+     "friendly_name": "N.I.N.A. Weather Wind gust",
+     "state_class": "measurement",
+     "unit_of_measurement": "km/h"
+    },
+    "state": "10.44"
+   },
+   "sensor.n_i_n_a_weather_wind_speed": {
+    "attributes": {
+     "device_class": "wind_speed",
+     "friendly_name": "N.I.N.A. Weather Wind speed",
+     "state_class": "measurement",
+     "unit_of_measurement": "km/h"
+    },
+    "state": "4.32"
+   },
+   "switch.n_i_n_a_camera_cooler": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Cooler"
+    },
+    "state": "on"
+   },
+   "switch.n_i_n_a_camera_dew_heater": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Dew heater"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_guider": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_livestack": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Livestack"
+    },
+    "state": "on"
+   },
+   "switch.n_i_n_a_switch_flat_panel": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch Flat Panel"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_switch_ota": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch OTA"
+    },
+    "state": "on"
+   }
+  }
+ },
  "simulator_dome_following": {
   "devices": {
    "camera": {
@@ -15400,6 +16906,1632 @@
    "switch.n_i_n_a_switch_ota": {
     "attributes": {
      "friendly_name": "N.I.N.A. Switch OTA"
+    },
+    "state": "on"
+   }
+  }
+ },
+ "wait_for_time": {
+  "devices": {
+   "camera": {
+    "id": "camera",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_camera"
+     ]
+    ],
+    "name": "N.I.N.A. Camera",
+    "via_device_id": "hub"
+   },
+   "filter_wheel": {
+    "id": "filter_wheel",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_filter_wheel"
+     ]
+    ],
+    "name": "N.I.N.A. Filter Wheel",
+    "via_device_id": "hub"
+   },
+   "flat_device": {
+    "id": "flat_device",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_flat_device"
+     ]
+    ],
+    "name": "N.I.N.A. Flat Panel",
+    "via_device_id": "hub"
+   },
+   "focuser": {
+    "id": "focuser",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_focuser"
+     ]
+    ],
+    "name": "N.I.N.A. Focuser",
+    "via_device_id": "hub"
+   },
+   "guider": {
+    "id": "guider",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_guider"
+     ]
+    ],
+    "name": "N.I.N.A. Guider",
+    "via_device_id": "hub"
+   },
+   "hub": {
+    "id": "hub",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000"
+     ]
+    ],
+    "name": "N.I.N.A.",
+    "via_device_id": null
+   },
+   "mount": {
+    "id": "mount",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_mount"
+     ]
+    ],
+    "name": "N.I.N.A. Mount",
+    "via_device_id": "hub"
+   },
+   "rotator": {
+    "id": "rotator",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_rotator"
+     ]
+    ],
+    "name": "N.I.N.A. Rotator",
+    "via_device_id": "hub"
+   },
+   "safety_monitor": {
+    "id": "safety_monitor",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_safety_monitor"
+     ]
+    ],
+    "name": "N.I.N.A. Safety Monitor",
+    "via_device_id": "hub"
+   },
+   "switch_device": {
+    "id": "switch_device",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_switch_device"
+     ]
+    ],
+    "name": "N.I.N.A. Switch",
+    "via_device_id": "hub"
+   },
+   "weather": {
+    "id": "weather",
+    "identifiers": [
+     [
+      "nina_astrophotography",
+      "01JTESTENTRY0000000000000_weather"
+     ]
+    ],
+    "name": "N.I.N.A. Weather",
+    "via_device_id": "hub"
+   }
+  },
+  "entities": {
+   "binary_sensor.n_i_n_a_camera_exposing": {
+    "device_id": "camera",
+    "entity_id": "binary_sensor.n_i_n_a_camera_exposing",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_is_exposing"
+   },
+   "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover": {
+    "device_id": "flat_device",
+    "entity_id": "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover",
+    "platform": "nina_astrophotography",
+    "translation_key": "flat_panel_light_frames_behind_closed_cover"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_failed",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_failed"
+   },
+   "binary_sensor.n_i_n_a_imaging": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_imaging",
+    "platform": "nina_astrophotography",
+    "translation_key": "imaging"
+   },
+   "binary_sensor.n_i_n_a_mount_at_home": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_at_home",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_at_home"
+   },
+   "binary_sensor.n_i_n_a_mount_at_park": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_at_park",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_at_park"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "device_id": "mount",
+    "entity_id": "binary_sensor.n_i_n_a_mount_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_meridian_flip"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_reachable",
+    "platform": "nina_astrophotography",
+    "translation_key": "reachable"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "device_id": "rotator",
+    "entity_id": "binary_sensor.n_i_n_a_rotator_synced",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_synced"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_connected": {
+    "device_id": "safety_monitor",
+    "entity_id": "binary_sensor.n_i_n_a_safety_monitor_connected",
+    "platform": "nina_astrophotography",
+    "translation_key": "safety_monitor_connected"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_unsafe": {
+    "device_id": "safety_monitor",
+    "entity_id": "binary_sensor.n_i_n_a_safety_monitor_unsafe",
+    "platform": "nina_astrophotography",
+    "translation_key": "safety_unsafe"
+   },
+   "binary_sensor.n_i_n_a_sequence_waiting": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_sequence_waiting",
+    "platform": "nina_astrophotography",
+    "translation_key": "scheduler_waiting"
+   },
+   "binary_sensor.n_i_n_a_sequencer_running": {
+    "device_id": "hub",
+    "entity_id": "binary_sensor.n_i_n_a_sequencer_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequencer_running"
+   },
+   "binary_sensor.n_i_n_a_weather_readings_frozen": {
+    "device_id": "weather",
+    "entity_id": "binary_sensor.n_i_n_a_weather_readings_frozen",
+    "platform": "nina_astrophotography",
+    "translation_key": "weather_frozen"
+   },
+   "button.n_i_n_a_camera_abort_exposure": {
+    "device_id": "camera",
+    "entity_id": "button.n_i_n_a_camera_abort_exposure",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_abort_exposure"
+   },
+   "button.n_i_n_a_focuser_auto_focus": {
+    "device_id": "focuser",
+    "entity_id": "button.n_i_n_a_focuser_auto_focus",
+    "platform": "nina_astrophotography",
+    "translation_key": "focuser_auto_focus"
+   },
+   "button.n_i_n_a_guider_clear_calibration": {
+    "device_id": "guider",
+    "entity_id": "button.n_i_n_a_guider_clear_calibration",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_clear_calibration"
+   },
+   "button.n_i_n_a_mount_find_home": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_find_home",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_find_home"
+   },
+   "button.n_i_n_a_mount_park": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_park",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_park"
+   },
+   "button.n_i_n_a_mount_unpark": {
+    "device_id": "mount",
+    "entity_id": "button.n_i_n_a_mount_unpark",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_unpark"
+   },
+   "button.n_i_n_a_sequence_start": {
+    "device_id": "hub",
+    "entity_id": "button.n_i_n_a_sequence_start",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequence_start"
+   },
+   "button.n_i_n_a_sequence_stop": {
+    "device_id": "hub",
+    "entity_id": "button.n_i_n_a_sequence_stop",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequence_stop"
+   },
+   "event.n_i_n_a_error": {
+    "device_id": "hub",
+    "entity_id": "event.n_i_n_a_error",
+    "platform": "nina_astrophotography",
+    "translation_key": "nina_error"
+   },
+   "image.n_i_n_a_last_frame": {
+    "device_id": "hub",
+    "entity_id": "image.n_i_n_a_last_frame",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_frame"
+   },
+   "light.n_i_n_a_flat_panel_light": {
+    "device_id": "flat_device",
+    "entity_id": "light.n_i_n_a_flat_panel_light",
+    "platform": "nina_astrophotography",
+    "translation_key": "flat_panel_light"
+   },
+   "number.n_i_n_a_camera_target_temperature": {
+    "device_id": "camera",
+    "entity_id": "number.n_i_n_a_camera_target_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_target_temperature"
+   },
+   "number.n_i_n_a_flat_panel_brightness": {
+    "device_id": "flat_device",
+    "entity_id": "number.n_i_n_a_flat_panel_brightness",
+    "platform": "nina_astrophotography",
+    "translation_key": "flat_panel_brightness"
+   },
+   "number.n_i_n_a_focuser_position": {
+    "device_id": "focuser",
+    "entity_id": "number.n_i_n_a_focuser_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "focuser_position"
+   },
+   "number.n_i_n_a_rotator_mechanical_position": {
+    "device_id": "rotator",
+    "entity_id": "number.n_i_n_a_rotator_mechanical_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_mechanical_position"
+   },
+   "number.n_i_n_a_rotator_position": {
+    "device_id": "rotator",
+    "entity_id": "number.n_i_n_a_rotator_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "rotator_position"
+   },
+   "select.n_i_n_a_filter_wheel_filter": {
+    "device_id": "filter_wheel",
+    "entity_id": "select.n_i_n_a_filter_wheel_filter",
+    "platform": "nina_astrophotography",
+    "translation_key": "filter"
+   },
+   "select.n_i_n_a_mount_tracking_rate": {
+    "device_id": "mount",
+    "entity_id": "select.n_i_n_a_mount_tracking_rate",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_tracking_rate"
+   },
+   "sensor.n_i_n_a_camera_cooler_power": {
+    "device_id": "camera",
+    "display_precision": 0,
+    "entity_id": "sensor.n_i_n_a_camera_cooler_power",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_cooler_power"
+   },
+   "sensor.n_i_n_a_camera_exposure_end": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_exposure_end",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_exposure_end"
+   },
+   "sensor.n_i_n_a_camera_gain": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_gain",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_gain"
+   },
+   "sensor.n_i_n_a_camera_offset": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_offset",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_offset"
+   },
+   "sensor.n_i_n_a_camera_state": {
+    "device_id": "camera",
+    "entity_id": "sensor.n_i_n_a_camera_state",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_state"
+   },
+   "sensor.n_i_n_a_camera_temperature": {
+    "device_id": "camera",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_camera_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_temperature"
+   },
+   "sensor.n_i_n_a_flat_panel_cover_state": {
+    "device_id": "flat_device",
+    "entity_id": "sensor.n_i_n_a_flat_panel_cover_state",
+    "platform": "nina_astrophotography",
+    "translation_key": "flat_panel_cover_state"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_duration": {
+    "device_id": "focuser",
+    "display_precision": 0,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_duration",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_duration"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_filter": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_filter",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_filter"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_hfr": {
+    "device_id": "focuser",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_hfr"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_position": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_position"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_hfr": {
+    "device_id": "focuser",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_starting_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_starting_hfr"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_position": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_starting_position",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_starting_position"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_temperature": {
+    "device_id": "focuser",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_focuser_autofocus_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_temperature"
+   },
+   "sensor.n_i_n_a_focuser_last_autofocus": {
+    "device_id": "focuser",
+    "entity_id": "sensor.n_i_n_a_focuser_last_autofocus",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_last_run"
+   },
+   "sensor.n_i_n_a_focuser_temperature": {
+    "device_id": "focuser",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_focuser_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "focuser_temperature"
+   },
+   "sensor.n_i_n_a_guider_rms_declination": {
+    "device_id": "guider",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_guider_rms_declination",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_rms_dec"
+   },
+   "sensor.n_i_n_a_guider_rms_ra": {
+    "device_id": "guider",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_guider_rms_ra",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_rms_ra"
+   },
+   "sensor.n_i_n_a_guider_rms_total": {
+    "device_id": "guider",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_guider_rms_total",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_rms_total"
+   },
+   "sensor.n_i_n_a_guider_status": {
+    "device_id": "guider",
+    "entity_id": "sensor.n_i_n_a_guider_status",
+    "platform": "nina_astrophotography",
+    "translation_key": "guider_status"
+   },
+   "sensor.n_i_n_a_last_frame_at": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_frame_at",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_frame_at"
+   },
+   "sensor.n_i_n_a_last_image_exposure": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_last_image_exposure",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_exposure"
+   },
+   "sensor.n_i_n_a_last_image_filter": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_filter",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_filter"
+   },
+   "sensor.n_i_n_a_last_image_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_last_image_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_hfr"
+   },
+   "sensor.n_i_n_a_last_image_mean_adu": {
+    "device_id": "hub",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_last_image_mean_adu",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_mean_adu"
+   },
+   "sensor.n_i_n_a_last_image_rms": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_last_image_rms",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_rms"
+   },
+   "sensor.n_i_n_a_last_image_star_count": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_star_count",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_star_count"
+   },
+   "sensor.n_i_n_a_last_image_target": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_last_image_target",
+    "platform": "nina_astrophotography",
+    "translation_key": "last_image_target"
+   },
+   "sensor.n_i_n_a_mount_altitude": {
+    "device_id": "mount",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_mount_altitude",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_altitude"
+   },
+   "sensor.n_i_n_a_mount_azimuth": {
+    "device_id": "mount",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_mount_azimuth",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_azimuth"
+   },
+   "sensor.n_i_n_a_mount_declination": {
+    "device_id": "mount",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_mount_declination",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_declination"
+   },
+   "sensor.n_i_n_a_mount_right_ascension": {
+    "device_id": "mount",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_mount_right_ascension",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_right_ascension"
+   },
+   "sensor.n_i_n_a_mount_side_of_pier": {
+    "device_id": "mount",
+    "entity_id": "sensor.n_i_n_a_mount_side_of_pier",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_side_of_pier"
+   },
+   "sensor.n_i_n_a_mount_sidereal_time": {
+    "device_id": "mount",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_mount_sidereal_time",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_sidereal_time"
+   },
+   "sensor.n_i_n_a_mount_time_to_meridian_flip": {
+    "device_id": "mount",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_mount_time_to_meridian_flip",
+    "platform": "nina_astrophotography",
+    "translation_key": "mount_time_to_meridian_flip"
+   },
+   "sensor.n_i_n_a_sequence_target": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_sequence_target",
+    "platform": "nina_astrophotography",
+    "translation_key": "sequence_target"
+   },
+   "sensor.n_i_n_a_session_avg_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_avg_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_avg_hfr"
+   },
+   "sensor.n_i_n_a_session_avg_stars": {
+    "device_id": "hub",
+    "display_precision": 0,
+    "entity_id": "sensor.n_i_n_a_session_avg_stars",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_avg_stars"
+   },
+   "sensor.n_i_n_a_session_best_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_best_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_best_hfr"
+   },
+   "sensor.n_i_n_a_session_image_count": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_session_image_count",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_image_count"
+   },
+   "sensor.n_i_n_a_session_integration_time": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_integration_time",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_integration_time"
+   },
+   "sensor.n_i_n_a_session_worst_hfr": {
+    "device_id": "hub",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_session_worst_hfr",
+    "platform": "nina_astrophotography",
+    "translation_key": "session_worst_hfr"
+   },
+   "sensor.n_i_n_a_site_latitude": {
+    "device_id": "hub",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_site_latitude",
+    "platform": "nina_astrophotography",
+    "translation_key": "site_latitude"
+   },
+   "sensor.n_i_n_a_site_longitude": {
+    "device_id": "hub",
+    "display_precision": 4,
+    "entity_id": "sensor.n_i_n_a_site_longitude",
+    "platform": "nina_astrophotography",
+    "translation_key": "site_longitude"
+   },
+   "sensor.n_i_n_a_switch_always_on_dc1_dc1": {
+    "device_id": "switch_device",
+    "entity_id": "sensor.n_i_n_a_switch_always_on_dc1_dc1",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   },
+   "sensor.n_i_n_a_switch_pwm_dc3_dc3": {
+    "device_id": "switch_device",
+    "entity_id": "sensor.n_i_n_a_switch_pwm_dc3_dc3",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   },
+   "sensor.n_i_n_a_wait_ends_at": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_wait_ends_at",
+    "platform": "nina_astrophotography",
+    "translation_key": "wait_ends_at"
+   },
+   "sensor.n_i_n_a_weather_dew_point": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_dew_point",
+    "platform": "nina_astrophotography",
+    "translation_key": "dew_point"
+   },
+   "sensor.n_i_n_a_weather_humidity": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_humidity",
+    "platform": "nina_astrophotography",
+    "translation_key": "humidity"
+   },
+   "sensor.n_i_n_a_weather_pressure": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_pressure",
+    "platform": "nina_astrophotography",
+    "translation_key": "pressure"
+   },
+   "sensor.n_i_n_a_weather_rain_rate": {
+    "device_id": "weather",
+    "display_precision": 2,
+    "entity_id": "sensor.n_i_n_a_weather_rain_rate",
+    "platform": "nina_astrophotography",
+    "translation_key": "rain_rate"
+   },
+   "sensor.n_i_n_a_weather_sky_brightness": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_sky_brightness",
+    "platform": "nina_astrophotography",
+    "translation_key": "sky_brightness"
+   },
+   "sensor.n_i_n_a_weather_sky_temperature": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_sky_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "sky_temperature"
+   },
+   "sensor.n_i_n_a_weather_source": {
+    "device_id": "hub",
+    "entity_id": "sensor.n_i_n_a_weather_source",
+    "platform": "nina_astrophotography",
+    "translation_key": "weather_source"
+   },
+   "sensor.n_i_n_a_weather_temperature": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_temperature",
+    "platform": "nina_astrophotography",
+    "translation_key": "temperature"
+   },
+   "sensor.n_i_n_a_weather_wind_direction": {
+    "device_id": "weather",
+    "entity_id": "sensor.n_i_n_a_weather_wind_direction",
+    "platform": "nina_astrophotography",
+    "translation_key": "wind_direction"
+   },
+   "sensor.n_i_n_a_weather_wind_gust": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_wind_gust",
+    "platform": "nina_astrophotography",
+    "translation_key": "wind_gust"
+   },
+   "sensor.n_i_n_a_weather_wind_speed": {
+    "device_id": "weather",
+    "display_precision": 1,
+    "entity_id": "sensor.n_i_n_a_weather_wind_speed",
+    "platform": "nina_astrophotography",
+    "translation_key": "wind_speed"
+   },
+   "switch.n_i_n_a_camera_cooler": {
+    "device_id": "camera",
+    "entity_id": "switch.n_i_n_a_camera_cooler",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_cooler"
+   },
+   "switch.n_i_n_a_camera_dew_heater": {
+    "device_id": "camera",
+    "entity_id": "switch.n_i_n_a_camera_dew_heater",
+    "platform": "nina_astrophotography",
+    "translation_key": "camera_dew_heater"
+   },
+   "switch.n_i_n_a_flat_panel_cover": {
+    "device_id": "flat_device",
+    "entity_id": "switch.n_i_n_a_flat_panel_cover",
+    "platform": "nina_astrophotography",
+    "translation_key": "flat_panel_cover"
+   },
+   "switch.n_i_n_a_guider": {
+    "device_id": "guider",
+    "entity_id": "switch.n_i_n_a_guider",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   },
+   "switch.n_i_n_a_livestack": {
+    "device_id": "hub",
+    "entity_id": "switch.n_i_n_a_livestack",
+    "platform": "nina_astrophotography",
+    "translation_key": "livestack"
+   },
+   "switch.n_i_n_a_switch_dc4_6_dc4_6": {
+    "device_id": "switch_device",
+    "entity_id": "switch.n_i_n_a_switch_dc4_6_dc4_6",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   },
+   "switch.n_i_n_a_switch_regulated_0_13_2v_adjustable_dc2_dc2": {
+    "device_id": "switch_device",
+    "entity_id": "switch.n_i_n_a_switch_regulated_0_13_2v_adjustable_dc2_dc2",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   },
+   "switch.n_i_n_a_switch_usb_usb": {
+    "device_id": "switch_device",
+    "entity_id": "switch.n_i_n_a_switch_usb_usb",
+    "platform": "nina_astrophotography",
+    "translation_key": null
+   }
+  },
+  "states": {
+   "binary_sensor.n_i_n_a_camera_exposing": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Exposing"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_closed_cover": {
+    "attributes": {
+     "device_class": "problem",
+     "friendly_name": "N.I.N.A. Flat Panel Light frames behind closed cover"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_failed": {
+    "attributes": {
+     "device_class": "problem",
+     "friendly_name": "N.I.N.A. Focuser Autofocus failed",
+     "r_squared": 0.965802080265699,
+     "r_squared_threshold": 0.7,
+     "reason": null,
+     "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_imaging": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Imaging"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_at_home": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount At home"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_mount_at_park": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount At park"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_mount_meridian_flip": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Mount Meridian flip",
+     "slews_at": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_reachable": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Reachable"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_rotator_synced": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Synced"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_connected": {
+    "attributes": {
+     "device_class": "connectivity",
+     "friendly_name": "N.I.N.A. Safety Monitor Connected"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_safety_monitor_unsafe": {
+    "attributes": {
+     "device_class": "safety",
+     "friendly_name": "N.I.N.A. Safety Monitor Unsafe"
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_sequence_waiting": {
+    "attributes": {
+     "ends_at": "2026-11-11T18:06:18.999980-06:00",
+     "friendly_name": "N.I.N.A. Sequence waiting",
+     "kind": "time",
+     "recent_waits": [],
+     "span_seconds": null,
+     "started_at": "2026-11-11T17:57:00-06:00"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_sequencer_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Sequencer running"
+    },
+    "state": "on"
+   },
+   "binary_sensor.n_i_n_a_weather_readings_frozen": {
+    "attributes": {
+     "device_class": "problem",
+     "friendly_name": "N.I.N.A. Weather Readings frozen",
+     "frozen_since": null
+    },
+    "state": "off"
+   },
+   "button.n_i_n_a_camera_abort_exposure": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Abort exposure"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_focuser_auto_focus": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Auto focus"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_guider_clear_calibration": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider Clear calibration"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_find_home": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Find home"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_park": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Park"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_mount_unpark": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Unpark"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_sequence_start": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence start"
+    },
+    "state": "unknown"
+   },
+   "button.n_i_n_a_sequence_stop": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence stop"
+    },
+    "state": "unknown"
+   },
+   "event.n_i_n_a_error": {
+    "attributes": {
+     "event_type": null,
+     "event_types": [
+      "platesolve_failed",
+      "camera_download_timeout",
+      "autofocus_timeout"
+     ],
+     "friendly_name": "N.I.N.A. Error"
+    },
+    "state": "unknown"
+   },
+   "image.n_i_n_a_last_frame": {
+    "attributes": {
+     "access_token": "<per run>",
+     "entity_picture": "<per run>",
+     "friendly_name": "N.I.N.A. Last frame"
+    },
+    "state": "unknown"
+   },
+   "light.n_i_n_a_flat_panel_light": {
+    "attributes": {
+     "brightness": null,
+     "color_mode": null,
+     "friendly_name": "N.I.N.A. Flat Panel Light",
+     "supported_color_modes": [
+      "brightness"
+     ],
+     "supported_features": 0
+    },
+    "state": "off"
+   },
+   "number.n_i_n_a_camera_target_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Camera Target temperature",
+     "max": 50,
+     "min": -50,
+     "mode": "box",
+     "step": 0.5,
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "20.0"
+   },
+   "number.n_i_n_a_flat_panel_brightness": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Flat Panel Brightness",
+     "max": 4096.0,
+     "min": 0.0,
+     "mode": "box",
+     "step": 1
+    },
+    "state": "0.0"
+   },
+   "number.n_i_n_a_focuser_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Position",
+     "max": 200000,
+     "min": 0,
+     "mode": "box",
+     "step": 1,
+     "unit_of_measurement": "steps"
+    },
+    "state": "2282"
+   },
+   "number.n_i_n_a_rotator_mechanical_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Mechanical position",
+     "max": 360,
+     "min": 0,
+     "mode": "box",
+     "step": 0.01,
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "7.93"
+   },
+   "number.n_i_n_a_rotator_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Rotator Position",
+     "max": 360,
+     "min": 0,
+     "mode": "box",
+     "step": 0.01,
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "7.93"
+   },
+   "select.n_i_n_a_filter_wheel_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Filter Wheel Filter",
+     "options": [
+      "L",
+      "R",
+      "G",
+      "B",
+      "H",
+      "O",
+      "S"
+     ]
+    },
+    "state": "L"
+   },
+   "select.n_i_n_a_mount_tracking_rate": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Tracking rate",
+     "options": [
+      "Sidereal",
+      "Lunar",
+      "Solar",
+      "Stopped"
+     ]
+    },
+    "state": "Stopped"
+   },
+   "sensor.n_i_n_a_camera_cooler_power": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Cooler power",
+     "state_class": "measurement",
+     "unit_of_measurement": "%"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_camera_exposure_end": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Camera Exposure end"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_camera_gain": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Gain",
+     "state_class": "measurement"
+    },
+    "state": "100"
+   },
+   "sensor.n_i_n_a_camera_offset": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Offset",
+     "state_class": "measurement"
+    },
+    "state": "50"
+   },
+   "sensor.n_i_n_a_camera_state": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera State"
+    },
+    "state": "Idle"
+   },
+   "sensor.n_i_n_a_camera_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Camera Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "30.6"
+   },
+   "sensor.n_i_n_a_flat_panel_cover_state": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Flat Panel Cover state"
+    },
+    "state": "Closed"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_duration": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Focuser Autofocus duration",
+     "state_class": "measurement",
+     "unit_of_measurement": "s"
+    },
+    "state": "246.5056581"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus filter"
+    },
+    "state": "L"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "1.83221452132219"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus position",
+     "state_class": "measurement",
+     "unit_of_measurement": "steps"
+    },
+    "state": "2282"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus starting HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "1.77842339399206"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_starting_position": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Focuser Autofocus starting position",
+     "state_class": "measurement",
+     "unit_of_measurement": "steps"
+    },
+    "state": "2258"
+   },
+   "sensor.n_i_n_a_focuser_autofocus_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Focuser Autofocus temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "11.1"
+   },
+   "sensor.n_i_n_a_focuser_last_autofocus": {
+    "attributes": {
+     "autofocuser": "Hocus Focus",
+     "curve": [
+      {
+       "error": 0.2900482526339823,
+       "position": 2153,
+       "value": 9.63929857145641
+      },
+      {
+       "error": 0.31177250093354064,
+       "position": 2188,
+       "value": 6.973036733122633
+      },
+      {
+       "error": 0.3425719741092295,
+       "position": 2223,
+       "value": 4.231522473730372
+      },
+      {
+       "error": 0.2994484035525213,
+       "position": 2258,
+       "value": 2.017954854007837
+      },
+      {
+       "error": 0.22394048942523945,
+       "position": 2293,
+       "value": 1.8322145213221879
+      },
+      {
+       "error": 0.2724942125044726,
+       "position": 2328,
+       "value": 3.6254212491365876
+      },
+      {
+       "error": 0.2889441710889327,
+       "position": 2363,
+       "value": 6.133875851117139
+      },
+      {
+       "error": 0.2736567041459136,
+       "position": 2398,
+       "value": 8.821362198043525
+      },
+      {
+       "error": 0.2647980517040816,
+       "position": 2433,
+       "value": 11.376838138732973
+      }
+     ],
+     "device_class": "timestamp",
+     "fits": [
+      {
+       "coefficients": [
+        0.00043050258225490584,
+        -1.965734709613517,
+        2246.40523486346
+       ],
+       "equation": "y = 0.00043050258225490584 * x^2 + -1.965734709613517 * x + 2246.40523486346",
+       "gaussian": null,
+       "hyperbola": null,
+       "judged": true,
+       "name": "Quadratic",
+       "r_squared": 0.965802080265699
+      },
+      {
+       "coefficients": [
+        -0.07305955607130876,
+        166.86319824491218
+       ],
+       "equation": "y = -0.07305955607130876 * x + 166.86319824491218",
+       "gaussian": null,
+       "hyperbola": null,
+       "judged": true,
+       "name": "LeftTrend",
+       "r_squared": 0.9982150080834427
+      },
+      {
+       "coefficients": [
+        0.07409725094095858,
+        -168.89759612433852
+       ],
+       "equation": "y = 0.07409725094095858 * x + -168.89759612433852",
+       "gaussian": null,
+       "hyperbola": null,
+       "judged": true,
+       "name": "RightTrend",
+       "r_squared": 0.9998544521527681
+      }
+     ],
+     "fitted_hfr": 1.308648604969676,
+     "fitting": "TRENDPARABOLIC",
+     "friendly_name": "N.I.N.A. Focuser Last autofocus",
+     "measured_points": 9,
+     "method": "STARHFR",
+     "minima": [
+      {
+       "name": "TrendLineIntersection",
+       "position": 2282,
+       "used": true,
+       "value": 0.1666309517490845
+      },
+      {
+       "name": "QuadraticMinimum",
+       "position": 2283,
+       "used": true,
+       "value": 2.4506662581902674
+      }
+     ],
+     "star_detector": "Hocus Focus"
+    },
+    "state": "2026-11-11T09:27:38+00:00"
+   },
+   "sensor.n_i_n_a_focuser_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Focuser Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "17.6"
+   },
+   "sensor.n_i_n_a_guider_rms_declination": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider RMS declination",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_guider_rms_ra": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider RMS RA",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_guider_rms_total": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider RMS total",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_guider_status": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider Status"
+    },
+    "state": "Stopped"
+   },
+   "sensor.n_i_n_a_last_frame_at": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Last frame at"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_exposure": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Last image exposure",
+     "state_class": "measurement",
+     "unit_of_measurement": "s"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_filter": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image filter"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image HFR",
+     "recent_lights": [],
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_mean_adu": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image mean ADU",
+     "recent_frames": [],
+     "state_class": "measurement"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_rms": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image RMS",
+     "state_class": "measurement",
+     "unit_of_measurement": "arcsec"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_star_count": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image star count",
+     "state_class": "measurement"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_last_image_target": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Last image target"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_mount_altitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Altitude",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "31.5477777777778"
+   },
+   "sensor.n_i_n_a_mount_azimuth": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Azimuth",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_mount_declination": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Declination",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "90.0"
+   },
+   "sensor.n_i_n_a_mount_right_ascension": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Right ascension",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "2.72583333333333"
+   },
+   "sensor.n_i_n_a_mount_side_of_pier": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Side of pier"
+    },
+    "state": "pierWest"
+   },
+   "sensor.n_i_n_a_mount_sidereal_time": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Mount Sidereal time",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "20.7258333333333"
+   },
+   "sensor.n_i_n_a_mount_time_to_meridian_flip": {
+    "attributes": {
+     "device_class": "duration",
+     "flip_fires_at_minutes": 10.0,
+     "friendly_name": "N.I.N.A. Mount Time to meridian flip",
+     "state_class": "measurement",
+     "unit_of_measurement": "min"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_sequence_target": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Sequence target"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_avg_hfr": {
+    "attributes": {
+     "by_filter": {},
+     "by_target": {},
+     "friendly_name": "N.I.N.A. Session avg HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_avg_stars": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session avg stars",
+     "state_class": "measurement"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_best_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session best HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_session_image_count": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session image count",
+     "light_count": 0,
+     "state_class": "measurement"
+    },
+    "state": "0"
+   },
+   "sensor.n_i_n_a_session_integration_time": {
+    "attributes": {
+     "device_class": "duration",
+     "friendly_name": "N.I.N.A. Session integration time",
+     "state_class": "measurement",
+     "unit_of_measurement": "h"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_session_worst_hfr": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Session worst HFR",
+     "state_class": "measurement",
+     "unit_of_measurement": "px"
+    },
+    "state": "unknown"
+   },
+   "sensor.n_i_n_a_site_latitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Site latitude",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "31.54797"
+   },
+   "sensor.n_i_n_a_site_longitude": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Site longitude",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "-99.383888"
+   },
+   "sensor.n_i_n_a_switch_always_on_dc1_dc1": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch Always On DC1: DC1",
+     "state_class": "measurement"
+    },
+    "state": "1.0"
+   },
+   "sensor.n_i_n_a_switch_pwm_dc3_dc3": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch PWM DC3: DC3",
+     "state_class": "measurement"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_wait_ends_at": {
+    "attributes": {
+     "device_class": "timestamp",
+     "friendly_name": "N.I.N.A. Wait ends at"
+    },
+    "state": "2026-11-12T00:06:18+00:00"
+   },
+   "sensor.n_i_n_a_weather_dew_point": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Dew point",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "16.9"
+   },
+   "sensor.n_i_n_a_weather_humidity": {
+    "attributes": {
+     "device_class": "humidity",
+     "friendly_name": "N.I.N.A. Weather Humidity",
+     "state_class": "measurement",
+     "unit_of_measurement": "%"
+    },
+    "state": "82.0"
+   },
+   "sensor.n_i_n_a_weather_pressure": {
+    "attributes": {
+     "device_class": "atmospheric_pressure",
+     "friendly_name": "N.I.N.A. Weather Pressure",
+     "state_class": "measurement",
+     "unit_of_measurement": "hPa"
+    },
+    "state": "965.0"
+   },
+   "sensor.n_i_n_a_weather_rain_rate": {
+    "attributes": {
+     "device_class": "precipitation_intensity",
+     "friendly_name": "N.I.N.A. Weather Rain rate",
+     "state_class": "measurement",
+     "unit_of_measurement": "mm/h"
+    },
+    "state": "0.0"
+   },
+   "sensor.n_i_n_a_weather_sky_brightness": {
+    "attributes": {
+     "device_class": "illuminance",
+     "friendly_name": "N.I.N.A. Weather Sky brightness",
+     "state_class": "measurement",
+     "unit_of_measurement": "lx"
+    },
+    "state": "77.0"
+   },
+   "sensor.n_i_n_a_weather_sky_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Sky temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "-8.2"
+   },
+   "sensor.n_i_n_a_weather_source": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Weather source"
+    },
+    "state": "REDACTED"
+   },
+   "sensor.n_i_n_a_weather_temperature": {
+    "attributes": {
+     "device_class": "temperature",
+     "friendly_name": "N.I.N.A. Weather Temperature",
+     "state_class": "measurement",
+     "unit_of_measurement": "\u00b0C"
+    },
+    "state": "20.1"
+   },
+   "sensor.n_i_n_a_weather_wind_direction": {
+    "attributes": {
+     "device_class": "wind_direction",
+     "friendly_name": "N.I.N.A. Weather Wind direction",
+     "state_class": "measurement_angle",
+     "unit_of_measurement": "\u00b0"
+    },
+    "state": "207.0"
+   },
+   "sensor.n_i_n_a_weather_wind_gust": {
+    "attributes": {
+     "device_class": "wind_speed",
+     "friendly_name": "N.I.N.A. Weather Wind gust",
+     "state_class": "measurement",
+     "unit_of_measurement": "km/h"
+    },
+    "state": "2.52"
+   },
+   "sensor.n_i_n_a_weather_wind_speed": {
+    "attributes": {
+     "device_class": "wind_speed",
+     "friendly_name": "N.I.N.A. Weather Wind speed",
+     "state_class": "measurement",
+     "unit_of_measurement": "km/h"
+    },
+    "state": "0.0"
+   },
+   "switch.n_i_n_a_camera_cooler": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Cooler"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_camera_dew_heater": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Camera Dew heater"
+    },
+    "state": "on"
+   },
+   "switch.n_i_n_a_flat_panel_cover": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Flat Panel Cover"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_guider": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Guider"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_livestack": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Livestack"
+    },
+    "state": "off"
+   },
+   "switch.n_i_n_a_switch_dc4_6_dc4_6": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch DC4-6: DC4_6"
+    },
+    "state": "on"
+   },
+   "switch.n_i_n_a_switch_regulated_0_13_2v_adjustable_dc2_dc2": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch Regulated 0-13.2V adjustable DC2: DC2"
+    },
+    "state": "on"
+   },
+   "switch.n_i_n_a_switch_usb_usb": {
+    "attributes": {
+     "friendly_name": "N.I.N.A. Switch USB: USB"
     },
     "state": "on"
    }
