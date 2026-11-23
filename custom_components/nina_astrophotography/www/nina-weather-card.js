@@ -379,10 +379,10 @@ class NinaWeatherCard extends HTMLElement {
       safetyDetail = "The monitor is connected but has not reported yet";
     } else if (frozen) {
       // A safe verdict over readings that stopped changing is no comfort: the
-      // monitor may be reading the same station.
+      // monitor is often fed by the same station.
       safetyIcon = "🧊"; safetyLabelCls = "frozen";
       safetyLabel = "Weather readings frozen";
-      safetyDetail = `No reading has changed${sinceDated(frozenSince)}; the station or its driver may have stopped. The safety monitor reports safe.`;
+      safetyDetail = `No reading has changed${sinceDated(frozenSince)}. Reconnect the weather source in N.I.N.A.; if the readings still hold, the station or its feed has stopped. The safety monitor reports safe, but it may read the same station.`;
     } else {
       safetyIcon = "✅"; safetyLabelCls = "safe";
       safetyLabel = "Conditions safe";

@@ -26,7 +26,7 @@ from homeassistant.util.unit_system import (
 )
 import pytest
 
-from custom_components.nina_astrophotography.const import DOMAIN, WEATHER_FREEZE
+from custom_components.nina_astrophotography.const import DOMAIN, WEATHER_FREEZE_STATION
 from helpers import needs_node, run_node
 
 SNAPSHOTS = Path(__file__).parent / "snapshots"
@@ -223,7 +223,7 @@ async def test_the_card_harness_dump_is_current(
     if setup.lost:
         await outage()
     if setup.frozen:
-        freezer.tick(WEATHER_FREEZE)
+        freezer.tick(WEATHER_FREEZE_STATION)
         await config_entry.runtime_data.coordinator.async_refresh()
         await hass.async_block_till_done()
 

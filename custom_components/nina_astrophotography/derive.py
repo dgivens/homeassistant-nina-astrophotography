@@ -96,3 +96,32 @@ def rotator_fold(angle: float, start: float, span: float) -> float:
     """
     offset = (angle - start) % 360
     return (angle - span * math.floor(offset / span)) % 360
+
+
+def sun_altitude(latitude: float, longitude: float, moment: datetime) -> float:
+    """The sun's geometric altitude in degrees, east longitude positive.
+
+    The low-precision solar position, within 0.01° of astral: the stall alert
+    blueprint computes the same in Jinja, so the two agree on when it is dark.
+    """
+    rad = math.pi / 180
+    n = moment.timestamp() / 86400 + 2440587.5 - 2451545.0
+    g = ((357.528 + 0.9856003 * n) % 360) * rad
+    mean_longitude = (280.460 + 0.9856474 * n) % 360
+    sun_longitude = (
+        mean_longitude + 1.915 * math.sin(g) + 0.020 * math.sin(2 * g)
+    ) * rad
+    obliquity = (23.439 - 0.0000004 * n) * rad
+    declination = math.asin(math.sin(obliquity) * math.sin(sun_longitude))
+    right_ascension = (
+        math.atan2(
+            math.cos(obliquity) * math.sin(sun_longitude), math.cos(sun_longitude)
+        )
+        / rad
+    )
+    sidereal = ((18.697374558 + 24.06570982441908 * n) % 24) * 15
+    hour_angle = (sidereal + longitude - right_ascension + 180) % 360 - 180
+    sin_altitude = math.sin(latitude * rad) * math.sin(declination) + math.cos(
+        latitude * rad
+    ) * math.cos(declination) * math.cos(hour_angle * rad)
+    return math.asin(max(-1.0, min(1.0, sin_altitude))) / rad

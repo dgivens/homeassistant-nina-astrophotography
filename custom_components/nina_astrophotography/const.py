@@ -40,10 +40,14 @@ DEFAULT_ROLLOVER_HOUR = 12
 # Seconds a failing rig keeps its last data before its entities go unavailable.
 DEFAULT_OUTAGE_GRACE = 30
 # How long every reading of a weather source may hold before it counts as
-# frozen. A working station's temperature, humidity and pressure move within
-# minutes, but OpenWeatherMap's free tier refreshes only every two hours, and
-# N.I.N.A. takes every channel from that one answer.
-WEATHER_FREEZE = timedelta(hours=3)
+# frozen. A station's temperature, humidity, pressure or IR sky temperature
+# moves within an hour; N.I.N.A.'s web sources refresh every ten minutes from
+# a provider that may not; and a daytime sky brightness held after dark is
+# wrong on sight, so it gets only long enough to rule out a light on the
+# sensor.
+WEATHER_FREEZE_STATION = timedelta(hours=1)
+WEATHER_FREEZE_WEB = timedelta(hours=2)
+WEATHER_FREEZE_LIT_NIGHT = timedelta(minutes=15)
 
 # No setpoint range reaches the wire; wide enough for any cooled camera.
 CAMERA_SETPOINT_RANGE = (-50, 50)
