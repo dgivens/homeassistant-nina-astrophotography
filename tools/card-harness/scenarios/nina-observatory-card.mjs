@@ -14,6 +14,9 @@
  *
  * `dawn_flats` is the one capture of the reference rig's flat panel: a 0–4096
  * panel with its cover closed and its light off, after the flats.
+ *
+ * `scheduler_waiting` and `wait_for_time` are the two captured waits that name
+ * their end, each dumped twenty and nine minutes before it.
  */
 
 import { flipScenarios, linkScenarios, rig } from "../hass.mjs";
@@ -38,6 +41,7 @@ const BEHIND_COVER = "binary_sensor.n_i_n_a_flat_panel_light_frames_behind_close
 const REACHABLE = "binary_sensor.n_i_n_a_reachable";
 const SEQUENCER = "binary_sensor.n_i_n_a_sequencer_running";
 const IMAGE_COUNT = "sensor.n_i_n_a_session_image_count";
+const WAITING = "binary_sensor.n_i_n_a_sequence_waiting";
 
 // The cover's sensor and switch read the same cover, so a scenario moves both.
 const cover = (dump, sensor, sw) =>
@@ -73,6 +77,21 @@ const pressCover = (log, card, id) => {
   };
   card.shadowRoot.getElementById(id).click();
   coverButtons(log, card);
+};
+
+// The captured wait on `rigState`, moved in time so that now is `into` ms
+// after the read that first showed it, as it was when dumped at 0. `changes`
+// are attributes a scenario replaces, for the waits no capture holds.
+const waiting = (dump, rigState, into = 0, changes = {}) => {
+  const row = dump[rigState].states[WAITING];
+  const shift = Date.now() - into - Date.parse(row.attributes.started_at);
+  const moved = (at) => at && new Date(Date.parse(at) + shift).toISOString();
+  return rig(dump, rigState).override(WAITING, "on", {
+    ...row.attributes,
+    started_at: moved(row.attributes.started_at),
+    ends_at: moved(row.attributes.ends_at),
+    ...changes,
+  });
 };
 
 // No `draw` hook: the card has no canvas.
@@ -422,6 +441,40 @@ export const scenarios = {
   folded_sections: {
     hass: (dump) => rig(dump, UP).build(),
     folded: ["mount", "rotator", "guiding", "controls"],
+  },
+
+  // Target Scheduler waiting out a target's window: the header counts down
+  // to 21:05, and the banner says what the sequence waits for.
+  wait_scheduler: { hass: (dump) => waiting(dump, "scheduler_waiting").build() },
+
+  // The sequence's own Wait for Time.
+  wait_for_time: { hass: (dump) => waiting(dump, "wait_for_time").build() },
+
+  // A Wait for Time Span, invented on `wait_for_time`: no capture caught one
+  // running. Placed from the read that first showed it, so the countdown is
+  // the most it can have left.
+  wait_time_span: {
+    hass: (dump) => waiting(dump, "wait_for_time", 60_000, {
+      kind: "time_span", ends_at: null, span_seconds: 300,
+    }).build(),
+  },
+
+  // An altitude wait, invented the same way: nothing places its end, so no
+  // countdown.
+  wait_altitude: {
+    hass: (dump) => waiting(dump, "wait_for_time", 0, { kind: "altitude", ends_at: null }).build(),
+  },
+
+  // Half a minute past Target Scheduler's end, before a read shows the wait
+  // over: still waiting, with no countdown.
+  wait_overdue: {
+    hass: (dump) => waiting(dump, "scheduler_waiting", 20 * 60_000 + 71_000).build(),
+  },
+
+  // Folded: the header keeps the countdown.
+  wait_folded: {
+    hass: (dump) => waiting(dump, "scheduler_waiting").build(),
+    folded: ["card"],
   },
 
   // Folded headings cueing what they hide: the cooler and guider switched off

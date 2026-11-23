@@ -4,8 +4,9 @@
 cards: `nina-entity-resolver.js`, `nina-card-config.js` (the prefix and the
 visual editor's `getConfigForm()` schema), `nina-collapse.js` (the headings a
 viewer folds, remembered per browser), `nina-units.js` (readings in the
-unit HA shows them in, the meridian flip window, the camera's ADU full scale,
-and `safe()` for any rig text bound for `innerHTML`) and `nina-theme.js` (the
+unit HA shows them in, the meridian flip window, a sequence wait's countdown,
+the camera's ADU full scale, and `safe()` for any rig text bound for
+`innerHTML`) and `nina-theme.js` (the
 colours, on a dark theme or a light one). Every card resolves its entity ids
 from the registry by `translation_key` and keeps the configured instance
 prefix only as a per-entity fallback — but for `nina-site-camera-card`, which

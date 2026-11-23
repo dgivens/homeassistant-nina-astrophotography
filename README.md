@@ -200,7 +200,7 @@ type: custom:nina-observatory-card
 
 | Card | Shows | Options (all optional) |
 |---|---|---|
-| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, camera/mount/focuser readings, rotator angles, flat panel, guiding, last frame, and controls. Stop, park, and opening or closing the dome or the flat panel's cover ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | `cover_stuck_after`: seconds the flat panel's cover may read part-way before the card shows it as stuck (default 60, 20 to 600); set it a little longer than your cover takes to open or close plus the 10 s between reads |
+| `custom:nina-observatory-card` | Session summary, equipment status, meridian countdown, a countdown to the end of a sequence wait, camera/mount/focuser readings, rotator angles, flat panel, guiding, last frame, and controls. Stop, park, and opening or closing the dome or the flat panel's cover ask for confirmation; Open Dome is disabled unless the safety monitor reads safe. | `cover_stuck_after`: seconds the flat panel's cover may read part-way before the card shows it as stuck (default 60, 20 to 600); set it a little longer than your cover takes to open or close plus the 10 s between reads |
 | `custom:nina-frame-stats-card` | HFR, star count and ADU trends for the session's frames, and a per-filter breakdown | — |
 | `custom:nina-autofocus-card` | The last autofocus run: measured points, fitted curves, final position, and whether it passed your R² threshold | `temperature_delta`: flag when the focuser has drifted this many °C since the run (default: your sequence's "AF After Temperature Change" trigger, else 2) |
 | `custom:nina-image-panel-card` | The latest frame, recent frames, their statistics, and a countdown for the sub being exposed | `refresh_on_save`, `stretch`, `show_histogram`, `show_strip` (all default `true`); `strip_count` (default 6, max 20); `quality` (JPEG, default 85); `lights_only`: show only lights in the image and the strip (default `false`); a browser that presses the card's Lights only button away from this keeps its own choice, unless `show_strip` is off |
@@ -251,9 +251,10 @@ sees the same thing, and a private window forgets on reload.
 A collapsed card still shows what needs attention:
 
 - **Weather**: the safety status and the dew alert.
-- **Observatory**: a lost or unresponsive link, a meridian flip, a dome
-  shutter or flat panel cover error, a flat panel cover stuck part-way,
-  light frames behind the closed flat cover, and, while a sequence runs, a
+- **Observatory**: a sequence wait's countdown, in the header, a lost or
+  unresponsive link, a meridian flip, a dome shutter or flat panel cover
+  error, a flat panel cover stuck part-way, light frames behind the closed
+  flat cover, and, while a sequence runs, a
   disconnected camera or mount or stopped guiding. Stop Sequence, Park and
   Close Dome stay, each while it applies, and a collapsed **Controls** section
   keeps them too.

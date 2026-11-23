@@ -9,6 +9,7 @@ table would only prove itself right.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 import json
 from pathlib import Path
 
@@ -205,6 +206,98 @@ def test_a_flip_under_way_reads_as_its_phase(
     underway: dict[str, object], shown: str
 ) -> None:
     assert _run([["flipStatus", underway]]) == [shown]
+
+
+WAITING = "binary_sensor.n_i_n_a_sequence_waiting"
+
+
+def _wait_hass(dump: str, **changes: object) -> dict[str, object]:
+    row = CARD_STATES[dump]["states"][WAITING]
+    attributes = {**row["attributes"], **changes}
+    return {"states": {WAITING: {"state": row["state"], "attributes": attributes}}}
+
+
+def _ms(at: str) -> int:
+    return int(datetime.fromisoformat(at).timestamp() * 1000)
+
+
+@pytest.mark.parametrize(
+    ("rows", "now", "wait"),
+    [
+        (
+            _wait_hass("scheduler_waiting"),
+            "2026-09-16T01:45:00+00:00",
+            {"kind": "scheduler", "atMost": False, "left": 1240.808},
+        ),
+        (
+            _wait_hass("wait_for_time"),
+            "2026-11-11T23:57:00+00:00",
+            {"kind": "time", "atMost": False, "left": 558.999},
+        ),
+        (
+            _wait_hass("scheduler_waiting"),
+            "2026-09-16T02:06:00+00:00",
+            {"kind": "scheduler", "atMost": False, "left": None},
+        ),
+        # No capture caught a Wait for Time Span or an altitude wait running.
+        (
+            _wait_hass(
+                "wait_for_time", kind="time_span", ends_at=None, span_seconds=300
+            ),
+            "2026-11-11T23:58:00+00:00",
+            {"kind": "time_span", "atMost": True, "left": 240.0},
+        ),
+        (
+            _wait_hass("wait_for_time", kind="altitude", ends_at=None),
+            "2026-11-11T23:58:00+00:00",
+            {"kind": "altitude", "atMost": False, "left": None},
+        ),
+        (_wait_hass("site_configured"), "2026-09-16T01:45:00+00:00", None),
+    ],
+    ids=[
+        "Target Scheduler",
+        "Wait for Time",
+        "past its end, the read not yet in",
+        "Wait for Time Span",
+        "altitude",
+        "no wait",
+    ],
+)
+def test_a_wait_counts_down_to_the_end_it_names_or_is_placed_at(
+    rows: dict[str, object], now: str, wait: dict[str, object] | None
+) -> None:
+    [read] = _run([["sequenceWait", rows, WAITING, _ms(now)]])
+    if isinstance(read, dict):
+        del read["ends"]
+    assert read == (None if wait is None else pytest.approx(wait))
+
+
+@pytest.mark.parametrize(
+    ("wait", "shown"),
+    [
+        ({"kind": "scheduler", "left": 3846.2, "atMost": False}, "Waiting · 1:04:07"),
+        ({"kind": "time_span", "left": 246.5, "atMost": True}, "Waiting · ≤ 4:07"),
+        ({"kind": "altitude", "left": None, "atMost": False}, "Waiting"),
+    ],
+)
+def test_a_wait_counts_down_in_whole_seconds(
+    wait: dict[str, object], shown: str
+) -> None:
+    assert _run([["waitCountdown", wait]]) == [shown]
+
+
+@pytest.mark.parametrize(
+    ("kind", "shown"),
+    [
+        ("scheduler", "Target Scheduler waiting"),
+        ("time", "Wait for Time"),
+        ("time_span", "Wait for Time Span"),
+        ("altitude", "Waiting for altitude"),
+        (None, "Waiting"),
+    ],
+)
+def test_a_wait_reads_as_what_it_waits_for(kind: str | None, shown: str) -> None:
+    assert _run([["waitReason", {"kind": kind}]]) == [shown]
 
 
 @pytest.mark.parametrize(

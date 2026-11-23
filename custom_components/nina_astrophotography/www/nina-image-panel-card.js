@@ -56,7 +56,7 @@
 import { DEFAULT_PREFIX, configForm } from "./nina-card-config.js";
 import { CHEVRON, COLLAPSE_STYLE, Collapse } from "./nina-collapse.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
-import { aduFullScale, quantityIn, safe, shown } from "./nina-units.js";
+import { aduFullScale, clock, quantityIn, safe, shown } from "./nina-units.js";
 import { ON_IMAGE, THEME, applyTheme, palette } from "./nina-theme.js";
 
 const VERSION = "2.8.0";
@@ -107,17 +107,6 @@ function storeChoice(key, on, configured) {
   } catch {
     // Storage refused: memory holds it for this page.
   }
-}
-
-// `4:07`, or `1:04:07` from an hour up.
-function clock(seconds) {
-  const whole = Math.ceil(seconds);
-  const pad = (value) => String(value).padStart(2, "0");
-  const hours = Math.floor(whole / 3600);
-  const minutes = Math.floor(whole / 60) % 60;
-  return hours > 0
-    ? `${hours}:${pad(minutes)}:${pad(whole % 60)}`
-    : `${minutes}:${pad(whole % 60)}`;
 }
 
 // An absent field is undefined; the integration publishes no reading as null.

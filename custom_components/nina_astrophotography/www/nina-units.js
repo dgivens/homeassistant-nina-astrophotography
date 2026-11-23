@@ -196,6 +196,57 @@ export function flipStatus({ waiting, slewsIn }) {
     : `Waiting to flip · slews in ${Math.ceil(slewsIn)} min`;
 }
 
+/** `4:07`, or `1:04:07` from an hour up. */
+export function clock(seconds) {
+  const whole = Math.ceil(seconds);
+  const pad = (value) => String(value).padStart(2, "0");
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor(whole / 60) % 60;
+  return hours > 0
+    ? `${hours}:${pad(minutes)}:${pad(whole % 60)}`
+    : `${minutes}:${pad(whole % 60)}`;
+}
+
+/**
+ * The wait the sequence is in, from the waiting sensor `id`, or `null`.
+ * `ends` is epoch ms, `null` where nothing places it: Target Scheduler and Wait
+ * for Time name their end, and an altitude wait names none. A Wait for Time
+ * Span is placed from the read that first showed it, which can be minutes
+ * after it began, so its `ends` is the latest it can end (`atMost`). `left` is
+ * the seconds to `ends`, `null` once it has passed and a read has yet to show
+ * the wait over.
+ */
+export function sequenceWait(hass, id, now = Date.now()) {
+  const row = hass.states[id];
+  if (row?.state !== "on") return null;
+  const { kind = null, ends_at, started_at, span_seconds } = row.attributes ?? {};
+  const named = Date.parse(ends_at ?? "");
+  // `null * 1000` is 0, which would end an altitude wait as it started.
+  const spanned = Number.isFinite(span_seconds)
+    ? Date.parse(started_at ?? "") + span_seconds * 1000 : NaN;
+  const atMost = !Number.isFinite(named) && Number.isFinite(spanned);
+  const ends = Number.isFinite(named) ? named : atMost ? spanned : null;
+  return { kind, ends, atMost, left: ends > now ? (ends - now) / 1000 : null };
+}
+
+// What each kind of wait is waiting for. A kind not listed is still a wait.
+const WAITING_FOR = {
+  scheduler: "Target Scheduler waiting",
+  time: "Wait for Time",
+  time_span: "Wait for Time Span",
+  altitude: "Waiting for altitude",
+};
+
+/** A wait's kind as words: "Target Scheduler waiting", or "Waiting". */
+export function waitReason({ kind }) {
+  return WAITING_FOR[kind] ?? "Waiting";
+}
+
+/** A wait's time left: "Waiting · 1:04:07", "Waiting · ≤ 4:07", or "Waiting". */
+export function waitCountdown({ left, atMost }) {
+  return left === null ? "Waiting" : `Waiting · ${atMost ? "≤ " : ""}${clock(left)}`;
+}
+
 // The depths a camera's ADC delivers, or N.I.N.A. scales to.
 const ADC_BITS = [12, 14, 16];
 

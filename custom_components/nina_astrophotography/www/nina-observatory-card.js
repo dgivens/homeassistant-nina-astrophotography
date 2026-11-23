@@ -17,7 +17,7 @@ import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { THEME, applyTheme } from "./nina-theme.js";
 import {
   displayed, flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
-  quantity, safe, shown,
+  quantity, safe, sequenceWait, shown, waitCountdown, waitReason,
 } from "./nina-units.js";
 
 const VERSION = "2.8.0";
@@ -63,6 +63,9 @@ const COVER_MOVING = "The flat panel cover is moving";
 const COVER_SENT = "Sent; waiting for the flat panel cover to move";
 // The action refuses to open the cover of a lit panel.
 const COVER_LIT = "The flat panel light is on";
+// A wait's countdown shows seconds, and the sensor changes only as the wait
+// starts and ends.
+const WAIT_TICK_MS = 1000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -445,6 +448,7 @@ class NinaObservatoryCard extends HTMLElement {
 
   disconnectedCallback() {
     this._awaitStuck(null);
+    this._tickWait(false);
   }
 
   // Renders again in `ms`, once a part-way cover counts as stuck.
@@ -452,6 +456,17 @@ class NinaObservatoryCard extends HTMLElement {
     clearTimeout(this._stuckTimer);
     this._stuckTimer = ms > 0 && this.isConnected
       ? setTimeout(() => this._render(), ms) : undefined;
+  }
+
+  // Renders every second while a wait counts down. A render that changes
+  // nothing but the countdown patches only its text.
+  _tickWait(run) {
+    if (run && !this._waitTimer) {
+      this._waitTimer = setInterval(() => this._render(), WAIT_TICK_MS);
+    } else if (!run && this._waitTimer) {
+      clearInterval(this._waitTimer);
+      this._waitTimer = undefined;
+    }
   }
 
   // Falls back to a prefixed `slug` when nothing resolves. The select keyed
@@ -485,6 +500,13 @@ class NinaObservatoryCard extends HTMLElement {
     const frameCountId = this._eid("sensor", "session_image_count");
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
+    // Held readings are not current: the wait may be over.
+    const wait = seqRunning && !quiet
+      ? sequenceWait(h, this._eid("binary_sensor", "scheduler_waiting", "sequence_waiting"))
+      : null;
+    this._tickWait(wait?.left != null && this.isConnected);
+    const waitEnds = wait?.ends == null ? "" : ` · ${wait.atMost ? "by" : "until"} ${
+      new Date(wait.ends).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
     const focConnected = available(h, this._eid("number", "focuser_position"));
@@ -659,6 +681,7 @@ class NinaObservatoryCard extends HTMLElement {
 
     const [status, dot] = link.lost ? ["Unreachable", "dot-warn"]
       : link.stale ? ["Not answering", "dot-warn"]
+      : wait ? [waitCountdown(wait), "dot-on"]
       : seqRunning ? ["Session active", "dot-on"] : ["Standby", "dot-off"];
     // The park row, not the RA probe, which a user may disable.
     const mountStatus = !available(h, parkedId) ? ""
@@ -747,8 +770,10 @@ class NinaObservatoryCard extends HTMLElement {
     const camLost = lost(this._eid("sensor", "camera_state"));
     const mntLost = lost(parkedId);
     const worstRms = worst([rmsClass(rmsRa), rmsClass(rmsDec)]);
+    // A flip and a wait both stop guiding on purpose.
+    const guidingStopped = seqRunning && !quiet && guiding === false && !flipping && !wait;
     const guidingLevel = guided && worstRms ? worstRms
-      : seqRunning && !quiet && guiding === false && !flipping ? "warn" : null;
+      : guidingStopped ? "warn" : null;
     const cameraLevel = camLost ? "danger"
       : seqRunning && !quiet && cooling === false ? "warn" : null;
     const mountLevel = quiet && !parked ? "warn" : mntLost ? "danger" : null;
@@ -762,7 +787,7 @@ class NinaObservatoryCard extends HTMLElement {
       behindCover ? "Light frames behind the closed flat cover" : "",
       camLost ? "Camera disconnected" : "",
       mntLost ? "Mount disconnected" : "",
-      seqRunning && !quiet && gdrConnected && guiding === false && !flipping ? "Guiding stopped" : "",
+      gdrConnected && guidingStopped ? "Guiding stopped" : "",
     ].filter(Boolean);
     const faultAlert = faults.length
       ? `<div class="fault-alert">⚠️ ${faults.join(" · ")}</div>` : "";
@@ -816,8 +841,10 @@ class NinaObservatoryCard extends HTMLElement {
           ${unreachable ? linkBanner(link, canClose) : `
           <div class="session-banner">
             <div>
-              <div class="target">${seqRunning ? target : "—"}</div>
-              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${imaging ? "Imaging" : seqRunning ? "Running, not imaging" : "Sequence not running"}</div>
+              <div class="target">${seqRunning ? safe(shown(target)) : "—"}</div>
+              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${imaging ? "Imaging"
+                : wait ? `${waitReason(wait)}${waitEnds}`
+                : seqRunning ? "Running, not imaging" : "Sequence not running"}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
               ${isNaN(progress) ? "" : `
