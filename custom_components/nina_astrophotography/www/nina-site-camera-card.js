@@ -26,7 +26,7 @@ import { CHEVRON, COLLAPSE_STYLE, Collapse } from "./nina-collapse.js";
 import { safe } from "./nina-units.js";
 import { ON_IMAGE, THEME, applyTheme } from "./nina-theme.js";
 
-const VERSION = "2.7.0";
+const VERSION = "2.8.0";
 
 const DEFAULT_TITLE = "Site Cameras";
 const DEFAULT_REFRESH_SECONDS = 10;
