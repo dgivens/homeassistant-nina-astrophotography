@@ -12,12 +12,15 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.nina_astrophotography.const import (
+    CONF_WEATHER_FREEZE_STATION,
+    CONF_WEATHER_FREEZE_WEB,
+    DEFAULT_WEATHER_FREEZE_STATION,
     WEATHER_FREEZE_LIT_NIGHT,
-    WEATHER_FREEZE_STATION,
 )
 from helpers import state_of
 
 FROZEN = "binary_sensor.n_i_n_a_weather_readings_frozen"
+STATION = timedelta(minutes=DEFAULT_WEATHER_FREEZE_STATION)
 
 
 @pytest.fixture
@@ -49,7 +52,7 @@ async def frozen(
 ) -> MockConfigEntry:
     """The station polled again a freeze window after setup, unchanged."""
     await set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
-    await poll_after(WEATHER_FREEZE_STATION)
+    await poll_after(STATION)
     return config_entry
 
 
@@ -63,9 +66,7 @@ async def test_frozen_since_is_when_the_held_readings_were_first_read(
     hass: HomeAssistant, frozen: MockConfigEntry
 ) -> None:
     state = state_of(hass, FROZEN)
-    assert (
-        state.attributes["frozen_since"] == state.last_changed - WEATHER_FREEZE_STATION
-    )
+    assert state.attributes["frozen_since"] == state.last_changed - STATION
 
 
 async def test_readings_unchanged_for_less_than_the_window_do_not(
@@ -77,7 +78,7 @@ async def test_readings_unchanged_for_less_than_the_window_do_not(
     poll_after,
 ) -> None:
     await set_up_at(hass, config_entry, rig, "scheduler_waiting_lost_lock")
-    await poll_after(WEATHER_FREEZE_STATION / 2)
+    await poll_after(STATION / 2)
     assert state_of(hass, FROZEN).state == "off"
 
 
@@ -113,8 +114,34 @@ async def test_a_web_source_is_given_longer_than_a_station(
 ) -> None:
     """Open-Meteo refreshes every ten minutes from a gridded model."""
     await set_up_at(hass, config_entry, rig, "weather_openmeteo")
-    await poll_after(WEATHER_FREEZE_STATION)
+    await poll_after(STATION)
     assert state_of(hass, FROZEN).state == "off"
+
+
+@pytest.mark.parametrize(
+    ("rig_state", "option"),
+    [
+        ("scheduler_waiting_lost_lock", CONF_WEATHER_FREEZE_STATION),
+        ("weather_openmeteo", CONF_WEATHER_FREEZE_WEB),
+    ],
+    ids=["station", "web"],
+)
+async def test_each_window_is_an_option(
+    hass: HomeAssistant,
+    at_noon,
+    config_entry: MockConfigEntry,
+    rig,
+    set_up_at,
+    poll_after,
+    rig_state: str,
+    option: str,
+) -> None:
+    await set_up_at(hass, config_entry, rig, rig_state)
+    flow = await hass.config_entries.options.async_init(config_entry.entry_id)
+    await hass.config_entries.options.async_configure(flow["flow_id"], {option: 30})
+    await hass.async_block_till_done()
+    await poll_after(timedelta(minutes=30))
+    assert state_of(hass, FROZEN).state == "on"
 
 
 @pytest.mark.synthetic

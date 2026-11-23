@@ -48,8 +48,12 @@ from .const import (
     CONF_POLL_INTERVAL,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
+    CONF_WEATHER_FREEZE_STATION,
+    CONF_WEATHER_FREEZE_WEB,
     DEFAULT_OUTAGE_GRACE,
     DEFAULT_ROLLOVER_HOUR,
+    DEFAULT_WEATHER_FREEZE_STATION,
+    DEFAULT_WEATHER_FREEZE_WEB,
     DOMAIN,
     POLL_INTERVAL,
     SERVICE_CAMERA_ABORT_CAPTURE,
@@ -161,6 +165,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
     instance_name = entry.data[CONF_INSTANCE_NAME]
     rollover_hour = entry.options.get(CONF_ROLLOVER_HOUR, DEFAULT_ROLLOVER_HOUR)
     outage_grace = entry.options.get(CONF_OUTAGE_GRACE, DEFAULT_OUTAGE_GRACE)
+    freeze_station = entry.options.get(
+        CONF_WEATHER_FREEZE_STATION, DEFAULT_WEATHER_FREEZE_STATION
+    )
+    freeze_web = entry.options.get(CONF_WEATHER_FREEZE_WEB, DEFAULT_WEATHER_FREEZE_WEB)
 
     session = async_get_clientsession(hass)
     client = NinaClientV2(host, port, session)
@@ -186,6 +194,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: NinaConfigEntry) -> bool
         version=version,
         rollover_hour=rollover_hour,
         outage_grace=timedelta(seconds=outage_grace),
+        weather_freeze_station=timedelta(minutes=freeze_station),
+        weather_freeze_web=timedelta(minutes=freeze_web),
     )
 
     # ── The event socket: real-time push ─────────────────────────────────────

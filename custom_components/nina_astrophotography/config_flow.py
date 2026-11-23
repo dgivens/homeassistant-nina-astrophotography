@@ -23,10 +23,14 @@ from .const import (
     CONF_OUTAGE_GRACE,
     CONF_PORT,
     CONF_ROLLOVER_HOUR,
+    CONF_WEATHER_FREEZE_STATION,
+    CONF_WEATHER_FREEZE_WEB,
     DEFAULT_INSTANCE_NAME,
     DEFAULT_OUTAGE_GRACE,
     DEFAULT_PORT,
     DEFAULT_ROLLOVER_HOUR,
+    DEFAULT_WEATHER_FREEZE_STATION,
+    DEFAULT_WEATHER_FREEZE_WEB,
     DOMAIN,
     normalize_host,
 )
@@ -157,6 +161,20 @@ class NinaOptionsFlow(config_entries.OptionsFlowWithReload):
                         CONF_OUTAGE_GRACE,
                         default=options.get(CONF_OUTAGE_GRACE, DEFAULT_OUTAGE_GRACE),
                     ): vol.All(int, vol.Range(min=0, max=300)),
+                    vol.Optional(
+                        CONF_WEATHER_FREEZE_STATION,
+                        default=options.get(
+                            CONF_WEATHER_FREEZE_STATION, DEFAULT_WEATHER_FREEZE_STATION
+                        ),
+                    ): vol.All(int, vol.Range(min=10, max=720)),
+                    # N.I.N.A. queries a web source every ten minutes, so
+                    # anything shorter than two queries flags a working one.
+                    vol.Optional(
+                        CONF_WEATHER_FREEZE_WEB,
+                        default=options.get(
+                            CONF_WEATHER_FREEZE_WEB, DEFAULT_WEATHER_FREEZE_WEB
+                        ),
+                    ): vol.All(int, vol.Range(min=20, max=720)),
                 }
             ),
         )

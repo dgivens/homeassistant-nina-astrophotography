@@ -32,11 +32,15 @@
         "title": "N.I.N.A. Options",
         "data": {
           "rollover_hour": "Session Rollover Hour (rig local time)",
-          "outage_grace": "Outage Grace Period (seconds)"
+          "outage_grace": "Outage Grace Period (seconds)",
+          "weather_freeze_station": "Weather Station Freeze Window (minutes)",
+          "weather_freeze_web": "Web Weather Source Freeze Window (minutes)"
         },
         "data_description": {
           "rollover_hour": "The hour, in the RIG's own local time, where one session ends and the next begins. Noon by default. Set it to a real midday on site if the imaging PC's clock runs UTC, or a night's statistics split in two during its dawn flats.",
-          "outage_grace": "How long N.I.N.A. may stop answering before its entities go unavailable. Until then they keep their last values, so a dropped poll leaves no gap in history; the Reachable sensor turns off at once either way. 0 marks them unavailable on the first failed poll."
+          "outage_grace": "How long N.I.N.A. may stop answering before its entities go unavailable. Until then they keep their last values, so a dropped poll leaves no gap in history; the Reachable sensor turns off at once either way. 0 marks them unavailable on the first failed poll.",
+          "weather_freeze_station": "How long every reading of a weather station may stay exactly the same before Readings frozen turns on. An hour by default; give a station that reports in coarse steps, or a still night, longer. 10 to 720.",
+          "weather_freeze_web": "The same, for N.I.N.A.'s own web sources (OpenWeatherMap, Open-Meteo, The Weather Company, Weather Underground). N.I.N.A. queries them every ten minutes, but a provider may refresh its readings far less often; set this above your provider's refresh interval. Two hours by default; 20 to 720."
         }
       }
     }

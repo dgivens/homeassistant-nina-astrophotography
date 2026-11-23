@@ -44,9 +44,9 @@ from .const import (
     CONF_HOST,
     DEFAULT_OUTAGE_GRACE,
     DEFAULT_ROLLOVER_HOUR,
+    DEFAULT_WEATHER_FREEZE_STATION,
+    DEFAULT_WEATHER_FREEZE_WEB,
     WEATHER_FREEZE_LIT_NIGHT,
-    WEATHER_FREEZE_STATION,
-    WEATHER_FREEZE_WEB,
 )
 from .derive import flip_offset_minutes, sun_altitude
 from .device import KINDS
@@ -226,6 +226,10 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         version: VersionInfo = VersionInfo(None, None),
         rollover_hour: int = DEFAULT_ROLLOVER_HOUR,
         outage_grace: timedelta = timedelta(seconds=DEFAULT_OUTAGE_GRACE),
+        weather_freeze_station: timedelta = timedelta(
+            minutes=DEFAULT_WEATHER_FREEZE_STATION
+        ),
+        weather_freeze_web: timedelta = timedelta(minutes=DEFAULT_WEATHER_FREEZE_WEB),
     ) -> None:
         super().__init__(
             hass,
@@ -258,8 +262,8 @@ class NinaCoordinator(DataUpdateCoordinator[NinaData]):
         self._cover_fault = CoverFaultHold()
         self._weather_freeze = WeatherFreeze(
             FreezeWindows(
-                station=WEATHER_FREEZE_STATION,
-                web=WEATHER_FREEZE_WEB,
+                station=weather_freeze_station,
+                web=weather_freeze_web,
                 lit_night=WEATHER_FREEZE_LIT_NIGHT,
             )
         )

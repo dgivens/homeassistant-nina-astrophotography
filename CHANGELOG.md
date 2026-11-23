@@ -16,7 +16,8 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   N.I.N.A. keeps reporting it connected, and every channel stays available at
   its last value. Its `frozen_since` attribute is the first poll that read
   those values. The weather card shows the freeze in place of a safe verdict,
-  with what to do about it, and dims the readings.
+  with what to do about it, and dims the readings. Both the station and the
+  web source windows are options, under **Configure**.
 - **The weather readings frozen blueprint** (#305) notifies when the sensor
   turns on.
 - **The unsafe conditions abort holds its resume while the weather readings are

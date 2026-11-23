@@ -309,11 +309,18 @@ every channel has held exactly the same value for:
 - an hour, on a station: its temperature, humidity, pressure or IR sky
   temperature moves within that;
 - two hours, on one of N.I.N.A.'s own web sources (OpenWeatherMap, Open-Meteo,
-  The Weather Company, Weather Underground), which refresh every ten minutes at
-  best;
+  The Weather Company, Weather Underground). N.I.N.A. queries them every ten
+  minutes, but a provider may refresh its readings less often;
 - fifteen minutes, when the sky brightness reads over 10 lx with the sun below
   −12°: a daytime reading held into the night. The sun is placed at the rig's
   site from its N.I.N.A. profile, else at Home Assistant's location.
+
+Change the first two under **Settings → Devices & Services → N.I.N.A.
+Astrophotography → Configure → Weather Station Freeze Window** and **Web
+Weather Source Freeze Window**, in minutes. Give a station that reports in
+coarse steps longer, and set the web window above your provider's refresh
+interval, or a working source reads frozen for the last stretch of every
+refresh. The fifteen minutes is fixed.
 
 Its `frozen_since` attribute is the first poll that read those values. It
 judges only a source that reports at least one of temperature, humidity, dew

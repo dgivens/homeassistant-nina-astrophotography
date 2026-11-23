@@ -12,6 +12,7 @@ fake rig, so it is the captured corpus one mapper and one platform table later.
 Regenerating is part of the snapshot commit, the same as `entity_ids.txt`.
 """
 
+from datetime import timedelta
 import json
 from pathlib import Path
 from typing import Any, NamedTuple
@@ -26,7 +27,10 @@ from homeassistant.util.unit_system import (
 )
 import pytest
 
-from custom_components.nina_astrophotography.const import DOMAIN, WEATHER_FREEZE_STATION
+from custom_components.nina_astrophotography.const import (
+    DEFAULT_WEATHER_FREEZE_STATION,
+    DOMAIN,
+)
 from helpers import needs_node, run_node
 
 SNAPSHOTS = Path(__file__).parent / "snapshots"
@@ -223,7 +227,7 @@ async def test_the_card_harness_dump_is_current(
     if setup.lost:
         await outage()
     if setup.frozen:
-        freezer.tick(WEATHER_FREEZE_STATION)
+        freezer.tick(timedelta(minutes=DEFAULT_WEATHER_FREEZE_STATION))
         await config_entry.runtime_data.coordinator.async_refresh()
         await hass.async_block_till_done()
 

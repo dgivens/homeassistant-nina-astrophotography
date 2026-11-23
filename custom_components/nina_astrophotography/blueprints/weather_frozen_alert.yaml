@@ -8,9 +8,10 @@ blueprint:
     hours old. A safety monitor fed by the same station keeps the verdict it
     froze on: safe through a storm.
 
-    The sensor turns on once every reading has held for an hour on a station,
-    two hours on one of N.I.N.A.'s web sources, and fifteen minutes when a
-    daytime sky brightness is still reported after dusk. Reconnecting the
+    The sensor turns on once every reading has held for an hour on a station
+    and two hours on one of N.I.N.A.'s web sources (both are options of the
+    integration), and fifteen minutes when a daytime sky brightness is still
+    reported after dusk. Reconnecting the
     weather source in N.I.N.A. clears a driver that stopped reading; if the
     readings still hold, the station or its feed has stopped.
   domain: automation

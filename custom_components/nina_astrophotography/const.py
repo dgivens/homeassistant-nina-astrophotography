@@ -27,6 +27,8 @@ CONF_INSTANCE_NAME = "instance_name"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_ROLLOVER_HOUR = "rollover_hour"
 CONF_OUTAGE_GRACE = "outage_grace"
+CONF_WEATHER_FREEZE_STATION = "weather_freeze_station"
+CONF_WEATHER_FREEZE_WEB = "weather_freeze_web"
 
 DEFAULT_PORT = 1888
 DEFAULT_INSTANCE_NAME = "N.I.N.A."
@@ -39,14 +41,15 @@ POLL_INTERVAL = timedelta(seconds=10)
 DEFAULT_ROLLOVER_HOUR = 12
 # Seconds a failing rig keeps its last data before its entities go unavailable.
 DEFAULT_OUTAGE_GRACE = 30
-# How long every reading of a weather source may hold before it counts as
+# Minutes every reading of a weather source may hold before it counts as
 # frozen. A station's temperature, humidity, pressure or IR sky temperature
-# moves within an hour; N.I.N.A.'s web sources refresh every ten minutes from
-# a provider that may not; and a daytime sky brightness held after dark is
-# wrong on sight, so it gets only long enough to rule out a light on the
-# sensor.
-WEATHER_FREEZE_STATION = timedelta(hours=1)
-WEATHER_FREEZE_WEB = timedelta(hours=2)
+# moves within an hour; N.I.N.A.'s web sources query every ten minutes a
+# provider that may refresh less often. Both are options, since a slow station
+# or provider needs longer.
+DEFAULT_WEATHER_FREEZE_STATION = 60
+DEFAULT_WEATHER_FREEZE_WEB = 120
+# Not an option: a daytime sky brightness held after dark is wrong on sight,
+# so it gets only long enough to rule out a light on the sensor.
 WEATHER_FREEZE_LIT_NIGHT = timedelta(minutes=15)
 
 # No setpoint range reaches the wire; wide enough for any cooled camera.

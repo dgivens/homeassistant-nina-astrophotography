@@ -128,6 +128,8 @@ Configure**. Saving reloads the entry.
 |---|---|---|---|
 | **Session Rollover Hour** | 12 | 0–23 | The hour, on the imaging PC's clock, where one session ends and the next begins. If that clock runs UTC, set it to a real midday on site, or a night's statistics split in two. |
 | **Outage Grace Period** | 30 s | 0–300 s | How long N.I.N.A. may stop answering before its entities go `unavailable`. Until then they keep their last values. `0` marks them unavailable on the first failed poll. `binary_sensor.<instance>_reachable` turns `off` at once either way. |
+| **Weather Station Freeze Window** | 60 min | 10–720 min | How long every reading of a weather station may hold exactly the same before `binary_sensor.<instance>_weather_readings_frozen` turns `on`. Give a station that reports in coarse steps longer. |
+| **Web Weather Source Freeze Window** | 120 min | 20–720 min | The same, for N.I.N.A.'s own web sources. Set it above your provider's refresh interval: N.I.N.A. queries every ten minutes, but the provider may update less often. |
 
 ## Data updates
 
