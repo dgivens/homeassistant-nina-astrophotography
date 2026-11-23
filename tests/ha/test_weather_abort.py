@@ -1,9 +1,11 @@
-"""The abort blueprint's unreachable-rig arm, run rather than schema-checked.
+"""The abort blueprint's unreachable-rig arm and its resume, run rather than
+schema-checked.
 
 `test_blueprints.py` proves Home Assistant accepts this blueprint; these fire
-the `rig_unreachable` trigger and read which notification comes out.
+its triggers and read what comes out.
 """
 
+import asyncio
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntryState
@@ -20,14 +22,17 @@ from pytest_homeassistant_custom_component.common import (
 from custom_components.nina_astrophotography.const import DOMAIN
 
 CONNECTED = "binary_sensor.rig_safety_monitor_connected"
+UNSAFE = "binary_sensor.rig_safety_monitor_unsafe"
+PARKED = "binary_sensor.rig_mount_at_park"
+FROZEN = "binary_sensor.rig_weather_readings_frozen"
 REACHABLE = "binary_sensor.rig_reachable"
 UNREACHABLE = "⚠️ N.I.N.A. unreachable"
 
 INPUTS = {
     "nina_rig": "device-id",
-    "safety_unsafe": "binary_sensor.rig_safety_monitor_unsafe",
+    "safety_unsafe": UNSAFE,
     "safety_connected": CONNECTED,
-    "mount_parked": "binary_sensor.rig_mount_at_park",
+    "mount_parked": PARKED,
     "notify_target": ["notify.phone"],
 }
 
@@ -124,6 +129,47 @@ async def test_a_rig_with_a_reachable_sensor_is_reported_through_it(
     await _hold(hass, rows)
 
     assert [call.data["title"] for call in sent] == [UNREACHABLE] * notified
+
+
+@pytest.mark.parametrize(
+    ("frozen", "resumed"), [("off", True), ("on", False)], ids=["live", "frozen"]
+)
+async def test_the_resume_waits_out_frozen_weather_readings(
+    hass: HomeAssistant, freezer, installed, frozen: str, resumed: bool
+) -> None:
+    """A monitor fed by a frozen station reads safe whatever the sky."""
+    for entity_id, state in {
+        UNSAFE: "off",
+        CONNECTED: "on",
+        PARKED: "on",
+        FROZEN: frozen,
+    }.items():
+        hass.states.async_set(entity_id, state)
+    for service in ("sequence_stop", "mount_park", "camera_warm"):
+        async_mock_service(hass, DOMAIN, service)
+    started = async_mock_service(hass, DOMAIN, "sequence_start")
+    async_mock_service(hass, "notify", "send_message")
+    await installed(
+        "weather_abort.yaml",
+        INPUTS | {"auto_resume": True, "weather_frozen": [FROZEN]},
+    )
+
+    # Not `async_block_till_done`: the run waiting to resume is a task it
+    # would wait on.
+    hass.states.async_set(UNSAFE, "on")
+    await _settle()
+    hass.states.async_set(UNSAFE, "off")
+    await _settle()
+    freezer.tick(timedelta(minutes=16))
+    async_fire_time_changed(hass)
+    await _settle()
+
+    assert bool(started) == resumed
+
+
+async def _settle() -> None:
+    for _ in range(50):
+        await asyncio.sleep(0)
 
 
 async def _hold(hass: HomeAssistant, rows: dict) -> None:

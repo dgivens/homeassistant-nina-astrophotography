@@ -174,10 +174,27 @@ blueprint:
           name: Extra conditions before resuming
           description: >
             All must hold before the sequence restarts. Weather channels belong
-            here — they may hold a restart back, never authorise one.
+            here — they may hold a restart back, never authorise one. A frozen
+            station keeps reading the conditions it froze on, so pick its
+            sensor below too.
           default: []
           selector:
             condition:
+        weather_frozen:
+          name: Weather readings frozen
+          description: >
+            Optional, and recommended with any weather condition above. The
+            weather source's "Readings frozen" sensor: while it is on, the
+            sequence is not restarted and you are told why. A station that has
+            stopped updating keeps reading the conditions it froze on, and a
+            safety monitor fed by it keeps reading safe.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: problem
+              multiple: true
 
     notifications:
       name: Notifications
@@ -207,6 +224,7 @@ variables:
   nina_rig: !input nina_rig
   rig_reachable: !input rig_reachable
   safety_unsafe: !input safety_unsafe
+  weather_frozen: !input weather_frozen
 
 triggers:
   # Conditions became unsafe. SAFETY device class: on = problem.
@@ -466,6 +484,25 @@ actions:
       - condition: state
         entity_id: !input safety_connected
         state: "on"
+
+      - alias: "Hold the resume while the weather readings are frozen"
+        if:
+          - condition: template
+            value_template: >
+              {{ expand(weather_frozen) | selectattr('state', 'eq', 'on')
+                 | list | count > 0 }}
+        then:
+          - action: notify.send_message
+            target:
+              entity_id: !input notify_target
+            data:
+              title: "🧊 Not resuming – weather readings frozen"
+              message: >
+                The safety monitor reads safe, but the weather readings have
+                stopped changing, and a monitor fed by the same station would
+                read safe whatever the sky. The sequence stays stopped.
+            continue_on_error: true
+          - stop: "The weather readings are frozen."
 
       - alias: "Resume only if the extra conditions also hold"
         if: !input resume_conditions

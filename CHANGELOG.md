@@ -10,13 +10,21 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **`binary_sensor.<instance>_weather_readings_frozen`** (#305) turns `on`
   when every reading of a connected weather source has held exactly the same
-  value for three hours, which is how a station or driver that has stopped
-  updating looks: N.I.N.A. keeps reporting it connected, and every channel
-  stays available at its last value. Its `frozen_since` attribute is the
-  first poll that read those values. A source reporting none of temperature,
-  humidity, dew point, pressure and sky temperature is not judged. The
-  weather card shows the freeze in place of a safe verdict, and dims the
-  readings.
+  value for an hour on a station, two hours on one of N.I.N.A.'s web sources,
+  or fifteen minutes when a daytime sky brightness is still reported after
+  dusk. A station, feed or driver that stops updating looks like this:
+  N.I.N.A. keeps reporting it connected, and every channel stays available at
+  its last value. Its `frozen_since` attribute is the first poll that read
+  those values. The weather card shows the freeze in place of a safe verdict,
+  with what to do about it, and dims the readings.
+- **The weather readings frozen blueprint** (#305) notifies when the sensor
+  turns on.
+- **The unsafe conditions abort holds its resume while the weather readings are
+  frozen** (#305), and says so, once you pick the sensor in its new optional
+  input: a safety monitor fed by a frozen station reads safe whatever the sky.
+- **The imaging stall alert is not muted by an unsafe verdict over frozen
+  weather readings** (#305), once you pick the sensor in its new optional
+  input, and names the freeze in its detail.
 
 ### Changed
 

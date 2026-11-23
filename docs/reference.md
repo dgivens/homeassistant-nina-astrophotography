@@ -300,19 +300,38 @@ The weather card's dew alert and any automation on the sensor then work as
 they would with a dew point sensor.
 The source's own dew point is used whenever it reports one.
 
-A station or driver that stops updating keeps reporting connected, with every
-channel still available at its last value, so nothing else shows it.
-`binary_sensor.<instance>_weather_readings_frozen` turns `on` once every
-channel has held exactly the same value for three hours, and its `frozen_since`
-attribute is the first poll that read those values. It judges only a source that reports
-at least one of temperature, humidity, dew point, pressure and sky
-temperature, since rain, wind, cloud cover and sky brightness can all hold
-through a still, clear night. It starts measuring when Home Assistant does,
-and again whenever the source reconnects. The weather card shows the freeze in
-place of a safe verdict and dims the readings. The channels themselves stay
-available, so an automation that should not act on frozen readings has to
-check this sensor. Three hours, because OpenWeatherMap's free tier refreshes
-every two, and N.I.N.A. takes every channel from that one answer.
+A station, feed or driver that stops updating keeps reporting connected, with
+every channel still available at its last value, so nothing else shows it.
+N.I.N.A. does the same when a driver throws on every read: it serves the last
+good value. `binary_sensor.<instance>_weather_readings_frozen` turns `on` once
+every channel has held exactly the same value for:
+
+- an hour, on a station: its temperature, humidity, pressure or IR sky
+  temperature moves within that;
+- two hours, on one of N.I.N.A.'s own web sources (OpenWeatherMap, Open-Meteo,
+  The Weather Company, Weather Underground), which refresh every ten minutes at
+  best;
+- fifteen minutes, when the sky brightness reads over 10 lx with the sun below
+  −12°: a daytime reading held into the night. The sun is placed at the rig's
+  site from its N.I.N.A. profile, else at Home Assistant's location.
+
+Its `frozen_since` attribute is the first poll that read those values. It
+judges only a source that reports at least one of temperature, humidity, dew
+point, pressure and sky temperature, since rain, wind, cloud cover and sky
+brightness can all hold through a still, clear night. Every channel has to
+hold, so one stuck sensor beside working ones is not caught. A source that
+comes back from a disconnect, or a N.I.N.A. restart, on the readings it froze
+on is still frozen; Home Assistant starting measures afresh.
+
+The channels stay available, so an automation that should not act on frozen
+readings has to check this sensor. Reconnecting the weather source in N.I.N.A.
+clears a driver that stopped reading, such as N.I.N.A.'s OpenWeatherMap client
+after a network error; if the readings still hold, the station or its feed has
+stopped. The weather card shows the freeze in place of a safe verdict and dims
+the readings. The weather readings frozen blueprint notifies; the unsafe
+conditions abort holds its resume while the sensor is on, and the imaging
+stall alert stops letting an unsafe verdict mute it, once you pick the sensor
+in each.
 
 Don't use weather readings to decide it's safe to image. Forecast-based
 sources such as OpenMeteo are gridded forecasts updated every 10 minutes, and

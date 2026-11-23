@@ -108,6 +108,21 @@ blueprint:
               integration: nina_astrophotography
               domain: binary_sensor
               device_class: safety
+        weather_frozen:
+          name: Weather readings frozen
+          description: >-
+            Optional, and recommended with a safety monitor. The weather
+            source's "Readings frozen" sensor. While it is on, an unsafe verdict
+            does not mute this alert: a monitor fed by a station that has
+            stopped updating keeps the verdict it froze on, and would otherwise
+            keep this quiet all night.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: problem
+              multiple: true
               multiple: true
         mount_at_park:
           name: Mount at park
@@ -495,6 +510,7 @@ variables:
   scheduler_waiting: !input scheduler_waiting
   mount_at_park: !input mount_at_park
   safety_unsafe: !input safety_unsafe
+  weather_frozen: !input weather_frozen
   imaging: !input imaging
   last_frame_at: !input last_frame_at
   site_latitude: !input site_latitude
@@ -786,11 +802,16 @@ conditions:
           # entity reads when the monitor drops out — does NOT: testing for
           # `off` would mute the stall alarm at exactly the moment the rig lost
           # the device that would otherwise explain the silence.
+          #
+          # An unsafe verdict over frozen weather readings may be as stale as
+          # they are, so it mutes nothing.
           - alias: "Conditions are not unsafe — the abort blueprint owns that"
             condition: template
             value_template: >
               {% set monitor = expand(safety_unsafe) | first | default(none) %}
-              {{ monitor is none or monitor.state != 'on' }}
+              {{ monitor is none or monitor.state != 'on'
+                 or expand(weather_frozen) | selectattr('state', 'eq', 'on')
+                    | list | count > 0 }}
 
           # From the waits' own end times, never `last_changed`: a short span
           # flips the sensor on every pass of a retry loop, and each flip would
@@ -926,6 +947,10 @@ actions:
         {%- if flip %} · flip {{ flip.state }}{% endif %}
         {%- if af %} · autofocus failed {{ af.state }}{% endif %}
         {%- if safety %} · safety monitor connected {{ safety.state }}{% endif %}
+        {%- set frozen = expand(weather_frozen) | selectattr('state', 'eq', 'on')
+           | first | default(none) %}
+        {%- if frozen %} · weather readings frozen since
+        {{ frozen.attributes.frozen_since }}{% endif %}
         {%- set started = now().timestamp() - sequencer_on_seconds | float(0) %}
         {%- if err and as_timestamp(err.state, 0) >= started %} · last error
         {{ err.attributes.event_type | default('none') }} at {{ err.state }}{% endif %}

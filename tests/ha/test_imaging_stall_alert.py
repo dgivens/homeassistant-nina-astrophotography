@@ -67,6 +67,7 @@ SETTLE_MINUTES = DEFAULTS["settle_minutes"]
 STALLED = timedelta(minutes=QUIET_MINUTES + 5)
 
 SAFETY = "binary_sensor.rig_safety_monitor_unsafe"
+FROZEN = "binary_sensor.rig_weather_readings_frozen"
 WAITING = "binary_sensor.rig_scheduler_waiting"
 
 INPUTS = {
@@ -212,6 +213,26 @@ async def test_a_gate_decides_whether_a_quiet_rig_alerts(
         hass.states.async_remove(entity)
     else:
         hass.states.async_set(entity, state)
+
+    clock.move_to(T0 + STALLED)
+    await tick(hass, T0 + STALLED)
+
+    assert (alert(hass) is not None) is alerts
+
+
+@pytest.mark.parametrize(
+    ("frozen", "alerts"), [("off", False), ("on", True)], ids=["live", "frozen"]
+)
+async def test_an_unsafe_verdict_over_frozen_weather_readings_mutes_nothing(
+    hass: HomeAssistant, watching, frozen: str, alerts: bool
+) -> None:
+    """A monitor fed by a station that stopped updating keeps the verdict it
+    froze on, and would keep the alert quiet all night.
+    """
+    hass.states.async_set(FROZEN, frozen)
+    clock = await watching(weather_frozen=[FROZEN])
+    await start_sequence(hass, clock)
+    hass.states.async_set(SAFETY, "on")
 
     clock.move_to(T0 + STALLED)
     await tick(hass, T0 + STALLED)

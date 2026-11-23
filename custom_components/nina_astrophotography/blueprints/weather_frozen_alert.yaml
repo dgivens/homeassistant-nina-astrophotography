@@ -1,0 +1,71 @@
+blueprint:
+  name: "N.I.N.A. – Weather Readings Frozen"
+  description: >
+    Notifies when the weather source's readings stop changing while N.I.N.A.
+    still reports it connected. A station, its feed or its driver that stops
+    updating keeps every reading at its last value, so the weather card, the
+    dew and wind alerts, and any automation on the readings act on conditions
+    hours old. A safety monitor fed by the same station keeps the verdict it
+    froze on: safe through a storm.
+
+    The sensor turns on once every reading has held for an hour on a station,
+    two hours on one of N.I.N.A.'s web sources, and fifteen minutes when a
+    daytime sky brightness is still reported after dusk. Reconnecting the
+    weather source in N.I.N.A. clears a driver that stopped reading; if the
+    readings still hold, the station or its feed has stopped.
+  domain: automation
+  author: dgivens
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        weather_frozen:
+          name: Weather readings frozen
+          description: The weather source's "Readings frozen" sensor.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              device_class: problem
+
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        notify_target:
+          name: Notify
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+
+mode: single
+max_exceeded: silent
+
+variables:
+  weather_frozen: !input weather_frozen
+
+triggers:
+  # From `unavailable` too: a source that reconnects on the readings it froze
+  # on reads frozen at once. The cost is a repeat after an outage while the
+  # freeze holds.
+  - trigger: state
+    entity_id: !input weather_frozen
+    to: "on"
+
+actions:
+  - action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "🧊 Weather readings frozen"
+      message: >
+        No weather reading has changed since
+        {{ as_timestamp(state_attr(weather_frozen, 'frozen_since'), 0)
+           | timestamp_custom('%H:%M') }}, and a safety monitor fed by the same
+        station may be reading safe whatever the sky. Reconnect the weather
+        source in N.I.N.A.; if the readings still hold, the station or its feed
+        has stopped.

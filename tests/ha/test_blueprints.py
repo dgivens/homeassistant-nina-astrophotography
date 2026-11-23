@@ -78,6 +78,10 @@ REQUIRED: dict[str, dict[str, object]] = {
         "safety_connected": "binary_sensor.rig_safety_monitor_connected",
         "mount_parked": "binary_sensor.rig_mount_at_park",
     },
+    "weather_frozen_alert.yaml": {
+        "weather_frozen": "binary_sensor.rig_weather_readings_frozen",
+        "notify_target": ["notify.phone"],
+    },
 }
 
 # Every optional input, set away from its default so the branches it gates are
@@ -92,6 +96,7 @@ OPTIONAL: dict[str, dict[str, object]] = {
         "site_latitude": ["sensor.rig_site_latitude"],
         "site_longitude": ["sensor.rig_site_longitude"],
         "safety_unsafe": ["binary_sensor.rig_safety_monitor_unsafe"],
+        "weather_frozen": ["binary_sensor.rig_weather_readings_frozen"],
         "last_image_filter": ["sensor.rig_last_image_filter"],
         "guider_status": ["sensor.rig_guider_status"],
         "guider_rms": ["sensor.rig_guider_rms_total"],
@@ -132,6 +137,7 @@ OPTIONAL: dict[str, dict[str, object]] = {
     },
     "weather_abort.yaml": {
         "rig_reachable": ["binary_sensor.rig_reachable"],
+        "weather_frozen": ["binary_sensor.rig_weather_readings_frozen"],
         "close_dome": True,
         "dome_shutter": ["sensor.rig_dome_shutter_status"],
         "close_timeout_minutes": 10,
@@ -145,6 +151,7 @@ OPTIONAL: dict[str, dict[str, object]] = {
             },
         ],
     },
+    "weather_frozen_alert.yaml": {},
 }
 
 
@@ -227,6 +234,7 @@ RELEASED: dict[str, frozenset[str]] = {
             "settle_minutes",
             "site_latitude",
             "site_longitude",
+            "weather_frozen",
         }
     ),
     "meridian_flip_warning.yaml": frozenset(
@@ -277,8 +285,10 @@ RELEASED: dict[str, frozenset[str]] = {
             "stop_sequence",
             "warm_camera",
             "warming_minutes",
+            "weather_frozen",
         }
     ),
+    "weather_frozen_alert.yaml": frozenset({"notify_target", "weather_frozen"}),
 }
 
 
@@ -333,6 +343,7 @@ RELEASED_REQUIRED: dict[str, frozenset[str]] = {
     "weather_abort.yaml": frozenset(
         {"mount_parked", "nina_rig", "safety_connected", "safety_unsafe"}
     ),
+    "weather_frozen_alert.yaml": frozenset({"notify_target", "weather_frozen"}),
 }
 
 
