@@ -304,6 +304,14 @@ def inside_the_wait_for_time(freezer):
 
 
 @pytest.fixture
+def inside_the_altitude_wait(freezer):
+    """19:58 on the rig, as `simulator_altitude_wait` was captured: 24 minutes
+    before the 20:22 N.I.N.A. expects its Wait for Sun Altitude to end.
+    """
+    freezer.move_to("2026-11-24T01:58:00+00:00")
+
+
+@pytest.fixture
 def set_up_at():
     """Set the entry up with the rig ALREADY in a state.
 

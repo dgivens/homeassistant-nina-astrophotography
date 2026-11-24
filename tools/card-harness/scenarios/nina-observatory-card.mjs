@@ -17,6 +17,8 @@
  *
  * `scheduler_waiting` and `wait_for_time` are the two captured waits that name
  * their end, each dumped twenty and nine minutes before it.
+ * `simulator_altitude_wait` is the test VM's Wait for Sun Altitude, dumped 24
+ * minutes before the minute N.I.N.A. expects it to end.
  */
 
 import { flipScenarios, linkScenarios, rig } from "../hass.mjs";
@@ -470,10 +472,20 @@ export const scenarios = {
     }).build(),
   },
 
-  // An altitude wait, invented the same way: nothing places its end, so no
-  // countdown.
-  wait_altitude: {
-    hass: (dump) => waiting(dump, "wait_for_time", 0, { kind: "altitude", ends_at: null }).build(),
+  // An altitude wait, whose end N.I.N.A. expects to the minute: the countdown
+  // is in minutes, and marked approximate.
+  wait_altitude: { hass: (dump) => waiting(dump, "simulator_altitude_wait").build() },
+
+  // The same wait ten minutes past that minute, still running: N.I.N.A.'s
+  // estimate is only that, so no countdown and no end.
+  wait_altitude_overrun: {
+    hass: (dump) => waiting(dump, "simulator_altitude_wait", 34 * 60_000).build(),
+  },
+
+  // An altitude wait N.I.N.A. places no end for (`--`), invented on the same
+  // capture, whose own wait has one: no countdown.
+  wait_altitude_unplaced: {
+    hass: (dump) => waiting(dump, "simulator_altitude_wait", 0, { ends_at: null }).build(),
   },
 
   // Half a minute past Target Scheduler's end, before a read shows the wait

@@ -21,6 +21,8 @@
     `NinaEvent.data` keeps scalars only.
   - Flat-panel brightness range and mount tracking modes are per-device;
     never hardcoded.
+  - An altitude wait's `ExpectedTime` is display text with no date; `--`, the
+    localized "Now" and a trailing `⌛` place no end.
 
 A device block is mapped whenever present, connected or not: the coordinator
 keeps the "has ever carried a `DeviceId`" latch; this module is stateless.
@@ -121,6 +123,17 @@ _TIMESPAN = re.compile(
     r"^(?P<sign>-)?(?:(?P<days>\d+)\.)?(?P<hours>\d{1,2}):"
     r"(?P<minutes>\d{2}):(?P<seconds>\d{2}(?:\.\d+)?)$"
 )
+
+# An altitude wait's `ExpectedTime`, a DateTime formatted "t". N.I.N.A. runs
+# under the invariant culture, which makes it "HH:mm"; a 12-hour form is read
+# too. `⌛` is appended while N.I.N.A. recalculates, so it fails the match.
+_SHORT_TIME = re.compile(
+    r"^(?P<hour>\d{1,2})[:.](?P<minute>\d{2})(?:\s*(?P<half>[AaPp])\.?\s*[Mm]\.?)?$"
+)
+# How far past its estimate an altitude wait is still read as today's.
+# N.I.N.A. estimates the sun and moon once a night, so a wait can run on past
+# the minute it names, and rolling that over would count down a day.
+_ESTIMATE_OVERRUN = timedelta(hours=1)
 
 # The only method whose focus points are HFR in pixels. An allowlist, so an
 # unknown method's numbers are never published as pixels.
@@ -697,7 +710,33 @@ def map_event(
     )
 
 
-def _sequence_wait(wire: dict) -> SequenceWait | None:
+def _expected_time(
+    raw: Any, read_at: datetime | None, offset: timedelta | None
+) -> datetime | None:
+    """The instant an altitude wait's `ExpectedTime` names, in the rig's zone.
+
+    The text carries no date, so it is the occurrence in the day that starts
+    `_ESTIMATE_OVERRUN` before the read. `None` for anything but a time, or
+    with no read time or rig offset to place it.
+    """
+    match = _SHORT_TIME.match(raw.strip()) if isinstance(raw, str) else None
+    if match is None or read_at is None or offset is None:
+        return None
+    hour, minute = int(match["hour"]), int(match["minute"])
+    if match["half"] is not None:
+        if not 1 <= hour <= 12:
+            return None
+        hour = hour % 12 + (12 if match["half"] in "Pp" else 0)
+    if hour > 23 or minute > 59:
+        return None
+    earliest = read_at.astimezone(timezone(offset)) - _ESTIMATE_OVERRUN
+    named = earliest.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return earliest + (named - earliest) % timedelta(days=1)
+
+
+def _sequence_wait(
+    wire: dict, read_at: datetime | None, offset: timedelta | None
+) -> SequenceWait | None:
     """A wait instruction, recognised by the fields the serializer adds for each
     type rather than by its Name, which is display text.
 
@@ -712,11 +751,21 @@ def _sequence_wait(wire: dict) -> SequenceWait | None:
             kind="time_span", ends=None, span_seconds=_number(wire, "Delay")
         )
     if "CurrentAltitude" in wire and "ExpectedTime" in wire:
-        return SequenceWait(kind="altitude", ends=None)
+        return SequenceWait(
+            kind="altitude",
+            ends=_expected_time(wire.get("ExpectedTime"), read_at, offset),
+        )
     return None
 
 
-def _sequence_node(wire: dict, fallback: str, *, item: bool = False) -> SequenceNode:
+def _sequence_node(
+    wire: dict,
+    fallback: str,
+    read_at: datetime | None,
+    offset: timedelta | None,
+    *,
+    item: bool = False,
+) -> SequenceNode:
     name = _text(wire, "Name")
     iterations = _dig(wire, "Iterations")
     return SequenceNode(
@@ -730,18 +779,26 @@ def _sequence_node(wire: dict, fallback: str, *, item: bool = False) -> Sequence
         if "DeltaTemperature" in wire
         else None,
         children=tuple(
-            _sequence_node(child, key, item=key == "Items")
+            _sequence_node(child, key, read_at, offset, item=key == "Items")
             for key in _SEQUENCE_CHILDREN
             for child in wire.get(key) or ()
             if isinstance(child, dict)
         ),
-        wait=_sequence_wait(wire) if item else None,
+        wait=_sequence_wait(wire, read_at, offset) if item else None,
     )
 
 
-def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
+def map_sequence(
+    wire: list[dict] | None,
+    *,
+    read_at: datetime | None = None,
+    rig_offset: timedelta | None = None,
+) -> SequenceNode | None:
     """`/sequence/json` answers a list of top-level nodes, so the tree gets a
     synthetic root. An unloaded sequence answers `""` and no tree.
+
+    `read_at` and `rig_offset` place an altitude wait's dateless, rig-local
+    `ExpectedTime`; without both it names no end.
     """
     if not isinstance(wire, list):
         return None
@@ -752,7 +809,7 @@ def map_sequence(wire: list[dict] | None) -> SequenceNode | None:
         target_name=None,
         refocus_temperature=None,
         children=tuple(
-            _sequence_node(node, "GlobalTriggers")
+            _sequence_node(node, "GlobalTriggers", read_at, rig_offset)
             for node in wire
             if isinstance(node, dict)
         ),

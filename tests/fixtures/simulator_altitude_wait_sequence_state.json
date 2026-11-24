@@ -1,0 +1,226 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": []
+    },
+    {
+      "Triggers": [],
+      "Status": "FINISHED",
+      "Conditions": [],
+      "Items": [],
+      "Name": "Start_Container",
+      "Iterations": 0
+    },
+    {
+      "Triggers": [],
+      "Status": "RUNNING",
+      "Conditions": [],
+      "Items": [
+        {
+          "Triggers": [],
+          "Status": "RUNNING",
+          "Conditions": [],
+          "Items": [
+            {
+              "Coordinates": null,
+              "UserSunAltitude": 0,
+              "Status": "RUNNING",
+              "Altitude": 0.0,
+              "UserMoonAltitude": 0,
+              "Comparator": 0,
+              "Data": {
+                "Coordinates": {
+                  "RAHours": 0,
+                  "RAMinutes": 0,
+                  "RASeconds": 0.0,
+                  "NegativeDec": false,
+                  "DecDegrees": 0,
+                  "DecMinutes": 0,
+                  "DecSeconds": 0.0
+                },
+                "Offset": -47.0,
+                "Comparator": 1
+              },
+              "Issues": [],
+              "Name": "Wait if Sun Altitude",
+              "AltitudeOffset": 0.0
+            },
+            {
+              "Coordinates": null,
+              "UserSunAltitude": 0,
+              "Status": "CREATED",
+              "Altitude": 0.0,
+              "UserMoonAltitude": 0,
+              "AboveOrBelow": ">",
+              "Comparator": 0,
+              "Data": {
+                "Coordinates": {
+                  "RAHours": 12,
+                  "RAMinutes": 0,
+                  "RASeconds": 0.0,
+                  "NegativeDec": false,
+                  "DecDegrees": 10,
+                  "DecMinutes": 0,
+                  "DecSeconds": 0.0
+                },
+                "Offset": 20.0,
+                "Comparator": 3
+              },
+              "Issues": [],
+              "HasDsoParent": false,
+              "Name": "Wait for Altitude",
+              "AltitudeOffset": 0.0
+            },
+            {
+              "Coordinates": null,
+              "UserSunAltitude": 0,
+              "Status": "CREATED",
+              "Altitude": 0.0,
+              "UserMoonAltitude": 0,
+              "AboveOrBelow": ">",
+              "Comparator": 0,
+              "Data": {
+                "Coordinates": {
+                  "RAHours": 16,
+                  "RAMinutes": 30,
+                  "RASeconds": 0.0,
+                  "NegativeDec": false,
+                  "DecDegrees": 10,
+                  "DecMinutes": 0,
+                  "DecSeconds": 0.0
+                },
+                "Offset": 20.0,
+                "Comparator": 3
+              },
+              "Issues": [],
+              "HasDsoParent": false,
+              "Name": "Wait for Altitude",
+              "AltitudeOffset": 0.0
+            },
+            {
+              "Coordinates": null,
+              "UserSunAltitude": 0,
+              "Status": "CREATED",
+              "Altitude": 0.0,
+              "UserMoonAltitude": 0,
+              "UpdateInterval": 1,
+              "Comparator": 0,
+              "Data": {
+                "Coordinates": {
+                  "RAHours": 12,
+                  "RAMinutes": 0,
+                  "RASeconds": 0.0,
+                  "NegativeDec": false,
+                  "DecDegrees": 10,
+                  "DecMinutes": 0,
+                  "DecSeconds": 0.0
+                },
+                "Offset": 15.0,
+                "Comparator": 3
+              },
+              "Issues": [],
+              "HasDsoParent": false,
+              "Name": "Wait until Above horizon",
+              "AltitudeOffset": 0.0
+            },
+            {
+              "Coordinates": null,
+              "UserSunAltitude": 0,
+              "Status": "CREATED",
+              "Altitude": 0.0,
+              "UserMoonAltitude": 0,
+              "Comparator": 0,
+              "Data": {
+                "Coordinates": {
+                  "RAHours": 0,
+                  "RAMinutes": 0,
+                  "RASeconds": 0.0,
+                  "NegativeDec": false,
+                  "DecDegrees": 0,
+                  "DecMinutes": 0,
+                  "DecSeconds": 0.0
+                },
+                "Offset": 45.0,
+                "Comparator": 3
+              },
+              "Issues": [],
+              "Name": "Wait if Moon Altitude",
+              "AltitudeOffset": 0.0
+            },
+            {
+              "Coordinates": null,
+              "UserSunAltitude": 0,
+              "Status": "CREATED",
+              "Altitude": 0.0,
+              "UserMoonAltitude": 0,
+              "Comparator": 0,
+              "Data": {
+                "Coordinates": {
+                  "RAHours": 0,
+                  "RAMinutes": 0,
+                  "RASeconds": 0.0,
+                  "NegativeDec": false,
+                  "DecDegrees": 0,
+                  "DecMinutes": 0,
+                  "DecSeconds": 0.0
+                },
+                "Offset": -10.0,
+                "Comparator": 1
+              },
+              "Issues": [],
+              "Name": "Wait if Moon Altitude",
+              "AltitudeOffset": 0.0
+            },
+            {
+              "Coordinates": null,
+              "UserSunAltitude": 0,
+              "Status": "CREATED",
+              "Altitude": 0.0,
+              "UserMoonAltitude": 0,
+              "Comparator": 0,
+              "Data": {
+                "Coordinates": {
+                  "RAHours": 0,
+                  "RAMinutes": 0,
+                  "RASeconds": 0.0,
+                  "NegativeDec": false,
+                  "DecDegrees": 0,
+                  "DecMinutes": 0,
+                  "DecSeconds": 0.0
+                },
+                "Offset": 75.0,
+                "Comparator": 1
+              },
+              "Issues": [],
+              "Name": "Wait if Sun Altitude",
+              "AltitudeOffset": 0.0
+            }
+          ],
+          "Name": "Altitude waits_Container",
+          "Iterations": 0
+        }
+      ],
+      "Name": "Targets_Container",
+      "Iterations": 0
+    },
+    {
+      "Triggers": [],
+      "Status": "CREATED",
+      "Conditions": [],
+      "Items": [],
+      "Name": "End_Container",
+      "Iterations": 0
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-11-24T01:58:00+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.3",
+    "endpoint": "/sequence/state",
+    "params": {}
+  }
+}

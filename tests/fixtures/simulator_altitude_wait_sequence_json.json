@@ -1,0 +1,97 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": []
+    },
+    {
+      "Triggers": [],
+      "Conditions": [],
+      "Items": [],
+      "Name": "Start_Container",
+      "Status": "FINISHED"
+    },
+    {
+      "Triggers": [],
+      "Conditions": [],
+      "Items": [
+        {
+          "Triggers": [],
+          "Conditions": [],
+          "Items": [
+            {
+              "CurrentAltitude": -50.23,
+              "ExpectedTime": "20:22",
+              "Altitude": -47,
+              "Name": "Wait if Sun Altitude",
+              "Status": "RUNNING"
+            },
+            {
+              "CurrentAltitude": 8.84,
+              "ExpectedTime": "21:12",
+              "Altitude": 20,
+              "Name": "Wait for Altitude",
+              "Status": "CREATED"
+            },
+            {
+              "CurrentAltitude": -25.41,
+              "ExpectedTime": "01:42",
+              "Altitude": 20,
+              "Name": "Wait for Altitude",
+              "Status": "CREATED"
+            },
+            {
+              "CurrentAltitude": 8.84,
+              "ExpectedTime": "20:40",
+              "Altitude": 15,
+              "Name": "Wait until Above horizon",
+              "Status": "CREATED"
+            },
+            {
+              "CurrentAltitude": 47.23,
+              "ExpectedTime": "20:13",
+              "Altitude": 45,
+              "Name": "Wait if Moon Altitude",
+              "Status": "CREATED"
+            },
+            {
+              "CurrentAltitude": 47.23,
+              "ExpectedTime": "Now",
+              "Altitude": -10,
+              "Name": "Wait if Moon Altitude",
+              "Status": "CREATED"
+            },
+            {
+              "CurrentAltitude": -50.23,
+              "ExpectedTime": "--",
+              "Altitude": 75,
+              "Name": "Wait if Sun Altitude",
+              "Status": "CREATED"
+            }
+          ],
+          "Name": "Altitude waits_Container",
+          "Status": "RUNNING"
+        }
+      ],
+      "Name": "Targets_Container",
+      "Status": "RUNNING"
+    },
+    {
+      "Triggers": [],
+      "Conditions": [],
+      "Items": [],
+      "Name": "End_Container",
+      "Status": "CREATED"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-11-24T01:58:00+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.3",
+    "endpoint": "/sequence/json",
+    "params": {}
+  }
+}

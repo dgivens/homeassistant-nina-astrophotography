@@ -583,8 +583,9 @@ class SequenceWait:
 
     kind: SequenceWaitKind
     ends: datetime | None
-    """Wait for Time's target. The others name no end as a time: an altitude
-    wait's `ExpectedTime` is display text."""
+    """Wait for Time's target, to the second. An altitude wait's is N.I.N.A.'s
+    estimate, truncated to the minute, and the wait can run past it; `None`
+    where N.I.N.A. places none. A Wait for Time Span names no end."""
     span_seconds: float | None = None
     """A Wait for Time Span's length; `None` on the other waits."""
 

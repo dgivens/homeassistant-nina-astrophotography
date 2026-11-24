@@ -203,8 +203,17 @@ def test_the_blueprint_reads_the_attribute_by_that_name() -> None:
             "2026-09-16T02:05:40+00:00",
         ),
         ("wait_for_time", "2026-11-11T23:57:00+00:00", "2026-11-12T00:06:18+00:00"),
+        (
+            "simulator_altitude_wait",
+            "2026-11-24T01:58:00+00:00",
+            "2026-11-24T02:22:00+00:00",
+        ),
     ],
-    ids=["Target Scheduler's wait, 21:05:40 UTC-5", "Wait for Time, 18:06:18 UTC-6"],
+    ids=[
+        "Target Scheduler's wait, 21:05:40 UTC-5",
+        "Wait for Time, 18:06:18 UTC-6",
+        "Wait for Sun Altitude, expected 20:22 UTC-6",
+    ],
 )
 async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
     hass: HomeAssistant,

@@ -543,6 +543,12 @@ STATES: dict[str, State] = {
     # civil dusk at 18:06, with the roof open, no frame yet and no TS-WAITSTART.
     # Only the running chain in /sequence/json says the rig is waiting.
     "wait_for_time": _captured("wait_for_time"),
+    # Captured from the simulator rig (`docs/test-vm.md`), 19:58 on 2026-11-23
+    # at UTC-6: a Wait for Sun Altitude running, which N.I.N.A. expects to end
+    # at 20:22, ahead of a Wait for Altitude, a Wait until Above Horizon and
+    # three Waits for Moon or Sun Altitude, one already met (`Now`) and one
+    # never reached (`--`). No frame taken.
+    "simulator_altitude_wait": _captured("simulator_altitude_wait"),
     # Captured from the simulator rig (`docs/test-vm.md`): real wire data from
     # an OmniSim dome. Parked with the shutter closed, and open following the
     # mount. The next two swap in the dome block of a later /equipment/info:

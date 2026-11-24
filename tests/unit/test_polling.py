@@ -557,6 +557,20 @@ def test_an_expired_wait_stays_over_while_the_read_still_shows_it() -> None:
     assert (ledger.current, len(ledger.ended)) == (None, 1)
 
 
+_ESTIMATED = _step("altitude", ends=_at(10), span=None)
+
+
+def test_an_altitude_wait_runs_on_past_its_estimate() -> None:
+    """N.I.N.A. estimates the sun and moon once a night, to the minute."""
+    ledger = _ledger((0, _ESTIMATED), (15, _ESTIMATED))
+    assert ledger.current is not None
+
+
+def test_an_altitude_wait_ends_at_the_read_that_finds_it_over() -> None:
+    ledger = _ledger((0, _ESTIMATED), (15, None))
+    assert ledger.ended[0].ended == _at(15)
+
+
 def test_a_span_still_shown_past_its_length_is_the_loops_next_pass() -> None:
     """Reads five minutes apart catch a loop of half-hour spans on nearly every
     pass, and a rig waiting on purpose must keep reading as waiting.

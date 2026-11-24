@@ -15,7 +15,7 @@ Classification is on the pair (StatusCode, Error), never the code alone:
 initialized"; the wire says "Sequence is not initialized". Match the wire.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import json
 import logging
 from typing import Any
@@ -257,7 +257,10 @@ class NinaClientV2:
         return events
 
     async def get_sequence(self) -> SequenceNode | None:
-        return map_sequence(await self._get("/sequence/json"))
+        wire = await self._get("/sequence/json")
+        return map_sequence(
+            wire, read_at=datetime.now(UTC), rig_offset=self._rig_offset
+        )
 
     async def get_flats(self) -> FlatsStatus:
         return map_flats_status(await self._get("/flats/status") or {})

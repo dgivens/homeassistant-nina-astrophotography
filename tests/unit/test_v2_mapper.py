@@ -1,7 +1,7 @@
 """wire → models. Every sentinel, timezone and quirk dies in this module."""
 
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from operator import attrgetter
 
 from nina_astrophotography.api.models import (
@@ -610,6 +610,115 @@ def test_a_wait_instruction_carries_its_end(
     """A span's `Delay` is on the wire and its start is not."""
     found = {end for n, s, end in _waits(fixture) if (n, s) == (name, status)}
     assert found == {ends}
+
+
+# The simulator rig's altitude waits, read at 19:58 on 2026-11-23, UTC-6.
+_ALTITUDE_WAITS = "simulator_altitude_wait_sequence_json.json"
+_RIG_ZONE = timezone(timedelta(hours=-6))
+_READ_AT = datetime(2026, 11, 24, 1, 58, tzinfo=UTC)
+
+
+def _evening(hour: int, minute: int, day: int = 23) -> datetime:
+    return datetime(2026, 11, day, hour, minute, tzinfo=_RIG_ZONE)
+
+
+def _altitude_wait_ends(
+    index: int,
+    expected_time: object = None,
+    *,
+    read_at: datetime | None = _READ_AT,
+    rig_offset: timedelta | None = timedelta(hours=-6),
+) -> datetime | None:
+    """The end the capture's `index`th altitude wait names, its
+    `ExpectedTime` replaced when one is given.
+    """
+    wire = load(_ALTITUDE_WAITS)
+    item = wire[2]["Items"][0]["Items"][index]
+    if expected_time is not None:
+        item["ExpectedTime"] = expected_time
+    root = map_sequence(wire, read_at=read_at, rig_offset=rig_offset)
+    assert root is not None
+    wait = root.children[2].children[0].children[index].wait
+    assert wait is not None
+    assert wait.kind == "altitude"
+    return wait.ends
+
+
+@pytest.mark.parametrize(
+    ("index", "ends"),
+    [
+        (0, _evening(20, 22)),
+        (1, _evening(21, 12)),
+        (2, _evening(1, 42, day=24)),
+        (3, _evening(20, 40)),
+        (4, _evening(20, 13)),
+        (5, None),
+        (6, None),
+    ],
+    ids=[
+        "Wait for Sun Altitude, running: 20:22",
+        "Wait for Altitude: 21:12",
+        "Wait for Altitude past midnight: 01:42",
+        "Wait until Above Horizon: 20:40",
+        "Wait for Moon Altitude: 20:13",
+        "met already: Now",
+        "never reached: --",
+    ],
+)
+def test_an_altitude_wait_ends_at_the_time_n_i_n_a_expects(
+    index: int, ends: datetime | None
+) -> None:
+    """`ExpectedTime` is rig-local and dateless: the next occurrence of it."""
+    assert _altitude_wait_ends(index) == ends
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("expected_time", "ends"),
+    [
+        ("8:22 PM", _evening(20, 22)),
+        ("8:22 p.m.", _evening(20, 22)),
+        ("12:05 AM", _evening(0, 5, day=24)),
+        ("12:05 PM", _evening(12, 5, day=24)),
+        ("19:30", _evening(19, 30)),
+        ("18:57", _evening(18, 57, day=24)),
+        ("20:22⌛", None),
+        ("Jetzt", None),
+        ("", None),
+        ("24:00", None),
+        ("13:05 PM", None),
+        (20.22, None),
+    ],
+    ids=[
+        "12-hour",
+        "12-hour, dotted, narrow space",
+        "midnight, 12-hour",
+        "noon, 12-hour",
+        "within the hour it can overrun: today",
+        "past that: tomorrow",
+        "recalculating",
+        "a localized Now",
+        "empty",
+        "no such hour",
+        "no such 12-hour hour",
+        "not text",
+    ],
+)
+def test_an_expected_time_names_an_end_only_as_a_short_time(
+    expected_time: object, ends: datetime | None
+) -> None:
+    assert _altitude_wait_ends(0, expected_time) == ends
+
+
+@pytest.mark.parametrize(
+    ("read_at", "rig_offset"),
+    [(None, timedelta(hours=-6)), (_READ_AT, None)],
+    ids=["no read time", "no rig offset"],
+)
+def test_an_expected_time_with_nothing_to_place_it_names_no_end(
+    read_at: datetime | None, rig_offset: timedelta | None
+) -> None:
+    assert _altitude_wait_ends(0, read_at=read_at, rig_offset=rig_offset) is None
 
 
 def test_a_loop_condition_naming_a_time_is_not_a_wait() -> None:

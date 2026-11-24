@@ -14,8 +14,16 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   `Waiting for next target · until 21:05` for Target Scheduler, or Wait for
   Time. A Wait for Time Span counts down to the latest it can end,
   `Waiting · ≤ 4:00`, since the sequence is read only every few minutes while
-  nothing is imaging. A wait for an altitude has no countdown yet: N.I.N.A.
-  sends its expected time only as display text (#309).
+  nothing is imaging.
+- **A wait for an altitude has an end** (#309): Wait for Altitude, Wait for
+  Sun Altitude, Wait for Moon Altitude and Wait until Above Horizon publish
+  the time N.I.N.A. expects them to end on `sensor.<instance>_wait_ends_at`
+  and the `ends_at` attribute of `binary_sensor.<instance>_sequence_waiting`.
+  N.I.N.A. gives it only to the minute, so the observatory card counts it
+  down in minutes and marks it approximate: `Waiting · ≈ 24 min`, and
+  `Waiting for an altitude · until about 20:22`. A wait that runs past its
+  estimate still reads as waiting, and one N.I.N.A. cannot place (`--`) has
+  no end.
 
 ### Fixed
 

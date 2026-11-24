@@ -85,7 +85,9 @@ class Dump(NamedTuple):
 #
 # `scheduler_waiting` and `wait_for_time` are the two captured waits that name
 # their end: Target Scheduler's for a target's window, and the sequence's own
-# Wait for Time, each dumped from inside it.
+# Wait for Time, each dumped from inside it. `simulator_altitude_wait` is the
+# test VM's Wait for Sun Altitude, whose end N.I.N.A. expects to the minute,
+# dumped as it was captured.
 DUMPS: dict[str, Dump] = {
     "site_configured": Dump("site_configured", None, METRIC_SYSTEM),
     "equipment_disconnected": Dump("equipment_disconnected", None, METRIC_SYSTEM),
@@ -108,6 +110,9 @@ DUMPS: dict[str, Dump] = {
         "scheduler_waiting", "inside_the_scheduler_wait", METRIC_SYSTEM
     ),
     "wait_for_time": Dump("wait_for_time", "inside_the_wait_for_time", METRIC_SYSTEM),
+    "simulator_altitude_wait": Dump(
+        "simulator_altitude_wait", "inside_the_altitude_wait", METRIC_SYSTEM
+    ),
 }
 
 # Home Assistant mints these per run, so they are the one thing here that is not

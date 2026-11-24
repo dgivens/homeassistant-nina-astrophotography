@@ -210,11 +210,12 @@ export function clock(seconds) {
 /**
  * The wait the sequence is in, from the waiting sensor `id`, or `null`.
  * `ends` is epoch ms, `null` where nothing places it: Target Scheduler and Wait
- * for Time name their end, and an altitude wait names none. A Wait for Time
- * Span is placed from the read that first showed it, which can be minutes
- * after it began, so its `ends` is the latest it can end (`atMost`). `left` is
- * the seconds to `ends`: `null` with no `ends`, or once it has passed and a
- * read has yet to show the wait over.
+ * for Time name their end, and an altitude wait's is N.I.N.A.'s estimate, to
+ * the minute (`approx`), where it has one. A Wait for Time Span is placed from
+ * the read that first showed it, which can be minutes after it began, so its
+ * `ends` is the latest it can end (`atMost`). `left` is the seconds to `ends`:
+ * `null` with no `ends`, or once it has passed and a read has yet to show the
+ * wait over.
  */
 export function sequenceWait(hass, id, now = Date.now()) {
   const row = hass.states[id];
@@ -225,8 +226,9 @@ export function sequenceWait(hass, id, now = Date.now()) {
   const spanned = Number.isFinite(span_seconds)
     ? Date.parse(started_at ?? "") + span_seconds * 1000 : NaN;
   const atMost = !Number.isFinite(named) && Number.isFinite(spanned);
+  const approx = Number.isFinite(named) && kind === "altitude";
   const ends = Number.isFinite(named) ? named : atMost ? spanned : null;
-  return { kind, ends, atMost, left: ends > now ? (ends - now) / 1000 : null };
+  return { kind, ends, atMost, approx, left: ends > now ? (ends - now) / 1000 : null };
 }
 
 // What each kind of wait is waiting for. A kind not listed is still a wait.
@@ -242,9 +244,21 @@ export function waitReason({ kind }) {
   return WAITING_FOR[kind] ?? "Waiting";
 }
 
-/** A wait's time left: "Waiting · 1:04:07", "Waiting · ≤ 4:07", or "Waiting". */
-export function waitCountdown({ left, atMost }) {
-  return left === null ? "Waiting" : `Waiting · ${atMost ? "≤ " : ""}${clock(left)}`;
+// `≈ 24 min`, or `≈ 1 h 04 min` from an hour up: seconds would claim a
+// precision an end known to the minute does not have.
+function about(seconds) {
+  const minutes = Math.ceil(seconds / 60);
+  return minutes < 60 ? `≈ ${minutes} min`
+    : `≈ ${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, "0")} min`;
+}
+
+/**
+ * A wait's time left: "Waiting · 1:04:07", "Waiting · ≤ 4:07",
+ * "Waiting · ≈ 24 min", or "Waiting".
+ */
+export function waitCountdown({ left, atMost, approx }) {
+  if (left === null) return "Waiting";
+  return `Waiting · ${approx ? about(left) : `${atMost ? "≤ " : ""}${clock(left)}`}`;
 }
 
 // The depths a camera's ADC delivers, or N.I.N.A. scales to.

@@ -519,7 +519,8 @@ class Wait:
     started: datetime
     """When a read first showed it, which lags its real start by up to a poll."""
     ends: datetime | None
-    """Named by Target Scheduler and Wait for Time; the others name none."""
+    """Named by Target Scheduler and Wait for Time, and estimated by N.I.N.A.
+    for an altitude wait; a span names none."""
     span_seconds: float | None
     """A Wait for Time Span's length; `None` on the other waits."""
 
@@ -531,7 +532,8 @@ class EndedWait:
     kind: WaitKind
     started: datetime
     ended: datetime
-    """Its named end where it had one, else the read that found it over."""
+    """Its named end where it had one, else the read that found it over. An
+    altitude wait's estimate is not a named end."""
     span_seconds: float | None
 
 
@@ -542,7 +544,14 @@ _SPAN_GRACE = timedelta(seconds=TierSchedule.SEQUENCE_IDLE)
 """A span is first seen up to one slow poll after it starts."""
 
 _LONGEST_ALTITUDE_WAIT = timedelta(hours=12)
-"""An altitude wait names no end; none outlasts a night."""
+"""An altitude wait's end is only an estimate; none outlasts a night."""
+
+
+def _named_end(wait: Wait) -> datetime | None:
+    """The end a wait is held to: an altitude wait's is an estimate it can
+    overrun, so it holds to none.
+    """
+    return None if wait.kind == "altitude" else wait.ends
 
 
 class WaitLedger:
@@ -611,8 +620,8 @@ class WaitLedger:
                 self._current = Wait(kind, now, ends, span)
 
     def _expiry(self, wait: Wait) -> datetime:
-        if wait.ends is not None:
-            return wait.ends
+        if (named := _named_end(wait)) is not None:
+            return named
         if wait.span_seconds is not None:
             return wait.started + timedelta(seconds=wait.span_seconds) + _SPAN_GRACE
         return wait.started + _LONGEST_ALTITUDE_WAIT
@@ -621,6 +630,7 @@ class WaitLedger:
         wait = self._current
         if wait is None:
             return
-        ended = now if wait.ends is None else min(wait.ends, now)
+        named = _named_end(wait)
+        ended = now if named is None else min(named, now)
         self._ended.append(EndedWait(wait.kind, wait.started, ended, wait.span_seconds))
         self._current = None

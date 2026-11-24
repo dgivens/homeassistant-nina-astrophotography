@@ -1,0 +1,103 @@
+{
+  "Response": [
+    {
+      "Event": "CAMERA-DISCONNECTED",
+      "Time": "2026-11-24T01:53:58.6101162-06:00"
+    },
+    {
+      "Event": "CAMERA-CONNECTED",
+      "Time": "2026-11-24T01:53:58.7534051-06:00"
+    },
+    {
+      "Event": "FILTERWHEEL-DISCONNECTED",
+      "Time": "2026-11-24T01:54:08.8400466-06:00"
+    },
+    {
+      "Event": "FILTERWHEEL-CONNECTED",
+      "Time": "2026-11-24T01:54:12.2710332-06:00"
+    },
+    {
+      "Event": "FOCUSER-DISCONNECTED",
+      "Time": "2026-11-24T01:54:22.3571027-06:00"
+    },
+    {
+      "Event": "FOCUSER-CONNECTED",
+      "Time": "2026-11-24T01:54:22.4874579-06:00"
+    },
+    {
+      "Event": "ROTATOR-DISCONNECTED",
+      "Time": "2026-11-24T01:54:32.5432021-06:00"
+    },
+    {
+      "Event": "ROTATOR-CONNECTED",
+      "Time": "2026-11-24T01:54:32.6502013-06:00"
+    },
+    {
+      "Event": "MOUNT-DISCONNECTED",
+      "Time": "2026-11-24T01:54:42.7564857-06:00"
+    },
+    {
+      "Event": "MOUNT-CONNECTED",
+      "Time": "2026-11-24T01:54:44.0410853-06:00"
+    },
+    {
+      "Event": "DOME-DISCONNECTED",
+      "Time": "2026-11-24T01:54:54.1296819-06:00"
+    },
+    {
+      "Event": "DOME-CONNECTED",
+      "Time": "2026-11-24T01:54:54.2156114-06:00"
+    },
+    {
+      "Event": "FLAT-DISCONNECTED",
+      "Time": "2026-11-24T01:55:04.2651387-06:00"
+    },
+    {
+      "Event": "FLAT-CONNECTED",
+      "Time": "2026-11-24T01:55:04.3388839-06:00"
+    },
+    {
+      "Event": "SWITCH-DISCONNECTED",
+      "Time": "2026-11-24T01:55:14.403166-06:00"
+    },
+    {
+      "Event": "SWITCH-CONNECTED",
+      "Time": "2026-11-24T01:55:14.570738-06:00"
+    },
+    {
+      "Event": "WEATHER-DISCONNECTED",
+      "Time": "2026-11-24T01:55:24.6245259-06:00"
+    },
+    {
+      "Event": "WEATHER-CONNECTED",
+      "Time": "2026-11-24T01:55:24.6850113-06:00"
+    },
+    {
+      "Event": "SAFETY-DISCONNECTED",
+      "Time": "2026-11-24T01:55:34.7222137-06:00"
+    },
+    {
+      "Event": "SAFETY-CONNECTED",
+      "Time": "2026-11-24T01:55:34.7553191-06:00"
+    },
+    {
+      "Event": "GUIDER-CONNECTED",
+      "Time": "2026-11-24T01:55:48.7415434-06:00"
+    },
+    {
+      "Event": "SEQUENCE-STARTING",
+      "Time": "2026-11-23T19:57:49.6005409-06:00"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-11-24T01:58:00+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.3",
+    "endpoint": "/event-history",
+    "params": {}
+  }
+}

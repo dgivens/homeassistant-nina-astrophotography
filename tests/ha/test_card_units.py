@@ -227,31 +227,37 @@ def _ms(at: str) -> int:
         (
             _wait_hass("scheduler_waiting"),
             "2026-09-16T01:45:00+00:00",
-            {"kind": "scheduler", "atMost": False, "left": 1240.808},
+            {"kind": "scheduler", "atMost": False, "approx": False, "left": 1240.808},
         ),
         (
             _wait_hass("wait_for_time"),
             "2026-11-11T23:57:00+00:00",
-            {"kind": "time", "atMost": False, "left": 558.999},
+            {"kind": "time", "atMost": False, "approx": False, "left": 558.999},
+        ),
+        (
+            _wait_hass("simulator_altitude_wait"),
+            "2026-11-24T01:58:00+00:00",
+            {"kind": "altitude", "atMost": False, "approx": True, "left": 1440.0},
         ),
         (
             _wait_hass("scheduler_waiting"),
             "2026-09-16T02:06:00+00:00",
-            {"kind": "scheduler", "atMost": False, "left": None},
+            {"kind": "scheduler", "atMost": False, "approx": False, "left": None},
         ),
-        # No capture caught a Wait for Time Span or an altitude wait running.
+        # No capture caught a Wait for Time Span running, or an altitude wait
+        # N.I.N.A. places no end for (`--`).
         pytest.param(
             _wait_hass(
                 "wait_for_time", kind="time_span", ends_at=None, span_seconds=300
             ),
             "2026-11-11T23:58:00+00:00",
-            {"kind": "time_span", "atMost": True, "left": 240.0},
+            {"kind": "time_span", "atMost": True, "approx": False, "left": 240.0},
             marks=pytest.mark.synthetic,
         ),
         pytest.param(
-            _wait_hass("wait_for_time", kind="altitude", ends_at=None),
-            "2026-11-11T23:58:00+00:00",
-            {"kind": "altitude", "atMost": False, "left": None},
+            _wait_hass("simulator_altitude_wait", ends_at=None),
+            "2026-11-24T01:58:00+00:00",
+            {"kind": "altitude", "atMost": False, "approx": False, "left": None},
             marks=pytest.mark.synthetic,
         ),
         (_wait_hass("site_configured"), "2026-09-16T01:45:00+00:00", None),
@@ -259,9 +265,10 @@ def _ms(at: str) -> int:
     ids=[
         "Target Scheduler",
         "Wait for Time",
+        "altitude, expected to the minute",
         "past its end, the read not yet in",
         "Wait for Time Span",
-        "altitude",
+        "altitude, no end expected",
         "no wait",
     ],
 )
@@ -277,9 +284,11 @@ def test_a_wait_counts_down_to_the_end_it_names_or_is_placed_at(
 @pytest.mark.parametrize(
     ("wait", "shown"),
     [
-        ({"kind": "scheduler", "left": 3846.2, "atMost": False}, "Waiting · 1:04:07"),
-        ({"kind": "time_span", "left": 246.5, "atMost": True}, "Waiting · ≤ 4:07"),
-        ({"kind": "altitude", "left": None, "atMost": False}, "Waiting"),
+        ({"left": 3846.2, "atMost": False, "approx": False}, "Waiting · 1:04:07"),
+        ({"left": 246.5, "atMost": True, "approx": False}, "Waiting · ≤ 4:07"),
+        ({"left": 1439.5, "atMost": False, "approx": True}, "Waiting · ≈ 24 min"),
+        ({"left": 3846.2, "atMost": False, "approx": True}, "Waiting · ≈ 1 h 05 min"),
+        ({"left": None, "atMost": False, "approx": False}, "Waiting"),
     ],
 )
 def test_a_wait_reads_as_its_time_left(wait: dict[str, object], shown: str) -> None:

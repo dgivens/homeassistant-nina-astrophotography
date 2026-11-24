@@ -259,6 +259,21 @@ async def test_a_wait_for_time_is_over_at_its_own_end(
     )
 
 
+async def test_an_altitude_wait_past_its_expected_time_still_reads_waiting(
+    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
+) -> None:
+    """N.I.N.A. estimates the sun and moon once a night, to the minute, and the
+    wait runs until the altitude is reached.
+    """
+    freezer.move_to("2026-11-24T01:58:00+00:00")
+    await set_up_at(hass, config_entry, rig, "simulator_altitude_wait")
+    freezer.move_to("2026-11-24T02:30:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert state_of(hass, SEQUENCE_WAITING).state == "on"
+
+
 async def test_the_sequencer_runs_through_a_wait_that_takes_no_frames(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:

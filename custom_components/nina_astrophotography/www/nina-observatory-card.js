@@ -509,7 +509,8 @@ class NinaObservatoryCard extends HTMLElement {
     this._tickWait(wait?.left != null && this.isConnected);
     // An end already past reads as a stale card, and a looping Time Span's is
     // the pass before; the next read ends the wait.
-    const waitEnds = wait?.left == null ? "" : ` · ${wait.atMost ? "by" : "until"} ${
+    const waitEnds = wait?.left == null ? "" : ` · ${
+      wait.atMost ? "by" : wait.approx ? "until about" : "until"} ${
       new Date(wait.ends).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
