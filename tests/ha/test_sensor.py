@@ -238,13 +238,24 @@ async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
     assert state_of(hass, WAIT_ENDS_AT).state == expected
 
 
+async def test_an_altitude_wait_first_read_past_its_estimate_ends_today(
+    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
+) -> None:
+    """A restart or a mount connecting late leaves no earlier end to keep:
+    `20:22`, first read at 21:30.
+    """
+    freezer.move_to("2026-11-24T03:30:00+00:00")
+    await set_up_at(hass, config_entry, rig, "simulator_altitude_wait")
+    assert state_of(hass, WAIT_ENDS_AT).state == "2026-11-24T02:22:00+00:00"
+
+
 async def test_an_altitude_wait_overrun_by_hours_keeps_the_end_it_had(
     hass: HomeAssistant, config_entry, rig, set_up_at, freezer
 ) -> None:
-    """The dateless `20:22`, read at 21:30, places on the next day."""
+    """The dateless `20:22`, read again at 02:30, places on the next day."""
     freezer.move_to("2026-11-24T01:58:00+00:00")
     await set_up_at(hass, config_entry, rig, "simulator_altitude_wait")
-    freezer.move_to("2026-11-24T03:30:00+00:00")
+    freezer.move_to("2026-11-24T08:30:00+00:00")
     async_fire_time_changed(hass, dt_util.utcnow())
     await hass.async_block_till_done()
 

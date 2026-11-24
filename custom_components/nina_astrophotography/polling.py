@@ -544,16 +544,17 @@ _SPAN_GRACE = timedelta(seconds=TierSchedule.SEQUENCE_IDLE)
 """A span is first seen up to one slow poll after it starts."""
 
 _UNPLACED_WAIT = timedelta(hours=12)
-"""How long a wait with no end to hold it to may run."""
+"""How long a wait with no end to hold it to may run, and the least an
+altitude wait with an estimate may."""
 
 _ALTITUDE_OVERRUN = timedelta(hours=1)
-"""How far past its estimate an altitude wait may run: the mapper places a
-dateless estimate up to this far in the past."""
+"""How far past its estimate an altitude wait may run, where twelve hours
+from its first read is sooner."""
 
 _DAY_LATER = timedelta(hours=12)
 """An estimate this much later than the one held is the same minute placed a
-day on, once the wait has run past it; N.I.N.A.'s own re-estimates move by
-minutes."""
+day on, once the wait has run past it. N.I.N.A.'s own re-estimates move by
+minutes, about ten at a time on a custom horizon."""
 
 
 class WaitLedger:
@@ -564,8 +565,8 @@ class WaitLedger:
     point it can have ended is over: a Wait for Time at its end, a span its
     `Delay` and one slow poll after it was first seen, an altitude wait an
     hour past its estimate, or twelve hours after it was first seen where
-    that is later or it has none. A status carried in from a loaded sequence file can show a
-    wait running that never will, and this bounds it.
+    that is later or it has none. A status carried in from a loaded sequence
+    file can show a wait running that never will, and this bounds it.
 
     Reads cannot tell one pass of a loop from the next at the same path. A
     span still shown past its length is taken as the next pass, so a loop of
@@ -614,9 +615,11 @@ class WaitLedger:
             return
         _, kind, ends, span = seen
         held = None if self._current is None else self._current.ends
-        if kind == "altitude" and held is not None and ends is not None:
-            # A dateless estimate the wait has overrun reads as tomorrow's.
-            ends = held if ends - held > _DAY_LATER else ends
+        if kind == "altitude" and held is not None:
+            # A dateless estimate the wait has overrun reads as tomorrow's,
+            # and one read with none (`--`) is not the wait's last word.
+            if ends is None or ends - held > _DAY_LATER:
+                ends = held
         started = now if self._current is None else self._current.started
         self._current = Wait(kind, started, ends, span)
         if self._expiry(self._current) <= now:

@@ -25,7 +25,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   its estimate still reads as waiting, keeping that end, until an hour past
   it or twelve hours after it began, whichever is later. One N.I.N.A. cannot
   place (`--`) has no end, and none has an end until the mount has connected
-  since Home Assistant started.
+  since Home Assistant started. The estimate carries no date, so a wait first
+  seen more than six hours past it, or expected 18 to 24 hours ahead, is
+  misread; the reference says how.
 
 ### Fixed
 

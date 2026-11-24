@@ -668,7 +668,7 @@ def _altitude_wait_ends(
 def test_an_altitude_wait_ends_at_the_time_n_i_n_a_expects(
     index: int, ends: datetime | None
 ) -> None:
-    """`ExpectedTime` is rig-local and dateless: its occurrence from an hour
+    """`ExpectedTime` is rig-local and dateless: its occurrence from six hours
     before the read on.
     """
     assert _altitude_wait_ends(index) == ends
@@ -676,8 +676,7 @@ def test_an_altitude_wait_ends_at_the_time_n_i_n_a_expects(
 
 def test_a_recalculating_estimate_still_names_its_end() -> None:
     """A Wait until Above horizon on a custom horizon resets its target
-    altitude every second, so `⌛` trails most reads of it: `23:56⌛` here,
-    read at 22:36 on the simulator rig.
+    altitude every second, so `⌛` trails most reads of it.
     """
     root = map_sequence(
         load("simulator_altitude_wait_horizon_sequence_json.json"),
@@ -699,7 +698,8 @@ def test_a_recalculating_estimate_still_names_its_end() -> None:
         ("12:05 AM", _evening(0, 5, day=24)),
         ("12:05 PM", _evening(12, 5, day=24)),
         ("19:30", _evening(19, 30)),
-        ("18:57", _evening(18, 57, day=24)),
+        ("13:58", _evening(13, 58)),
+        ("13:57", _evening(13, 57, day=24)),
         ("12:00", _evening(12, 0, day=24)),
         ("20:22⌛", _evening(20, 22)),
         ("--⌛", None),
@@ -717,8 +717,9 @@ def test_a_recalculating_estimate_still_names_its_end() -> None:
         "12-hour, dotted, narrow space",
         "midnight, 12-hour",
         "noon, 12-hour",
-        "within the hour it can overrun: today",
-        "past that: tomorrow",
+        "overrun: today",
+        "eighteen hours ahead is six past: today",
+        "just under eighteen hours ahead: tomorrow",
         "16 hours ahead",
         "recalculating: the estimate before it",
         "recalculating, never reached",

@@ -585,14 +585,18 @@ def test_an_altitude_wait_runs_on(step: Step, late: float) -> None:
 
 @pytest.mark.parametrize(
     ("later", "held"),
-    [(_at(10) + timedelta(days=1), _at(10)), (_at(4), _at(4))],
-    ids=["the same minute a day on", "a re-estimate minutes earlier"],
+    [(_at(10) + timedelta(days=1), _at(10)), (_at(4), _at(4)), (None, _at(10))],
+    ids=[
+        "the same minute a day on",
+        "a re-estimate minutes earlier",
+        "a read with no estimate",
+    ],
 )
 def test_an_altitude_wait_keeps_its_end_but_for_a_re_estimate(
-    later: datetime, held: datetime
+    later: datetime | None, held: datetime
 ) -> None:
     """The mapper places a dateless estimate the wait has overrun by more than
-    an hour on the next day.
+    six hours on the next day.
     """
     rolled = _step("altitude", ends=later, span=None)
     ledger = _ledger((0, _ESTIMATED), (75, rolled))

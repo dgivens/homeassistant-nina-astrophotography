@@ -164,9 +164,17 @@ Two more entities explain why frames might not be arriving:
   wait's end is N.I.N.A.'s own estimate, shown to the minute, and the wait runs
   until the altitude is reached, which can be a few minutes either side of it.
   It has no end until the mount has connected since Home Assistant started,
-  since the mount's clock gives the rig's time zone. The wait doesn't say why:
-  darkness, moon separation, target altitude and a meridian window all look
-  the same. An install from 2.5.1 or earlier keeps
+  since the mount's clock gives the rig's time zone.
+
+  N.I.N.A. sends that estimate as a time with no date, so it is read as the
+  next one from six hours before the read. Two waits are misread. One first
+  seen more than six hours past its estimate, after a restart, shows an end a
+  day later. One whose estimate is 18 to 24 hours ahead, which near the
+  solstice at a high latitude a wait from dawn to dusk can be, shows no end
+  and is taken as over twelve hours after it began.
+
+  The wait doesn't say why: darkness, moon separation, target altitude and a
+  meridian window all look the same. An install from 2.5.1 or earlier keeps
   the id `binary_sensor.<instance>_scheduler_waiting`.
 
   It reads whether a wait was running when the sequence was last read, which

@@ -135,8 +135,10 @@ _SHORT_TIME = re.compile(
 # custom horizon does every second of a Wait until Above horizon.
 _RECALCULATING = "\u231b"
 # How far past its estimate an altitude wait is still read as today's: the
-# sun's and moon's are cached for the day and a wait can run past them.
-_ESTIMATE_OVERRUN = timedelta(hours=1)
+# sun's and moon's are cached for the day and a wait can run past them, and a
+# read after a restart has no earlier end to keep. It leaves 18 hours ahead,
+# enough for a wait from dawn to a summer dusk.
+_ESTIMATE_OVERRUN = timedelta(hours=6)
 
 # The only method whose focus points are HFR in pixels. An allowlist, so an
 # unknown method's numbers are never published as pixels.
