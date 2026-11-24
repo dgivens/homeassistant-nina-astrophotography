@@ -259,15 +259,18 @@ async def test_a_wait_for_time_is_over_at_its_own_end(
     )
 
 
+@pytest.mark.parametrize(
+    "later", ["2026-11-24T02:30:00+00:00", "2026-11-24T03:30:00+00:00"]
+)
 async def test_an_altitude_wait_past_its_expected_time_still_reads_waiting(
-    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
+    hass: HomeAssistant, config_entry, rig, set_up_at, freezer, later: str
 ) -> None:
-    """N.I.N.A. estimates the sun and moon once a night, to the minute, and the
-    wait runs until the altitude is reached.
+    """N.I.N.A.'s estimate is printed to the minute, and the wait runs until
+    the altitude is reached.
     """
     freezer.move_to("2026-11-24T01:58:00+00:00")
     await set_up_at(hass, config_entry, rig, "simulator_altitude_wait")
-    freezer.move_to("2026-11-24T02:30:00+00:00")
+    freezer.move_to(later)
     async_fire_time_changed(hass, dt_util.utcnow())
     await hass.async_block_till_done()
 

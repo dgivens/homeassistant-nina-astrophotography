@@ -543,15 +543,17 @@ _RECENT_WAITS = 10
 _SPAN_GRACE = timedelta(seconds=TierSchedule.SEQUENCE_IDLE)
 """A span is first seen up to one slow poll after it starts."""
 
-_LONGEST_ALTITUDE_WAIT = timedelta(hours=12)
-"""An altitude wait's end is only an estimate; none outlasts a night."""
+_UNPLACED_WAIT = timedelta(hours=12)
+"""How long a wait with no end to hold it to may run."""
 
+_ALTITUDE_OVERRUN = timedelta(hours=1)
+"""How far past its estimate an altitude wait may run: the mapper places a
+dateless estimate up to this far in the past."""
 
-def _named_end(wait: Wait) -> datetime | None:
-    """The end a wait is held to: an altitude wait's is an estimate it can
-    overrun, so it holds to none.
-    """
-    return None if wait.kind == "altitude" else wait.ends
+_DAY_LATER = timedelta(hours=12)
+"""An estimate this much later than the one held is the same minute placed a
+day on, once the wait has run past it; N.I.N.A.'s own re-estimates move by
+minutes."""
 
 
 class WaitLedger:
@@ -560,8 +562,9 @@ class WaitLedger:
     A read only shows that a wait was running, so a short one is caught on
     some reads and missed on others. A wait still shown running past the
     point it can have ended is over: a Wait for Time at its end, a span its
-    `Delay` and one slow poll after it was first seen, an altitude wait after
-    twelve hours. A status carried in from a loaded sequence file can show a
+    `Delay` and one slow poll after it was first seen, an altitude wait an
+    hour past its estimate, or twelve hours after it was first seen where
+    that is later or it has none. A status carried in from a loaded sequence file can show a
     wait running that never will, and this bounds it.
 
     Reads cannot tell one pass of a loop from the next at the same path. A
@@ -610,6 +613,10 @@ class WaitLedger:
         if seen is None or key == self._expired:
             return
         _, kind, ends, span = seen
+        held = None if self._current is None else self._current.ends
+        if kind == "altitude" and held is not None and ends is not None:
+            # A dateless estimate the wait has overrun reads as tomorrow's.
+            ends = held if ends - held > _DAY_LATER else ends
         started = now if self._current is None else self._current.started
         self._current = Wait(kind, started, ends, span)
         if self._expiry(self._current) <= now:
@@ -620,17 +627,23 @@ class WaitLedger:
                 self._current = Wait(kind, now, ends, span)
 
     def _expiry(self, wait: Wait) -> datetime:
-        if (named := _named_end(wait)) is not None:
-            return named
+        if wait.kind == "altitude":
+            unplaced = wait.started + _UNPLACED_WAIT
+            if wait.ends is None:
+                return unplaced
+            return max(unplaced, wait.ends + _ALTITUDE_OVERRUN)
+        if wait.ends is not None:
+            return wait.ends
         if wait.span_seconds is not None:
             return wait.started + timedelta(seconds=wait.span_seconds) + _SPAN_GRACE
-        return wait.started + _LONGEST_ALTITUDE_WAIT
+        return wait.started + _UNPLACED_WAIT
 
     def _end(self, now: datetime) -> None:
         wait = self._current
         if wait is None:
             return
-        named = _named_end(wait)
+        # An altitude wait's estimate is not when it ended.
+        named = None if wait.kind == "altitude" else wait.ends
         ended = now if named is None else min(named, now)
         self._ended.append(EndedWait(wait.kind, wait.started, ended, wait.span_seconds))
         self._current = None

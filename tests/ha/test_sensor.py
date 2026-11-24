@@ -15,8 +15,12 @@ import json
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 import pytest
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_fire_time_changed,
+)
 
 from custom_components.nina_astrophotography.blueprint_sync import SHIPPED_DIR
 from ha.registry import registered
@@ -212,7 +216,7 @@ def test_the_blueprint_reads_the_attribute_by_that_name() -> None:
     ids=[
         "Target Scheduler's wait, 21:05:40 UTC-5",
         "Wait for Time, 18:06:18 UTC-6",
-        "Wait for Sun Altitude, expected 20:22 UTC-6",
+        "Wait if Sun Altitude, expected 20:22 UTC-6",
     ],
 )
 async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
@@ -232,6 +236,19 @@ async def test_the_wait_end_is_published_in_utc_as_home_assistant_stores_it(
     freezer.move_to(now)
     await set_up_at(hass, config_entry, rig, state)
     assert state_of(hass, WAIT_ENDS_AT).state == expected
+
+
+async def test_an_altitude_wait_overrun_by_hours_keeps_the_end_it_had(
+    hass: HomeAssistant, config_entry, rig, set_up_at, freezer
+) -> None:
+    """The dateless `20:22`, read at 21:30, places on the next day."""
+    freezer.move_to("2026-11-24T01:58:00+00:00")
+    await set_up_at(hass, config_entry, rig, "simulator_altitude_wait")
+    freezer.move_to("2026-11-24T03:30:00+00:00")
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+    assert state_of(hass, WAIT_ENDS_AT).state == "2026-11-24T02:22:00+00:00"
 
 
 @pytest.mark.parametrize(

@@ -83,7 +83,7 @@ taken on 2026-09-15, in this order: `scheduler_waiting` (20:46), then
 `sequence_restarted` (20:49), then `sequence_stopped` (20:50). `wait_for_time`
 (2026-11-11, 17:56) holds a sequence's own wait: a `RUNNING` Wait for Time
 until civil dusk, with no `TS-WAITSTART`. `simulator_altitude_wait`
-(2026-11-23, 19:58, from the test VM) holds a `RUNNING` Wait for Sun Altitude
+(2026-11-23, 19:58, from the test VM) holds a `RUNNING` Wait if Sun Altitude
 beside every other altitude wait, each with its `ExpectedTime`.
 
 Between them they hold what no earlier capture does — a sequence running with

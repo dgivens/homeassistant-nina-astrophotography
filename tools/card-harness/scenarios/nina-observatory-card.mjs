@@ -17,7 +17,7 @@
  *
  * `scheduler_waiting` and `wait_for_time` are the two captured waits that name
  * their end, each dumped twenty and nine minutes before it.
- * `simulator_altitude_wait` is the test VM's Wait for Sun Altitude, dumped 24
+ * `simulator_altitude_wait` is the test VM's Wait if Sun Altitude, dumped 24
  * minutes before the minute N.I.N.A. expects it to end.
  */
 

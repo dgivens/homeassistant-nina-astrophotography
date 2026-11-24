@@ -86,7 +86,7 @@ class Dump(NamedTuple):
 # `scheduler_waiting` and `wait_for_time` are the two captured waits that name
 # their end: Target Scheduler's for a target's window, and the sequence's own
 # Wait for Time, each dumped from inside it. `simulator_altitude_wait` is the
-# test VM's Wait for Sun Altitude, whose end N.I.N.A. expects to the minute,
+# test VM's Wait if Sun Altitude, whose end N.I.N.A. expects to the minute,
 # dumped as it was captured.
 DUMPS: dict[str, Dump] = {
     "site_configured": Dump("site_configured", None, METRIC_SYSTEM),

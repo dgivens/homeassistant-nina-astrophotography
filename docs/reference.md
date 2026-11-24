@@ -160,10 +160,13 @@ Two more entities explain why frames might not be arriving:
   wait instructions: Wait for Time, Wait for Time Span, or a wait for the
   target, sun or moon to reach an altitude. `sensor.<instance>_wait_ends_at`
   says until when, for a scheduler wait, a Wait for Time, or an altitude wait
-  N.I.N.A. expects to end at a given minute; a Wait for Time Span names no end.
-  An altitude wait's end is N.I.N.A.'s own estimate, to the minute, and the
-  wait runs until the altitude is reached, which can be later. The wait doesn't say why: darkness, moon separation, target altitude and
-  a meridian window all look the same. An install from 2.5.1 or earlier keeps
+  N.I.N.A. has an estimate for; a Wait for Time Span names no end. An altitude
+  wait's end is N.I.N.A.'s own estimate, shown to the minute, and the wait runs
+  until the altitude is reached, which can be a few minutes either side of it.
+  It has no end until the mount has connected since Home Assistant started,
+  since the mount's clock gives the rig's time zone. The wait doesn't say why:
+  darkness, moon separation, target altitude and a meridian window all look
+  the same. An install from 2.5.1 or earlier keeps
   the id `binary_sensor.<instance>_scheduler_waiting`.
 
   It reads whether a wait was running when the sequence was last read, which
@@ -175,14 +178,14 @@ Two more entities explain why frames might not be arriving:
   |---|---|
   | `kind` | `scheduler`, `time`, `time_span` or `altitude` |
   | `started_at` | when a read first showed it, up to one read after it began |
-  | `ends_at` | its end, for a scheduler wait or a Wait for Time; N.I.N.A.'s estimate, to the minute, for an altitude wait |
+  | `ends_at` | its end, for a scheduler wait or a Wait for Time; N.I.N.A.'s estimate for an altitude wait |
   | `span_seconds` | a Wait for Time Span's length |
   | `recent_waits` | the last ten that ended, newest first, each with `kind`, `started_at`, `ended_at` and `span_seconds`; not recorded, and empty after a restart |
 
   A wait still showing as running after it must have ended is over: a Wait for
-  Time at its end, an altitude wait twelve hours after it began, whatever its
-  estimate. A span still showing
-  past its length plus five minutes is taken as the next pass of a loop.
+  Time at its end, and an altitude wait an hour past its estimate or twelve
+  hours after it began, whichever is later. A span still showing past its
+  length plus five minutes is taken as the next pass of a loop.
 
   A wait for safe conditions is a loop that repeats until the monitor reads
   safe. If the loop holds a Wait for Time Span, this blinks `on` while the span

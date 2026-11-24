@@ -544,9 +544,9 @@ STATES: dict[str, State] = {
     # Only the running chain in /sequence/json says the rig is waiting.
     "wait_for_time": _captured("wait_for_time"),
     # Captured from the simulator rig (`docs/test-vm.md`), 19:58 on 2026-11-23
-    # at UTC-6: a Wait for Sun Altitude running, which N.I.N.A. expects to end
-    # at 20:22, ahead of a Wait for Altitude, a Wait until Above Horizon and
-    # three Waits for Moon or Sun Altitude, one already met (`Now`) and one
+    # at UTC-6: a Wait if Sun Altitude running, which N.I.N.A. expects to end
+    # at 20:22, ahead of a Wait for Altitude, a Wait until Above horizon and
+    # three Wait if Moon or Sun Altitude, one already met (`Now`) and one
     # never reached (`--`). No frame taken.
     "simulator_altitude_wait": _captured("simulator_altitude_wait"),
     # Captured from the simulator rig (`docs/test-vm.md`): real wire data from

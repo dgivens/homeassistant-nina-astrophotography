@@ -537,8 +537,15 @@ def test_a_wait_the_read_no_longer_shows_ends_at_that_read() -> None:
     [
         (_step("time", ends=_at(10), span=None), 11, 10),
         (_step("altitude", span=None), 12 * 60 + 1, 12 * 60 + 1),
+        (_step("altitude", ends=_at(60), span=None), 12 * 60 + 1, 12 * 60 + 1),
+        (_step("altitude", ends=_at(16 * 60), span=None), 17 * 60 + 1, 17 * 60 + 1),
     ],
-    ids=["Wait for Time, at its named end", "an altitude wait, after twelve hours"],
+    ids=[
+        "Wait for Time, at its named end",
+        "an altitude wait, after twelve hours",
+        "an altitude wait expected in an hour, after twelve hours",
+        "an altitude wait expected in sixteen hours, an hour past that",
+    ],
 )
 def test_a_wait_still_shown_running_past_its_possible_end_is_over(
     step: Step, late: float, ended: float
@@ -560,10 +567,37 @@ def test_an_expired_wait_stays_over_while_the_read_still_shows_it() -> None:
 _ESTIMATED = _step("altitude", ends=_at(10), span=None)
 
 
-def test_an_altitude_wait_runs_on_past_its_estimate() -> None:
-    """N.I.N.A. estimates the sun and moon once a night, to the minute."""
-    ledger = _ledger((0, _ESTIMATED), (15, _ESTIMATED))
+@pytest.mark.parametrize(
+    ("step", "late"),
+    [
+        (_ESTIMATED, 15),
+        (_step("altitude", ends=_at(16 * 60), span=None), 12 * 60 + 1),
+    ],
+    ids=["past its estimate", "dawn to a summer dusk, past twelve hours"],
+)
+def test_an_altitude_wait_runs_on(step: Step, late: float) -> None:
+    """N.I.N.A.'s estimate is printed to the minute, and a sun or moon wait
+    can end after it.
+    """
+    ledger = _ledger((0, step), (late, step))
     assert ledger.current is not None
+
+
+@pytest.mark.parametrize(
+    ("later", "held"),
+    [(_at(10) + timedelta(days=1), _at(10)), (_at(4), _at(4))],
+    ids=["the same minute a day on", "a re-estimate minutes earlier"],
+)
+def test_an_altitude_wait_keeps_its_end_but_for_a_re_estimate(
+    later: datetime, held: datetime
+) -> None:
+    """The mapper places a dateless estimate the wait has overrun by more than
+    an hour on the next day.
+    """
+    rolled = _step("altitude", ends=later, span=None)
+    ledger = _ledger((0, _ESTIMATED), (75, rolled))
+    assert ledger.current is not None
+    assert ledger.current.ends == held
 
 
 def test_an_altitude_wait_ends_at_the_read_that_finds_it_over() -> None:

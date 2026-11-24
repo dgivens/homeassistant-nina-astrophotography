@@ -132,8 +132,8 @@ def _waits(data: NinaData) -> Mapping[str, Any]:
     reads and missed on others, and the history is a sample, not a record.
     `span_seconds` is a Wait for Time Span's length, which is how a consumer
     tells a pacing step in a retry loop from a wait that explains hours. An
-    altitude wait's `ends_at` is N.I.N.A.'s estimate, to the minute, which the
-    wait can run past.
+    altitude wait's `ends_at` is N.I.N.A.'s estimate, printed to the minute,
+    and the wait can end a few minutes either side of it.
     """
     wait = data.wait
     return {

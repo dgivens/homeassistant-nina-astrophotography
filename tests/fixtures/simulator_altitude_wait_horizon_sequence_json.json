@@ -1,0 +1,69 @@
+{
+  "Response": [
+    {
+      "GlobalTriggers": []
+    },
+    {
+      "Items": [],
+      "Status": "FINISHED",
+      "Triggers": [],
+      "Conditions": [],
+      "Name": "Start_Container"
+    },
+    {
+      "Items": [
+        {
+          "Items": [
+            {
+              "Altitude": 0,
+              "Status": "RUNNING",
+              "ExpectedTime": "23:56\u231b",
+              "CurrentAltitude": 15,
+              "Name": "Wait until Above horizon"
+            },
+            {
+              "Altitude": 0,
+              "Status": "CREATED",
+              "ExpectedTime": "02:26",
+              "CurrentAltitude": -7.76,
+              "Name": "Wait until Above horizon"
+            },
+            {
+              "Altitude": 0,
+              "Status": "CREATED",
+              "ExpectedTime": "Now",
+              "CurrentAltitude": 33,
+              "Name": "Wait until Above horizon"
+            }
+          ],
+          "Status": "RUNNING",
+          "Triggers": [],
+          "Conditions": [],
+          "Name": "Altitude waits_Container"
+        }
+      ],
+      "Status": "RUNNING",
+      "Triggers": [],
+      "Conditions": [],
+      "Name": "Targets_Container"
+    },
+    {
+      "Items": [],
+      "Status": "CREATED",
+      "Triggers": [],
+      "Conditions": [],
+      "Name": "End_Container"
+    }
+  ],
+  "Error": "",
+  "StatusCode": 200,
+  "Success": true,
+  "Type": "API",
+  "_meta": {
+    "captured_at": "2026-11-24T04:36:38+00:00",
+    "nina_version": "3.2.0.9001",
+    "api_version": "2.2.15.3",
+    "endpoint": "/sequence/json",
+    "params": {}
+  }
+}

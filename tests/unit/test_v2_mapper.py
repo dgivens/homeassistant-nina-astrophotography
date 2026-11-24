@@ -656,11 +656,11 @@ def _altitude_wait_ends(
         (6, None),
     ],
     ids=[
-        "Wait for Sun Altitude, running: 20:22",
+        "Wait if Sun Altitude, running: 20:22",
         "Wait for Altitude: 21:12",
         "Wait for Altitude past midnight: 01:42",
-        "Wait until Above Horizon: 20:40",
-        "Wait for Moon Altitude: 20:13",
+        "Wait until Above horizon: 20:40",
+        "Wait if Moon Altitude: 20:13",
         "met already: Now",
         "never reached: --",
     ],
@@ -668,8 +668,26 @@ def _altitude_wait_ends(
 def test_an_altitude_wait_ends_at_the_time_n_i_n_a_expects(
     index: int, ends: datetime | None
 ) -> None:
-    """`ExpectedTime` is rig-local and dateless: the next occurrence of it."""
+    """`ExpectedTime` is rig-local and dateless: its occurrence from an hour
+    before the read on.
+    """
     assert _altitude_wait_ends(index) == ends
+
+
+def test_a_recalculating_estimate_still_names_its_end() -> None:
+    """A Wait until Above horizon on a custom horizon resets its target
+    altitude every second, so `⌛` trails most reads of it: `23:56⌛` here,
+    read at 22:36 on the simulator rig.
+    """
+    root = map_sequence(
+        load("simulator_altitude_wait_horizon_sequence_json.json"),
+        read_at=datetime(2026, 11, 24, 4, 36, 38, tzinfo=UTC),
+        rig_offset=timedelta(hours=-6),
+    )
+    assert root is not None
+    wait = root.children[2].children[0].children[0].wait
+    assert wait is not None
+    assert wait.ends == _evening(23, 56)
 
 
 @pytest.mark.synthetic
@@ -682,7 +700,12 @@ def test_an_altitude_wait_ends_at_the_time_n_i_n_a_expects(
         ("12:05 PM", _evening(12, 5, day=24)),
         ("19:30", _evening(19, 30)),
         ("18:57", _evening(18, 57, day=24)),
-        ("20:22⌛", None),
+        ("12:00", _evening(12, 0, day=24)),
+        ("20:22⌛", _evening(20, 22)),
+        ("--⌛", None),
+        ("00:00", None),
+        ("00:00⌛", None),
+        ("12:00 AM", None),
         ("Jetzt", None),
         ("", None),
         ("24:00", None),
@@ -696,7 +719,12 @@ def test_an_altitude_wait_ends_at_the_time_n_i_n_a_expects(
         "noon, 12-hour",
         "within the hour it can overrun: today",
         "past that: tomorrow",
-        "recalculating",
+        "16 hours ahead",
+        "recalculating: the estimate before it",
+        "recalculating, never reached",
+        "never estimated",
+        "never estimated, recalculating",
+        "never estimated, 12-hour",
         "a localized Now",
         "empty",
         "no such hour",

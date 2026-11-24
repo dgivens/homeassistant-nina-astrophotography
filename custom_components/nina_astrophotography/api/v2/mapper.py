@@ -21,8 +21,9 @@
     `NinaEvent.data` keeps scalars only.
   - Flat-panel brightness range and mount tracking modes are per-device;
     never hardcoded.
-  - An altitude wait's `ExpectedTime` is display text with no date; `--`, the
-    localized "Now" and a trailing `⌛` place no end.
+  - An altitude wait's `ExpectedTime` is display text with no date. `--`, the
+    localized "Now" and `00:00` (the unset `DateTime.MinValue`) place no end;
+    a trailing `⌛` is dropped.
 
 A device block is mapped whenever present, connected or not: the coordinator
 keeps the "has ever carried a `DeviceId`" latch; this module is stateless.
@@ -126,13 +127,15 @@ _TIMESPAN = re.compile(
 
 # An altitude wait's `ExpectedTime`, a DateTime formatted "t". N.I.N.A. runs
 # under the invariant culture, which makes it "HH:mm"; a 12-hour form is read
-# too. `⌛` is appended while N.I.N.A. recalculates, so it fails the match.
+# too.
 _SHORT_TIME = re.compile(
     r"^(?P<hour>\d{1,2})[:.](?P<minute>\d{2})(?:\s*(?P<half>[AaPp])\.?\s*[Mm]\.?)?$"
 )
-# How far past its estimate an altitude wait is still read as today's.
-# N.I.N.A. estimates the sun and moon once a night, so a wait can run on past
-# the minute it names, and rolling that over would count down a day.
+# Appended to the last estimate whenever the target altitude changes, which a
+# custom horizon does every second of a Wait until Above horizon.
+_RECALCULATING = "\u231b"
+# How far past its estimate an altitude wait is still read as today's: the
+# sun's and moon's are cached for the day and a wait can run past them.
 _ESTIMATE_OVERRUN = timedelta(hours=1)
 
 # The only method whose focus points are HFR in pixels. An allowlist, so an
@@ -716,10 +719,14 @@ def _expected_time(
     """The instant an altitude wait's `ExpectedTime` names, in the rig's zone.
 
     The text carries no date, so it is the occurrence in the day that starts
-    `_ESTIMATE_OVERRUN` before the read. `None` for anything but a time, or
-    with no read time or rig offset to place it.
+    `_ESTIMATE_OVERRUN` before the read. `None` for anything but a time, for
+    midnight, which is also how N.I.N.A. prints an estimate it never made, or
+    with no read time or rig offset to place it. The offset is fixed per
+    read, so an end across a daylight-saving change is an hour out until the
+    next equipment poll.
     """
-    match = _SHORT_TIME.match(raw.strip()) if isinstance(raw, str) else None
+    text = raw.strip().removesuffix(_RECALCULATING) if isinstance(raw, str) else ""
+    match = _SHORT_TIME.match(text.rstrip())
     if match is None or read_at is None or offset is None:
         return None
     hour, minute = int(match["hour"]), int(match["minute"])
@@ -727,7 +734,7 @@ def _expected_time(
         if not 1 <= hour <= 12:
             return None
         hour = hour % 12 + (12 if match["half"] in "Pp" else 0)
-    if hour > 23 or minute > 59:
+    if hour > 23 or minute > 59 or hour == minute == 0:
         return None
     earliest = read_at.astimezone(timezone(offset)) - _ESTIMATE_OVERRUN
     named = earliest.replace(hour=hour, minute=minute, second=0, microsecond=0)
@@ -797,8 +804,8 @@ def map_sequence(
     """`/sequence/json` answers a list of top-level nodes, so the tree gets a
     synthetic root. An unloaded sequence answers `""` and no tree.
 
-    `read_at` and `rig_offset` place an altitude wait's dateless, rig-local
-    `ExpectedTime`; without both it names no end.
+    `read_at` and `rig_offset`, the mount clock's offset, place an altitude
+    wait's dateless, rig-local `ExpectedTime`; without both it names no end.
     """
     if not isinstance(wire, list):
         return None
