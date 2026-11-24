@@ -361,67 +361,126 @@ def test_a_registry_precision_overrides_significant_figures() -> None:
 
 
 GUIDER_STATUS = "sensor.n_i_n_a_guider_status"
+GUIDER_RMS = "sensor.n_i_n_a_guider_rms_total"
+GUIDER = "switch.n_i_n_a_guider"
+LIGHTS = "sensor.n_i_n_a_last_image_hfr"
+IDS = {"status": GUIDER_STATUS, "rms": GUIDER_RMS, "guider": GUIDER, "lights": LIGHTS}
 GRACE = 180
-NOW = datetime.fromisoformat("2026-11-19T05:00:00+00:00")
+# `weather_frozen` holds the corpus's one mid-session `LostLock`, with RMS
+# unknown and the night's lights; the clock is its newest light.
+LIGHT = datetime.fromisoformat(
+    CARD_STATES["weather_frozen"]["states"][LIGHTS]["attributes"]["recent_lights"][-1][
+        "date"
+    ]
+)
 
 
-def _guider_hass(dump: str, held: float | None, **changes: str) -> dict[str, object]:
-    """The captured status row, `held` seconds since it last changed."""
-    row = {**CARD_STATES[dump]["states"][GUIDER_STATUS], **changes}
-    if held is not None:
-        row["last_changed"] = (NOW - timedelta(seconds=held)).isoformat()
-    return {"states": {GUIDER_STATUS: row}}
+def _guider(
+    dump: str = "weather_frozen",
+    changed: dict[str, float | None] | None = None,
+    status: str | None = None,
+) -> dict[str, object]:
+    """`dump`'s guider and lights rows, each in `changed` last changed that
+    many minutes from `LIGHT`; a row given `None` is left out.
+    """
+    states = CARD_STATES[dump]["states"]
+    rows = {}
+    for entity_id in IDS.values():
+        minutes = (changed or {}).get(entity_id, 0.0)
+        if minutes is None:
+            continue
+        rows[entity_id] = {
+            **states[entity_id],
+            "last_changed": (LIGHT + timedelta(minutes=minutes)).isoformat(),
+        }
+    if status is not None:
+        rows[GUIDER_STATUS] = {**rows[GUIDER_STATUS], "state": status}
+    return {"states": rows}
+
+
+def _not_guiding(rows: dict[str, object], minutes: float = 0) -> dict | None:
+    now = _ms((LIGHT + timedelta(minutes=minutes)).isoformat())
+    [read] = _run([["notGuiding", rows, IDS, GRACE, now]])
+    assert read is None or isinstance(read, dict)
+    return read
 
 
 @pytest.mark.parametrize(
-    ("rows", "fault"),
+    ("rows", "warning"),
     [
-        # `weather_frozen` is the corpus's one captured `LostLock`.
+        (_guider(), "Guide star lost"),
         (
-            _guider_hass("weather_frozen", 240),
-            {"warning": "Guide star lost", "left": 0},
+            _guider("simulator_guider_looping_after_guiding"),
+            "Guider looping, not guiding",
         ),
-        (
-            _guider_hass("weather_frozen", 60),
-            {"warning": "Guide star lost", "left": 120},
-        ),
-        (
-            _guider_hass("weather_frozen", None),
-            {"warning": "Guide star lost", "left": None},
-        ),
-        # No capture holds a guider looping, paused or calibrating mid-session.
+        (_guider("simulator_guider_paused"), "Guider paused, not guiding"),
+        # No dump holds PHD2 calibrating.
         pytest.param(
-            _guider_hass("site_configured", 240, state="Looping"),
-            {"warning": "Guider looping, not guiding", "left": 0},
+            _guider(status="Calibrating"),
+            "Guider calibrating, not guiding",
             marks=pytest.mark.synthetic,
         ),
-        pytest.param(
-            _guider_hass("site_configured", 240, state="Paused"),
-            {"warning": "Guider paused, not guiding", "left": 0},
-            marks=pytest.mark.synthetic,
-        ),
-        pytest.param(
-            _guider_hass("site_configured", 240, state="Calibrating"),
-            None,
-            marks=pytest.mark.synthetic,
-        ),
-        (_guider_hass("site_configured", 240), None),
+        (_guider("site_configured"), None),
     ],
-    ids=[
-        "lost past the grace",
-        "lost inside it",
-        "lost, its age unknown",
-        "looping",
-        "paused",
-        "calibrating",
-        "guiding",
-    ],
+    ids=["lost", "looping", "paused", "calibrating", "guiding"],
 )
-def test_a_guider_not_guiding_is_due_a_warning_once_it_outlasts_the_grace(
-    rows: dict[str, object], fault: dict[str, object] | None
+def test_a_guider_running_but_not_guiding_is_named(
+    rows: dict[str, object], warning: str | None
 ) -> None:
-    [read] = _run([["notGuiding", rows, GUIDER_STATUS, GRACE, _ms(NOW.isoformat())]])
-    assert read == (None if fault is None else pytest.approx(fault))
+    read = _not_guiding(rows)
+    assert (read and read["warning"]) == warning
+
+
+@pytest.mark.parametrize(
+    ("changed", "left"),
+    [
+        ({GUIDER_STATUS: -1, GUIDER_RMS: -1, GUIDER: -60}, 120),
+        # Lost, then looping, then lost again: RMS unknown throughout.
+        ({GUIDER_STATUS: -1, GUIDER_RMS: -4, GUIDER: -60}, 0),
+        # A stop's leftover, then guiding restarted.
+        ({GUIDER_STATUS: -60, GUIDER_RMS: -60, GUIDER: -2}, 60),
+        # No RMS row to say when guiding stopped.
+        ({GUIDER_STATUS: -1, GUIDER_RMS: None, GUIDER: -60}, 120),
+    ],
+    ids=["one status", "a run of statuses", "the switch on since", "no RMS row"],
+)
+def test_not_guiding_is_timed_from_when_guiding_stopped(
+    changed: dict[str, float | None], left: float
+) -> None:
+    read = _not_guiding(_guider(changed=changed))
+    assert read is not None
+    assert read["left"] == pytest.approx(left)
+
+
+def test_a_run_of_unknown_age_is_never_due() -> None:
+    rows = {
+        entity_id: CARD_STATES["weather_frozen"]["states"][entity_id]
+        for entity_id in IDS.values()
+    }
+    assert _not_guiding({"states": rows}) == {
+        "warning": "Guide star lost",
+        "left": None,
+        "lit": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("dump", "began", "lit"),
+    [
+        ("weather_frozen", -1, True),
+        # As through an autofocus run, which exposes and saves no light.
+        ("weather_frozen", 1, False),
+        ("simulator_guider_looping_after_guiding", -1, False),
+    ],
+    ids=["a light saved since", "none since", "no light at all"],
+)
+def test_only_a_light_saved_since_guiding_stopped_is_unguided(
+    dump: str, began: float, lit: bool
+) -> None:
+    changed = {GUIDER_STATUS: began, GUIDER_RMS: began, GUIDER: -60}
+    read = _not_guiding(_guider(dump, changed), minutes=5)
+    assert read is not None
+    assert read["lit"] is lit
 
 
 @pytest.mark.parametrize(

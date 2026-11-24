@@ -263,26 +263,42 @@ export function waitCountdown({ left, atMost, approx }) {
 }
 
 // The guider statuses that are PHD2 running but not guiding, as a warning.
-// `Calibrating` is not one: N.I.N.A. takes no frame until calibration ends.
 const NOT_GUIDING = {
   LostLock: "Guide star lost",
   Looping: "Guider looping, not guiding",
   Paused: "Guider paused, not guiding",
+  Calibrating: "Guider calibrating, not guiding",
 };
 
 /**
- * The guider running but not guiding, from the status sensor `id`, or `null`.
- * `warning` is what to warn of, and `left` the seconds until the status has
- * held for `grace`: 0 once it has, `null` for a row with no `last_changed`,
- * whose age is unknown. Held is timed from that `last_changed`, so a Home
- * Assistant restart starts it again.
+ * The guider running but not guiding, or `null`. `ids` names the rows of the
+ * guider `status`, the total `rms`, the `guider` switch, and the `lights`
+ * sensor whose `recent_lights` say when each light was saved.
+ *
+ * The run is timed from when RMS turned `unknown`, which it reads from the
+ * first status that is not guiding until PHD2 guides again, so a lock lost,
+ * looping and lost again is one run. A stop leaves RMS `unknown` too, so the
+ * switch turning on starts the run again. With no RMS row, the status's own
+ * change starts it. `left` is the seconds until the run has lasted `grace`,
+ * and `lit` whether a light has been saved since it began: N.I.N.A. takes
+ * none during its own guider starts, but autofocus and plate solving expose.
+ * Both are `null` and false for a run whose start is unknown.
  */
-export function notGuiding(hass, id, grace, now = Date.now()) {
-  const row = hass.states[id];
-  const warning = NOT_GUIDING[row?.state];
+export function notGuiding(hass, { status, rms, guider, lights }, grace, now = Date.now()) {
+  const warning = NOT_GUIDING[hass.states[status]?.state];
   if (!warning) return null;
-  const held = (now - Date.parse(row.last_changed ?? "")) / 1000;
-  return { warning, left: Number.isFinite(held) ? Math.max(grace - held, 0) : null };
+  const changed = (id) => Date.parse(hass.states[id]?.last_changed ?? "");
+  const starts = hass.states[rms]?.state === "unknown"
+    ? [changed(rms), changed(guider)] : [changed(status)];
+  const known = starts.filter(Number.isFinite);
+  if (!known.length) return { warning, left: null, lit: false };
+  const since = Math.max(...known);
+  const newest = hass.states[lights]?.attributes?.recent_lights?.at(-1);
+  return {
+    warning,
+    left: Math.max(grace - (now - since) / 1000, 0),
+    lit: Date.parse(newest?.date ?? "") > since,
+  };
 }
 
 /** The guider status as the Guiding heading names it: "Active", "Lost lock". */

@@ -28,21 +28,21 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   since Home Assistant started. The estimate carries no date, so a wait first
   seen more than six hours past it, or expected 18 to 24 hours ahead, is
   misread; the reference says how.
-- **The guiding alert can notify of a guider not guiding while imaging**
-  (#311). Turned on under its new **Guider not guiding** section, it notifies
-  when the guide star stays lost, or PHD2 keeps looping or stays paused, for
-  three minutes while frames arrive, and not during a meridian flip or a
-  sequence wait. Its RMS alert cannot fire then, since RMS reads unknown. It
-  is off by default, so existing automations alert as before.
+- **The guider not guiding blueprint** (#311) notifies when lights are saved
+  while the guider has not guided for three minutes: the guide star lost, or
+  PHD2 looping, paused or calibrating. Not during a meridian flip or a
+  sequence wait, and not for a guider N.I.N.A. stopped. The guiding alert
+  cannot see this, since guide RMS reads unknown whenever PHD2 is not
+  guiding.
 
 ### Fixed
 
-- **The observatory card warns of a guider not guiding while imaging**
-  (#311). A guide star lost, or a guider looping or paused, for three minutes
-  during a sequence reads `Guide star lost`, `Guider looping, not guiding` or
-  `Guider paused, not guiding` on a collapsed card, and cues a collapsed
-  Guiding heading. The Guiding heading names the status, such as `Lost lock`
-  or `Looping`, where it read `Active` for every running guider.
+- **The observatory card warns of a guider not guiding while lights are
+  saved** (#311). The guide star lost, or a guider looping, paused or
+  calibrating, for three minutes with a light saved since, turns the Guider
+  chip orange and reads `Guide star lost` or `Guider looping, not guiding` on
+  a collapsed card. The Guiding heading names the status, such as `Lost lock`
+  or `Looping`. Guiding stopped turns the Guider chip orange too.
 - **The observatory card does not warn of guiding stopped during a wait**
   (#310), which stops guiding on purpose: Target Scheduler stops it while it
   waits for its next target, and a collapsed card would show it as a fault.

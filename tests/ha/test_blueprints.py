@@ -40,6 +40,16 @@ REQUIRED: dict[str, dict[str, object]] = {
         "flat_panel_light": "light.rig_flat_panel_light",
         "notify_target": ["notify.phone"],
     },
+    "guider_not_guiding_alert.yaml": {
+        "guider_status": "sensor.rig_guider_status",
+        "guider_rms": "sensor.rig_guider_rms_total",
+        "guider_switch": "switch.rig_guider",
+        "last_image_hfr": "sensor.rig_last_image_hfr",
+        "sequencer_running": "binary_sensor.rig_sequencer_running",
+        "meridian_flip": "binary_sensor.rig_mount_meridian_flip",
+        "sequence_waiting": "binary_sensor.rig_sequence_waiting",
+        "notify_target": ["notify.phone"],
+    },
     "guiding_alert.yaml": {
         "nina_rig": "device-id",
         "rms_sensor": "sensor.rig_guider_rms_total",
@@ -90,15 +100,11 @@ OPTIONAL: dict[str, dict[str, object]] = {
     "cover_closed_alert.yaml": {},
     "cover_fault_alert.yaml": {"stuck_after": 30, "after_move_only": True},
     "flat_panel_left_lit_alert.yaml": {"lit_minutes": 45},
-    "guiding_alert.yaml": {
-        "run_autofocus": True,
-        "alert_not_guiding": True,
+    "guider_not_guiding_alert.yaml": {
         "not_guiding_minutes": 5,
-        "guider_switch": ["switch.rig_guider"],
-        "imaging": ["binary_sensor.rig_imaging"],
-        "meridian_flip": ["binary_sensor.rig_mount_meridian_flip"],
-        "sequence_waiting": ["binary_sensor.rig_sequence_waiting"],
+        "cooldown_minutes": 30,
     },
+    "guiding_alert.yaml": {"run_autofocus": True},
     "imaging_stall_alert.yaml": {
         "rig_reachable": ["binary_sensor.rig_reachable"],
         "site_latitude": ["sensor.rig_site_latitude"],
@@ -192,21 +198,29 @@ RELEASED: dict[str, frozenset[str]] = {
     "flat_panel_left_lit_alert.yaml": frozenset(
         {"flat_panel_light", "lit_minutes", "notify_target"}
     ),
-    "guiding_alert.yaml": frozenset(
+    "guider_not_guiding_alert.yaml": frozenset(
         {
-            "alert_not_guiding",
             "cooldown_minutes",
+            "guider_rms",
             "guider_status",
             "guider_switch",
-            "imaging",
+            "last_image_hfr",
             "meridian_flip",
-            "nina_rig",
             "not_guiding_minutes",
+            "notify_target",
+            "sequence_waiting",
+            "sequencer_running",
+        }
+    ),
+    "guiding_alert.yaml": frozenset(
+        {
+            "cooldown_minutes",
+            "guider_status",
+            "nina_rig",
             "notify_target",
             "rms_sensor",
             "rms_threshold",
             "run_autofocus",
-            "sequence_waiting",
             "sustained_minutes",
         }
     ),
@@ -331,6 +345,18 @@ RELEASED_REQUIRED: dict[str, frozenset[str]] = {
     "cover_closed_alert.yaml": frozenset({"behind_cover", "notify_target"}),
     "cover_fault_alert.yaml": frozenset({"cover_state", "notify_target"}),
     "flat_panel_left_lit_alert.yaml": frozenset({"flat_panel_light", "notify_target"}),
+    "guider_not_guiding_alert.yaml": frozenset(
+        {
+            "guider_rms",
+            "guider_status",
+            "guider_switch",
+            "last_image_hfr",
+            "meridian_flip",
+            "notify_target",
+            "sequence_waiting",
+            "sequencer_running",
+        }
+    ),
     "guiding_alert.yaml": frozenset(
         {"guider_status", "nina_rig", "notify_target", "rms_sensor"}
     ),
