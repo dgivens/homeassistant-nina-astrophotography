@@ -240,17 +240,19 @@ def _ms(at: str) -> int:
             {"kind": "scheduler", "atMost": False, "left": None},
         ),
         # No capture caught a Wait for Time Span or an altitude wait running.
-        (
+        pytest.param(
             _wait_hass(
                 "wait_for_time", kind="time_span", ends_at=None, span_seconds=300
             ),
             "2026-11-11T23:58:00+00:00",
             {"kind": "time_span", "atMost": True, "left": 240.0},
+            marks=pytest.mark.synthetic,
         ),
-        (
+        pytest.param(
             _wait_hass("wait_for_time", kind="altitude", ends_at=None),
             "2026-11-11T23:58:00+00:00",
             {"kind": "altitude", "atMost": False, "left": None},
+            marks=pytest.mark.synthetic,
         ),
         (_wait_hass("site_configured"), "2026-09-16T01:45:00+00:00", None),
     ],
@@ -280,19 +282,17 @@ def test_a_wait_counts_down_to_the_end_it_names_or_is_placed_at(
         ({"kind": "altitude", "left": None, "atMost": False}, "Waiting"),
     ],
 )
-def test_a_wait_counts_down_in_whole_seconds(
-    wait: dict[str, object], shown: str
-) -> None:
+def test_a_wait_reads_as_its_time_left(wait: dict[str, object], shown: str) -> None:
     assert _run([["waitCountdown", wait]]) == [shown]
 
 
 @pytest.mark.parametrize(
     ("kind", "shown"),
     [
-        ("scheduler", "Target Scheduler waiting"),
+        ("scheduler", "Waiting for next target"),
         ("time", "Wait for Time"),
         ("time_span", "Wait for Time Span"),
-        ("altitude", "Waiting for altitude"),
+        ("altitude", "Waiting for an altitude"),
         (None, "Waiting"),
     ],
 )

@@ -501,11 +501,15 @@ class NinaObservatoryCard extends HTMLElement {
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
     // Held readings are not current: the wait may be over.
+    // Target Scheduler names no target while it waits, and may pick another
+    // than the one before; the target sensor still reads that one.
     const wait = seqRunning && !quiet
       ? sequenceWait(h, this._eid("binary_sensor", "scheduler_waiting", "sequence_waiting"))
       : null;
     this._tickWait(wait?.left != null && this.isConnected);
-    const waitEnds = wait?.ends == null ? "" : ` · ${wait.atMost ? "by" : "until"} ${
+    // An end already past reads as a stale card, and a looping Time Span's is
+    // the pass before; the next read ends the wait.
+    const waitEnds = wait?.left == null ? "" : ` · ${wait.atMost ? "by" : "until"} ${
       new Date(wait.ends).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
     const camConnected = available(h, this._eid("sensor", "camera_state"));
     const mntConnected = available(h, this._eid("sensor", "mount_right_ascension"));
@@ -841,9 +845,9 @@ class NinaObservatoryCard extends HTMLElement {
           ${unreachable ? linkBanner(link, canClose) : `
           <div class="session-banner">
             <div>
-              <div class="target">${seqRunning ? safe(shown(target)) : "—"}</div>
-              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${imaging ? "Imaging"
-                : wait ? `${waitReason(wait)}${waitEnds}`
+              <div class="target">${seqRunning && wait?.kind !== "scheduler" ? safe(shown(target)) : "—"}</div>
+              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${wait ? `${waitReason(wait)}${waitEnds}`
+                : imaging ? "Imaging"
                 : seqRunning ? "Running, not imaging" : "Sequence not running"}</div>
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">

@@ -251,10 +251,10 @@ sees the same thing, and a private window forgets on reload.
 A collapsed card still shows what needs attention:
 
 - **Weather**: the safety status and the dew alert.
-- **Observatory**: a sequence wait's countdown, in the header, a lost or
-  unresponsive link, a meridian flip, a dome shutter or flat panel cover
-  error, a flat panel cover stuck part-way, light frames behind the closed
-  flat cover, and, while a sequence runs, a
+- **Observatory**: in its header, a sequence wait's countdown; below it, a
+  lost or unresponsive link, a meridian flip, a dome shutter or flat panel
+  cover error, a flat panel cover stuck part-way, light frames behind the
+  closed flat cover, and, while a sequence runs, a
   disconnected camera or mount or stopped guiding. Stop Sequence, Park and
   Close Dome stay, each while it applies, and a collapsed **Controls** section
   keeps them too.

@@ -213,8 +213,8 @@ export function clock(seconds) {
  * for Time name their end, and an altitude wait names none. A Wait for Time
  * Span is placed from the read that first showed it, which can be minutes
  * after it began, so its `ends` is the latest it can end (`atMost`). `left` is
- * the seconds to `ends`, `null` once it has passed and a read has yet to show
- * the wait over.
+ * the seconds to `ends`: `null` with no `ends`, or once it has passed and a
+ * read has yet to show the wait over.
  */
 export function sequenceWait(hass, id, now = Date.now()) {
   const row = hass.states[id];
@@ -231,13 +231,13 @@ export function sequenceWait(hass, id, now = Date.now()) {
 
 // What each kind of wait is waiting for. A kind not listed is still a wait.
 const WAITING_FOR = {
-  scheduler: "Target Scheduler waiting",
+  scheduler: "Waiting for next target",
   time: "Wait for Time",
   time_span: "Wait for Time Span",
-  altitude: "Waiting for altitude",
+  altitude: "Waiting for an altitude",
 };
 
-/** A wait's kind as words: "Target Scheduler waiting", or "Waiting". */
+/** A wait's kind as words: "Waiting for next target", or "Waiting". */
 export function waitReason({ kind }) {
   return WAITING_FOR[kind] ?? "Waiting";
 }

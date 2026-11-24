@@ -42,6 +42,7 @@ const REACHABLE = "binary_sensor.n_i_n_a_reachable";
 const SEQUENCER = "binary_sensor.n_i_n_a_sequencer_running";
 const IMAGE_COUNT = "sensor.n_i_n_a_session_image_count";
 const WAITING = "binary_sensor.n_i_n_a_sequence_waiting";
+const TARGET = "sensor.n_i_n_a_sequence_target";
 
 // The cover's sensor and switch read the same cover, so a scenario moves both.
 const cover = (dump, sensor, sw) =>
@@ -443,9 +444,19 @@ export const scenarios = {
     folded: ["mount", "rotator", "guiding", "controls"],
   },
 
-  // Target Scheduler waiting out a target's window: the header counts down
-  // to 21:05, and the banner says what the sequence waits for.
+  // Target Scheduler waiting for its next target: the header counts down to
+  // 21:05, and the banner says what the sequence waits for.
   wait_scheduler: { hass: (dump) => waiting(dump, "scheduler_waiting").build() },
+
+  // A wait mid-night, inside five minutes of the last frame, which keeps
+  // `imaging` on, and with the target sensor naming the one before: the banner
+  // says what the sequence waits for, and no target. Both rows are moved, the
+  // target from `weather_frozen`, Target Scheduler's lost-lock capture.
+  wait_after_frames: {
+    hass: (dump) => waiting(dump, "scheduler_waiting")
+      .override("binary_sensor.n_i_n_a_imaging", "on")
+      .override(TARGET, dump.weather_frozen.states[TARGET].state).build(),
+  },
 
   // The sequence's own Wait for Time.
   wait_for_time: { hass: (dump) => waiting(dump, "wait_for_time").build() },
@@ -466,7 +477,7 @@ export const scenarios = {
   },
 
   // Half a minute past Target Scheduler's end, before a read shows the wait
-  // over: still waiting, with no countdown.
+  // over: still waiting, with no countdown or end.
   wait_overdue: {
     hass: (dump) => waiting(dump, "scheduler_waiting", 20 * 60_000 + 71_000).build(),
   },

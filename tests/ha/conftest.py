@@ -291,8 +291,8 @@ def on_the_frozen_station_night(freezer):
 
 @pytest.fixture
 def inside_the_scheduler_wait(freezer):
-    """20:45 on the rig, twenty minutes before the 21:05 Target Scheduler
-    named in `scheduler_waiting`'s TS-WAITSTART.
+    """20:45 on the rig, twenty minutes before the 21:05 end that
+    `scheduler_waiting`'s TS-WAITSTART names.
     """
     freezer.move_to("2026-09-16T01:45:00+00:00")
 
