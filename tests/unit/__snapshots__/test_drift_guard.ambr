@@ -388,7 +388,7 @@
     'Sequence.Items.Conditions.RemainingTime': 'str',
     'Sequence.Items.Conditions.Status': 'str',
     'Sequence.Items.Conditions.TargetTime': 'str',
-    'Sequence.Items.CurrentAltitude': 'float',
+    'Sequence.Items.CurrentAltitude': 'float|int',
     'Sequence.Items.Delay': 'int',
     'Sequence.Items.DewHeaterOn': 'bool',
     'Sequence.Items.ExpectedTime': 'str',
