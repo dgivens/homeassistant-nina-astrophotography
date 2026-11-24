@@ -88,6 +88,10 @@ class Dump(NamedTuple):
 # Wait for Time, each dumped from inside it. `simulator_altitude_wait` is the
 # test VM's Wait if Sun Altitude, whose end N.I.N.A. expects to the minute,
 # dumped as it was captured.
+#
+# `simulator_guider_looping_after_guiding` and `simulator_guider_paused` are the
+# test VM's guider running but not guiding, the corpus's only `Looping` and
+# `Paused`.
 DUMPS: dict[str, Dump] = {
     "site_configured": Dump("site_configured", None, METRIC_SYSTEM),
     "equipment_disconnected": Dump("equipment_disconnected", None, METRIC_SYSTEM),
@@ -113,6 +117,10 @@ DUMPS: dict[str, Dump] = {
     "simulator_altitude_wait": Dump(
         "simulator_altitude_wait", "inside_the_altitude_wait", METRIC_SYSTEM
     ),
+    "simulator_guider_looping_after_guiding": Dump(
+        "simulator_guider_looping_after_guiding", None, METRIC_SYSTEM
+    ),
+    "simulator_guider_paused": Dump("simulator_guider_paused", None, METRIC_SYSTEM),
 }
 
 # Home Assistant mints these per run, so they are the one thing here that is not
