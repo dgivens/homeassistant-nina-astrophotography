@@ -28,8 +28,9 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   since Home Assistant started. The estimate carries no date, so a wait first
   seen more than six hours past it, or expected 18 to 24 hours ahead, is
   misread; the reference says how.
-- **The guider not guiding blueprint** (#311) notifies when lights are saved
-  while the guider has not guided for three minutes: the guide star lost,
+- **The guider not guiding blueprint** (#311) notifies when a light begun
+  after guiding stopped is saved, once the guider has not guided for three
+  minutes: the guide star lost,
   PHD2 looping, paused or calibrating, or guiding stopped, as when the guide
   camera drops out. Not during a meridian flip or a sequence wait, and not for
   an autofocus run or a plate solve, which save no light. The guiding alert
@@ -40,7 +41,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 - **The observatory card warns of a guider not guiding while lights are
   saved** (#311). Guiding stopped, the guide star lost, or a guider looping,
-  paused or calibrating, for three minutes with a light saved since, turns the
+  paused or calibrating, for three minutes with a light begun since, turns the
   Guider chip orange and reads `Guiding stopped`, `Guide star lost` or
   `Guider looping, not guiding` on a collapsed card. An autofocus run, which
   stops guiding and saves no light, does not warn. The

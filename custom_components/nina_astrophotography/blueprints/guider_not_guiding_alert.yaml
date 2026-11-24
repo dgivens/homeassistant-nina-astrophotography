@@ -7,11 +7,16 @@ blueprint:
     this, since guide RMS reads unknown whenever PHD2 is not guiding.
 
     It alerts once the guider has not guided for the time below, and a light
-    has been saved since it stopped, while the sequence runs, with no meridian
-    flip and no sequence wait under way: those stop and restart guiding on
-    purpose. An autofocus run or a plate solve exposes without saving a light,
-    so neither alerts on its own. It is checked as each light is saved, and
-    once guide RMS has read unknown for the time below.
+    exposed wholly since it stopped has been saved, while the sequence runs,
+    with no meridian flip and no sequence wait under way: those stop and
+    restart guiding on purpose. An autofocus run or a plate solve exposes
+    without saving a light, so neither alerts on its own. It is checked as
+    each light is saved, and once guide RMS has read unknown for the time
+    below.
+
+    It names the status it reads. `LostLock` is either a lost guide star or
+    what a stop leaves behind, such as guiding that never restarted after an
+    autofocus run: the guider status cannot tell them apart.
 
     The time runs from when guide RMS turned unknown, so a lock lost, looping
     and lost again counts as one stretch, and guiding again ends it. It
@@ -120,10 +125,14 @@ variables:
     {{ as_timestamp(rms.last_changed) }}
     {% elif status is not none %}{{ as_timestamp(status.last_changed) }}
     {% else %}{{ none }}{% endif %}
-  newest_light: >-
+  # When the newest light began exposing: N.I.N.A. stops guiding seconds after
+  # saving a light, and the rig's clock need not agree with Home Assistant's,
+  # so its save time is too close to a stop to compare.
+  light_began: >-
     {% set newest = (state_attr(last_image_hfr, 'recent_lights') or [])
        | list | last | default(none) %}
-    {{ as_timestamp(newest.date, none) if newest is not none else none }}
+    {% set saved = as_timestamp(newest.date, none) if newest is not none else none %}
+    {{ saved - (newest.exposure or 0) if saved is not none else none }}
 
 # Timed on RMS, which defines the stretch and is written after the status in
 # the same read; on the status only for a rig with no RMS reading.
@@ -157,11 +166,11 @@ conditions:
       - condition: state
         entity_id: !input sequence_waiting
         state: "on"
-  - alias: "Not guiding for long enough, and a light saved since"
+  - alias: "Not guiding for long enough, and a light begun since saved"
     condition: template
     value_template: >
-      {{ stopped_guiding is number and newest_light is number
-         and newest_light > stopped_guiding
+      {{ stopped_guiding is number and light_began is number
+         and light_began > stopped_guiding
          and as_timestamp(now()) - stopped_guiding >= not_guiding_minutes * 60 }}
   - alias: "No alert yet for this stretch inside the cooldown"
     condition: template
@@ -192,10 +201,10 @@ actions:
       # more-indented line. Run by hand, the guider may be guiding.
       message: >
         {%- set status = states(guider_status) %}
-        {%- set what = {'LostLock': 'The guide star has been lost', 'Looping': 'The guider has been looping, not guiding,', 'Selected': 'The guider has been looping, not guiding,', 'Paused': 'The guider has been paused', 'Calibrating': 'The guider has been calibrating', 'Stopped': 'Guiding has been stopped'}.get(status) %}
-        {%- if what is none %}The guider reads {{ status }}.
-        {%- else %}{{ what }}
+        {%- if status in ['LostLock', 'Looping', 'Selected', 'Paused',
+        'Calibrating', 'Stopped'] %}The guider has not guided
         {%- if stopped_guiding is number %} for
         {{ ((as_timestamp(now()) - stopped_guiding) / 60) | round | int }}
-        minutes{% endif %}, and lights are still being saved: they are
-        unguided.{% endif %}
+        minutes{% endif %}, and reads {{ status }}: lights are being saved
+        unguided.
+        {%- else %}The guider reads {{ status }}.{% endif %}

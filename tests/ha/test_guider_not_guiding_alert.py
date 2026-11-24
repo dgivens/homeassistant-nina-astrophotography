@@ -31,7 +31,6 @@ INPUTS = {
     "notify_target": ["notify.phone"],
 }
 
-UNGUIDED = "minutes, and lights are still being saved: they are unguided."
 
 # A sequence running and guiding.
 RIG = {STATUS: "Guiding", RMS: "0.74", SEQUENCER: "on", FLIP: "off", WAITING: "off"}
@@ -86,11 +85,22 @@ def stop_guiding(hass: HomeAssistant, freezer):
     return _stop
 
 
-async def _save_light(hass: HomeAssistant) -> None:
+async def _save_light(
+    hass: HomeAssistant, exposure: float = 60.0, rig_ahead: float = 0.0
+) -> None:
+    """A light saved now, stamped by a rig clock `rig_ahead` seconds fast."""
     lights = state_of(hass, LIGHTS).attributes["recent_lights"]
-    saved = {"date": dt_util.utcnow().isoformat(), "exposure": 300.0}
+    date = dt_util.utcnow() + timedelta(seconds=rig_ahead)
+    saved = {"date": date.isoformat(), "exposure": exposure}
     hass.states.async_set(LIGHTS, "1.43", {"recent_lights": [*lights, saved]})
     await hass.async_block_till_done()
+
+
+def _unguided(status: str, minutes: int) -> str:
+    return (
+        f"The guider has not guided for {minutes} minutes, and reads {status}:"
+        " lights are being saved unguided."
+    )
 
 
 def _messages(notified) -> list[str]:
@@ -99,20 +109,20 @@ def _messages(notified) -> list[str]:
 
 @pytest.mark.usefixtures("guiding")
 @pytest.mark.parametrize(
-    ("status", "what"),
+    "status",
     [
-        ("LostLock", "The guide star has been lost"),
-        ("Looping", "The guider has been looping, not guiding,"),
-        ("Selected", "The guider has been looping, not guiding,"),
-        ("Paused", "The guider has been paused"),
+        "LostLock",
+        "Looping",
+        "Selected",
+        "Paused",
         # A light saved while it calibrates is not the sequence's own start.
-        ("Calibrating", "The guider has been calibrating"),
+        "Calibrating",
         # A guide camera dropping out mid-night stops PHD2.
-        ("Stopped", "Guiding has been stopped"),
+        "Stopped",
     ],
 )
 async def test_a_light_saved_unguided_alerts_once_the_guider_has_not_guided_long_enough(
-    hass: HomeAssistant, notified, later, stop_guiding, status: str, what: str
+    hass: HomeAssistant, notified, later, stop_guiding, status: str
 ) -> None:
     await stop_guiding(status)
     await later(2)
@@ -121,7 +131,7 @@ async def test_a_light_saved_unguided_alerts_once_the_guider_has_not_guided_long
 
     await later(1.1)
 
-    assert (quiet, _messages(notified)) == (0, [f"{what} for 3 {UNGUIDED}"])
+    assert (quiet, _messages(notified)) == (0, [_unguided(status, 3)])
 
 
 @pytest.mark.usefixtures("guiding")
@@ -136,6 +146,39 @@ async def test_no_light_saved_since_guiding_stopped_does_not_alert(
     await later(10)
 
     assert notified == []
+
+
+@pytest.mark.usefixtures("guiding")
+async def test_an_autofocus_stop_just_after_a_light_does_not_alert_on_a_fast_rig_clock(
+    hass: HomeAssistant, notified, later, freezer
+) -> None:
+    """N.I.N.A. stops guiding about 3 s after saving a light, and Home
+    Assistant reads it up to a poll later, so a rig clock 10 s fast stamps
+    that light after the stop.
+    """
+    await _save_light(hass, exposure=300.0, rig_ahead=10)
+    freezer.tick(timedelta(seconds=3))
+    await _set(hass, STATUS, "LostLock")
+    await _set(hass, RMS, "unknown")
+
+    await later(4.5)
+
+    assert notified == []
+
+
+@pytest.mark.usefixtures("guiding")
+async def test_a_light_begun_before_guiding_stopped_does_not_alert_and_the_next_does(
+    hass: HomeAssistant, notified, later, stop_guiding
+) -> None:
+    await stop_guiding()
+    await later(3)
+    await _save_light(hass, exposure=300.0)
+    await later(4)
+    quiet = len(notified)
+
+    await _save_light(hass, exposure=300.0)
+
+    assert (quiet, len(notified)) == (0, 1)
 
 
 @pytest.mark.usefixtures("guiding")
@@ -239,7 +282,7 @@ async def test_a_new_stretch_alerts_inside_the_cooldown(
 @pytest.mark.parametrize(
     ("status", "message"),
     [
-        ("LostLock", f"The guide star has been lost for 4 {UNGUIDED}"),
+        ("LostLock", _unguided("LostLock", 4)),
         ("Guiding", "The guider reads Guiding."),
         (None, "The guider reads unknown."),
     ],

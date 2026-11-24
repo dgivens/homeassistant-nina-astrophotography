@@ -241,10 +241,10 @@ light after it until the cover opens.
 The Guiding heading names what the guider is doing: Active while it guides,
 or Stopped, Lost lock, Looping, Paused or Calibrating. While a sequence runs,
 the Guider chip turns orange once the guider has not guided for three minutes
-and a light has been saved since, which leaves that light unguided: guiding
-stopped, the guide star lost, or PHD2 looping, paused or calibrating. Not
-during a meridian flip or a sequence wait, and not for an autofocus run or a
-plate solve, which save no light. To image unguided on purpose, disconnect
+and a light begun since has been saved, which leaves that light unguided:
+guiding stopped, the guide star lost, or PHD2 looping, paused or calibrating.
+Not during a meridian flip or a sequence wait, and not for an autofocus run or
+a plate solve, which save no light. To image unguided on purpose, disconnect
 the guider in N.I.N.A., and the card stops warning.
 
 Tap or click a card's header to collapse the card, or a section's heading,

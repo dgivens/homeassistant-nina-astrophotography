@@ -309,19 +309,26 @@ lights keep arriving. The guiding alert cannot see any of this, since guide RMS
 reads `unknown` whenever PHD2 is not guiding.
 
 It alerts once the guider has not guided for three minutes, by default, and a
-light has been saved since it stopped, while
+light begun since it stopped has been saved, while
 `binary_sensor.<instance>_sequencer_running` is on and no meridian flip or
 sequence wait is under way. Both stop and restart guiding on purpose, a flip's
 calibration included. An autofocus run or a plate solve exposes without saving
 a light, so autofocus and plate solving never alert on their own, and neither
-does a guider N.I.N.A. stopped for one. A light saved while PHD2 calibrates
+does a guider N.I.N.A. stopped for one. A light begun while PHD2 calibrates
 does alert: N.I.N.A. takes none while it calibrates for its own guider start.
+A light begun before guiding stopped is partly guided, and does not count.
+
+The notification names the status. `LostLock` is either a lost guide star or
+what a stop leaves behind, such as guiding that never restarted after an
+autofocus run: the guider status cannot tell them apart, so the message says
+only that the guider has not guided.
 
 The time runs from when guide RMS turned `unknown`, so a lock lost, then
 looping, then lost again is one stretch, and guiding again ends it. It is
 checked each time a light is saved, and when RMS has read `unknown` for the
-time. So it alerts the set time after guiding stopped at the earliest, and
-with the first light saved after that at the latest.
+time. So it alerts the set time after guiding stopped at the earliest, and at
+the latest when the first light begun after guiding stopped is saved, which is
+one exposure later.
 
 It alerts again for the same stretch at most once per cooldown, 15 minutes by
 default; a stretch that begins after the last alert alerts at once. A Home
@@ -332,10 +339,10 @@ Patchy cloud that makes PHD2 alternate between `LostLock` and `Guiding` ends
 the stretch each time it guides, so this never fires for it, and neither does
 the card; a cloud sensor covers that case.
 
-The light gate compares the time N.I.N.A. stamps a light with when Home
-Assistant saw guiding stop. A rig clock ahead of Home Assistant's by more than
-the few seconds between reads can let a light saved just before the star was
-lost count as saved after it.
+The light gate compares when a light began, from N.I.N.A.'s stamp less its
+exposure, with when Home Assistant saw guiding stop. N.I.N.A. stops guiding a
+few seconds after saving a light, so only a rig clock ahead of Home
+Assistant's by more than a whole exposure could make that light count.
 
 To image unguided on purpose, disconnect the guider in N.I.N.A.
 
@@ -343,8 +350,8 @@ Three minutes is longer than PHD2 needed on one Target Scheduler rig over ten
 nights. Mid-session, it found a lost star again within 10 to 35 seconds, and
 looped for 10 to 20 seconds while guiding restarted, and twice for a minute.
 
-The observatory card warns of the same, while a sequence runs, but its three
-minutes are fixed and it has no cooldown: it warns for as long as it holds. Its
+The observatory card warns of the same, by the same light gate, while a
+sequence runs, but its three minutes are fixed and it has no cooldown: it warns for as long as it holds. Its
 Guider chip turns orange, a collapsed card says "Guiding stopped", "Guide star
 lost", "Guider looping, not guiding", "Guider paused, not guiding" or "Guider
 calibrating, not guiding", and a collapsed Guiding heading shows a warning dot.

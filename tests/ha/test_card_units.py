@@ -507,14 +507,26 @@ def test_a_stretch_of_unknown_age_is_never_due() -> None:
 @pytest.mark.parametrize(
     ("dump", "began", "lit"),
     [
-        ("weather_frozen", -1, True),
+        # `weather_frozen`'s newest light is a 300 s sub.
+        ("weather_frozen", -6, True),
+        # Begun before the stop, so partly guided.
+        ("weather_frozen", -1, False),
+        # N.I.N.A. stops guiding about 3 s after saving a light, which a rig
+        # clock 10 s ahead of Home Assistant's stamps 7 s after the stop.
+        ("weather_frozen", -7 / 60, False),
         # As through an autofocus run, which exposes and saves no light.
         ("weather_frozen", 1, False),
         ("simulator_guider_looping_after_guiding", -1, False),
     ],
-    ids=["a light saved since", "none since", "no light at all"],
+    ids=[
+        "begun after guiding stopped",
+        "begun before",
+        "saved just before, the rig clock ahead",
+        "none since",
+        "no light at all",
+    ],
 )
-def test_only_a_light_saved_since_guiding_stopped_is_unguided(
+def test_only_a_light_begun_after_guiding_stopped_is_unguided(
     dump: str, began: float, lit: bool
 ) -> None:
     changed = {GUIDER_STATUS: began, GUIDER_RMS: began, GUIDER: -60}

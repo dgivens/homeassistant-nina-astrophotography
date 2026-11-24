@@ -287,9 +287,12 @@ const NOT_GUIDING = {
  * looping and lost again is one stretch; or from the switch changing, if
  * later, so a restart starts it again. With no RMS row, the status's own
  * change starts it. `left` is the seconds until it has lasted `grace`, and
- * `lit` whether a light has been saved since it began: autofocus and plate
- * solving expose without saving one. Both are `null` and false for a stretch
- * whose start is unknown.
+ * `lit` whether the newest light began its exposure after it began, so was
+ * unguided throughout: autofocus and plate solving expose without saving a
+ * light. The exposure's start, not its save, since N.I.N.A. stops guiding
+ * seconds after saving a light, and the rig's clock need not agree with Home
+ * Assistant's. Both are `null` and false for a stretch whose start is
+ * unknown.
  */
 export function notGuiding(hass, { status, rms, guider, lights }, grace, now = Date.now()) {
   const read = hass.states[status]?.state;
@@ -305,11 +308,12 @@ export function notGuiding(hass, { status, rms, guider, lights }, grace, now = D
   if (!known.length) return { kind, warning, left: null, lit: false };
   const since = Math.max(...known);
   const newest = hass.states[lights]?.attributes?.recent_lights?.at(-1);
+  const exposed = Date.parse(newest?.date ?? "") - (newest?.exposure ?? 0) * 1000;
   return {
     kind,
     warning,
     left: Math.max(grace - (now - since) / 1000, 0),
-    lit: Date.parse(newest?.date ?? "") > since,
+    lit: exposed > since,
   };
 }
 
