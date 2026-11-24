@@ -135,6 +135,8 @@ async def test_the_kept_sensors_keep_their_1_4_5_unique_id(
         "scheduler_waiting_lost_lock",
         "simulator_guider_calibrating",
         "simulator_guider_connected",
+        "simulator_guider_paused",
+        "simulator_guider_looping_after_guiding",
     ],
 )
 async def test_guide_rms_reads_unknown_unless_the_guider_is_guiding(

@@ -63,6 +63,21 @@ async def test_the_guider_switch_is_on_whenever_the_guider_is_running(
     assert state_of(hass, GUIDER).state == expected
 
 
+@pytest.mark.parametrize(
+    "state",
+    [
+        "simulator_guider_looping",
+        "simulator_guider_paused",
+        "simulator_guider_looping_after_guiding",
+    ],
+)
+async def test_the_guider_switch_reads_on_while_phd2_loops_or_pauses(
+    hass: HomeAssistant, config_entry, rig, set_up_at, state: str
+) -> None:
+    await set_up_at(hass, config_entry, rig, state)
+    assert state_of(hass, GUIDER).state == "on"
+
+
 async def test_a_lost_lock_left_over_from_a_stop_reads_off(
     hass: HomeAssistant, config_entry, rig, set_up_at
 ) -> None:

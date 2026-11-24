@@ -97,7 +97,8 @@ image histories are empty, which is a rig before its first sub, not an error.
 A device block from a later `/equipment/info` capture of the same rig, swapped
 into a whole capture, is captured too: `_dome_from` builds the simulator dome's
 mid-slew and dropped states that way, because the moment is too short for all
-fourteen endpoints.
+fourteen endpoints, and `_guider_from` the simulator guider looping and
+paused.
 
 Enter a whole capture with the `set_up_at` fixture, not `advance`: it serves
 the three tier-polled endpoints that the dawn family withholds, and advancing

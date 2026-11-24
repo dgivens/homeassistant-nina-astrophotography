@@ -475,6 +475,17 @@ def _dome_from(slug: str) -> State:
     return _replace_device(_DOME_PARKED, "Dome", block["Dome"])
 
 
+def _guider_from(slug: str) -> State:
+    """The calibrating simulator capture with the guider block of a later
+    `simulator_guider_<slug>` /equipment/info from the same rig; every other
+    block stays calibrating's.
+    """
+    block = load_envelope(f"simulator_guider_{slug}_equipment_info.json")["Response"]
+    return _replace_device(
+        _captured("simulator_guider_calibrating"), "Guider", block["Guider"]
+    )
+
+
 # Each name gets its own dict even where two are content-equal, so an in-place
 # edit in one test cannot leak into a state of another name.
 STATES: dict[str, State] = {
@@ -526,6 +537,13 @@ STATES: dict[str, State] = {
     # guider just reconnected, which reports an RMS of 0 until it guides.
     "simulator_guider_calibrating": _captured("simulator_guider_calibrating"),
     "simulator_guider_connected": _captured("simulator_guider_connected"),
+    # PHD2 told to loop from Stopped, which reports an RMS of 0; paused while
+    # guiding; and told to loop while guiding, where PHD2 itself reads
+    # `Selected`. The last two still report the RMS of the run before. None of
+    # the three changes raised a socket event.
+    "simulator_guider_looping": _guider_from("looping"),
+    "simulator_guider_paused": _guider_from("paused"),
+    "simulator_guider_looping_after_guiding": _guider_from("looping_after_guiding"),
     # 20:49, ten seconds after SEQUENCE-STARTING: every container still CREATED
     # on a sequence that IS running. The tree lags the start, so it cannot be
     # the only running signal either.
