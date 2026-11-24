@@ -20,7 +20,7 @@ import {
   missing, notGuiding, quantity, safe, sequenceWait, shown, waitCountdown, waitReason,
 } from "./nina-units.js";
 
-const VERSION = "2.8.0";
+const VERSION = "2.9.0";
 
 // Home Assistant has no per-press confirmation for a custom card's own
 // buttons, and a mis-tap on any of these costs the rest of the night — or, for

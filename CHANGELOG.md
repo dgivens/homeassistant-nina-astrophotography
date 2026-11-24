@@ -4,7 +4,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
-## [Unreleased]
+## [2.9.0] - 2026-11-24
 
 ### Added
 
