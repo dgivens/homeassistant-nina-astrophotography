@@ -43,7 +43,6 @@ REQUIRED: dict[str, dict[str, object]] = {
     "guider_not_guiding_alert.yaml": {
         "guider_status": "sensor.rig_guider_status",
         "guider_rms": "sensor.rig_guider_rms_total",
-        "guider_switch": "switch.rig_guider",
         "last_image_hfr": "sensor.rig_last_image_hfr",
         "sequencer_running": "binary_sensor.rig_sequencer_running",
         "meridian_flip": "binary_sensor.rig_mount_meridian_flip",
@@ -203,7 +202,6 @@ RELEASED: dict[str, frozenset[str]] = {
             "cooldown_minutes",
             "guider_rms",
             "guider_status",
-            "guider_switch",
             "last_image_hfr",
             "meridian_flip",
             "not_guiding_minutes",
@@ -349,7 +347,6 @@ RELEASED_REQUIRED: dict[str, frozenset[str]] = {
         {
             "guider_rms",
             "guider_status",
-            "guider_switch",
             "last_image_hfr",
             "meridian_flip",
             "notify_target",

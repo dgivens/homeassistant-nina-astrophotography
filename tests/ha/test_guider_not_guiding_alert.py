@@ -16,7 +16,6 @@ from helpers import state_of
 BLUEPRINT = "guider_not_guiding_alert.yaml"
 STATUS = "sensor.rig_guider_status"
 RMS = "sensor.rig_guider_rms_total"
-SWITCH = "switch.rig_guider"
 LIGHTS = "sensor.rig_last_image_hfr"
 SEQUENCER = "binary_sensor.rig_sequencer_running"
 FLIP = "binary_sensor.rig_mount_meridian_flip"
@@ -25,7 +24,6 @@ WAITING = "binary_sensor.rig_sequence_waiting"
 INPUTS = {
     "guider_status": STATUS,
     "guider_rms": RMS,
-    "guider_switch": SWITCH,
     "last_image_hfr": LIGHTS,
     "sequencer_running": SEQUENCER,
     "meridian_flip": FLIP,
@@ -36,7 +34,7 @@ INPUTS = {
 UNGUIDED = "minutes, and lights are still being saved: they are unguided."
 
 # A sequence running and guiding.
-RIG = {STATUS: "Guiding", RMS: "0.74", SWITCH: "on", SEQUENCER: "on", FLIP: "off"}
+RIG = {STATUS: "Guiding", RMS: "0.74", SEQUENCER: "on", FLIP: "off", WAITING: "off"}
 
 
 @pytest.fixture
@@ -48,7 +46,7 @@ def notified(hass: HomeAssistant):
 async def guiding(hass: HomeAssistant, installed, freezer):
     """The blueprint over a rig guiding, with no light saved yet tonight."""
     freezer.move_to("2026-11-22T05:00:00+00:00")
-    for entity, state in (RIG | {WAITING: "off"}).items():
+    for entity, state in RIG.items():
         hass.states.async_set(entity, state)
     hass.states.async_set(LIGHTS, "1.43", {"recent_lights": []})
     await installed(BLUEPRINT, INPUTS)
@@ -56,10 +54,15 @@ async def guiding(hass: HomeAssistant, installed, freezer):
 
 @pytest.fixture
 def later(hass: HomeAssistant, freezer):
+    """A second at a time, so a timer runs at its own moment rather than at
+    the end of the move, where every clock it reads is already past it.
+    """
+
     async def _later(minutes: float) -> None:
-        freezer.tick(timedelta(minutes=minutes))
-        async_fire_time_changed(hass)
-        await hass.async_block_till_done()
+        for _ in range(round(minutes * 60)):
+            freezer.tick(timedelta(seconds=1))
+            async_fire_time_changed(hass)
+            await hass.async_block_till_done()
 
     return _later
 
@@ -69,10 +72,18 @@ async def _set(hass: HomeAssistant, entity_id: str, state: str) -> None:
     await hass.async_block_till_done()
 
 
-async def _stop_guiding(hass: HomeAssistant, status: str = "LostLock") -> None:
-    """RMS reads unknown in every status but `Guiding`."""
-    hass.states.async_set(RMS, "unknown")
-    await _set(hass, STATUS, status)
+@pytest.fixture
+def stop_guiding(hass: HomeAssistant, freezer):
+    """The status, then RMS a moment later, as one read writes them: RMS
+    reads unknown in every status but `Guiding`.
+    """
+
+    async def _stop(status: str = "LostLock") -> None:
+        await _set(hass, STATUS, status)
+        freezer.tick(timedelta(seconds=1))
+        await _set(hass, RMS, "unknown")
+
+    return _stop
 
 
 async def _save_light(hass: HomeAssistant) -> None:
@@ -92,15 +103,18 @@ def _messages(notified) -> list[str]:
     [
         ("LostLock", "The guide star has been lost"),
         ("Looping", "The guider has been looping, not guiding,"),
+        ("Selected", "The guider has been looping, not guiding,"),
         ("Paused", "The guider has been paused"),
         # A light saved while it calibrates is not the sequence's own start.
         ("Calibrating", "The guider has been calibrating"),
+        # A guide camera dropping out mid-night stops PHD2.
+        ("Stopped", "Guiding has been stopped"),
     ],
 )
 async def test_a_light_saved_unguided_alerts_once_the_guider_has_not_guided_long_enough(
-    hass: HomeAssistant, notified, later, status: str, what: str
+    hass: HomeAssistant, notified, later, stop_guiding, status: str, what: str
 ) -> None:
-    await _stop_guiding(hass, status)
+    await stop_guiding(status)
     await later(2)
     await _save_light(hass)
     quiet = len(notified)
@@ -112,12 +126,12 @@ async def test_a_light_saved_unguided_alerts_once_the_guider_has_not_guided_long
 
 @pytest.mark.usefixtures("guiding")
 async def test_no_light_saved_since_guiding_stopped_does_not_alert(
-    hass: HomeAssistant, notified, later
+    hass: HomeAssistant, notified, later, stop_guiding
 ) -> None:
     """An autofocus run exposes, and saves no light."""
     await _save_light(hass)
     await later(1)
-    await _stop_guiding(hass)
+    await stop_guiding()
 
     await later(10)
 
@@ -126,13 +140,14 @@ async def test_no_light_saved_since_guiding_stopped_does_not_alert(
 
 @pytest.mark.usefixtures("guiding")
 async def test_a_lock_found_again_within_the_time_does_not_alert(
-    hass: HomeAssistant, notified, later
+    hass: HomeAssistant, notified, later, stop_guiding
 ) -> None:
-    await _stop_guiding(hass)
+    await stop_guiding()
     await later(1)
     await _save_light(hass)
     await later(1)
     await _set(hass, STATUS, "Guiding")
+    await _set(hass, RMS, "0.81")
 
     await later(5)
 
@@ -141,11 +156,14 @@ async def test_a_lock_found_again_within_the_time_does_not_alert(
 
 @pytest.mark.usefixtures("guiding")
 async def test_a_lock_lost_and_looping_in_turn_is_timed_from_the_first(
-    hass: HomeAssistant, notified, later
+    hass: HomeAssistant, notified, later, stop_guiding
 ) -> None:
-    for status in ("LostLock", "Looping", "LostLock"):
-        await _stop_guiding(hass, status)
+    await stop_guiding("LostLock")
+    for status in ("Looping", "LostLock"):
         await later(1.2)
+        await _set(hass, STATUS, status)
+    await later(1.2)
+
     await _save_light(hass)
 
     assert len(notified) == 1
@@ -154,20 +172,14 @@ async def test_a_lock_lost_and_looping_in_turn_is_timed_from_the_first(
 @pytest.mark.usefixtures("guiding")
 @pytest.mark.parametrize(
     ("entity_id", "state"),
-    [
-        # N.I.N.A. stopped the guider, which leaves `LostLock` behind.
-        (SWITCH, "off"),
-        (SEQUENCER, "off"),
-        (FLIP, "on"),
-        (WAITING, "on"),
-    ],
-    ids=["guider stopped", "sequence stopped", "flipping", "waiting"],
+    [(SEQUENCER, "off"), (FLIP, "on"), (WAITING, "on")],
+    ids=["sequence stopped", "flipping", "waiting"],
 )
 async def test_a_light_saved_while_a_gate_is_shut_does_not_alert(
-    hass: HomeAssistant, notified, later, entity_id: str, state: str
+    hass: HomeAssistant, notified, later, stop_guiding, entity_id: str, state: str
 ) -> None:
     await _set(hass, entity_id, state)
-    await _stop_guiding(hass)
+    await stop_guiding()
     await later(4)
 
     await _save_light(hass)
@@ -177,10 +189,10 @@ async def test_a_light_saved_while_a_gate_is_shut_does_not_alert(
 
 @pytest.mark.usefixtures("guiding")
 async def test_a_gate_shut_when_the_time_is_up_alerts_at_the_next_light_once_open(
-    hass: HomeAssistant, notified, later
+    hass: HomeAssistant, notified, later, stop_guiding
 ) -> None:
     await _set(hass, WAITING, "on")
-    await _stop_guiding(hass)
+    await stop_guiding()
     await later(1)
     await _save_light(hass)
     await later(3)
@@ -194,9 +206,9 @@ async def test_a_gate_shut_when_the_time_is_up_alerts_at_the_next_light_once_ope
 
 @pytest.mark.usefixtures("guiding")
 async def test_the_same_stretch_alerts_again_only_after_the_cooldown(
-    hass: HomeAssistant, notified, later
+    hass: HomeAssistant, notified, later, stop_guiding
 ) -> None:
-    await _stop_guiding(hass)
+    await stop_guiding()
     await later(3.1)
     for _ in range(4):
         await _save_light(hass)
@@ -207,15 +219,15 @@ async def test_the_same_stretch_alerts_again_only_after_the_cooldown(
 
 @pytest.mark.usefixtures("guiding")
 async def test_a_new_stretch_alerts_inside_the_cooldown(
-    hass: HomeAssistant, notified, later
+    hass: HomeAssistant, notified, later, stop_guiding
 ) -> None:
-    await _stop_guiding(hass)
+    await stop_guiding()
     await later(3.1)
     await _save_light(hass)
-    await _set(hass, RMS, "0.81")
     await _set(hass, STATUS, "Guiding")
+    await _set(hass, RMS, "0.81")
     await later(1)
-    await _stop_guiding(hass)
+    await stop_guiding()
     await later(3.1)
 
     await _save_light(hass)
@@ -224,10 +236,22 @@ async def test_a_new_stretch_alerts_inside_the_cooldown(
 
 
 @pytest.mark.usefixtures("guiding")
-async def test_running_it_by_hand_sends_the_alert(
-    hass: HomeAssistant, notified, later
+@pytest.mark.parametrize(
+    ("status", "message"),
+    [
+        ("LostLock", f"The guide star has been lost for 4 {UNGUIDED}"),
+        ("Guiding", "The guider reads Guiding."),
+        (None, "The guider reads unknown."),
+    ],
+    ids=["lost", "guiding", "no status row"],
+)
+async def test_running_it_by_hand_sends_what_the_guider_reads(
+    hass: HomeAssistant, notified, later, stop_guiding, status: str | None, message: str
 ) -> None:
-    await _stop_guiding(hass)
+    if status == "LostLock":
+        await stop_guiding(status)
+    elif status is None:
+        hass.states.async_remove(STATUS)
     await later(4)
 
     await hass.services.async_call(
@@ -237,4 +261,4 @@ async def test_running_it_by_hand_sends_the_alert(
         blocking=True,
     )
 
-    assert _messages(notified) == [f"The guide star has been lost for 4 {UNGUIDED}"]
+    assert _messages(notified) == [message]

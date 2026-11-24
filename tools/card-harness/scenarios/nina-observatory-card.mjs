@@ -100,13 +100,13 @@ const waiting = (dump, rigState, into = 0, changes = {}) => {
   });
 };
 
-// `r` with the guider running at `status`, every row last changed `minutes`
-// before now, and RMS `unknown` as it reads in every status but `Guiding`.
-// With `lit`, the newest light of `dawn_flats`, the one dump holding lights,
-// was saved half a minute ago. The corpus's mid-session `LostLock` is the
-// stale one a stop leaves, with the switch off, and its `Looping` and `Paused`
-// are the simulator's, with no sequence running.
-const guider = (dump, r, status, minutes, lit = true) => {
+// `r` with the guider at `status`, every row last changed `minutes` before
+// now, and RMS `unknown` as it reads in every status but `Guiding`. The switch
+// reads `running`. With `lit`, the newest light of `dawn_flats`, the one dump
+// holding lights, was saved half a minute ago. The corpus's mid-session
+// `LostLock` is the stale one a stop leaves, with the switch off, and its
+// `Looping` and `Paused` are the simulator's, with no sequence running.
+const guider = (dump, r, status, minutes, lit = true, running = "on") => {
   for (const axis of ["total", "ra", "declination"]) {
     r.override(`sensor.n_i_n_a_guider_rms_${axis}`, "unknown");
   }
@@ -117,7 +117,7 @@ const guider = (dump, r, status, minutes, lit = true) => {
     r.override(HFR, row.state, { ...row.attributes, recent_lights: [...lights.slice(0, -1), newest] });
   }
   return r
-    .override(GUIDER, "on")
+    .override(GUIDER, running)
     .override(GUIDER_STATUS, status)
     .changedAt(new Date(Date.now() - minutes * 60_000));
 };
@@ -450,11 +450,11 @@ export const scenarios = {
     folded: ["card"],
   },
 
-  // Folded with the camera lost and the guider switched off mid-session, both
-  // invented: no capture loses either during a run.
+  // Folded with the camera lost, and guiding stopped before a light was saved,
+  // both invented: no capture loses either during a run.
   folded_faults: {
     hass: (dump) =>
-      rig(dump, UP).override(CAMERA, "unavailable").override(GUIDER, "off").build(),
+      guider(dump, rig(dump, UP).override(CAMERA, "unavailable"), "Stopped", 4, true, "off").build(),
     folded: ["card"],
   },
 
@@ -525,10 +525,12 @@ export const scenarios = {
     folded: ["card"],
   },
 
-  // Folded headings cueing what they hide: the cooler and guider switched off
-  // mid-session, both invented, so Camera and Guiding warn.
+  // Folded headings cueing what they hide: the cooler switched off, and
+  // guiding stopped four minutes before a light was saved, all invented, so
+  // Camera and Guiding warn.
   folded_cues: {
-    hass: (dump) => rig(dump, UP).override(COOLER, "off").override(GUIDER, "off").build(),
+    hass: (dump) => guider(dump, rig(dump, UP).override(COOLER, "off"), "Stopped", 4, true, "off")
+      .build(),
     folded: ["camera", "guiding"],
   },
 
@@ -595,8 +597,17 @@ export const scenarios = {
     hass: (dump) => rig(dump, "simulator_guider_looping_after_guiding").build(),
   },
 
-  // Guiding switched off mid-session, invented: the Guider chip says so.
+  // Guiding stopped four minutes ago, and a light saved since: the Guider
+  // chip says so.
   guiding_stopped: {
-    hass: (dump) => rig(dump, UP).override(GUIDER, "off").override(GUIDER_STATUS, "Stopped").build(),
+    hass: (dump) => guider(dump, rig(dump, UP), "Stopped", 4, true, "off").build(),
   },
+  // Stopped with no light saved since, as for an autofocus run, which leaves
+  // `LostLock` behind with the switch off.
+  guider_autofocus: {
+    hass: (dump) => guider(dump, rig(dump, UP), "LostLock", 4, false, "off").build(),
+    folded: ["card"],
+  },
+  // `Selected`, which N.I.N.A. reports from connecting until guiding starts.
+  guider_selected: { hass: (dump) => guider(dump, rig(dump, UP), "Selected", 4).build() },
 };

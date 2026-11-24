@@ -239,12 +239,13 @@ the cover closed turns the chip red too: that frame is blank, and so is every
 light after it until the cover opens.
 
 The Guiding heading names what the guider is doing: Active while it guides,
-or Lost lock, Looping, Paused or Calibrating. While a sequence runs, the
-Guider chip turns orange when guiding stopped, and when the guider has not
-guided for three minutes and a light has been saved since, which leaves that
-light unguided; not during a meridian flip or a sequence wait. To image
-unguided on purpose, disconnect the guider in N.I.N.A., and the card stops
-warning.
+or Stopped, Lost lock, Looping, Paused or Calibrating. While a sequence runs,
+the Guider chip turns orange once the guider has not guided for three minutes
+and a light has been saved since, which leaves that light unguided: guiding
+stopped, the guide star lost, or PHD2 looping, paused or calibrating. Not
+during a meridian flip or a sequence wait, and not for an autofocus run or a
+plate solve, which save no light. To image unguided on purpose, disconnect
+the guider in N.I.N.A., and the card stops warning.
 
 Tap or click a card's header to collapse the card, or a section's heading,
 such as **ADU range** or **Wind**, to collapse that section. A collapsed
@@ -263,8 +264,8 @@ A collapsed card still shows what needs attention:
   lost or unresponsive link, a meridian flip, a dome shutter or flat panel
   cover error, a flat panel cover stuck part-way, light frames behind the
   closed flat cover, and, while a sequence runs, a
-  disconnected camera or mount, stopped guiding, or a guider that has not
-  guided for three minutes while lights are saved. Stop Sequence, Park and
+  disconnected camera or mount, or a guider that has not guided for three
+  minutes while lights are saved. Stop Sequence, Park and
   Close Dome stay, each while it applies, and a collapsed **Controls** section
   keeps them too.
 - **Autofocus**: a failed run.
@@ -318,7 +319,7 @@ on one and pick your rig's entities.
 | [Session shutdown](custom_components/nina_astrophotography/blueprints/session_shutdown.yaml) | At a set time, first waits up to two hours for the sequence to finish (on by default), then stops it if it's still running, parks, optionally closes the dome over a parked mount — alerting if it does not close — and warms the camera. |
 | [Meridian flip warning](custom_components/nina_astrophotography/blueprints/meridian_flip_warning.yaml) | Notifies before a meridian flip, when it starts, and when it finishes. |
 | [Guiding alert](custom_components/nina_astrophotography/blueprints/guiding_alert.yaml) | Notifies, and optionally runs autofocus, when guiding RMS stays high. |
-| [Guider not guiding](custom_components/nina_astrophotography/blueprints/guider_not_guiding_alert.yaml) | Notifies when lights are saved while the guider has not guided for a set time (3 minutes by default): the guide star lost, or PHD2 looping, paused or calibrating. Not during a meridian flip or a sequence wait. [Details](docs/reference.md#the-guider-not-guiding-blueprint). |
+| [Guider not guiding](custom_components/nina_astrophotography/blueprints/guider_not_guiding_alert.yaml) | Notifies when lights are saved while the guider has not guided for a set time (3 minutes by default): the guide star lost, PHD2 looping, paused or calibrating, or guiding stopped, as when the guide camera drops out. Not during a meridian flip or a sequence wait. [Details](docs/reference.md#the-guider-not-guiding-blueprint). |
 | [Flat cover closed on lights](custom_components/nina_astrophotography/blueprints/cover_closed_alert.yaml) | Notifies when a light frame is saved with the flat panel's cover closed. Flats and darks behind it don't alert, and neither does closing it after the night's last light. A panel switched off for the night stays quiet, and so does its reconnecting for the flats. [Details](docs/reference.md#flat-panel-cover-and-light). |
 | [Flat cover fault](custom_components/nina_astrophotography/blueprints/cover_fault_alert.yaml) | Notifies when the flat panel's cover reports an error, or stays part-way longer than it takes to travel (60 seconds by default), since some drivers never report a stuck cover as an error. Optionally alerts only on a cover that reached part-way from open or closed, for drivers that read part-way while idle. [Details](docs/reference.md#flat-panel-cover-and-light). |
 | [Flat panel left lit](custom_components/nina_astrophotography/blueprints/flat_panel_left_lit_alert.yaml) | Notifies when the flat panel's light has been on for a set time (30 minutes by default) with no flat saved by the same rig; each flat restarts the count. Relies on the event socket. [Details](docs/reference.md#the-flat-panel-left-lit-blueprint). |

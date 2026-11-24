@@ -263,38 +263,50 @@ export function waitCountdown({ left, atMost, approx }) {
 }
 
 // The guider statuses that are PHD2 running but not guiding, as a warning.
+// N.I.N.A. reports `Selected` from connecting until guiding first starts.
 const NOT_GUIDING = {
   LostLock: "Guide star lost",
   Looping: "Guider looping, not guiding",
+  Selected: "Guider looping, not guiding",
   Paused: "Guider paused, not guiding",
   Calibrating: "Guider calibrating, not guiding",
 };
 
 /**
- * The guider running but not guiding, or `null`. `ids` names the rows of the
- * guider `status`, the total `rms`, the `guider` switch, and the `lights`
- * sensor whose `recent_lights` say when each light was saved.
+ * The guider not guiding, or `null`. `ids` names the rows of the guider
+ * `status`, the total `rms`, the `guider` switch, and the `lights` sensor
+ * whose `recent_lights` say when each light was saved.
  *
- * The run is timed from when RMS turned `unknown`, which it reads from the
+ * `kind` is `Stopped` for a guider stopped, which the switch reads off
+ * whatever the status: a stop leaves `LostLock` behind. Otherwise it is the
+ * status, for a guider the switch reads running; with no switch to read, only
+ * `Stopped` is told apart from that leftover.
+ *
+ * Not guiding is timed from when RMS turned `unknown`, which it reads from the
  * first status that is not guiding until PHD2 guides again, so a lock lost,
- * looping and lost again is one run. A stop leaves RMS `unknown` too, so the
- * switch turning on starts the run again. With no RMS row, the status's own
- * change starts it. `left` is the seconds until the run has lasted `grace`,
- * and `lit` whether a light has been saved since it began: N.I.N.A. takes
- * none during its own guider starts, but autofocus and plate solving expose.
- * Both are `null` and false for a run whose start is unknown.
+ * looping and lost again is one stretch; or from the switch changing, if
+ * later, so a restart starts it again. With no RMS row, the status's own
+ * change starts it. `left` is the seconds until it has lasted `grace`, and
+ * `lit` whether a light has been saved since it began: autofocus and plate
+ * solving expose without saving one. Both are `null` and false for a stretch
+ * whose start is unknown.
  */
 export function notGuiding(hass, { status, rms, guider, lights }, grace, now = Date.now()) {
-  const warning = NOT_GUIDING[hass.states[status]?.state];
-  if (!warning) return null;
+  const read = hass.states[status]?.state;
+  const running = hass.states[guider]?.state;
+  const kind = read === "Stopped" || (running === "off" && read in NOT_GUIDING) ? "Stopped"
+    : running === "on" && read in NOT_GUIDING ? read : null;
+  if (!kind) return null;
+  const warning = NOT_GUIDING[kind] ?? "Guiding stopped";
   const changed = (id) => Date.parse(hass.states[id]?.last_changed ?? "");
   const starts = hass.states[rms]?.state === "unknown"
     ? [changed(rms), changed(guider)] : [changed(status)];
   const known = starts.filter(Number.isFinite);
-  if (!known.length) return { warning, left: null, lit: false };
+  if (!known.length) return { kind, warning, left: null, lit: false };
   const since = Math.max(...known);
   const newest = hass.states[lights]?.attributes?.recent_lights?.at(-1);
   return {
+    kind,
     warning,
     left: Math.max(grace - (now - since) / 1000, 0),
     lit: Date.parse(newest?.date ?? "") > since,

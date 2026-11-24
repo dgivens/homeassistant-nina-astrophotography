@@ -1,22 +1,22 @@
 blueprint:
   name: "N.I.N.A. – Guider Not Guiding Alert"
   description: >
-    Notifies when lights are being saved while the guider runs without
-    guiding: the guide star lost, or PHD2 looping, paused or calibrating. The
-    guiding quality alert cannot see this, since guide RMS reads unknown
-    whenever PHD2 is not guiding.
+    Notifies when lights are being saved while the guider is not guiding: the
+    guide star lost, PHD2 looping, paused or calibrating, or guiding stopped,
+    as when the guide camera drops out. The guiding quality alert cannot see
+    this, since guide RMS reads unknown whenever PHD2 is not guiding.
 
     It alerts once the guider has not guided for the time below, and a light
-    has been saved since it stopped, while the sequence runs with the guider
-    switch on, and with no meridian flip and no sequence wait under way. Those
-    stop and restart guiding on purpose, and a guider N.I.N.A. stopped keeps
-    reading `LostLock` with the switch off. It is checked as each light is
-    saved, and when the guider status has lasted the time below.
+    has been saved since it stopped, while the sequence runs, with no meridian
+    flip and no sequence wait under way: those stop and restart guiding on
+    purpose. An autofocus run or a plate solve exposes without saving a light,
+    so neither alerts on its own. It is checked as each light is saved, and
+    once guide RMS has read unknown for the time below.
 
     The time runs from when guide RMS turned unknown, so a lock lost, looping
-    and lost again counts as one stretch, and from the guider switch turning
-    on, if later. It repeats at most once per cooldown while the guider stays
-    off guide; a new stretch alerts at once.
+    and lost again counts as one stretch, and guiding again ends it. It
+    repeats at most once per cooldown while the guider stays off guide; a new
+    stretch alerts at once.
 
     To image unguided on purpose, disconnect the guider in N.I.N.A.
   domain: automation
@@ -41,12 +41,6 @@ blueprint:
             entity:
               integration: nina_astrophotography
               domain: sensor
-        guider_switch:
-          name: Guider switch
-          selector:
-            entity:
-              integration: nina_astrophotography
-              domain: switch
         last_image_hfr:
           name: Last image HFR
           description: Its recent lights say when each light was saved.
@@ -80,9 +74,8 @@ blueprint:
         not_guiding_minutes:
           name: Not guiding for
           description: >
-            How long the guider may run without guiding first: longer than
-            PHD2 takes to find a lost star again, or to loop while guiding
-            restarts.
+            How long the guider may go without guiding first: longer than PHD2
+            takes to find a lost star again, or to loop while guiding restarts.
           default: 3
           selector:
             number:
@@ -112,45 +105,47 @@ max_exceeded: silent
 variables:
   guider_status: !input guider_status
   guider_rms: !input guider_rms
-  guider_switch: !input guider_switch
   last_image_hfr: !input last_image_hfr
   sequencer_running: !input sequencer_running
   meridian_flip: !input meridian_flip
   sequence_waiting: !input sequence_waiting
   not_guiding_minutes: !input not_guiding_minutes
   cooldown_minutes: !input cooldown_minutes
-  # When the guider last stopped guiding, as a timestamp.
+  # When the guider last stopped guiding, as a timestamp: RMS turning
+  # unknown, or the status changing where there is no RMS reading to go by.
   stopped_guiding: >-
     {% set status = states[guider_status] %}
     {% set rms = states[guider_rms] %}
-    {% set on_switch = states[guider_switch] %}
-    {% if status is none %}{{ none }}
-    {% elif rms is not none and rms.state == 'unknown' %}
-    {{ as_timestamp(([rms.last_changed]
-       + ([on_switch.last_changed] if on_switch is not none else [])) | max) }}
-    {% else %}{{ as_timestamp(status.last_changed) }}{% endif %}
+    {% if rms is not none and rms.state == 'unknown' %}
+    {{ as_timestamp(rms.last_changed) }}
+    {% elif status is not none %}{{ as_timestamp(status.last_changed) }}
+    {% else %}{{ none }}{% endif %}
   newest_light: >-
     {% set newest = (state_attr(last_image_hfr, 'recent_lights') or [])
        | list | last | default(none) %}
     {{ as_timestamp(newest.date, none) if newest is not none else none }}
 
+# Timed on RMS, which defines the stretch and is written after the status in
+# the same read; on the status only for a rig with no RMS reading.
 triggers:
   - trigger: state
     entity_id: !input last_image_hfr
     attribute: recent_lights
   - trigger: state
+    entity_id: !input guider_rms
+    to: "unknown"
+    for:
+      minutes: !input not_guiding_minutes
+  - trigger: state
     entity_id: !input guider_status
-    to: ["LostLock", "Looping", "Paused", "Calibrating"]
+    to: ["LostLock", "Looping", "Selected", "Paused", "Calibrating", "Stopped"]
     for:
       minutes: !input not_guiding_minutes
 
 conditions:
   - condition: state
     entity_id: !input guider_status
-    state: ["LostLock", "Looping", "Paused", "Calibrating"]
-  - condition: state
-    entity_id: !input guider_switch
-    state: "on"
+    state: ["LostLock", "Looping", "Selected", "Paused", "Calibrating", "Stopped"]
   - condition: state
     entity_id: !input sequencer_running
     state: "on"
@@ -178,7 +173,7 @@ conditions:
     condition: template
     value_template: >
       {% set ns = namespace(entries=[]) %}
-      {% for entity in [guider_status, guider_rms, guider_switch, last_image_hfr,
+      {% for entity in [guider_status, guider_rms, last_image_hfr,
                         sequencer_running, meridian_flip, sequence_waiting] %}
         {% set entry = config_entry_id(entity) %}
         {% if entry is not none and entry not in ns.entries %}
@@ -194,12 +189,13 @@ actions:
     data:
       title: "⚠️ Guider not guiding"
       # One indent throughout: a folded scalar keeps the line breaks around a
-      # more-indented line.
+      # more-indented line. Run by hand, the guider may be guiding.
       message: >
         {%- set status = states(guider_status) %}
-        {%- if status == 'LostLock' %}The guide star has been lost
-        {%- elif status == 'Looping' %}The guider has been looping, not guiding,
-        {%- elif status == 'Paused' %}The guider has been paused
-        {%- else %}The guider has been calibrating{% endif %} for
+        {%- set what = {'LostLock': 'The guide star has been lost', 'Looping': 'The guider has been looping, not guiding,', 'Selected': 'The guider has been looping, not guiding,', 'Paused': 'The guider has been paused', 'Calibrating': 'The guider has been calibrating', 'Stopped': 'Guiding has been stopped'}.get(status) %}
+        {%- if what is none %}The guider reads {{ status }}.
+        {%- else %}{{ what }}
+        {%- if stopped_guiding is number %} for
         {{ ((as_timestamp(now()) - stopped_guiding) / 60) | round | int }}
-        minutes, and lights are still being saved: they are unguided.
+        minutes{% endif %}, and lights are still being saved: they are
+        unguided.{% endif %}

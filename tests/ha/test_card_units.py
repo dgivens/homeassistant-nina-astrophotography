@@ -378,14 +378,15 @@ LIGHT = datetime.fromisoformat(
 def _guider(
     dump: str = "weather_frozen",
     changed: dict[str, float | None] | None = None,
-    status: str | None = None,
+    **readings: str,
 ) -> dict[str, object]:
     """`dump`'s guider and lights rows, each in `changed` last changed that
-    many minutes from `LIGHT`; a row given `None` is left out.
+    many minutes from `LIGHT`; a row given `None` is left out. `readings` moves
+    a row's state, keyed as in `IDS`.
     """
     states = CARD_STATES[dump]["states"]
     rows = {}
-    for entity_id in IDS.values():
+    for key, entity_id in IDS.items():
         minutes = (changed or {}).get(entity_id, 0.0)
         if minutes is None:
             continue
@@ -393,8 +394,8 @@ def _guider(
             **states[entity_id],
             "last_changed": (LIGHT + timedelta(minutes=minutes)).isoformat(),
         }
-    if status is not None:
-        rows[GUIDER_STATUS] = {**rows[GUIDER_STATUS], "state": status}
+        if key in readings:
+            rows[entity_id]["state"] = readings[key]
     return {"states": rows}
 
 
@@ -408,23 +409,49 @@ def _not_guiding(rows: dict[str, object], minutes: float = 0) -> dict | None:
 @pytest.mark.parametrize(
     ("rows", "warning"),
     [
-        (_guider(), "Guide star lost"),
+        # The `LostLock` a stop leaves, with the switch off.
+        (_guider(), "Guiding stopped"),
         (
             _guider("simulator_guider_looping_after_guiding"),
             "Guider looping, not guiding",
         ),
         (_guider("simulator_guider_paused"), "Guider paused, not guiding"),
-        # No dump holds PHD2 calibrating.
+        (_guider("site_configured"), None),
+        # Without the switch, only `Stopped` is told from a stop's leftover.
+        (_guider(changed={GUIDER: None}), None),
+        # No dump holds these mid-session.
         pytest.param(
-            _guider(status="Calibrating"),
+            _guider(guider="on"), "Guide star lost", marks=pytest.mark.synthetic
+        ),
+        pytest.param(
+            _guider("simulator_guider_looping_after_guiding", status="Selected"),
+            "Guider looping, not guiding",
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            _guider(guider="on", status="Calibrating"),
             "Guider calibrating, not guiding",
             marks=pytest.mark.synthetic,
         ),
-        (_guider("site_configured"), None),
+        pytest.param(
+            _guider(changed={GUIDER: None}, status="Stopped"),
+            "Guiding stopped",
+            marks=pytest.mark.synthetic,
+        ),
     ],
-    ids=["lost", "looping", "paused", "calibrating", "guiding"],
+    ids=[
+        "stopped",
+        "looping",
+        "paused",
+        "guiding",
+        "no switch",
+        "lost",
+        "selected",
+        "calibrating",
+        "stopped, no switch",
+    ],
 )
-def test_a_guider_running_but_not_guiding_is_named(
+def test_a_guider_not_guiding_is_named(
     rows: dict[str, object], warning: str | None
 ) -> None:
     read = _not_guiding(rows)
@@ -432,33 +459,46 @@ def test_a_guider_running_but_not_guiding_is_named(
 
 
 @pytest.mark.parametrize(
-    ("changed", "left"),
+    ("changed", "readings", "left"),
     [
-        ({GUIDER_STATUS: -1, GUIDER_RMS: -1, GUIDER: -60}, 120),
+        ({GUIDER_STATUS: -1, GUIDER_RMS: -1, GUIDER: -60}, {}, 120),
         # Lost, then looping, then lost again: RMS unknown throughout.
-        ({GUIDER_STATUS: -1, GUIDER_RMS: -4, GUIDER: -60}, 0),
+        ({GUIDER_STATUS: -1, GUIDER_RMS: -4, GUIDER: -60}, {}, 0),
         # A stop's leftover, then guiding restarted.
-        ({GUIDER_STATUS: -60, GUIDER_RMS: -60, GUIDER: -2}, 60),
-        # No RMS row to say when guiding stopped.
-        ({GUIDER_STATUS: -1, GUIDER_RMS: None, GUIDER: -60}, 120),
+        ({GUIDER_STATUS: -60, GUIDER_RMS: -60, GUIDER: -2}, {}, 60),
+        # No RMS row, or one still reading, to say when guiding stopped.
+        ({GUIDER_STATUS: -1, GUIDER_RMS: None, GUIDER: -60}, {}, 120),
+        pytest.param(
+            {GUIDER_STATUS: -1, GUIDER_RMS: -4, GUIDER: -60},
+            {"rms": "0.41"},
+            120,
+            marks=pytest.mark.synthetic,
+        ),
     ],
-    ids=["one status", "a run of statuses", "the switch on since", "no RMS row"],
+    ids=[
+        "one status",
+        "a run of statuses",
+        "the switch since",
+        "no RMS row",
+        "RMS still reading",
+    ],
 )
 def test_not_guiding_is_timed_from_when_guiding_stopped(
-    changed: dict[str, float | None], left: float
+    changed: dict[str, float | None], readings: dict[str, str], left: float
 ) -> None:
-    read = _not_guiding(_guider(changed=changed))
+    read = _not_guiding(_guider(changed=changed, **readings))
     assert read is not None
     assert read["left"] == pytest.approx(left)
 
 
-def test_a_run_of_unknown_age_is_never_due() -> None:
+def test_a_stretch_of_unknown_age_is_never_due() -> None:
     rows = {
         entity_id: CARD_STATES["weather_frozen"]["states"][entity_id]
         for entity_id in IDS.values()
     }
     assert _not_guiding({"states": rows}) == {
-        "warning": "Guide star lost",
+        "kind": "Stopped",
+        "warning": "Guiding stopped",
         "left": None,
         "lit": False,
     }

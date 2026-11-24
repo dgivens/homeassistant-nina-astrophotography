@@ -29,20 +29,22 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
   seen more than six hours past it, or expected 18 to 24 hours ahead, is
   misread; the reference says how.
 - **The guider not guiding blueprint** (#311) notifies when lights are saved
-  while the guider has not guided for three minutes: the guide star lost, or
-  PHD2 looping, paused or calibrating. Not during a meridian flip or a
-  sequence wait, and not for a guider N.I.N.A. stopped. The guiding alert
+  while the guider has not guided for three minutes: the guide star lost,
+  PHD2 looping, paused or calibrating, or guiding stopped, as when the guide
+  camera drops out. Not during a meridian flip or a sequence wait, and not for
+  an autofocus run or a plate solve, which save no light. The guiding alert
   cannot see this, since guide RMS reads unknown whenever PHD2 is not
   guiding.
 
 ### Fixed
 
 - **The observatory card warns of a guider not guiding while lights are
-  saved** (#311). The guide star lost, or a guider looping, paused or
-  calibrating, for three minutes with a light saved since, turns the Guider
-  chip orange and reads `Guide star lost` or `Guider looping, not guiding` on
-  a collapsed card. The Guiding heading names the status, such as `Lost lock`
-  or `Looping`. Guiding stopped turns the Guider chip orange too.
+  saved** (#311). Guiding stopped, the guide star lost, or a guider looping,
+  paused or calibrating, for three minutes with a light saved since, turns the
+  Guider chip orange and reads `Guiding stopped`, `Guide star lost` or
+  `Guider looping, not guiding` on a collapsed card. An autofocus run, which
+  stops guiding and saves no light, does not warn. The
+  Guiding heading names the status, such as `Lost lock` or `Looping`.
 - **The observatory card does not warn of guiding stopped during a wait**
   (#310), which stops guiding on purpose: Target Scheduler stops it while it
   waits for its next target, and a collapsed card would show it as a fault.

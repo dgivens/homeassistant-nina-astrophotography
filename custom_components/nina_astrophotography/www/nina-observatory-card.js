@@ -66,14 +66,16 @@ const COVER_LIT = "The flat panel light is on";
 // A wait's countdown shows seconds, and the sensor changes only as the wait
 // starts and ends.
 const WAIT_TICK_MS = 1000;
-// How long the guider may run without guiding before the card warns, in
+// How long the guider may go without guiding before the card warns, in
 // seconds: longer than PHD2 takes to find a lost star again, or to loop while
 // guiding restarts. `docs/reference.md` has the measurements.
 const NOT_GUIDING_GRACE = 180;
 // The Guider chip's words for what guiding is doing instead.
 const GUIDER_CHIP = {
+  Stopped: "guiding stopped",
   LostLock: "guide star lost",
   Looping: "looping, not guiding",
+  Selected: "looping, not guiding",
   Paused: "paused, not guiding",
   Calibrating: "calibrating, not guiding",
 };
@@ -555,8 +557,7 @@ class NinaObservatoryCard extends HTMLElement {
     // so a prefix that does not match the instance loses it; the status sensor
     // it is derived from resolves.
     const guiderId     = this._eid("switch", "guider");
-    const guiderOn     = onOff(h, guiderId);
-    const guiding      = guiderOn ?? notStopped(h, gdrStatusId);
+    const guiding      = onOff(h, guiderId) ?? notStopped(h, gdrStatusId);
     const cooling      = onOff(h, this._eid("switch", "camera_cooler"));
     const parkedId     = this._eid("binary_sensor", "mount_at_park");
     // No state reads as unparked on purpose: Park is an emergency control, and
@@ -790,22 +791,20 @@ class NinaObservatoryCard extends HTMLElement {
           </div>`;
 
     // What a folded heading cues: what needs attention in the section it hides
-    // — an RMS bar past its limit, the cooler off or guiding stopped mid-session,
-    // a guider not guiding while lights are saved, a device lost mid-session,
-    // or a mount not known parked with the link down.
+    // — an RMS bar past its limit, the cooler off mid-session, a guider not
+    // guiding while lights are saved, a device lost mid-session, or a mount
+    // not known parked with the link down.
     // Lost is a row reading `unavailable`, not a missing one: a user may disable
     // an entity, and a disabled entity has no row at all.
     const lost = (id) => seqRunning && !quiet && h.states[id]?.state === "unavailable";
     const camLost = lost(this._eid("sensor", "camera_state"));
     const mntLost = lost(parkedId);
     const worstRms = worst([rmsClass(rmsRa), rmsClass(rmsDec)]);
-    // A flip and a wait both stop guiding on purpose.
-    const guidingStopped = seqRunning && !quiet && guiding === false && !flipping && !wait;
-    // PHD2 running but not guiding while lights are saved, which leaves them
-    // unguided. Only once it has lasted: PHD2 finds a lost star again, and
-    // loops while guiding restarts. Only on the switch: without it, a stop's
-    // leftover `LostLock` reads as running.
-    const offGuide = seqRunning && !quiet && guiderOn === true && !flipping && !wait
+    // Guiding stopped, or PHD2 running but not guiding, while lights are saved,
+    // which leaves them unguided. Only once it has lasted: PHD2 finds a lost
+    // star again, and loops while guiding restarts. A flip and a wait both
+    // stop guiding on purpose.
+    const offGuide = seqRunning && !quiet && !flipping && !wait
       ? notGuiding(h, {
         status: gdrStatusId,
         rms: this._eid("sensor", "guider_rms_total"),
@@ -817,10 +816,9 @@ class NinaObservatoryCard extends HTMLElement {
     this._awaitNotGuiding(offGuide?.lit && offGuide.left ? Math.ceil(offGuide.left * 1000) : null);
     const notGuidingWarning = offGuide?.lit && offGuide.left === 0 ? offGuide.warning : "";
     // The open card's word for what the folded one warns of.
-    const guiderChip = notGuidingWarning ? GUIDER_CHIP[state(h, gdrStatusId)]
-      : gdrConnected && guidingStopped ? "guiding stopped" : "";
+    const guiderChip = notGuidingWarning ? GUIDER_CHIP[offGuide.kind] : "";
     const guidingLevel = guided && worstRms ? worstRms
-      : guidingStopped || notGuidingWarning ? "warn" : null;
+      : notGuidingWarning ? "warn" : null;
     const cameraLevel = camLost ? "danger"
       : seqRunning && !quiet && cooling === false ? "warn" : null;
     const mountLevel = quiet && !parked ? "warn" : mntLost ? "danger" : null;
@@ -834,7 +832,6 @@ class NinaObservatoryCard extends HTMLElement {
       behindCover ? "Light frames behind the closed flat cover" : "",
       camLost ? "Camera disconnected" : "",
       mntLost ? "Mount disconnected" : "",
-      gdrConnected && guidingStopped ? "Guiding stopped" : "",
       notGuidingWarning,
     ].filter(Boolean);
     const faultAlert = faults.length
