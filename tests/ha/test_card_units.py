@@ -9,7 +9,7 @@ table would only prove itself right.
 """
 
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 
@@ -358,3 +358,80 @@ def test_a_significant_reading_keeps_its_whole_part_and_sheds_padding(
 def test_a_registry_precision_overrides_significant_figures() -> None:
     q = {"value": 94.66666666666694, "unit": "lx", "precision": 0}
     assert _run([["significant", q, 3]]) == ["95"]
+
+
+GUIDER_STATUS = "sensor.n_i_n_a_guider_status"
+GRACE = 180
+NOW = datetime.fromisoformat("2026-11-19T05:00:00+00:00")
+
+
+def _guider_hass(dump: str, held: float | None, **changes: str) -> dict[str, object]:
+    """The captured status row, `held` seconds since it last changed."""
+    row = {**CARD_STATES[dump]["states"][GUIDER_STATUS], **changes}
+    if held is not None:
+        row["last_changed"] = (NOW - timedelta(seconds=held)).isoformat()
+    return {"states": {GUIDER_STATUS: row}}
+
+
+@pytest.mark.parametrize(
+    ("rows", "fault"),
+    [
+        # `weather_frozen` is the corpus's one captured `LostLock`.
+        (
+            _guider_hass("weather_frozen", 240),
+            {"warning": "Guide star lost", "left": 0},
+        ),
+        (
+            _guider_hass("weather_frozen", 60),
+            {"warning": "Guide star lost", "left": 120},
+        ),
+        (
+            _guider_hass("weather_frozen", None),
+            {"warning": "Guide star lost", "left": None},
+        ),
+        # No capture holds a guider looping, paused or calibrating mid-session.
+        pytest.param(
+            _guider_hass("site_configured", 240, state="Looping"),
+            {"warning": "Guider looping, not guiding", "left": 0},
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            _guider_hass("site_configured", 240, state="Paused"),
+            {"warning": "Guider paused, not guiding", "left": 0},
+            marks=pytest.mark.synthetic,
+        ),
+        pytest.param(
+            _guider_hass("site_configured", 240, state="Calibrating"),
+            None,
+            marks=pytest.mark.synthetic,
+        ),
+        (_guider_hass("site_configured", 240), None),
+    ],
+    ids=[
+        "lost past the grace",
+        "lost inside it",
+        "lost, its age unknown",
+        "looping",
+        "paused",
+        "calibrating",
+        "guiding",
+    ],
+)
+def test_a_guider_not_guiding_is_due_a_warning_once_it_outlasts_the_grace(
+    rows: dict[str, object], fault: dict[str, object] | None
+) -> None:
+    [read] = _run([["notGuiding", rows, GUIDER_STATUS, GRACE, _ms(NOW.isoformat())]])
+    assert read == (None if fault is None else pytest.approx(fault))
+
+
+@pytest.mark.parametrize(
+    ("status", "shown"),
+    [
+        ("Guiding", "Active"),
+        ("LostLock", "Lost lock"),
+        ("Looping", "Looping"),
+        ("Calibrating", "Calibrating"),
+    ],
+)
+def test_the_guiding_heading_names_the_guider_status(status: str, shown: str) -> None:
+    assert _run([["guiderStatus", status]]) == [shown]

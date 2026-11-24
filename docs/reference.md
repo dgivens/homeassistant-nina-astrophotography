@@ -16,6 +16,7 @@ instance name `N.I.N.A.` the prefix is `n_i_n_a`, so
 - [Sessions](#sessions)
 - [Is the rig working?](#is-the-rig-working)
 - [The imaging stall alert blueprint](#the-imaging-stall-alert-blueprint)
+- [The guiding alert blueprint](#the-guiding-alert-blueprint)
 - [Weather](#weather)
 - [Flats](#flats)
   - [Flat panel cover and light](#flat-panel-cover-and-light)
@@ -293,9 +294,50 @@ Limitations:
 - After a restart the quiet case waits the full quiet period (20 minutes by
   default) before it can fire, because its timers restart with Home Assistant.
 - A rig taking bad frames is not stalled; this blueprint won't notice it.
-  Guiding problems are covered by `guiding_alert.yaml`. A lost guide star that
-  stops frames will show up here as a stall, with the guider state in the
-  message.
+  Guiding problems are covered by `guiding_alert.yaml`, a lost guide star
+  while frames keep arriving included. A lost guide star that stops frames
+  will show up here as a stall, with the guider state in the message.
+
+## The guiding alert blueprint
+
+`guiding_alert.yaml` notifies when total guiding RMS stays above a threshold
+while `sensor.<instance>_guider_status` reads `Guiding`. The RMS sensors read
+`unknown` whenever PHD2 is not guiding, so a guider that has lost its star, or
+is looping without guiding, can never raise that alert.
+
+Its **Guider not guiding** section covers that case. Turn on **Alert when the
+guider is not guiding** and pick the rig's guider switch and Imaging sensor,
+and the blueprint also notifies when the guider status stays `LostLock`,
+`Looping` or `Paused` for three minutes while:
+
+- `switch.<instance>_guider` is on. A guider that N.I.N.A. stopped, for an
+  autofocus run, a Target Scheduler wait or the end of the night, keeps
+  reading `LostLock` until it starts again, with the switch off;
+- `binary_sensor.<instance>_imaging` is on, so frames are being taken;
+- no meridian flip and no sequence wait is under way, if you pick those
+  sensors too. Both restart guiding on purpose.
+
+It never alerts for `Calibrating`: N.I.N.A. takes no frame until calibration
+ends. It is off by default, so an automation built before it existed alerts on
+RMS alone. Its notification shares the RMS alert's cooldown, and never runs an
+autofocus.
+
+Three minutes is set from ten nights of a Target Scheduler rig with an hourly
+autofocus. Mid-session, PHD2 recovered a lost star within 10 to 35 seconds,
+and looped for 10 to 20 seconds, and once for a minute, while guiding
+restarted. Starting the night, it looped for up to 100 seconds before
+guiding, with nothing imaging. Lower it and those raise alerts.
+
+N.I.N.A. raises no `GUIDER-STOP` for a stop it sends while PHD2 is looping, so
+an autofocus run that starts then reads as a lost guide star with the switch
+on, for as long as the run lasts: about four minutes on that rig, once in ten
+nights. A run that long alerts.
+
+The observatory card warns of the same on the same terms, while a sequence
+runs: a collapsed card says "Guide star lost", "Guider looping, not guiding"
+or "Guider paused, not guiding", and a collapsed Guiding heading shows a
+warning dot. The Guiding heading names the status, `Lost lock` or `Looping`
+in place of `Active`, from the moment it changes.
 
 ## Weather
 

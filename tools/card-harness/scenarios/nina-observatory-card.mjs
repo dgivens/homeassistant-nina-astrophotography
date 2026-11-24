@@ -32,6 +32,9 @@ const UNSAFE = "binary_sensor.n_i_n_a_safety_monitor_unsafe";
 const ROTATOR = "number.n_i_n_a_rotator_position";
 const SYNCED = "binary_sensor.n_i_n_a_rotator_synced";
 const GUIDER = "switch.n_i_n_a_guider";
+const GUIDER_STATUS = "sensor.n_i_n_a_guider_status";
+const FLIPPING = "binary_sensor.n_i_n_a_mount_meridian_flip";
+const IMAGING = "binary_sensor.n_i_n_a_imaging";
 const CAMERA = "sensor.n_i_n_a_camera_state";
 const COOLER = "switch.n_i_n_a_camera_cooler";
 const FLATS = "dawn_flats";
@@ -95,6 +98,20 @@ const waiting = (dump, rigState, into = 0, changes = {}) => {
     ends_at: moved(row.attributes.ends_at),
     ...changes,
   });
+};
+
+// `r` with the guider running at `status`, every row last changed `minutes`
+// before now. The corpus's one `LostLock` is the stale one a stop leaves,
+// with the switch off, and it holds no `Looping` or `Paused` at all. RMS
+// reads `unknown` in every status but `Guiding`.
+const guider = (r, status, minutes) => {
+  for (const axis of ["total", "ra", "declination"]) {
+    r.override(`sensor.n_i_n_a_guider_rms_${axis}`, "unknown");
+  }
+  return r
+    .override(GUIDER, "on")
+    .override(GUIDER_STATUS, status)
+    .changedAt(new Date(Date.now() - minutes * 60_000));
 };
 
 // No `draw` hook: the card has no canvas.
@@ -505,5 +522,49 @@ export const scenarios = {
   folded_cues: {
     hass: (dump) => rig(dump, UP).override(COOLER, "off").override(GUIDER, "off").build(),
     folded: ["camera", "guiding"],
+  },
+
+  // Imaging with the guide star lost for four minutes: the heading names the
+  // status, and the card warns that frames are unguided.
+  guider_lost_lock: { hass: (dump) => guider(rig(dump, UP), "LostLock", 4).build() },
+
+  // Lost a minute ago, which PHD2 usually recovers from: the heading says so,
+  // and nothing warns yet.
+  guider_lost_lock_brief: { hass: (dump) => guider(rig(dump, UP), "LostLock", 1).build() },
+
+  // Looping, or paused, for four minutes while imaging.
+  guider_looping: { hass: (dump) => guider(rig(dump, UP), "Looping", 4).build() },
+  guider_paused: { hass: (dump) => guider(rig(dump, UP), "Paused", 4).build() },
+
+  // Calibrating, which takes no frame until it ends: named, never warned of.
+  guider_calibrating: { hass: (dump) => guider(rig(dump, UP), "Calibrating", 4).build() },
+
+  // Folded: the Guiding heading and the card both cue the lost star.
+  guider_lost_lock_folded: {
+    hass: (dump) => guider(rig(dump, UP), "LostLock", 4).build(),
+    folded: ["guiding"],
+  },
+  guider_lost_lock_card_folded: {
+    hass: (dump) => guider(rig(dump, UP), "LostLock", 4).build(),
+    folded: ["card"],
+  },
+
+  // Not imaging: the frames that would be unguided are not being taken.
+  guider_lost_lock_not_imaging: {
+    hass: (dump) => guider(rig(dump, UP).override(IMAGING, "off"), "LostLock", 4).build(),
+  },
+
+  // A flip restarts guiding on purpose, and PHD2 loops while it picks a star.
+  guider_looping_flipping: {
+    hass: (dump) => guider(rig(dump, UP).override(FLIPPING, "on", {
+      ...dump[UP].states[FLIPPING].attributes,
+      slews_at: new Date(Date.now() - 60_000).toISOString(),
+    }), "Looping", 4).build(),
+  },
+
+  // A wait inside five minutes of the last frame, which keeps `imaging` on.
+  guider_lost_lock_waiting: {
+    hass: (dump) => guider(waiting(dump, "scheduler_waiting").override(IMAGING, "on"),
+      "LostLock", 4).build(),
   },
 };

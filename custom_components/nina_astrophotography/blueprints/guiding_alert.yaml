@@ -8,6 +8,11 @@ blueprint:
     calibrating, paused, or after a lost lock — so a lost star restarts the
     sustained window: cloud that keeps losing the star can hold the alert off.
     Guiding is also a condition, keyed on the guider's own status.
+
+    Optionally, it also notifies when the guider runs without guiding while
+    frames arrive, which leaves them unguided: the guide star lost, or PHD2
+    looping or paused. Turn it on under "Guider not guiding", and pick the
+    entities there.
   domain: automation
   author: dgivens
   homeassistant:
@@ -69,7 +74,8 @@ blueprint:
             tab's autofocus, run OUTSIDE the sequencer. The camera is shared,
             so the sequence can take a sub at a defocused position while it
             runs. A sequence's own autofocus triggers are the better tool, and
-            high RMS is more often cloud or wind than focus drift.
+            high RMS is more often cloud or wind than focus drift. Never run
+            for a guider not guiding.
           default: false
           selector:
             boolean:
@@ -88,6 +94,75 @@ blueprint:
               domain: notify
               multiple: true
 
+    not_guiding:
+      name: Guider not guiding
+      icon: mdi:target
+      collapsed: true
+      input:
+        alert_not_guiding:
+          name: Alert when the guider is not guiding
+          description: >
+            Also alert when the guider status stays `LostLock`, `Looping` or
+            `Paused` while imaging: PHD2 is running, frames keep arriving, and
+            none of them is guided. Not during a meridian flip or a sequence
+            wait, which restart guiding on purpose, and never for
+            `Calibrating`, during which N.I.N.A. takes no frame. Needs the
+            guider switch and Imaging below; without both it never alerts.
+          default: false
+          selector:
+            boolean:
+        not_guiding_minutes:
+          name: Not guiding for
+          description: >
+            How long the status must last first. Mid-session PHD2 finds a lost
+            star again within about half a minute, and loops for up to a
+            minute while guiding restarts.
+          default: 3
+          selector:
+            number:
+              min: 1
+              max: 30
+              unit_of_measurement: min
+        guider_switch:
+          name: Guider switch
+          description: >
+            The rig's guider switch, on while PHD2 runs. A guider that
+            N.I.N.A. stopped reads `LostLock` until it starts again, with this
+            switch off.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: switch
+              multiple: true
+        imaging:
+          name: Imaging
+          description: The rig's Imaging sensor.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              multiple: true
+        meridian_flip:
+          name: Meridian flip
+          description: The rig's meridian flip sensor. Optional.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              multiple: true
+        sequence_waiting:
+          name: Sequence waiting
+          description: The rig's sequence waiting sensor. Optional.
+          default: []
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: binary_sensor
+              multiple: true
+
 # `single` plus the closing delay suppresses a dip-and-return inside the
 # cooldown window. A `numeric_state` trigger fires only on crossing the
 # threshold, so it does not re-fire while RMS simply stays high.
@@ -98,21 +173,60 @@ max_exceeded: silent
 variables:
   nina_rig: !input nina_rig
   rms_sensor: !input rms_sensor
+  guider_status: !input guider_status
   rms_threshold: !input rms_threshold
   sustained_minutes: !input sustained_minutes
+  not_guiding_minutes: !input not_guiding_minutes
+  guider_switch: !input guider_switch
+  imaging: !input imaging
+  meridian_flip: !input meridian_flip
+  sequence_waiting: !input sequence_waiting
 
 triggers:
   - trigger: numeric_state
+    id: rms
     entity_id: !input rms_sensor
     above: !input rms_threshold
     for:
       minutes: !input sustained_minutes
+  - trigger: state
+    id: not_guiding
+    entity_id: !input guider_status
+    to: ["LostLock", "Looping", "Paused"]
+    for:
+      minutes: !input not_guiding_minutes
+    enabled: !input alert_not_guiding
 
 conditions:
-  - alias: "The guider is actually guiding"
-    condition: state
-    entity_id: !input guider_status
-    state: "Guiding"
+  - condition: or
+    conditions:
+      - alias: "High RMS while the guider is actually guiding"
+        condition: and
+        conditions:
+          - condition: trigger
+            id: rms
+          - condition: state
+            entity_id: !input guider_status
+            state: "Guiding"
+      # Templates, not state conditions: an optional input left empty is a
+      # state condition over no entities, which never holds. The status is
+      # read again, since the run may start after it changed.
+      - alias: "PHD2 running but not guiding, while imaging"
+        condition: and
+        conditions:
+          - condition: trigger
+            id: not_guiding
+          - condition: state
+            entity_id: !input guider_status
+            state: ["LostLock", "Looping", "Paused"]
+          - condition: template
+            value_template: >
+              {{ expand(guider_switch) | selectattr('state', 'eq', 'on')
+                 | list | count > 0
+                 and expand(imaging) | selectattr('state', 'eq', 'on')
+                 | list | count > 0
+                 and expand(meridian_flip, sequence_waiting)
+                 | selectattr('state', 'eq', 'on') | list | count == 0 }}
   - alias: "The entities and the device name the same rig"
     condition: template
     value_template: >
@@ -121,22 +235,40 @@ conditions:
       {{ entry is none or rig is not iterable or entry in rig | list }}
 
 actions:
-  - action: notify.send_message
-    target:
-      entity_id: !input notify_target
-    data:
-      title: "⚠️ Guiding alert"
-      message: >
-        Guide RMS has been {{ states(rms_sensor) }}" for {{ sustained_minutes }}
-        minutes (threshold {{ rms_threshold }}").
-    continue_on_error: true
-
-  - alias: "Run an autofocus"
-    action: nina_astrophotography.focuser_auto_focus
-    target:
-      device_id: !input nina_rig
-    continue_on_error: true
-    enabled: !input run_autofocus
+  - if:
+      - condition: trigger
+        id: rms
+    then:
+      - action: notify.send_message
+        target:
+          entity_id: !input notify_target
+        data:
+          title: "⚠️ Guiding alert"
+          message: >
+            Guide RMS has been {{ states(rms_sensor) }}" for
+            {{ sustained_minutes }} minutes (threshold {{ rms_threshold }}").
+        continue_on_error: true
+      - alias: "Run an autofocus"
+        action: nina_astrophotography.focuser_auto_focus
+        target:
+          device_id: !input nina_rig
+        continue_on_error: true
+        enabled: !input run_autofocus
+    else:
+      - action: notify.send_message
+        target:
+          entity_id: !input notify_target
+        data:
+          title: "⚠️ Guiding alert"
+          # One indent throughout: a folded scalar keeps the line breaks
+          # around a more-indented line.
+          message: >
+            {%- if trigger.to_state.state == 'LostLock' %}The guide star has been lost
+            {%- elif trigger.to_state.state == 'Looping' %}The guider has been looping, not guiding,
+            {%- else %}The guider has been paused{% endif %} for
+            {{ not_guiding_minutes }} minutes while imaging: the frames are
+            unguided.
+        continue_on_error: true
 
   - alias: "Hold off further alerts for the cooldown period"
     delay:

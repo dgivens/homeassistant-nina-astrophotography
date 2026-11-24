@@ -1,7 +1,8 @@
 /**
  * Readings in the unit Home Assistant shows them in, the meridian flip window
- * read from them and the flip under way, the camera's ADU full scale, and text
- * off the rig made safe to print.
+ * read from them and the flip under way, a sequence wait, a guider not
+ * guiding, the camera's ADU full scale, and text off the rig made safe to
+ * print.
  *
  * Not a card, so not in `frontend.py`'s `CARD_FILENAMES`.
  *
@@ -259,6 +260,34 @@ function about(seconds) {
 export function waitCountdown({ left, atMost, approx }) {
   if (left === null) return "Waiting";
   return `Waiting · ${approx ? about(left) : `${atMost ? "≤ " : ""}${clock(left)}`}`;
+}
+
+// The guider statuses that are PHD2 running but not guiding, as a warning.
+// `Calibrating` is not one: N.I.N.A. takes no frame until calibration ends.
+const NOT_GUIDING = {
+  LostLock: "Guide star lost",
+  Looping: "Guider looping, not guiding",
+  Paused: "Guider paused, not guiding",
+};
+
+/**
+ * The guider running but not guiding, from the status sensor `id`, or `null`.
+ * `warning` is what to warn of, and `left` the seconds until the status has
+ * held for `grace`: 0 once it has, `null` for a row with no `last_changed`,
+ * whose age is unknown. Held is timed from that `last_changed`, so a Home
+ * Assistant restart starts it again.
+ */
+export function notGuiding(hass, id, grace, now = Date.now()) {
+  const row = hass.states[id];
+  const warning = NOT_GUIDING[row?.state];
+  if (!warning) return null;
+  const held = (now - Date.parse(row.last_changed ?? "")) / 1000;
+  return { warning, left: Number.isFinite(held) ? Math.max(grace - held, 0) : null };
+}
+
+/** The guider status as the Guiding heading names it: "Active", "Lost lock". */
+export function guiderStatus(status) {
+  return { Guiding: "Active", LostLock: "Lost lock" }[status] ?? status;
 }
 
 // The depths a camera's ADC delivers, or N.I.N.A. scales to.

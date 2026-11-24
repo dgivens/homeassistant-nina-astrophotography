@@ -90,7 +90,15 @@ OPTIONAL: dict[str, dict[str, object]] = {
     "cover_closed_alert.yaml": {},
     "cover_fault_alert.yaml": {"stuck_after": 30, "after_move_only": True},
     "flat_panel_left_lit_alert.yaml": {"lit_minutes": 45},
-    "guiding_alert.yaml": {"run_autofocus": True},
+    "guiding_alert.yaml": {
+        "run_autofocus": True,
+        "alert_not_guiding": True,
+        "not_guiding_minutes": 5,
+        "guider_switch": ["switch.rig_guider"],
+        "imaging": ["binary_sensor.rig_imaging"],
+        "meridian_flip": ["binary_sensor.rig_mount_meridian_flip"],
+        "sequence_waiting": ["binary_sensor.rig_sequence_waiting"],
+    },
     "imaging_stall_alert.yaml": {
         "rig_reachable": ["binary_sensor.rig_reachable"],
         "site_latitude": ["sensor.rig_site_latitude"],
@@ -186,13 +194,19 @@ RELEASED: dict[str, frozenset[str]] = {
     ),
     "guiding_alert.yaml": frozenset(
         {
+            "alert_not_guiding",
             "cooldown_minutes",
             "guider_status",
+            "guider_switch",
+            "imaging",
+            "meridian_flip",
             "nina_rig",
+            "not_guiding_minutes",
             "notify_target",
             "rms_sensor",
             "rms_threshold",
             "run_autofocus",
+            "sequence_waiting",
             "sustained_minutes",
         }
     ),

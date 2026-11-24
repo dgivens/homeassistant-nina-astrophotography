@@ -26,7 +26,6 @@ model or session-fold work, and **L** adds a card plus new requests.
 | [Alert when the camera misses its setpoint](#alert-when-the-camera-misses-its-setpoint) | blueprint | S | High |
 | [Detect degrading frames](#detect-degrading-frames) | entity, blueprint | M | High |
 | [Morning report](#morning-report) | blueprint, attribute | S | High |
-| [Alert on unguided lights](#alert-on-unguided-lights) | blueprint | S | Medium-high |
 | [Long-term integration statistics](#long-term-integration-statistics) | entity | S | Medium-high |
 | [Surface sequence-authored messages and the log](#surface-sequence-authored-messages-and-the-log) | event, action | M | Medium-high |
 | [Rich phone notifications](#rich-phone-notifications) | blueprint | M | Medium-high |
@@ -194,20 +193,6 @@ model or session-fold work, and **L** adds a card plus new requests.
   - Narrowband star counts are small and noisy, so require persistence before
     firing.
   - N.I.N.A.'s and Hocus Focus's star detection give HFR on different scales.
-
-### Alert on unguided lights
-
-- **Problem:** PHD2 loses the guide star and N.I.N.A. keeps exposing unguided.
-  The guiding alert's RMS reads unknown on `LostLock`, which restarts its
-  window, and the stall alert stays quiet because frames keep coming.
-- **Proposal:** a blueprint that fires when `guider_status` stays `LostLock`
-  while `sequencer_running` is on, or when a light arrives without guiding RMS
-  while the guider is connected. This could instead be a `reason` in
-  [Detect degrading frames](#detect-degrading-frames).
-- **Watch out for:** the coordinator already hides the stale `LostLock` N.I.N.A.
-  reports after a guider stop, so read the entity, not the raw state. Some
-  operators image unguided on purpose, so offer an opt-out. Ignore flips and
-  settle windows.
 
 ### Dew-margin alert
 

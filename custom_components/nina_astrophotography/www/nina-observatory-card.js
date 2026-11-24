@@ -16,8 +16,8 @@ import { CHEVRON, COLLAPSE_STYLE, Collapse, worst } from "./nina-collapse.js";
 import { LinkView, RigEntities } from "./nina-entity-resolver.js";
 import { THEME, applyTheme } from "./nina-theme.js";
 import {
-  displayed, flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, missing,
-  quantity, safe, sequenceWait, shown, waitCountdown, waitReason,
+  displayed, flipRange, flipSoon, flipStatus, flipUnderway, flipWindow, guiderStatus,
+  missing, notGuiding, quantity, safe, sequenceWait, shown, waitCountdown, waitReason,
 } from "./nina-units.js";
 
 const VERSION = "2.8.0";
@@ -66,6 +66,11 @@ const COVER_LIT = "The flat panel light is on";
 // A wait's countdown shows seconds, and the sensor changes only as the wait
 // starts and ends.
 const WAIT_TICK_MS = 1000;
+// How long a lost lock, a looping or a paused guider must last while imaging
+// before the card warns, in seconds. Mid-session, PHD2 recovers a lost star
+// within about 35 s and loops for up to a minute while guiding restarts;
+// starting a session, it loops for up to about 100 s.
+const NOT_GUIDING_GRACE = 180;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -448,6 +453,7 @@ class NinaObservatoryCard extends HTMLElement {
 
   disconnectedCallback() {
     this._awaitStuck(null);
+    this._awaitNotGuiding(null);
     this._tickWait(false);
   }
 
@@ -455,6 +461,13 @@ class NinaObservatoryCard extends HTMLElement {
   _awaitStuck(ms) {
     clearTimeout(this._stuckTimer);
     this._stuckTimer = ms > 0 && this.isConnected
+      ? setTimeout(() => this._render(), ms) : undefined;
+  }
+
+  // Renders again in `ms`, once a guider not guiding has lasted the grace.
+  _awaitNotGuiding(ms) {
+    clearTimeout(this._notGuidingTimer);
+    this._notGuidingTimer = ms > 0 && this.isConnected
       ? setTimeout(() => this._render(), ms) : undefined;
   }
 
@@ -768,7 +781,8 @@ class NinaObservatoryCard extends HTMLElement {
 
     // What a folded heading cues: what needs attention in the section it hides
     // — an RMS bar past its limit, the cooler off or guiding stopped mid-session,
-    // a device lost mid-session, or a mount not known parked with the link down.
+    // a guider not guiding while imaging, a device lost mid-session, or a mount
+    // not known parked with the link down.
     // Lost is a row reading `unavailable`, not a missing one: a user may disable
     // an entity, and a disabled entity has no row at all.
     const lost = (id) => seqRunning && !quiet && h.states[id]?.state === "unavailable";
@@ -777,8 +791,15 @@ class NinaObservatoryCard extends HTMLElement {
     const worstRms = worst([rmsClass(rmsRa), rmsClass(rmsDec)]);
     // A flip and a wait both stop guiding on purpose.
     const guidingStopped = seqRunning && !quiet && guiding === false && !flipping && !wait;
+    // PHD2 running but not guiding while frames arrive, which leaves them
+    // unguided. Only once it has lasted: PHD2 finds a lost star again, and
+    // loops while guiding restarts.
+    const offGuide = seqRunning && !quiet && imaging && guiding === true && !flipping && !wait
+      ? notGuiding(h, gdrStatusId, NOT_GUIDING_GRACE) : null;
+    this._awaitNotGuiding(offGuide?.left ? offGuide.left * 1000 : null);
+    const notGuidingWarning = offGuide?.left === 0 ? offGuide.warning : "";
     const guidingLevel = guided && worstRms ? worstRms
-      : guidingStopped ? "warn" : null;
+      : guidingStopped || notGuidingWarning ? "warn" : null;
     const cameraLevel = camLost ? "danger"
       : seqRunning && !quiet && cooling === false ? "warn" : null;
     const mountLevel = quiet && !parked ? "warn" : mntLost ? "danger" : null;
@@ -793,6 +814,7 @@ class NinaObservatoryCard extends HTMLElement {
       camLost ? "Camera disconnected" : "",
       mntLost ? "Mount disconnected" : "",
       gdrConnected && guidingStopped ? "Guiding stopped" : "",
+      notGuidingWarning,
     ].filter(Boolean);
     const faultAlert = faults.length
       ? `<div class="fault-alert">⚠️ ${faults.join(" · ")}</div>` : "";
@@ -918,7 +940,8 @@ class NinaObservatoryCard extends HTMLElement {
             </div>`, flatWarning) : ""}
 
           ${gdrConnected ? section("guiding",
-            `Guiding · ${guiding === null ? "" : guiding ? "Active · " : "Stopped · "}bars full scale 4"`, `
+            `Guiding · ${guiding === null ? ""
+              : guiding ? `${safe(guiderStatus(state(h, gdrStatusId)))} · ` : "Stopped · "}bars full scale 4"`, `
               <div class="guider-meter">
                 <div style="font-size:0.72rem;color:var(--muted);">
                   Total RMS: <strong style="color:var(--text)">${guided ? `${rmsTotal.toFixed(2)}"` : "—"}</strong>
