@@ -8,7 +8,7 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Added
 
-- **The observatory card counts down a sequence wait.** While the sequence
+- **The observatory card counts down a sequence wait** (#310). While the sequence
   waits, the header reads `Waiting · 20:41` and the session banner says what
   it waits for and until when, in the browser's time zone: `Waiting for next
   target · until 21:05` for Target Scheduler, or Wait for Time. A Wait for
@@ -19,11 +19,12 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ### Fixed
 
-- **The observatory card does not warn of guiding stopped during a wait**,
+- **The observatory card does not warn of guiding stopped during a wait**
+  (#310),
   which stops guiding on purpose: Target Scheduler stops it while it waits for
   its next target, and a collapsed card would show it as a fault.
 - **The observatory card shows a dash for the target while Target Scheduler
-  waits for its next one**, instead of the target before it, or `unknown`
+  waits for its next one** (#310), instead of the target before it, or `unknown`
   before the night's first.
 
 ## [2.8.0] - 2026-11-22
