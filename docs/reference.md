@@ -565,6 +565,33 @@ panel's light has been on for *Lit with no flat for* (`lit_minutes`, default
   Home Assistant starts alerts once the time has passed, so a restart while
   lit repeats the alert.
 
+#### The flat panel lit with cover open blueprint
+
+**Flat Panel Lit With Cover Open** (`flat_panel_lit_open_alert.yaml`) notifies
+when `light.<instance>_flat_panel_light` reads `on` while
+`sensor.<instance>_flat_panel_cover_state` reads `Open` or
+`NeitherOpenNorClosed`, for *Lit and uncovered for* (`lit_open_seconds`,
+default 20, 0 to 300 seconds). Its other inputs are the `flat_panel_light`,
+the `cover_state` and `notify_target`.
+
+- Home Assistant already refuses to light an uncovered panel or uncover a lit
+  one (see [Flat panel cover and light](#flat-panel-cover-and-light)), so
+  this catches N.I.N.A.'s own controls and sequences, the driver, and changes
+  made at the rig.
+- The panel is read every 10 seconds, and both readings come from the same
+  read. The default 20 seconds keeps a single reading, taken as N.I.N.A.
+  switches the light and moves the cover, from alerting.
+- A cover going from part-way to open keeps one count running, so opening a
+  lit panel alerts *Lit and uncovered for* after the cover leaves `Closed`.
+- `Unknown`, `Error` and `NotPresent` never alert; the **Flat cover fault**
+  blueprint covers `Error`. A light or sensor that is `unavailable` never
+  alerts, and an outage of N.I.N.A. starts the count again, so the alert
+  repeats if the panel is still lit and uncovered when it returns.
+- It alerts once each time the panel reads lit and uncovered. A panel already
+  so when Home Assistant starts alerts once the time has passed, so a restart
+  repeats the alert. Reloading or editing the automation while the panel is
+  already lit and uncovered drops the alert until one of the two next changes.
+
 ## Autofocus
 
 The focuser's `last_autofocus` sensor and the `autofocus_*` sensors next to it

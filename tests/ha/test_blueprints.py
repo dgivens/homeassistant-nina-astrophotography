@@ -40,6 +40,11 @@ REQUIRED: dict[str, dict[str, object]] = {
         "flat_panel_light": "light.rig_flat_panel_light",
         "notify_target": ["notify.phone"],
     },
+    "flat_panel_lit_open_alert.yaml": {
+        "flat_panel_light": "light.rig_flat_panel_light",
+        "cover_state": "sensor.rig_flat_panel_cover_state",
+        "notify_target": ["notify.phone"],
+    },
     "guider_not_guiding_alert.yaml": {
         "guider_status": "sensor.rig_guider_status",
         "guider_rms": "sensor.rig_guider_rms_total",
@@ -99,6 +104,7 @@ OPTIONAL: dict[str, dict[str, object]] = {
     "cover_closed_alert.yaml": {},
     "cover_fault_alert.yaml": {"stuck_after": 30, "after_move_only": True},
     "flat_panel_left_lit_alert.yaml": {"lit_minutes": 45},
+    "flat_panel_lit_open_alert.yaml": {"lit_open_seconds": 0},
     "guider_not_guiding_alert.yaml": {
         "not_guiding_minutes": 5,
         "cooldown_minutes": 30,
@@ -196,6 +202,9 @@ RELEASED: dict[str, frozenset[str]] = {
     ),
     "flat_panel_left_lit_alert.yaml": frozenset(
         {"flat_panel_light", "lit_minutes", "notify_target"}
+    ),
+    "flat_panel_lit_open_alert.yaml": frozenset(
+        {"cover_state", "flat_panel_light", "lit_open_seconds", "notify_target"}
     ),
     "guider_not_guiding_alert.yaml": frozenset(
         {
@@ -343,6 +352,9 @@ RELEASED_REQUIRED: dict[str, frozenset[str]] = {
     "cover_closed_alert.yaml": frozenset({"behind_cover", "notify_target"}),
     "cover_fault_alert.yaml": frozenset({"cover_state", "notify_target"}),
     "flat_panel_left_lit_alert.yaml": frozenset({"flat_panel_light", "notify_target"}),
+    "flat_panel_lit_open_alert.yaml": frozenset(
+        {"cover_state", "flat_panel_light", "notify_target"}
+    ),
     "guider_not_guiding_alert.yaml": frozenset(
         {
             "guider_rms",

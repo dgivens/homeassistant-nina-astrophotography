@@ -4,6 +4,17 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **A Flat Panel Lit With Cover Open blueprint** notifies when the flat panel
+  reads lit with its cover open or part-way for 20 seconds, which you can
+  change, shining into the observatory. Home Assistant already refuses to
+  light an uncovered panel; this catches N.I.N.A., the driver, or someone at
+  the rig doing it. A panel with no cover, or a cover reading unknown or in
+  error, never alerts.
+
 ## [2.9.0] - 2026-11-24
 
 ### Added

@@ -1,0 +1,138 @@
+blueprint:
+  name: "N.I.N.A. – Flat Panel Lit With Cover Open"
+  description: >
+    Notifies when the flat panel reads lit while its cover reads open or
+    part-way. A lit panel facing away from the telescope shines into the
+    observatory, and onto every other telescope in a shared one.
+
+    Home Assistant refuses to light the panel unless the cover reads closed,
+    and to open the cover while the panel is lit, so this catches what
+    bypasses it: N.I.N.A.'s own controls or sequence, the driver, or someone
+    at the rig.
+
+    A cover moving with the panel lit counts from the moment it leaves
+    closed, so opening a lit panel alerts once the time below has passed. A
+    cover reading unknown or in error does not alert; the Flat Cover Fault
+    blueprint covers an error. A panel with no cover, a light that cannot be
+    switched, or a panel that is disconnected never alerts.
+
+    It alerts once each time the panel reads lit and uncovered. A panel
+    already lit and uncovered when Home Assistant starts alerts once the time
+    below has passed, so a restart repeats the alert. Each time N.I.N.A. is
+    unreachable the count starts again, and the alert repeats if the panel is
+    still lit and uncovered when it returns. Reloading or editing this
+    automation while the panel is already lit and uncovered drops the alert
+    until one of them next changes.
+  domain: automation
+  author: dgivens
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    rig:
+      name: Rig
+      icon: mdi:telescope
+      input:
+        flat_panel_light:
+          name: Flat panel light
+          description: The flat panel's light.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: light
+        cover_state:
+          name: Flat panel cover state
+          description: >
+            The same panel's "Cover state" sensor. On a panel with no cover to
+            move it reads `NotPresent`, and never alerts.
+          selector:
+            entity:
+              integration: nina_astrophotography
+              domain: sensor
+
+    settings:
+      name: Settings
+      icon: mdi:cog
+      input:
+        lit_open_seconds:
+          name: Lit and uncovered for
+          description: >
+            How long the panel must read lit with the cover open or part-way
+            before it alerts. The panel is read every 10 seconds, so longer
+            than that keeps one reading, taken as N.I.N.A. switches the light
+            and moves the cover, from alerting.
+          default: 20
+          selector:
+            number:
+              min: 0
+              max: 300
+              mode: box
+              unit_of_measurement: s
+        notify_target:
+          name: Notify
+          selector:
+            entity:
+              domain: notify
+              multiple: true
+
+# A template trigger rather than state triggers, so a cover going from
+# part-way to open keeps one count running instead of starting another.
+trigger_variables:
+  flat_panel_light: !input flat_panel_light
+  cover_state: !input cover_state
+
+mode: single
+max_exceeded: silent
+
+triggers:
+  - trigger: template
+    value_template: >
+      {{ is_state(flat_panel_light, 'on')
+         and states(cover_state) in ['Open', 'NeitherOpenNorClosed'] }}
+    for:
+      seconds: !input lit_open_seconds
+  # A panel already lit and uncovered when Home Assistant starts makes no
+  # change for the template trigger to see.
+  - trigger: homeassistant
+    event: start
+    id: started
+
+# A start's run alerts only for a panel already lit and uncovered as the
+# triggers attach, and still so once the time has passed; one that becomes so
+# later is the template trigger's to alert.
+conditions:
+  - &start_still_lit_and_uncovered
+    condition: or
+    conditions:
+      - condition: not
+        conditions:
+          - condition: trigger
+            id: started
+      - condition: and
+        conditions:
+          - condition: state
+            entity_id: !input flat_panel_light
+            state: "on"
+          - condition: state
+            entity_id: !input cover_state
+            state:
+              - Open
+              - NeitherOpenNorClosed
+
+actions:
+  - if:
+      - condition: trigger
+        id: started
+    then:
+      - delay:
+          seconds: !input lit_open_seconds
+  # At the top level: a condition inside `then:` would end only that branch.
+  - *start_still_lit_and_uncovered
+  - action: notify.send_message
+    target:
+      entity_id: !input notify_target
+    data:
+      title: "💡 Flat panel lit with cover open"
+      message: >
+        The flat panel is lit with its cover
+        {{ 'open' if is_state(cover_state, 'Open') else 'part-way' }}, shining
+        into the observatory. Switch the light off or close the cover.
