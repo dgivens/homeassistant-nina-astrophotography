@@ -535,10 +535,13 @@ class NinaFrameStatsCard extends HTMLElement {
     if (hasData && fold.open("card")) {
       requestAnimationFrame(() => {
         this._drawSparkline("hfr-chart", this._hfr, theme.accent, true, lightColours,
-          (mean) => HFR_MIN_SPAN * mean);
+          () => 2, (mean) => HFR_MIN_SPAN * mean);
         this._drawSparkline("stars-chart", this._stars, theme.accent2, false, lightColours,
+          () => 0,
           (mean) => STARS_MIN_SPAN * mean);
+        // A camera not scaled to 16 bits moves by fractions of a count.
         this._drawSparkline("adu-chart", this._adu, theme.warn, false, lightColours,
+          (high, low) => (high < 1000 && high - low < 5 ? 1 : 0),
           () => this._aduFloor);
       });
     }
@@ -549,7 +552,10 @@ class NinaFrameStatsCard extends HTMLElement {
   // filter usually the binning, sits far enough away to flatten the run.
   // `minSpan`, a function of the run's mean, is the narrowest span it is drawn
   // over. A run with fewer than two readings is scaled with the whole night.
-  _drawSparkline(canvasId, data, fillColour, showAvgLine, colours, minSpan) {
+  //
+  // The high and low of the joined line are printed in the left margin and
+  // the newest light's value in the right, to `digits(high, low)` places.
+  _drawSparkline(canvasId, data, fillColour, showAvgLine, colours, digits, minSpan) {
     const canvas = this.shadowRoot.getElementById(canvasId);
     if (!canvas) return;
 
@@ -568,8 +574,11 @@ class NinaFrameStatsCard extends HTMLElement {
     const known = (indices) => indices.filter((i) => data[i] !== null && data[i] !== undefined);
     const all = data.map((_, i) => i);
     const run = known(this._run).length >= 2 ? this._run : null;
-    const inRun = new Set(run ?? all);
-    const scaled = known(run ?? all).map((i) => data[i]);
+    const path = run ?? all;
+    const inRun = new Set(path);
+    // The joined line, which the scale fits and the numbers describe.
+    const line = known(path);
+    const scaled = line.map((i) => data[i]);
     const lo = Math.min(...scaled);
     const hi = Math.max(...scaled);
     // A run of zero stars has no span at all, relative or not.
@@ -577,7 +586,8 @@ class NinaFrameStatsCard extends HTMLElement {
     const minVal = (lo + hi) / 2 - span * (0.5 + RUN_HEADROOM);
     const maxVal = (lo + hi) / 2 + span * (0.5 + RUN_HEADROOM);
     const range = maxVal - minVal || 1;
-    const pad = { l: 4, r: 4, t: 6, b: 4 };
+    // The side margins hold the numbers, wide enough for five digits of ADU.
+    const pad = { l: 34, r: 36, t: 6, b: 4 };
     const plotW = W - pad.l - pad.r;
     const plotH = H - pad.t - pad.b;
 
@@ -628,8 +638,6 @@ class NinaFrameStatsCard extends HTMLElement {
       ctx.restore();
     }
 
-    const path = run ?? all;
-    const line = known(path);
     ctx.beginPath();
     line.forEach((i, k) => {
       if (k === 0) ctx.moveTo(xOf(i), yOf(data[i]));
@@ -702,18 +710,44 @@ class NinaFrameStatsCard extends HTMLElement {
       }
     }
 
-    const lastY = yOf(data[data.length - 1]);
-    if (lastY !== null) {
-      const v = data[data.length - 1];
-      const label = typeof v === "number" && v > 100
-        ? Math.round(v).toString()
-        : typeof v === "number"
-        ? v.toFixed(2)
-        : "";
-      ctx.font = "bold 10px sans-serif";
-      ctx.fillStyle = theme.ink(0.85);
-      ctx.fillText(label, xOf(data.length - 1) + 4, Math.max(lastY, 14));
+    // The high and low describe the joined line only: the faded lights behind
+    // it can sit far outside. Each is level with its own value, as the
+    // gridlines are not, the two pushed a line of text apart and kept on the
+    // canvas.
+    const places = digits(hi, lo);
+    const fmt = (v) => v.toFixed(places);
+    const top = 9;
+    const bottom = H - 2;
+    const gap = 10;
+    const clamp = (y) => Math.min(Math.max(y, top), bottom);
+    let yHigh = yOf(hi) + 3;
+    let yLow = yOf(lo) + 3;
+    ctx.font = "9px sans-serif";
+    ctx.fillStyle = theme.ink(0.55);
+    ctx.textAlign = "right";
+    if (fmt(lo) === fmt(hi)) {
+      ctx.fillText(fmt(hi), pad.l - 5, clamp((yHigh + yLow) / 2));
+    } else {
+      if (yLow - yHigh < gap) {
+        const mid = (yHigh + yLow) / 2;
+        yHigh = mid - gap / 2;
+        yLow = mid + gap / 2;
+      }
+      yHigh = Math.min(clamp(yHigh), bottom - gap);
+      yLow = Math.max(clamp(yLow), yHigh + gap);
+      ctx.fillText(fmt(hi), pad.l - 5, yHigh);
+      ctx.fillText(fmt(lo), pad.l - 5, yLow);
     }
+
+    // The newest light's value beside its point. One that measured nothing
+    // has no point, and reads a dash level with the last that did.
+    const newest = data.length - 1;
+    const measured = data[newest] !== null && data[newest] !== undefined;
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillStyle = theme.ink(0.85);
+    ctx.textAlign = "left";
+    ctx.fillText(measured ? fmt(data[newest]) : "—", W - pad.r + 6,
+      clamp(yOf(data[line[line.length - 1]]) + 3));
   }
 
   getCardSize() { return 7; }

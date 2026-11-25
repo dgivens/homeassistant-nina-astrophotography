@@ -4,6 +4,18 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **The frame statistics card's HFR, star count and mean ADU graphs print the
+  high and low of their line** on the left (#271), each level with its own
+  value, and the newest light's value on the right: HFR to two decimals, stars
+  and ADU as whole numbers, and ADU to one decimal from a camera whose counts
+  are too small for whole numbers to tell apart. A newest light that measured
+  nothing reads `—`. The line is the newest run the graph is scaled to, or
+  the whole night while that run has fewer than two readings.
+
 ## [2.9.0] - 2026-11-24
 
 ### Added

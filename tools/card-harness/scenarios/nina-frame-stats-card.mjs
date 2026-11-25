@@ -20,9 +20,9 @@
  * run read across interleaved filters; every captured light shares one gain,
  * so a run split by gain relabels some.
  *
- * Not reached: a gap in a series, since no captured light lacks a reading,
- * nor a trend that reads Improving or Degrading, since the newest ten S frames
- * hold steady.
+ * No captured light lacks a reading or repeats one across a run, so those two
+ * scenarios edit the lights. Not reached: a trend that reads Improving or
+ * Degrading, since the newest ten S frames hold steady.
  *
  * `site_configured` holds no session, because it is dumped on a later day than
  * its night. That is the empty card, and it is also what a new night shows
@@ -103,6 +103,14 @@ function relabelled(dump, names, { wheel = true } = {}) {
     .override(FILTER, label(states[FILTER].state) ?? "unknown", states[FILTER].attributes)
     .override(WHEEL, wheel ? label(states[WHEEL].state) ?? states[WHEEL].state : states[WHEEL].state,
       { ...states[WHEEL].attributes, options: slots });
+}
+
+// The night with `recent_lights` passed through `edit`, for the readings no
+// captured light has; each caller says what it fabricates.
+function withLights(dump, edit) {
+  const row = dump[NIGHT].states[HFR];
+  return rig(dump, NIGHT).override(HFR, row.state,
+    { ...row.attributes, recent_lights: edit(row.attributes.recent_lights) });
 }
 
 // No `draw` hook: the three sparklines are painted from the frame the render
@@ -228,7 +236,7 @@ export const scenarios = {
   // The night from a 12- or 14-bit camera that does not scale to 16 bits. The
   // chart draws a run by its span about its centre, so the pedestal, scaled
   // with the sky, cannot show: the ops match `session`'s but for the ADU
-  // chart's newest-reading label.
+  // chart's numbers, which the 12-bit night prints to a decimal.
   unscaled_12_bit: { hass: (dump) => unscaled(dump, NIGHT, 16).build() },
   unscaled_14_bit: { hass: (dump) => unscaled(dump, NIGHT, 4).build() },
 
@@ -241,4 +249,24 @@ export const scenarios = {
 
   // Two charts folded to their headings; only the HFR chart is drawn.
   folded_charts: { hass: (dump) => rig(dump, NIGHT).build(), folded: ["stars", "adu"] },
+
+  // Synthetic: the newest light with no stars found, which reports no HFR and
+  // a count of zero. The HFR chart reads a dash for it, level with the light
+  // before, and the star chart scales down to its zero.
+  unmeasured_newest: {
+    hass: (dump) => {
+      const row = dump[NIGHT].states[HFR];
+      const lights = row.attributes.recent_lights.map((light, i, all) =>
+        (i === all.length - 1 ? { ...light, hfr: null, stars: 0 } : light));
+      return rig(dump, NIGHT)
+        .override(HFR, "unknown", { ...row.attributes, recent_lights: lights })
+        .override(STARS, 0)
+        .build();
+    },
+  },
+
+  // Synthetic: every S light given the newest's star count, so the run is
+  // level and the star chart prints its high alone.
+  level_run: { hass: (dump) => withLights(dump, (lights) => lights.map(
+    (light) => (light.filter === "S" ? { ...light, stars: lights.at(-1).stars } : light))).build() },
 };
