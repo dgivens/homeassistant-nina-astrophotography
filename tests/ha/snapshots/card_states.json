@@ -131,6 +131,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -707,6 +713,14 @@
      "r_squared_threshold": null,
      "reason": null,
      "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -3353,6 +3367,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -3937,6 +3957,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -5197,6 +5225,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -5777,6 +5811,13 @@
     "attributes": {
      "device_class": "problem",
      "friendly_name": "N.I.N.A. Focuser Autofocus failed"
+    },
+    "state": "unavailable"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running"
     },
     "state": "unavailable"
    },
@@ -6591,6 +6632,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -7169,6 +7216,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -8143,6 +8198,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -8869,6 +8930,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -9903,6 +9972,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -10629,6 +10704,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -11663,6 +11746,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -12389,6 +12478,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -13423,6 +13520,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -14145,6 +14248,13 @@
     "attributes": {
      "device_class": "problem",
      "friendly_name": "N.I.N.A. Focuser Autofocus failed"
+    },
+    "state": "unavailable"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running"
     },
     "state": "unavailable"
    },
@@ -15155,6 +15265,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -15881,6 +15997,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -16915,6 +17039,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -17641,6 +17771,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": null
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -18629,6 +18767,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -19213,6 +19357,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -20473,6 +20625,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -21057,6 +21215,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -22334,6 +22500,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -22961,6 +23133,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
@@ -23943,6 +24123,12 @@
     "platform": "nina_astrophotography",
     "translation_key": "autofocus_failed"
    },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "device_id": "focuser",
+    "entity_id": "binary_sensor.n_i_n_a_focuser_autofocus_running",
+    "platform": "nina_astrophotography",
+    "translation_key": "autofocus_running"
+   },
    "binary_sensor.n_i_n_a_imaging": {
     "device_id": "hub",
     "entity_id": "binary_sensor.n_i_n_a_imaging",
@@ -24527,6 +24713,14 @@
      "r_squared_threshold": 0.7,
      "reason": null,
      "refocus_temperature_delta": 2.0
+    },
+    "state": "off"
+   },
+   "binary_sensor.n_i_n_a_focuser_autofocus_running": {
+    "attributes": {
+     "device_class": "running",
+     "friendly_name": "N.I.N.A. Focuser Autofocus running",
+     "started_at": null
     },
     "state": "off"
    },
