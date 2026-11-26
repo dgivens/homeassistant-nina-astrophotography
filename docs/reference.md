@@ -642,6 +642,16 @@ Things to know when reading them:
 If you check R² yourself, compare against this `r_squared` attribute, not
 values from the `fits` attribute below; they can differ slightly.
 
+`binary_sensor.<instance>_focuser_autofocus_running` is `on` from N.I.N.A.'s
+`AUTOFOCUS-STARTING` to its `AUTOFOCUS-FINISHED`, and its `started_at`
+attribute says when the run began. An autofocus takes exposures, so the
+camera's `exposing` and the rig's `imaging` are `on` through it too. A run
+interrupted by a saved frame, the sequence finishing, the mount parking or a
+device disconnecting reads `off`. So does a run unanswered past the profile's
+autofocus timeout, which `autofocus_failed` reports as `hung`. N.I.N.A. sends
+no event for a run cancelled by hand, so that run reads `on` until the
+timeout.
+
 `sensor.<instance>_focuser_last_autofocus` says how the run was measured:
 
 | Attribute | Meaning |

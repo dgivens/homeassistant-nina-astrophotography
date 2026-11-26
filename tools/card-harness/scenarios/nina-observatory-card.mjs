@@ -129,6 +129,19 @@ export const scenarios = {
   // Every id resolved, and the equipment up.
   station: { hass: (dump) => rig(dump, UP).build() },
 
+  // An autofocus forty seconds in, inside a running sequence with the camera
+  // exposing, which alone reads as imaging. No capture holds a run in
+  // progress, so the run is moved onto `site_configured`.
+  autofocus: {
+    hass: (dump) => {
+      const af = "binary_sensor.n_i_n_a_focuser_autofocus_running";
+      return rig(dump, UP).override(af, "on", {
+        ...dump[UP].states[af].attributes,
+        started_at: new Date(Date.now() - 40_000).toISOString(),
+      }).build();
+    },
+  },
+
   // A night with frames, which is the only state where Last image has
   // readings to print.
   session: { hass: (dump) => rig(dump, "dawn_flats").build() },

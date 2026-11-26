@@ -1106,8 +1106,11 @@ class NinaImagePanelCard extends HTMLElement {
     const connected = cameraState !== null && cameraState !== "unavailable";
     const { target, filter } = this._frame();
     const index = this._index();
+    // Autofocus exposes too, for seconds at a time and nothing it saves.
+    const autofocusing = this._s(
+      this._eid("binary_sensor", "autofocus_running", "focuser_autofocus_running")) === "on";
     // Held readings are not current: the exposure may have ended since.
-    const live = exposing && !this._link.stale;
+    const live = exposing && !autofocusing && !this._link.stale;
     const left = live ? this._exposureLeft() : null;
 
     // Before the camera: a lost link makes it unavailable too.
@@ -1123,6 +1126,9 @@ class NinaImagePanelCard extends HTMLElement {
     } else if (!connected) {
       badge.textContent = "Disconnected";
       badge.className   = "badge warn";
+    } else if (autofocusing) {
+      badge.textContent = "Autofocus…";
+      badge.className   = "badge";
     } else if (exposing) {
       badge.textContent = left ? `Exposing · ${clock(left.seconds)} left` : "Exposing…";
       badge.className   = "badge";

@@ -4,6 +4,18 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **An autofocus in progress is shown.**
+  `binary_sensor.<instance>_focuser_autofocus_running` is `on` from the
+  start of an autofocus run to its finish, with its start as `started_at`.
+  The observatory card's header reads `Autofocus` and its session banner
+  `Running autofocus`, where it would read `Imaging`. The image panel reads
+  `Autofocus…` in place of the countdown it would show for each of the run's
+  exposures, a few seconds each.
+
 ## [2.9.0] - 2026-11-24
 
 ### Added

@@ -523,6 +523,10 @@ class NinaObservatoryCard extends HTMLElement {
     const frameCountId = this._eid("sensor", "session_image_count");
     const seqRunning  = isOn(h, seqId);
     const imaging     = isOn(h, imagingId);
+    // Its frames are exposures, so the camera alone reads it as imaging.
+    // Held readings are not current: the run may have finished.
+    const autofocusing = !quiet
+      && isOn(h, this._eid("binary_sensor", "autofocus_running", "focuser_autofocus_running"));
     // Held readings are not current: the wait may be over.
     // Target Scheduler names no target while it waits, and may pick another
     // than the one before; the target sensor still reads that one.
@@ -710,6 +714,7 @@ class NinaObservatoryCard extends HTMLElement {
 
     const [status, dot] = link.lost ? ["Unreachable", "dot-warn"]
       : link.stale ? ["Not answering", "dot-warn"]
+      : autofocusing ? ["Autofocus", "dot-on"]
       : wait ? [waitCountdown(wait), "dot-on"]
       : seqRunning ? ["Session active", "dot-on"] : ["Standby", "dot-off"];
     // The park row, not the RA probe, which a user may disable.
@@ -887,7 +892,8 @@ class NinaObservatoryCard extends HTMLElement {
           <div class="session-banner">
             <div>
               <div class="target">${seqRunning && wait?.kind !== "scheduler" ? safe(shown(target)) : "—"}</div>
-              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${wait ? `${waitReason(wait)}${waitEnds}`
+              <div style="font-size:0.68rem;color:var(--muted);margin-top:2px;">${autofocusing ? "Running autofocus"
+                : wait ? `${waitReason(wait)}${waitEnds}`
                 : imaging ? "Imaging"
                 : seqRunning ? "Running, not imaging" : "Sequence not running"}</div>
             </div>

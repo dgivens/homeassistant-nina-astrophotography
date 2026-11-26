@@ -53,6 +53,9 @@
       "autofocus_failed": {
         "name": "Autofocus failed"
       },
+      "autofocus_running": {
+        "name": "Autofocus running"
+      },
       "camera_is_exposing": {
         "name": "Exposing"
       },

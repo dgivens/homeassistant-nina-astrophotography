@@ -22,6 +22,7 @@ from ha.registry import registered
 from helpers import image_saved, state_of
 
 AUTOFOCUS_FAILED = "binary_sensor.n_i_n_a_focuser_autofocus_failed"
+AUTOFOCUS_RUNNING = "binary_sensor.n_i_n_a_focuser_autofocus_running"
 MONITOR_CONNECTED = "binary_sensor.n_i_n_a_safety_monitor_connected"
 SEQUENCER_RUNNING = "binary_sensor.n_i_n_a_sequencer_running"
 IMAGING = "binary_sensor.n_i_n_a_imaging"
@@ -85,6 +86,7 @@ async def test_the_cut_binary_sensors_are_not_registered(
         "rotator_is_moving",
         "rotator_synced",
         "autofocus_failed",
+        "autofocus_running",
     ],
 )
 async def test_the_kept_binary_sensors_are_registered(
@@ -644,3 +646,44 @@ async def test_a_panel_without_a_cover_has_no_closed_cover_sensor(
 ) -> None:
     await set_up_with_flat_device(supports_open_close=False)
     assert hass.states.get(BEHIND_COVER) is None
+
+
+STARTED = "2026-09-05T01:58:00-05:00"
+
+
+@pytest.mark.synthetic
+@pytest.mark.parametrize(
+    ("pushed", "state", "started_at"),
+    [
+        (["AUTOFOCUS-STARTING"], "on", datetime.fromisoformat(STARTED)),
+        (["AUTOFOCUS-STARTING", "AUTOFOCUS-FINISHED"], "off", None),
+    ],
+    ids=["started", "finished"],
+)
+async def test_autofocus_running_spans_a_run_from_its_start_to_its_finish(
+    hass: HomeAssistant,
+    inside_the_guiding_session,
+    config_entry,
+    rig,
+    set_up_at,
+    push,
+    pushed: list[str],
+    state: str,
+    started_at: datetime | None,
+) -> None:
+    """Its frames are exposures, so nothing else tells a card that the camera
+    exposing is focusing rather than taking a light.
+    """
+    await set_up_at(hass, config_entry, rig, "imaging_guiding")
+    for event in pushed:
+        push({"Event": event, "Time": STARTED})
+    await hass.async_block_till_done()
+    running = state_of(hass, AUTOFOCUS_RUNNING)
+    assert (running.state, running.attributes["started_at"]) == (state, started_at)
+
+
+async def test_a_hung_autofocus_is_not_running(
+    hass: HomeAssistant, inside_the_dawn_session, config_entry, rig, set_up_at
+) -> None:
+    await set_up_at(hass, config_entry, rig, "autofocus_timed_out")
+    assert state_of(hass, AUTOFOCUS_RUNNING).state == "off"

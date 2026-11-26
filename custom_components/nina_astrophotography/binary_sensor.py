@@ -15,6 +15,7 @@ keeps its last value for the grace period and then goes unavailable.
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from functools import partial
 from typing import Any
 
@@ -96,6 +97,16 @@ def _autofocus_reason(data: NinaData) -> str | None:
 def _autofocus_failed(data: NinaData) -> bool | None:
     """`on` for either way an autofocus fails; `reason` says which."""
     return _autofocus_reason(data) is not None
+
+
+def _autofocus_started_at(data: NinaData) -> datetime | None:
+    """When the running autofocus started, or `None` while none runs.
+
+    A start unanswered past the profile's timeout has hung, which
+    `autofocus_failed` reports; it is no longer running.
+    """
+    autofocus = data.session.autofocus
+    return None if autofocus.failed else autofocus.running_since
 
 
 def _autofocus_verdict(data: NinaData) -> Mapping[str, Any]:
@@ -218,6 +229,14 @@ DESCRIPTIONS: tuple[NinaBinarySensorDescription, ...] = (
         kind="focuser",
         value=_autofocus_failed,
         attributes=_autofocus_verdict,
+    ),
+    NinaBinarySensorDescription(
+        key="autofocus_running",
+        translation_key="autofocus_running",
+        device_class=BinarySensorDeviceClass.RUNNING,
+        kind="focuser",
+        value=lambda data: _autofocus_started_at(data) is not None,
+        attributes=lambda data: {"started_at": _autofocus_started_at(data)},
     ),
     NinaBinarySensorDescription(
         key="flat_panel_light_frames_behind_closed_cover",

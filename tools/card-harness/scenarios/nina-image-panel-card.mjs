@@ -104,6 +104,27 @@ export const scenarios = {
     },
   },
 
+  // Forty seconds into an autofocus, two seconds into one of its 5 s
+  // exposures: the header says so, with no countdown and no bar. No capture
+  // holds a run in progress, so the run and the exposure it is taking are
+  // moved onto `site_configured`, the one capture exposing.
+  autofocus: {
+    hass: (dump) => {
+      const end = "sensor.n_i_n_a_camera_exposure_end";
+      const af = "binary_sensor.n_i_n_a_focuser_autofocus_running";
+      const states = dump.site_configured.states;
+      const built = rig(dump, "site_configured")
+        .override(af, "on", {
+          ...states[af].attributes,
+          started_at: new Date(Date.now() - 40_000).toISOString(),
+        })
+        .override(end, new Date(Date.now() + 3_000).toISOString(), states[end].attributes)
+        .build();
+      built.states[end].last_changed = new Date(Date.now() - 2_000).toISOString();
+      return built;
+    },
+  },
+
   // The drivers down: no camera entities at all, no frames, and the session
   // totals zero.
   disconnected: { hass: (dump) => rig(dump, "equipment_disconnected").build() },
