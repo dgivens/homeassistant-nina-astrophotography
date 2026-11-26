@@ -247,11 +247,13 @@ period later.
 The quiet case doesn't fire while the sequencer is stopped, while the sequence
 is waiting, for 15 minutes after a wait ends, or in daylight. A Wait for Time
 Span shorter than the quiet period counts as neither: it paces a retry loop,
-which is how a stall often looks. Its timers start
-at the latest of the sequencer starting, conditions turning safe, the sun
-setting and the quiet hours ending. So neither the last frame of the previous
-night nor an hour spent waiting for dark triggers an alert the moment the rig
-is let work. All of these times are blueprint inputs.
+which is how a stall often looks. The quiet case's timers start
+at the latest of the sequencer starting, conditions turning safe, a wait
+ending, the sun setting and the quiet hours ending. So neither the last frame
+of the previous night nor an hour spent waiting for dark or for a target
+triggers an alert the moment the rig is let work: after a wait, frames are due
+within the quiet thresholds above, counted from its end. All of these times are
+blueprint inputs.
 
 It also stays quiet in these situations you should know about:
 

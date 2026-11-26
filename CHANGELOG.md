@@ -4,6 +4,19 @@ All notable changes to the N.I.N.A. Astrophotography Home Assistant integration 
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The stall alert's quiet clock starts when a wait ends**, as it does when
+  the sun sets or conditions turn safe. The first sub after a long Target
+  Scheduler or Wait for Time wait can still be exposing when the 15-minute
+  settle runs out, and a clock counted from the sequence's start raised
+  `No frames in the … minutes since the sequence started` on that tick,
+  followed a minute later by `imaging resumed`. A rig that stalls after a wait
+  is reported once the quiet thresholds have passed since the wait's end
+  (#317).
+
 ## [2.9.0] - 2026-11-24
 
 ### Added

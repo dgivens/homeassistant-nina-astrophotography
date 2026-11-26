@@ -277,7 +277,7 @@ def _ended(kind: str, span: float | None, minutes_ago: float) -> dict:
 @pytest.mark.parametrize(
     ("ended", "alerts"),
     [
-        ([_ended("time_span", 5.0, 1), _ended("time", None, 2)], False),
+        ([_ended("time_span", 5.0, 1), _ended("time", None, QUIET_MINUTES + 2)], False),
         ([_ended("time_span", 60.0, 1), _ended("time_span", 60.0, 3)], True),
     ],
     ids=[
@@ -288,7 +288,10 @@ def _ended(kind: str, span: float | None, minutes_ago: float) -> dict:
 async def test_the_settle_runs_from_the_latest_wait_that_is_not_a_short_span(
     hass: HomeAssistant, watching, ended: list[dict], alerts: bool
 ) -> None:
-    clock = await watching()
+    """A settle longer than the quiet period, so the gate alone decides: the
+    quiet clock starts at the wait's end too, and mutes any shorter settle.
+    """
+    clock = await watching(settle_minutes=QUIET_MINUTES + 10)
     await start_sequence(hass, clock)
     hass.states.async_set(WAITING, "off", {"span_seconds": None, "recent_waits": ended})
 
@@ -634,6 +637,35 @@ async def test_the_quiet_clock_starts_when_the_last_gate_opens(
     assert (raised is not None) is alerts
     if raised:
         assert f"since {named}" in raised["message"]
+
+
+STALE_MINUTES = DEFAULTS["longest_exposure_seconds"] / 60 + DEFAULTS["grace_minutes"]
+
+
+@pytest.mark.parametrize(("after", "alerts"), [(-1, False), (1, True)])
+async def test_the_quiet_clock_starts_when_a_wait_ends(
+    hass: HomeAssistant, watching, after, alerts
+) -> None:
+    """The settle after a long wait can run out while the night's first sub is
+    still exposing, and a clock from the sequence's start would alert on that
+    tick.
+    """
+    clock = await watching()
+    await start_sequence(hass, clock)
+    ended = T0 + LET_WORK
+    clock.move_to(ended)
+    waits = [{"kind": "scheduler", "span_seconds": None, "ended_at": ended}]
+    hass.states.async_set(WAITING, "off", {"recent_waits": waits})
+    hass.states.async_set("binary_sensor.rig_imaging", "on")
+    when = ended + timedelta(minutes=STALE_MINUTES + after)
+
+    clock.move_to(when)
+    await tick(hass, when)
+
+    raised = alert(hass)
+    assert (raised is not None) is alerts
+    if raised:
+        assert "since a wait ended" in raised["message"]
 
 
 @pytest.mark.parametrize("site", SITES)
